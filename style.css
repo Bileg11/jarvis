@@ -454,6 +454,100 @@ body::before {
 }
 @keyframes jblink { 0%,100%{opacity:1} 50%{opacity:0} }
 
+/* ── SCORE CHIP ──────────────────────────── */
+.score-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(124,92,252,0.12);
+  border: 1px solid rgba(124,92,252,0.25);
+  border-radius: 20px;
+  padding: 3px 10px;
+  margin-top: 6px;
+  letter-spacing: 0.2px;
+  -webkit-text-fill-color: initial;
+}
+
+/* ── STREAK BADGE ────────────────────────── */
+.streak-badge {
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  white-space: nowrap;
+  line-height: 1.6;
+  z-index: 2;
+  color: #fff;
+}
+
+/* ── MISSION CARD ────────────────────────── */
+.card-mission { border-color: rgba(252,211,77,0.18); }
+.card-mission .card-tag { background: rgba(252,211,77,0.10); color: var(--yellow); border: 1px solid rgba(252,211,77,0.22); }
+
+.mission-item { margin-bottom: 16px; }
+.mission-item:last-child { margin-bottom: 0; }
+
+.mission-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+.mission-label {
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mission-icon { font-size: 16px; }
+.mission-controls { display: flex; align-items: center; gap: 8px; }
+.m-btn {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0; line-height: 1;
+  transition: background 0.15s;
+}
+.m-btn:active { background: rgba(124,92,252,0.3); }
+.m-val {
+  font-size: 12px; font-weight: 700;
+  color: var(--text-2);
+  min-width: 44px;
+  text-align: center;
+}
+.mission-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.mission-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--yellow));
+  border-radius: 2px;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  min-width: 2px;
+}
+
 /* ── TOAST ────────────────────────────────── */
 #toast {
   position: fixed;

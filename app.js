@@ -111,7 +111,93 @@ function loadRoutine() {
   return { date: getToday(), water: 0, exercise: false, hanzi: false, read: false, journal: false };
 }
 
-function saveRoutine(r) { localStorage.setItem('jarvis_r', JSON.stringify(r)); }
+function saveRoutine(r) {
+  localStorage.setItem('jarvis_r', JSON.stringify(r));
+  localStorage.setItem('jarvis_r_' + r.date, JSON.stringify(r));
+}
+
+// ── STREAKS & SCORE ───────────────────────────────────────────────
+
+function getStreak(key) {
+  let streak = 0;
+  for (let i = 0; i < 60; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const r = JSON.parse(localStorage.getItem('jarvis_r_' + dateStr) || 'null');
+    if (!r) break;
+    const done = key === 'water' ? r.water >= 8 : !!r[key];
+    if (done) streak++;
+    else break;
+  }
+  return streak;
+}
+
+function get7DayStats() {
+  const stats = {
+    days: 0,
+    items: { exercise: 0, hanzi: 0, read: 0, journal: 0, water: 0 },
+    weakest: null,
+    strongest: null,
+  };
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const r = JSON.parse(localStorage.getItem('jarvis_r_' + d.toISOString().split('T')[0]) || 'null');
+    if (!r) continue;
+    stats.days++;
+    ['exercise','hanzi','read','journal'].forEach(k => { if (r[k]) stats.items[k]++; });
+    if (r.water >= 8) stats.items.water++;
+  }
+  if (stats.days > 0) {
+    const keys = ['exercise','hanzi','read','journal','water'];
+    let minV = Infinity, maxV = -1;
+    keys.forEach(k => {
+      if (stats.items[k] < minV) { minV = stats.items[k]; stats.weakest = k; }
+      if (stats.items[k] > maxV) { maxV = stats.items[k]; stats.strongest = k; }
+    });
+  }
+  return stats;
+}
+
+function getDailyScore() {
+  const r = loadRoutine();
+  let score = 0;
+  score += Math.round((r.water / 8) * 25);
+  if (r.exercise) score += 20;
+  if (r.hanzi)    score += 20;
+  if (r.read)     score += 15;
+  if (r.journal)  score += 10;
+  const tlog = loadTodayLog();
+  if (tlog?.shower) score += 10;
+  return score;
+}
+
+function renderScore() {
+  const chip = document.getElementById('score-chip');
+  if (!chip) return;
+  const s = getDailyScore();
+  chip.textContent = `⚡ ${s}/100`;
+}
+
+function renderStreaks() {
+  ['water','exercise','hanzi','read','journal'].forEach(key => {
+    const el = document.getElementById('ri-' + key);
+    if (!el) return;
+    const streak = getStreak(key);
+    let badge = el.querySelector('.streak-badge');
+    if (streak >= 2) {
+      if (!badge) {
+        badge = document.createElement('div');
+        badge.className = 'streak-badge';
+        el.querySelector('.r-circle').appendChild(badge);
+      }
+      badge.textContent = streak + '🔥';
+    } else if (badge) {
+      badge.remove();
+    }
+  });
+}
 
 function renderRoutine() {
   const r = loadRoutine();
@@ -120,6 +206,8 @@ function renderRoutine() {
   ['exercise','hanzi','read','journal'].forEach(k => {
     document.getElementById('ri-' + k).classList.toggle('done', !!r[k]);
   });
+  renderStreaks();
+  renderScore();
 }
 
 function changeWater(delta) {
@@ -148,6 +236,65 @@ function setupMidnightReset() {
     renderRoutine();
     setupMidnightReset();
   }, midnight - now);
+}
+
+// ── MISSIONS ──────────────────────────────────────────────────────
+
+const DEFAULT_MISSIONS = [
+  { id:'lfs',     label:'LFS Shanghai', icon:'🚀', val:0, max:100, unit:'хэрэглэгч' },
+  { id:'hanziw',  label:'汉字 HSK',      icon:'汉', val:0, max:300, unit:'үг' },
+  { id:'fitness', label:'Фитнесс',       icon:'💪', val:0, max:30,  unit:'өдөр' },
+];
+
+function loadMissions() {
+  try {
+    const s = JSON.parse(localStorage.getItem('jarvis_missions'));
+    if (s && s.length) return s;
+  } catch {}
+  return DEFAULT_MISSIONS.map(m => ({ ...m }));
+}
+
+function saveMissions(missions) {
+  localStorage.setItem('jarvis_missions', JSON.stringify(missions));
+}
+
+function changeMission(id, delta) {
+  const missions = loadMissions();
+  const m = missions.find(x => x.id === id);
+  if (!m) return;
+  m.val = Math.max(0, Math.min(m.max, m.val + delta));
+  saveMissions(missions);
+  // re-render just the mission card values
+  const valEl = document.getElementById('mv-' + id);
+  const fillEl = document.getElementById('mf-' + id);
+  if (valEl) valEl.textContent = m.val + ' / ' + m.max + ' ' + m.unit;
+  if (fillEl) fillEl.style.width = Math.round(m.val / m.max * 100) + '%';
+}
+
+function cardMission() {
+  const missions = loadMissions();
+  const rows = missions.map(m => {
+    const pct = Math.round(m.val / m.max * 100);
+    return `<div class="mission-item">
+      <div class="mission-row">
+        <div class="mission-label">
+          <span class="mission-icon">${m.icon}</span>${m.label}
+        </div>
+        <div class="mission-controls">
+          <button class="m-btn" onclick="changeMission('${m.id}',-1)">−</button>
+          <span class="m-val" id="mv-${m.id}">${m.val} / ${m.max} ${m.unit}</span>
+          <button class="m-btn" onclick="changeMission('${m.id}',1)">+</button>
+        </div>
+      </div>
+      <div class="mission-bar">
+        <div class="mission-fill" id="mf-${m.id}" style="width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div class="card card-mission">
+    <span class="card-tag">🎯 МИССИОН</span>
+    ${rows}
+  </div>`;
 }
 
 // ── FEED CARDS ────────────────────────────────────────────────────
@@ -223,9 +370,38 @@ function hzResult(char, knew) {
   showToast(knew ? `✅ ${char} — сайн!` : `📝 ${char} — дахин харна уу`);
 }
 
+// Smart feed: priority-based ordering
 function renderFeed() {
-  document.getElementById('feed').innerHTML =
-    shuffle([cardNews(), cardHanzi(), cardQuote(), cardGlowup(), cardBiz()]).join('');
+  const r = loadRoutine();
+  const h = new Date().getHours();
+
+  // Fixed first: mission card
+  const fixed = [cardMission()];
+
+  // Priority: put undone routine cards first, done ones shuffle at back
+  const priority = [];
+  const rest = [];
+
+  // Hanzi card: push front if not done
+  if (!r.hanzi) priority.push(cardHanzi());
+  else rest.push(cardHanzi());
+
+  // Glow-up front if no exercise in morning/afternoon
+  if (!r.exercise && h < 18) priority.push(cardGlowup());
+  else rest.push(cardGlowup());
+
+  // Biz always in rest
+  rest.push(cardBiz());
+
+  // News front if morning, else rest
+  if (h < 11) priority.push(cardNews());
+  else rest.push(cardNews());
+
+  // Quote always in rest
+  rest.push(cardQuote());
+
+  const ordered = [...fixed, ...shuffle(priority), ...shuffle(rest)];
+  document.getElementById('feed').innerHTML = ordered.join('');
   observeCards();
 }
 
@@ -251,12 +427,20 @@ function generateJarvisMessage() {
   const r    = loadRoutine();
   const tlog = loadTodayLog();
   const ylog = loadYesterdayLog();
+  const s7   = get7DayStats();
 
   const water = tlog?.water?.total_ml || 0;
   const goal  = 2000;
   const done  = ['exercise','hanzi','read','journal'].filter(k => r[k]).length;
   const sleep = ylog?.sleep?.hours || null;
-  const LABELS = { exercise:'дасгал', hanzi:'汉字', read:'унших', journal:'journal' };
+  const LABELS = { exercise:'дасгал', hanzi:'汉字', read:'унших', journal:'journal', water:'ус' };
+
+  // 7-day pattern insight
+  const hasHistory = s7.days >= 3;
+  const weakLabel  = s7.weakest ? LABELS[s7.weakest] : null;
+  const strongLabel = s7.strongest ? LABELS[s7.strongest] : null;
+  const weakPct = hasHistory && s7.weakest ? Math.round(s7.items[s7.weakest] / s7.days * 100) : 0;
+  const strongPct = hasHistory && s7.strongest ? Math.round(s7.items[s7.strongest] / s7.days * 100) : 0;
 
   // Late night 0–5
   if (h < 5)
@@ -264,9 +448,12 @@ function generateJarvisMessage() {
 
   // Morning 5–10
   if (h < 10) {
-    const s = sleep ? `Өчигдөр ${fmtH(sleep)} унтсан.` : '';
-    const q = sleep ? (sleep >= 7.5 ? ' Сайн амарсан.' : sleep < 6 ? ' Арай бага байлаа.' : '') : '';
-    return `Өглөөний мэнд, Билэг. ${s}${q} Routine эхлэх цаг боллоо.`;
+    const sleepComment = sleep
+      ? (sleep >= 7.5 ? `${fmtH(sleep)} унтсан — сайн амарсан.` : sleep < 6 ? `${fmtH(sleep)} л унтсан — арай бага байлаа.` : `${fmtH(sleep)} унтсан.`)
+      : '';
+    if (hasHistory && weakPct < 50)
+      return `Өглөөний мэнд. ${sleepComment} 7 хоногийн pattern: ${weakLabel} хамгийн дутуу (${weakPct}%). Өнөөдөр тэндээс эхэл.`;
+    return `Өглөөний мэнд, Билэг. ${sleepComment} Routine эхлэх цаг боллоо.`;
   }
 
   // Water critically behind
@@ -275,14 +462,27 @@ function generateJarvisMessage() {
     return `${h} цаг болж байна. Ус ${water}ml л уусан. Одоо ${goal - water}ml үлдлээ — яарцгаая, Билэг.`;
 
   // All done + water met — evening
-  if (h >= 17 && done === 4 && water >= goal)
-    return `Гайхалтай, Билэг. Өнөөдрийн бүх зорилго биелсэн байна. Journal-д бичиж тэмдэглэ.`;
+  if (h >= 17 && done === 4 && water >= goal) {
+    const score = getDailyScore();
+    return `Гайхалтай, Билэг. Өнөөдрийн score: ${score}/100. Бүх зорилго биелсэн. Journal-д бичиж тэмдэглэ.`;
+  }
 
   // Night wrap-up
   if (h >= 21) {
     const undone = ['exercise','hanzi','read','journal'].filter(k => !r[k]);
     const tail   = undone.length ? `Үлдсэн: ${undone.map(k => LABELS[k]).join(', ')}.` : 'Бүгд хийгдсэн.';
+    if (hasHistory && strongPct >= 70)
+      return `Унтахын өмнө journal бичиж, маргаашийн зорилгоо тавиарай. ${tail} ${strongLabel} хамгийн тогтмол — сайн!`;
     return `Унтахын өмнө journal бичиж, маргаашийн зорилгоо тавиарай. ${tail}`;
+  }
+
+  // 7-day pattern nudge in the afternoon
+  if (hasHistory && weakPct < 40 && h >= 13 && h < 18) {
+    const isUndone = s7.weakest === 'water'
+      ? water < goal
+      : (s7.weakest && !r[s7.weakest]);
+    if (isUndone)
+      return `7 хоногийн дотор ${weakLabel} хамгийн дутуу (${weakPct}%). Өнөөдөр яг одоо хий, Билэг.`;
   }
 
   // Evening — missing items
@@ -299,8 +499,15 @@ function generateJarvisMessage() {
   if (!r.hanzi && h >= 13 && h < 18)
     return `汉字 хийсэн үү? Routine: ${done}/4. Ус: ${water}ml.`;
 
+  // Streak celebration
+  const exStreak = getStreak('exercise');
+  const hzStreak = getStreak('hanzi');
+  if (exStreak >= 5) return `Дасгал ${exStreak} хоног дараалан! 🔥 Тогтмол байдал — хамгийн хүчтэй habit.`;
+  if (hzStreak >= 5) return `汉字 ${hzStreak} хоног дараалан! 🔥 坚持就是胜利 — тэвч бол ялалт.`;
+
   // Default status
-  return `Routine: ${done}/4 хийгдсэн. Ус: ${water.toLocaleString()}ml / ${goal.toLocaleString()}ml. Сайн ажиллаж байна.`;
+  const score = getDailyScore();
+  return `Routine: ${done}/4 хийгдсэн. Ус: ${water.toLocaleString()}ml. Score: ${score}/100.`;
 }
 
 function typeJarvis(text) {
@@ -348,9 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFeed();
   setupMidnightReset();
 
-  // Jarvis — delayed for dramatic effect
   setTimeout(() => typeJarvis(generateJarvisMessage()), 400);
-  // Auto-refresh every 5 minutes
   setInterval(() => typeJarvis(generateJarvisMessage()), 5 * 60 * 1000);
 
   if ('serviceWorker' in navigator) {
