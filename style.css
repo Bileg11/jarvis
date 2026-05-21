@@ -534,6 +534,31 @@ body::before {
   min-width: 44px;
   text-align: center;
 }
+.mission-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.mission-context {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
+  flex: 1;
+  padding-right: 8px;
+}
+.mission-pct {
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.mission-eta {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-top: 5px;
+  letter-spacing: 0.2px;
+}
+
 .mission-bar {
   height: 4px;
   background: rgba(255,255,255,0.08);

@@ -241,15 +241,45 @@ function setupMidnightReset() {
 // ── MISSIONS ──────────────────────────────────────────────────────
 
 const DEFAULT_MISSIONS = [
-  { id:'lfs',     label:'LFS Shanghai', icon:'🚀', val:0, max:100, unit:'хэрэглэгч' },
-  { id:'hanziw',  label:'汉字 HSK',      icon:'汉', val:0, max:300, unit:'үг' },
-  { id:'fitness', label:'Фитнесс',       icon:'💪', val:0, max:30,  unit:'өдөр' },
+  {
+    id: 'lfs',
+    label: 'LFS Shanghai',
+    icon: '🚀',
+    val: 0, max: 100, unit: 'хэрэглэгч',
+    context: 'Монгол аялагчдад зориулсан VIP платформ — bileg11.github.io',
+    weekly: 5,       // target per week
+    step: 1,
+  },
+  {
+    id: 'hanziw',
+    label: '汉字 HSK2',
+    icon: '汉',
+    val: 0, max: 300, unit: 'үг',
+    context: 'HSK2 шалгалт — 300 үг цээжлэх шаардлагатай',
+    weekly: 15,
+    step: 1,
+  },
+  {
+    id: 'fitness',
+    label: 'Workout',
+    icon: '💪',
+    val: 0, max: 30, unit: 'workout',
+    context: 'Энэ сарын нийт workout тоо',
+    weekly: 5,
+    step: 1,
+  },
 ];
 
 function loadMissions() {
   try {
-    const s = JSON.parse(localStorage.getItem('jarvis_missions'));
-    if (s && s.length) return s;
+    const stored = JSON.parse(localStorage.getItem('jarvis_missions'));
+    if (stored && stored.length) {
+      // merge new fields if missing (schema evolution)
+      return DEFAULT_MISSIONS.map(def => {
+        const s = stored.find(x => x.id === def.id) || {};
+        return { ...def, ...s, context: def.context, weekly: def.weekly, step: def.step };
+      });
+    }
   } catch {}
   return DEFAULT_MISSIONS.map(m => ({ ...m }));
 }
@@ -262,19 +292,40 @@ function changeMission(id, delta) {
   const missions = loadMissions();
   const m = missions.find(x => x.id === id);
   if (!m) return;
-  m.val = Math.max(0, Math.min(m.max, m.val + delta));
+  m.val = Math.max(0, Math.min(m.max, m.val + delta * (m.step || 1)));
   saveMissions(missions);
-  // re-render just the mission card values
-  const valEl = document.getElementById('mv-' + id);
+
+  const pct = Math.round(m.val / m.max * 100);
+  const valEl  = document.getElementById('mv-' + id);
   const fillEl = document.getElementById('mf-' + id);
-  if (valEl) valEl.textContent = m.val + ' / ' + m.max + ' ' + m.unit;
-  if (fillEl) fillEl.style.width = Math.round(m.val / m.max * 100) + '%';
+  const pctEl  = document.getElementById('mp-' + id);
+  if (valEl)  valEl.textContent  = m.val + ' / ' + m.max + ' ' + m.unit;
+  if (fillEl) fillEl.style.width = pct + '%';
+  if (pctEl)  pctEl.textContent  = pct + '%';
+
+  // Milestone toasts
+  if (pct >= 100) showToast(`🏆 ${m.label} — дууслаа!`);
+  else if (pct >= 75 && pct - Math.round((m.val - 1) / m.max * 100) < 75) showToast(`🔥 ${m.label} 75% хүрлээ!`);
+  else if (pct >= 50 && pct - Math.round((m.val - 1) / m.max * 100) < 50) showToast(`⚡ ${m.label} дунд шугам!`);
+
+  // Re-run Jarvis so it reflects new mission state
+  typeJarvis(generateJarvisMessage());
+}
+
+function getMissionStats() {
+  const missions = loadMissions();
+  return missions.map(m => {
+    const pct = Math.round(m.val / m.max * 100);
+    const left = m.max - m.val;
+    const weeksLeft = left > 0 ? Math.ceil(left / m.weekly) : 0;
+    return { ...m, pct, left, weeksLeft };
+  });
 }
 
 function cardMission() {
-  const missions = loadMissions();
-  const rows = missions.map(m => {
-    const pct = Math.round(m.val / m.max * 100);
+  const mstats = getMissionStats();
+  const rows = mstats.map(m => {
+    const statusColor = m.pct >= 100 ? 'var(--green)' : m.pct >= 50 ? 'var(--accent)' : 'var(--yellow)';
     return `<div class="mission-item">
       <div class="mission-row">
         <div class="mission-label">
@@ -286,9 +337,14 @@ function cardMission() {
           <button class="m-btn" onclick="changeMission('${m.id}',1)">+</button>
         </div>
       </div>
-      <div class="mission-bar">
-        <div class="mission-fill" id="mf-${m.id}" style="width:${pct}%"></div>
+      <div class="mission-meta-row">
+        <span class="mission-context">${m.context}</span>
+        <span class="mission-pct" id="mp-${m.id}" style="color:${statusColor}">${m.pct}%</span>
       </div>
+      <div class="mission-bar">
+        <div class="mission-fill" id="mf-${m.id}" style="width:${m.pct}%"></div>
+      </div>
+      ${m.left > 0 ? `<div class="mission-eta">≈ ${m.weeksLeft} долоо хоног · долоо хоногт ${m.weekly} ${m.unit}</div>` : '<div class="mission-eta" style="color:var(--green)">✅ Дууссан!</div>'}
     </div>`;
   }).join('');
   return `<div class="card card-mission">
@@ -430,84 +486,102 @@ function generateJarvisMessage() {
   const s7   = get7DayStats();
 
   const water = tlog?.water?.total_ml || 0;
-  const goal  = 2000;
+  const WATER_GOAL = 2000;
   const done  = ['exercise','hanzi','read','journal'].filter(k => r[k]).length;
+  const undone = ['exercise','hanzi','read','journal'].filter(k => !r[k]);
   const sleep = ylog?.sleep?.hours || null;
+  const score = getDailyScore();
   const LABELS = { exercise:'дасгал', hanzi:'汉字', read:'унших', journal:'journal', water:'ус' };
 
-  // 7-day pattern insight
-  const hasHistory = s7.days >= 3;
-  const weakLabel  = s7.weakest ? LABELS[s7.weakest] : null;
-  const strongLabel = s7.strongest ? LABELS[s7.strongest] : null;
-  const weakPct = hasHistory && s7.weakest ? Math.round(s7.items[s7.weakest] / s7.days * 100) : 0;
-  const strongPct = hasHistory && s7.strongest ? Math.round(s7.items[s7.strongest] / s7.days * 100) : 0;
+  // Pattern data — always compute, even with 1 day
+  const daysTracked = s7.days;
+  const weakKey    = s7.weakest;
+  const strongKey  = s7.strongest;
+  const weakPct    = weakKey  && daysTracked ? Math.round(s7.items[weakKey]  / daysTracked * 100) : 0;
+  const strongPct  = strongKey && daysTracked ? Math.round(s7.items[strongKey] / daysTracked * 100) : 0;
 
-  // Late night 0–5
-  if (h < 5)
-    return 'Хожуу байна, Билэг. Унтах цаг болсон байна.';
+  // Mission awareness
+  const mstats = getMissionStats();
+  const lfs     = mstats.find(m => m.id === 'lfs');
+  const hanziM  = mstats.find(m => m.id === 'hanziw');
+  const fitnessM = mstats.find(m => m.id === 'fitness');
 
-  // Morning 5–10
-  if (h < 10) {
-    const sleepComment = sleep
-      ? (sleep >= 7.5 ? `${fmtH(sleep)} унтсан — сайн амарсан.` : sleep < 6 ? `${fmtH(sleep)} л унтсан — арай бага байлаа.` : `${fmtH(sleep)} унтсан.`)
-      : '';
-    if (hasHistory && weakPct < 50)
-      return `Өглөөний мэнд. ${sleepComment} 7 хоногийн pattern: ${weakLabel} хамгийн дутуу (${weakPct}%). Өнөөдөр тэндээс эхэл.`;
-    return `Өглөөний мэнд, Билэг. ${sleepComment} Routine эхлэх цаг боллоо.`;
-  }
-
-  // Water critically behind
-  const expected = Math.round(((h - 7) / 15) * goal);
-  if (water < expected - 500 && h < 21)
-    return `${h} цаг болж байна. Ус ${water}ml л уусан. Одоо ${goal - water}ml үлдлээ — яарцгаая, Билэг.`;
-
-  // All done + water met — evening
-  if (h >= 17 && done === 4 && water >= goal) {
-    const score = getDailyScore();
-    return `Гайхалтай, Билэг. Өнөөдрийн score: ${score}/100. Бүх зорилго биелсэн. Journal-д бичиж тэмдэглэ.`;
-  }
-
-  // Night wrap-up
-  if (h >= 21) {
-    const undone = ['exercise','hanzi','read','journal'].filter(k => !r[k]);
-    const tail   = undone.length ? `Үлдсэн: ${undone.map(k => LABELS[k]).join(', ')}.` : 'Бүгд хийгдсэн.';
-    if (hasHistory && strongPct >= 70)
-      return `Унтахын өмнө journal бичиж, маргаашийн зорилгоо тавиарай. ${tail} ${strongLabel} хамгийн тогтмол — сайн!`;
-    return `Унтахын өмнө journal бичиж, маргаашийн зорилгоо тавиарай. ${tail}`;
-  }
-
-  // 7-day pattern nudge in the afternoon
-  if (hasHistory && weakPct < 40 && h >= 13 && h < 18) {
-    const isUndone = s7.weakest === 'water'
-      ? water < goal
-      : (s7.weakest && !r[s7.weakest]);
-    if (isUndone)
-      return `7 хоногийн дотор ${weakLabel} хамгийн дутуу (${weakPct}%). Өнөөдөр яг одоо хий, Билэг.`;
-  }
-
-  // Evening — missing items
-  if (h >= 17) {
-    const undone = ['exercise','hanzi','read','journal'].filter(k => !r[k]);
-    if (undone.length)
-      return `Орой болж байна. Үлдсэн: ${undone.map(k => LABELS[k]).join(', ')}. Дуусгацгаая.`;
-  }
-
-  // Midday specific nudges
-  if (!r.exercise && h >= 10 && h < 14)
-    return `${h} цаг. Дасгалаа хийсэн үү? Өдрийн хамгийн идэвхтэй цаг одоо байна.`;
-
-  if (!r.hanzi && h >= 13 && h < 18)
-    return `汉字 хийсэн үү? Routine: ${done}/4. Ус: ${water}ml.`;
-
-  // Streak celebration
+  // Streak data
   const exStreak = getStreak('exercise');
   const hzStreak = getStreak('hanzi');
-  if (exStreak >= 5) return `Дасгал ${exStreak} хоног дараалан! 🔥 Тогтмол байдал — хамгийн хүчтэй habit.`;
-  if (hzStreak >= 5) return `汉字 ${hzStreak} хоног дараалан! 🔥 坚持就是胜利 — тэвч бол ялалт.`;
+  const wStreak  = getStreak('water');
 
-  // Default status
-  const score = getDailyScore();
-  return `Routine: ${done}/4 хийгдсэн. Ус: ${water.toLocaleString()}ml. Score: ${score}/100.`;
+  // ── 0–5 Late night
+  if (h < 5)
+    return `Хожуу байна. Унтах цаг болсон. Score: ${score}/100 — маргааш илүү сайн байна.`;
+
+  // ── 5–10 Morning
+  if (h < 10) {
+    const sleepLine = sleep
+      ? (sleep >= 7.5 ? `${fmtH(sleep)} унтсан ✓` : sleep < 6 ? `${fmtH(sleep)} л унтсан — бага байлаа` : `${fmtH(sleep)} унтсан`)
+      : 'Унтсан цагаа tracker-т тэмдэглэ';
+
+    if (daysTracked >= 2 && weakPct < 50)
+      return `Өглөө. ${sleepLine}. ${daysTracked} хоногийн pattern: ${LABELS[weakKey]} ${s7.items[weakKey]}/${daysTracked} өдөр (${weakPct}%) — хамгийн дутуу. Өнөөдөр тэндээс эхэл.`;
+
+    if (lfs && lfs.val > 0)
+      return `Өглөөний мэнд. ${sleepLine}. LFS: ${lfs.val}/${lfs.max} хэрэглэгч — ${lfs.left} дутуу. Routine эхлэх цаг.`;
+
+    return `Өглөөний мэнд, Билэг. ${sleepLine}. Routine эхлэх цаг боллоо.`;
+  }
+
+  // ── Water critically behind
+  const expectedWater = Math.round(((h - 7) / 15) * WATER_GOAL);
+  if (water < expectedWater - 400 && h < 21) {
+    const waterPct = Math.round(water / WATER_GOAL * 100);
+    return `${h} цаг — ус ${water}ml (${waterPct}%). ${WATER_GOAL - water}ml үлдлээ. Score одоо ${score}/100, ус дүүргэвэл ${score + Math.round(((WATER_GOAL - water) / WATER_GOAL) * 25)} болно.`;
+  }
+
+  // ── All done
+  if (done === 4 && water >= WATER_GOAL && h >= 15) {
+    const best = strongKey ? `${LABELS[strongKey]} хамгийн тогтмол (${strongPct}%).` : '';
+    return `Бүх зорилго биелсэн. Score: ${score}/100. ${best} Journal бич, LFS: ${lfs?.val}/${lfs?.max}.`;
+  }
+
+  // ── Streak milestones
+  if (exStreak >= 7) return `Дасгал ${exStreak} хоног дараалан! 🔥 Score: ${score}/100. Routine: ${done}/4. Ус: ${water}ml/${WATER_GOAL}ml.`;
+  if (hzStreak >= 7) return `汉字 ${hzStreak} хоног дараалан! 坚持就是胜利. HSK2: ${hanziM?.val}/${hanziM?.max} үг (${hanziM?.pct}%). Score: ${score}/100.`;
+  if (wStreak  >= 7) return `Ус ${wStreak} хоног дараалан бүрэн уусан! 💧 Score: ${score}/100. Routine: ${done}/4.`;
+
+  // ── Night wrap-up 21+
+  if (h >= 21) {
+    const tail = undone.length ? `Үлдсэн: ${undone.map(k => LABELS[k]).join(', ')}.` : 'Бүгд ✓.';
+    const patternLine = daysTracked >= 2
+      ? ` ${daysTracked} хоногийн дунд: ${LABELS[weakKey]} ${weakPct}%, ${LABELS[strongKey]} ${strongPct}%.`
+      : '';
+    return `Score: ${score}/100. ${tail}${patternLine} Journal бичиж унт.`;
+  }
+
+  // ── Pattern nudge afternoon
+  if (daysTracked >= 1 && weakPct < 50 && h >= 13 && h < 18) {
+    const isUndone = weakKey === 'water' ? water < WATER_GOAL : !r[weakKey];
+    if (isUndone)
+      return `Pattern: ${LABELS[weakKey]} ${daysTracked > 1 ? daysTracked + ' хоногийн дотор ' + weakPct + '%' : 'өнөөдөр хийгдээгүй'} — одоо хий. Score: ${score}/100. Routine: ${done}/4.`;
+  }
+
+  // ── Evening missing
+  if (h >= 17 && undone.length)
+    return `${undone.map(k => LABELS[k]).join(' + ')} үлдсэн. Score: ${score}/100 → ${score + undone.reduce((a,k)=>a+({exercise:20,hanzi:20,read:15,journal:10}[k]||0),0)} болно дуусгавал.`;
+
+  // ── Midday exercise nudge
+  if (!r.exercise && h >= 10 && h < 14)
+    return `${h} цаг. Дасгал хийгээгүй — score одоо ${score}/100, хийвэл ${score+20} болно. LFS: ${lfs?.val}/${lfs?.max} хэрэглэгч.`;
+
+  // ── Hanzi nudge
+  if (!r.hanzi && h >= 13 && h < 18)
+    return `汉字 хийсэн үү? HSK2: ${hanziM?.val}/${hanziM?.max} үг (${hanziM?.pct}%). Routine: ${done}/4. Score: ${score}/100.`;
+
+  // ── LFS insight midday
+  if (lfs && lfs.val > 0 && h >= 10 && h < 14)
+    return `LFS Shanghai: ${lfs.val}/${lfs.max} хэрэглэгч — ${lfs.left} дутуу, ≈${lfs.weeksLeft} долоо хоног. Score: ${score}/100. Routine: ${done}/4.`;
+
+  // ── Default: always show numbers
+  return `Score: ${score}/100. Routine: ${done}/4. Ус: ${water}ml/${WATER_GOAL}ml. LFS: ${lfs?.val ?? 0}/${lfs?.max}.`;
 }
 
 function typeJarvis(text) {
