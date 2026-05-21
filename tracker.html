@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Tracker — Jarvis</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .t-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-card);
+      padding: 20px;
+      margin: 0 14px 12px;
+    }
+    .t-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .t-icon { font-size: 20px; }
+    .t-title { font-size: 16px; font-weight: 700; flex: 1; }
+    .t-badge { font-size: 12px; color: var(--accent); font-weight: 600; }
+
+    /* Water ring */
+    .ring-wrap {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      width: 150px;
+      height: 150px;
+      margin: 0 auto 20px;
+    }
+    .ring-svg { width: 150px; height: 150px; }
+    .ring-center {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .ring-ml   { font-size: 30px; font-weight: 700; line-height: 1; }
+    .ring-unit { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Quick add */
+    .quick-btns {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .qbtn {
+      padding: 13px 4px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+    }
+    .qbtn:active { background: rgba(124,92,252,0.2); }
+
+    /* Custom input row */
+    .row-input {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .row-input input, .row-input textarea {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 15px;
+      padding: 12px 14px;
+      outline: none;
+      font-family: inherit;
+    }
+    .row-input input:focus,
+    .row-input textarea:focus { border-color: var(--accent); }
+    .row-input input::placeholder,
+    .row-input textarea::placeholder { color: var(--text-dim); }
+    .row-input textarea { resize: none; min-height: 64px; }
+
+    .add-btn {
+      padding: 12px 16px;
+      background: var(--accent);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+    .add-btn:active { opacity: 0.75; }
+
+    /* Log items */
+    .log-list { display: flex; flex-direction: column; gap: 6px; }
+    .log-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      background: var(--bg3);
+      border-radius: 10px;
+    }
+    .log-time { font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+    .log-val  { font-size: 14px; font-weight: 600; flex: 1; }
+    .log-del  { background: none; border: none; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 0; line-height: 1; }
+    .log-del:active { color: var(--red); }
+    .empty-log { font-size: 13px; color: var(--text-dim); text-align: center; padding: 10px 0 2px; }
+
+    /* Sleep */
+    .sleep-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .sleep-field label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.7px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .sleep-field input[type="time"] {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 24px;
+      font-weight: 600;
+      padding: 12px 14px;
+      outline: none;
+      font-family: inherit;
+      color-scheme: dark;
+    }
+    .sleep-field input[type="time"]:focus { border-color: var(--accent); }
+    .sleep-dur {
+      text-align: center;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--accent);
+      padding: 4px 0 2px;
+      min-height: 24px;
+    }
+
+    /* Shower */
+    .shower-btn {
+      width: 100%;
+      padding: 17px;
+      border-radius: 14px;
+      border: 2px solid var(--border);
+      background: var(--bg3);
+      color: var(--text-muted);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .shower-btn.on {
+      border-color: var(--blue);
+      background: rgba(96,165,250,0.1);
+      color: var(--blue);
+    }
+
+    /* Study */
+    .study-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg3);
+      border-radius: 10px;
+      margin-bottom: 6px;
+    }
+    .s-subj { font-size: 14px; font-weight: 600; color: var(--purple); margin-bottom: 2px; }
+    .s-note { font-size: 13px; color: var(--text-muted); }
+    .s-time { font-size: 11px; color: var(--text-dim); flex-shrink: 0; margin-top: 2px; }
+
+    /* Daily note */
+    .note-area {
+      width: 100%;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 15px;
+      padding: 14px;
+      outline: none;
+      font-family: inherit;
+      resize: none;
+      min-height: 100px;
+      line-height: 1.65;
+    }
+    .note-area:focus { border-color: var(--accent); }
+    .note-area::placeholder { color: var(--text-dim); }
+
+    .save-hint {
+      font-size: 12px;
+      color: transparent;
+      text-align: right;
+      padding: 6px 14px 0;
+      transition: color 0.3s;
+    }
+    .save-hint.show { color: var(--green); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>Life Tracker</h1>
+      <div class="sub" id="date-txt"></div>
+    </div>
+    <div class="avatar">Б</div>
+  </div>
+
+  <!-- WATER -->
+  <div class="t-card">
+    <div class="t-head">
+      <span class="t-icon">💧</span>
+      <span class="t-title">Ус</span>
+      <span class="t-badge" id="water-badge">0 / 2000 ml</span>
+    </div>
+
+    <div class="ring-wrap">
+      <svg class="ring-svg" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#1c1c1e" stroke-width="9"/>
+        <circle id="water-arc" cx="60" cy="60" r="50" fill="none"
+          stroke="#7C5CFC" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="314" stroke-dashoffset="314"
+          transform="rotate(-90 60 60)"
+          style="transition:stroke-dashoffset 0.5s ease"/>
+      </svg>
+      <div class="ring-center">
+        <div class="ring-ml" id="ring-ml">0</div>
+        <div class="ring-unit">ml</div>
+      </div>
+    </div>
+
+    <div class="quick-btns">
+      <button class="qbtn" onclick="addWater(100)">+100</button>
+      <button class="qbtn" onclick="addWater(250)">+250</button>
+      <button class="qbtn" onclick="addWater(500)">+500</button>
+      <button class="qbtn" onclick="addWater(750)">+750</button>
+    </div>
+
+    <div class="row-input">
+      <input type="number" id="custom-ml" placeholder="Өөр хэмжээ (ml)" min="0" max="5000" inputmode="numeric">
+      <button class="add-btn" onclick="addCustomWater()">+ Нэм</button>
+    </div>
+
+    <div class="log-list" id="water-log">
+      <div class="empty-log">Одоохондоо бичлэг алга</div>
+    </div>
+  </div>
+
+  <!-- SLEEP -->
+  <div class="t-card">
+    <div class="t-head">
+      <span class="t-icon">😴</span>
+      <span class="t-title">Нойр</span>
+      <span class="t-badge" id="sleep-badge"></span>
+    </div>
+    <div class="sleep-row">
+      <div class="sleep-field">
+        <label>🌙 Унтсан цаг</label>
+        <input type="time" id="sleep-bed" onchange="saveSleep()">
+      </div>
+      <div class="sleep-field">
+        <label>☀️ Боссон цаг</label>
+        <input type="time" id="sleep-wake" onchange="saveSleep()">
+      </div>
+    </div>
+    <div class="sleep-dur" id="sleep-dur"></div>
+  </div>
+
+  <!-- SHOWER -->
+  <div class="t-card">
+    <div class="t-head">
+      <span class="t-icon">🚿</span>
+      <span class="t-title">Усанд орсон эсэх</span>
+    </div>
+    <button class="shower-btn" id="shower-btn" onclick="toggleShower()">
+      Дарж тэмдэглэх
+    </button>
+  </div>
+
+  <!-- STUDY -->
+  <div class="t-card">
+    <div class="t-head">
+      <span class="t-icon">📚</span>
+      <span class="t-title">Хичээлд юу үзсэн</span>
+    </div>
+    <div class="row-input" style="margin-bottom:8px">
+      <input type="text" id="study-subj" placeholder="Юу үзсэн? (жишээ: React, 汉字, Math)">
+    </div>
+    <div class="row-input">
+      <textarea id="study-note" placeholder="Тэмдэглэл (заавал биш)"></textarea>
+      <button class="add-btn" onclick="addStudy()">+ Нэм</button>
+    </div>
+    <div id="study-list"></div>
+  </div>
+
+  <!-- DAILY NOTE -->
+  <div class="t-card">
+    <div class="t-head">
+      <span class="t-icon">📝</span>
+      <span class="t-title">Өдрийн тэмдэглэл</span>
+    </div>
+    <textarea class="note-area" id="daily-note"
+      placeholder="Өнөөдөр юу болов? Санаа, мэдрэмж, ажилласан зүйл..."
+      oninput="scheduleNoteSave()"></textarea>
+  </div>
+
+  <div class="save-hint" id="save-hint">✓ Хадгалагдлаа</div>
+
+  <!-- NAV -->
+  <nav class="bottom-nav">
+    <a class="nav-item"        href="index.html">   <span class="ni">🏠</span><span>Нүүр</span></a>
+    <a class="nav-item active" href="tracker.html">  <span class="ni">📊</span><span>Tracker</span></a>
+    <a class="nav-item"        href="dashboard.html"><span class="ni">📈</span><span>Статс</span></a>
+    <a class="nav-item"        href="index.html">   <span class="ni" style="font-family:serif">汉</span><span>汉字</span></a>
+    <a class="nav-item"        href="index.html">   <span class="ni">⚙️</span><span>Тохиргоо</span></a>
+  </nav>
+
+  <div id="toast"></div>
+
+  <script>
+    // ── utils ──────────────────────────────
+    function getToday() { return new Date().toISOString().split('T')[0]; }
+    function getNow() {
+      const n = new Date();
+      return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
+    }
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+    function flashSaved() {
+      const el = document.getElementById('save-hint');
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 2000);
+    }
+
+    // ── date ──────────────────────────────
+    const DAYS   = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+    const MONTHS = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар',
+                    '7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
+    (function() {
+      const n = new Date();
+      document.getElementById('date-txt').textContent =
+        DAYS[n.getDay()] + ', ' + n.getDate() + ' ' + MONTHS[n.getMonth()];
+    })();
+
+    // ── log storage ───────────────────────
+    const LOGKEY = 'jarvis_log_' + getToday();
+
+    function emptyLog() {
+      return {
+        date: getToday(),
+        water: { total_ml: 0, goal_ml: 2000, entries: [] },
+        sleep: { bed: '', wake: '', hours: null },
+        shower: false,
+        study: [],
+        note: ''
+      };
+    }
+
+    function loadLog() {
+      try {
+        const s = localStorage.getItem(LOGKEY);
+        if (s) return Object.assign(emptyLog(), JSON.parse(s));
+      } catch {}
+      return emptyLog();
+    }
+
+    function saveLogData(log) {
+      localStorage.setItem(LOGKEY, JSON.stringify(log));
+      flashSaved();
+    }
+
+    // ── water ─────────────────────────────
+    function addWater(ml) {
+      const log = loadLog();
+      log.water.total_ml += ml;
+      log.water.entries.push({ id: Date.now(), time: getNow(), ml });
+      saveLogData(log);
+      renderWater(log);
+      if (log.water.total_ml >= log.water.goal_ml) showToast('🎉 Өдрийн зорилго биелэв!');
+    }
+
+    function addCustomWater() {
+      const inp = document.getElementById('custom-ml');
+      const val = parseInt(inp.value);
+      if (!val || val <= 0) { showToast('ml оруулна уу'); return; }
+      inp.value = '';
+      addWater(val);
+    }
+
+    function removeWater(id) {
+      const log = loadLog();
+      const e = log.water.entries.find(x => x.id === id);
+      if (e) {
+        log.water.total_ml = Math.max(0, log.water.total_ml - e.ml);
+        log.water.entries = log.water.entries.filter(x => x.id !== id);
+        saveLogData(log);
+        renderWater(log);
+      }
+    }
+
+    function renderWater(log) {
+      const { total_ml, goal_ml, entries } = log.water;
+      const pct = Math.min(total_ml / goal_ml, 1);
+      document.getElementById('water-arc').style.strokeDashoffset = 314 * (1 - pct);
+      document.getElementById('ring-ml').textContent = total_ml.toLocaleString();
+      document.getElementById('water-badge').textContent = total_ml.toLocaleString() + ' / ' + goal_ml.toLocaleString() + ' ml';
+
+      const listEl = document.getElementById('water-log');
+      if (!entries.length) {
+        listEl.innerHTML = '<div class="empty-log">Одоохондоо бичлэг алга</div>';
+        return;
+      }
+      listEl.innerHTML = [...entries].reverse().map(e =>
+        `<div class="log-item">
+          <span class="log-time">${e.time}</span>
+          <span class="log-val">+${e.ml} ml</span>
+          <button class="log-del" onclick="removeWater(${e.id})">×</button>
+        </div>`
+      ).join('');
+    }
+
+    // ── sleep ─────────────────────────────
+    function saveSleep() {
+      const log = loadLog();
+      const bed  = document.getElementById('sleep-bed').value;
+      const wake = document.getElementById('sleep-wake').value;
+      log.sleep.bed  = bed;
+      log.sleep.wake = wake;
+
+      const durEl = document.getElementById('sleep-dur');
+      const badge = document.getElementById('sleep-badge');
+      if (bed && wake) {
+        const [bh, bm] = bed.split(':').map(Number);
+        const [wh, wm] = wake.split(':').map(Number);
+        let min = (wh * 60 + wm) - (bh * 60 + bm);
+        if (min < 0) min += 1440;
+        const h = Math.floor(min / 60), m = min % 60;
+        log.sleep.hours = min / 60;
+        durEl.textContent = `⏱ ${h}ц ${m > 0 ? m + 'мин ' : ''}унтсан`;
+        badge.textContent = `${h}ц${m > 0 ? ' ' + m + 'м' : ''}`;
+      } else {
+        durEl.textContent = '';
+        badge.textContent = '';
+      }
+      saveLogData(log);
+    }
+
+    // ── shower ────────────────────────────
+    function toggleShower() {
+      const log = loadLog();
+      log.shower = !log.shower;
+      saveLogData(log);
+      renderShower(log);
+      showToast(log.shower ? '🚿 Орсон!' : '❌ Цуцлав');
+    }
+
+    function renderShower(log) {
+      const btn = document.getElementById('shower-btn');
+      btn.className = 'shower-btn' + (log.shower ? ' on' : '');
+      btn.textContent = log.shower ? '✅ Тийм — орсон' : '❌ Үгүй — ороогүй';
+    }
+
+    // ── study ─────────────────────────────
+    function addStudy() {
+      const subj = document.getElementById('study-subj').value.trim();
+      const note = document.getElementById('study-note').value.trim();
+      if (!subj) { showToast('Юу үзснийг бичнэ үү'); return; }
+      const log = loadLog();
+      log.study.push({ id: Date.now(), subj, note, time: getNow() });
+      saveLogData(log);
+      document.getElementById('study-subj').value = '';
+      document.getElementById('study-note').value = '';
+      renderStudy(log);
+      showToast('📚 Нэмэгдлээ!');
+    }
+
+    function removeStudy(id) {
+      const log = loadLog();
+      log.study = log.study.filter(s => s.id !== id);
+      saveLogData(log);
+      renderStudy(log);
+    }
+
+    function renderStudy(log) {
+      const el = document.getElementById('study-list');
+      if (!log.study.length) {
+        el.innerHTML = '<div class="empty-log">Одоохондоо бичлэг алга</div>';
+        return;
+      }
+      el.innerHTML = log.study.map(s =>
+        `<div class="study-item">
+          <div style="flex:1">
+            <div class="s-subj">${s.subj}</div>
+            ${s.note ? `<div class="s-note">${s.note}</div>` : ''}
+          </div>
+          <span class="s-time">${s.time}</span>
+          <button class="log-del" onclick="removeStudy(${s.id})">×</button>
+        </div>`
+      ).join('');
+    }
+
+    // ── note ──────────────────────────────
+    let _noteTimer;
+    function scheduleNoteSave() {
+      clearTimeout(_noteTimer);
+      _noteTimer = setTimeout(() => {
+        const log = loadLog();
+        log.note = document.getElementById('daily-note').value;
+        saveLogData(log);
+      }, 1200);
+    }
+
+    // ── init ──────────────────────────────
+    (function init() {
+      const log = loadLog();
+      renderWater(log);
+      renderShower(log);
+      renderStudy(log);
+      if (log.sleep.bed)  document.getElementById('sleep-bed').value  = log.sleep.bed;
+      if (log.sleep.wake) document.getElementById('sleep-wake').value = log.sleep.wake;
+      if (log.sleep.bed && log.sleep.wake) {
+        const [bh, bm] = log.sleep.bed.split(':').map(Number);
+        const [wh, wm] = log.sleep.wake.split(':').map(Number);
+        let min = (wh*60+wm)-(bh*60+bm);
+        if (min < 0) min += 1440;
+        const h = Math.floor(min/60), m = min%60;
+        document.getElementById('sleep-dur').textContent = `⏱ ${h}ц ${m>0?m+'мин ':''}унтсан`;
+        document.getElementById('sleep-badge').textContent = `${h}ц${m>0?' '+m+'м':''}`;
+      }
+      if (log.note) document.getElementById('daily-note').value = log.note;
+    })();
+  </script>
+</body>
+</html>

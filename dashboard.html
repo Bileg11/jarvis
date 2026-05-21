@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Статс — Jarvis</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Period tabs */
+    .period-tabs {
+      display: flex;
+      gap: 8px;
+      padding: 0 14px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .period-tabs::-webkit-scrollbar { display: none; }
+    .p-tab {
+      padding: 9px 18px;
+      border-radius: 44px;
+      border: 1px solid var(--border);
+      background: var(--bg2);
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .p-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Stat grid */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 0 14px 14px;
+    }
+    .stat-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-card);
+      padding: 16px;
+    }
+    .stat-num  { font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+    .stat-lbl  { font-size: 12px; color: var(--text-muted); }
+    .stat-sub  { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+
+    /* Chart card */
+    .chart-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-card);
+      padding: 18px 16px 14px;
+      margin: 0 14px 12px;
+    }
+    .chart-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 14px;
+    }
+    .chart-area {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 90px;
+      margin-bottom: 6px;
+    }
+    .chart-area .b {
+      flex: 1;
+      border-radius: 3px 3px 0 0;
+      min-height: 2px;
+      transition: height 0.4s ease;
+    }
+    .chart-labels {
+      display: flex;
+      gap: 3px;
+    }
+    .chart-labels span {
+      flex: 1;
+      text-align: center;
+      font-size: 9px;
+      color: var(--text-dim);
+      overflow: hidden;
+    }
+
+    /* Summary table for long periods */
+    .summary-table {
+      margin: 0 14px 12px;
+    }
+    .sum-row {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 8px;
+      gap: 12px;
+    }
+    .sum-icon { font-size: 22px; }
+    .sum-label { flex: 1; font-size: 14px; font-weight: 600; }
+    .sum-val { font-size: 16px; font-weight: 700; color: var(--accent); }
+    .sum-sub  { font-size: 11px; color: var(--text-muted); text-align: right; }
+
+    .no-data {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-dim);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>Статистик</h1>
+      <div class="sub" id="date-txt"></div>
+    </div>
+    <div class="avatar">Б</div>
+  </div>
+
+  <!-- PERIOD TABS -->
+  <div class="period-tabs">
+    <button class="p-tab active" onclick="switchPeriod(7, this)">7 хоног</button>
+    <button class="p-tab"        onclick="switchPeriod(30, this)">1 сар</button>
+    <button class="p-tab"        onclick="switchPeriod(90, this)">3 сар</button>
+    <button class="p-tab"        onclick="switchPeriod(180, this)">6 сар</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="dash-content"></div>
+
+  <!-- NAV -->
+  <nav class="bottom-nav">
+    <a class="nav-item"        href="index.html">   <span class="ni">🏠</span><span>Нүүр</span></a>
+    <a class="nav-item"        href="tracker.html">  <span class="ni">📊</span><span>Tracker</span></a>
+    <a class="nav-item active" href="dashboard.html"><span class="ni">📈</span><span>Статс</span></a>
+    <a class="nav-item"        href="index.html">   <span class="ni" style="font-family:serif">汉</span><span>汉字</span></a>
+    <a class="nav-item"        href="index.html">   <span class="ni">⚙️</span><span>Тохиргоо</span></a>
+  </nav>
+
+  <div id="toast"></div>
+
+  <script>
+    // ── utils ──────────────────────────────
+    const DAYS   = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+    const MONTHS = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар',
+                    '7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
+    (function() {
+      const n = new Date();
+      document.getElementById('date-txt').textContent =
+        DAYS[n.getDay()] + ', ' + n.getDate() + ' ' + MONTHS[n.getMonth()];
+    })();
+
+    function avg(arr) {
+      const v = arr.filter(x => x != null && !isNaN(x));
+      return v.length ? v.reduce((a,b) => a+b, 0) / v.length : 0;
+    }
+    function pct(n, d) { return d ? Math.round(n/d*100) : 0; }
+    function round1(n) { return Math.round(n * 10) / 10; }
+    function fml(n) { return n >= 1000 ? round1(n/1000) + 'л' : Math.round(n) + 'ml'; }
+
+    // ── data loading ───────────────────────
+    function getDateStr(daysAgo) {
+      const d = new Date();
+      d.setDate(d.getDate() - daysAgo);
+      return d.toISOString().split('T')[0];
+    }
+
+    function getShortLabel(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      return d.getDate() + '';
+    }
+
+    function loadLog(dateStr) {
+      try {
+        const s = localStorage.getItem('jarvis_log_' + dateStr);
+        if (s) return JSON.parse(s);
+      } catch {}
+      return null;
+    }
+
+    function getLogs(days) {
+      const logs = [];
+      for (let i = days - 1; i >= 0; i--) {
+        const ds = getDateStr(i);
+        const log = loadLog(ds);
+        logs.push({
+          date:  ds,
+          label: getShortLabel(ds),
+          water: log?.water?.total_ml || 0,
+          sleep: log?.sleep?.hours   || null,
+          shower: log?.shower        || false,
+          study:  log?.study?.length || 0,
+          hasData: !!log,
+        });
+      }
+      return logs;
+    }
+
+    function groupWeekly(logs) {
+      const weeks = [];
+      for (let i = 0; i < logs.length; i += 7) {
+        const chunk = logs.slice(i, i + 7);
+        const wk = Math.floor(i / 7) + 1;
+        weeks.push({
+          label:  wk + '-р долоо',
+          water:  avg(chunk.map(l => l.water)),
+          sleep:  avg(chunk.filter(l => l.sleep !== null).map(l => l.sleep)),
+          shower: chunk.filter(l => l.shower).length,
+          study:  chunk.filter(l => l.study > 0).length,
+          days:   chunk.length,
+        });
+      }
+      return weeks;
+    }
+
+    function groupMonthly(logs) {
+      const byMonth = {};
+      logs.forEach(l => {
+        const m = l.date.slice(0, 7);
+        if (!byMonth[m]) byMonth[m] = [];
+        byMonth[m].push(l);
+      });
+      return Object.entries(byMonth).map(([m, days]) => ({
+        label:  parseInt(m.slice(5)) + '-р сар',
+        water:  avg(days.map(d => d.water)),
+        sleep:  avg(days.filter(d => d.sleep !== null).map(d => d.sleep)),
+        shower: days.filter(d => d.shower).length,
+        study:  days.filter(d => d.study > 0).length,
+        days:   days.length,
+      }));
+    }
+
+    // ── chart builder ─────────────────────
+    function makeChart(data, valueKey, color, goalVal, formatFn) {
+      const vals = data.map(d => d[valueKey] || 0);
+      const maxV = Math.max(...vals, goalVal || 0, 1);
+      const H = 90;
+
+      const bars = data.map(d => {
+        const v = d[valueKey] || 0;
+        const h = v > 0 ? Math.max(Math.round((v / maxV) * H), 3) : 0;
+        const c = goalVal && v >= goalVal * 0.9 ? 'var(--green)' : color;
+        return `<div class="b" style="height:${h}px;background:${c}" title="${formatFn(v)}"></div>`;
+      }).join('');
+
+      const labels = data.map(d =>
+        `<span>${d.label || ''}</span>`
+      ).join('');
+
+      return `<div class="chart-area">${bars}</div><div class="chart-labels">${labels}</div>`;
+    }
+
+    // ── render ────────────────────────────
+    function switchPeriod(days, btn) {
+      document.querySelectorAll('.p-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render(days);
+    }
+
+    function render(days) {
+      const raw = getLogs(days);
+      const hasAnyData = raw.some(l => l.hasData);
+      const content = document.getElementById('dash-content');
+
+      // Aggregate based on period
+      let chartData;
+      if (days <= 30) {
+        chartData = raw;
+      } else if (days <= 90) {
+        chartData = groupWeekly(raw);
+      } else {
+        chartData = groupMonthly(raw);
+      }
+
+      // Stats
+      const waterVals  = raw.filter(l => l.hasData).map(l => l.water);
+      const sleepVals  = raw.filter(l => l.sleep !== null).map(l => l.sleep);
+      const showerDays = raw.filter(l => l.shower).length;
+      const studyDays  = raw.filter(l => l.study > 0).length;
+      const activeDays = raw.filter(l => l.hasData).length;
+
+      const avgWater = avg(waterVals);
+      const avgSleep = avg(sleepVals);
+      const bestWater = waterVals.length ? Math.max(...waterVals) : 0;
+      const bestSleep = sleepVals.length ? Math.max(...sleepVals) : 0;
+
+      if (!hasAnyData) {
+        content.innerHTML = `<div class="no-data">
+          📭 Одоохондоо өгөгдөл алга<br>
+          <span style="font-size:13px">Tracker дээр тэмдэглэл нэм</span>
+        </div>`;
+        return;
+      }
+
+      content.innerHTML = `
+        <!-- STAT GRID -->
+        <div class="stat-grid">
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--accent)">${fml(avgWater)}</div>
+            <div class="stat-lbl">💧 Дундаж ус</div>
+            <div class="stat-sub">Хамгийн их: ${fml(bestWater)}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--blue)">${avgSleep ? round1(avgSleep) + 'ц' : '—'}</div>
+            <div class="stat-lbl">😴 Дундаж нойр</div>
+            <div class="stat-sub">Хамгийн их: ${bestSleep ? round1(bestSleep) + 'ц' : '—'}</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--green)">${pct(showerDays, activeDays)}%</div>
+            <div class="stat-lbl">🚿 Усанд орсон</div>
+            <div class="stat-sub">${showerDays} / ${activeDays} өдөр</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-num" style="color:var(--purple)">${pct(studyDays, activeDays)}%</div>
+            <div class="stat-lbl">📚 Хичээлсэн</div>
+            <div class="stat-sub">${studyDays} / ${activeDays} өдөр</div>
+          </div>
+        </div>
+
+        <!-- WATER CHART -->
+        <div class="chart-card">
+          <div class="chart-title">💧 Усны хэрэглээ (ml)</div>
+          ${makeChart(chartData, 'water', 'var(--accent)', 2000, fml)}
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px">
+            Ногоон = зорилго биелүүлсэн (2000ml+)
+          </div>
+        </div>
+
+        <!-- SLEEP CHART -->
+        <div class="chart-card">
+          <div class="chart-title">😴 Нойрны цаг</div>
+          ${makeChart(chartData, 'sleep', 'var(--blue)', 8, v => round1(v) + 'ц')}
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px">
+            Ногоон = 7+ цаг унтсан
+          </div>
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="summary-table">
+          <div class="sum-row">
+            <span class="sum-icon">🚿</span>
+            <span class="sum-label">Дагнасан усны дэглэм</span>
+            <div>
+              <div class="sum-val">${showerDays} өдөр</div>
+              <div class="sum-sub">${activeDays} өдрөөс</div>
+            </div>
+          </div>
+          <div class="sum-row">
+            <span class="sum-icon">📚</span>
+            <span class="sum-label">Хичээлсэн өдрүүд</span>
+            <div>
+              <div class="sum-val">${studyDays} өдөр</div>
+              <div class="sum-sub">${activeDays} өдрөөс</div>
+            </div>
+          </div>
+          <div class="sum-row">
+            <span class="sum-icon">💧</span>
+            <span class="sum-label">2000ml+ хүрсэн өдрүүд</span>
+            <div>
+              <div class="sum-val">${waterVals.filter(v => v >= 2000).length} өдөр</div>
+              <div class="sum-sub">${activeDays} өдрөөс</div>
+            </div>
+          </div>
+          <div class="sum-row">
+            <span class="sum-icon">😴</span>
+            <span class="sum-label">7+ цаг унтсан өдрүүд</span>
+            <div>
+              <div class="sum-val">${sleepVals.filter(v => v >= 7).length} өдөр</div>
+              <div class="sum-sub">${sleepVals.length} тэмдэглэсний</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // ── init ──────────────────────────────
+    render(7);
+  </script>
+</body>
+</html>
