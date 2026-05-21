@@ -1,0 +1,20 @@
+{
+  "name": "My Jarvis",
+  "short_name": "Jarvis",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    {
+      "src": "https://via.placeholder.com/192x192/7C5CFC/ffffff?text=J",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://via.placeholder.com/512x512/7C5CFC/ffffff?text=J",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

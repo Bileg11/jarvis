@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Journal</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="page-header">
+    <div class="page-title">📓 Journal</div>
+    <div class="page-subtitle" id="journal-date"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Оройн тайлан</div>
+
+    <div class="journal-question">
+      <label>✅ Өнөөдөр юу сайн хийсэн бэ?</label>
+      <textarea id="q1" placeholder="Жишээ: Ус 8 шил дүүргэсэн, coding 2 цаг хийсэн..."></textarea>
+    </div>
+
+    <div class="journal-question">
+      <label>❌ Юу хийж чадаагүй бэ?</label>
+      <textarea id="q2" placeholder="Жишээ: Дасгал хийгээгүй, цаг алдсан..."></textarea>
+    </div>
+
+    <div class="journal-question" style="margin-bottom:0">
+      <label>🎯 Маргааш нэг зорилго?</label>
+      <textarea id="q3" placeholder="Жишээ: 6 цагт босох, journal бичих..."></textarea>
+    </div>
+  </div>
+
+  <button class="btn-primary" onclick="saveJournal()">
+    💾 Хадгалах
+  </button>
+
+  <!-- HISTORY -->
+  <div class="card" id="history-card" style="display:none">
+    <div class="card-label">Өмнөх бичлэгүүд</div>
+    <div id="history-list"></div>
+  </div>
+
+  <nav class="nav">
+    <a href="index.html">
+      <span class="icon">🏠</span>
+      <span>Home</span>
+    </a>
+    <a href="hanzi.html">
+      <span class="icon">汉</span>
+      <span>汉字</span>
+    </a>
+    <a href="news.html">
+      <span class="icon">📰</span>
+      <span>Мэдээ</span>
+    </a>
+    <a href="journal.html" class="active">
+      <span class="icon">📓</span>
+      <span>Journal</span>
+    </a>
+  </nav>
+
+  <script src="app.js"></script>
+  <script>
+    const today = getToday();
+    const days = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
+    const now = new Date();
+    document.getElementById('journal-date').textContent =
+      days[now.getDay()] + ', ' + today;
+
+    // Load today's entry if exists
+    const existing = localStorage.getItem('journal_' + today);
+    if (existing) {
+      try {
+        const e = JSON.parse(existing);
+        document.getElementById('q1').value = e.q1 || '';
+        document.getElementById('q2').value = e.q2 || '';
+        document.getElementById('q3').value = e.q3 || '';
+      } catch {}
+    }
+
+    function saveJournal() {
+      const entry = {
+        q1: document.getElementById('q1').value.trim(),
+        q2: document.getElementById('q2').value.trim(),
+        q3: document.getElementById('q3').value.trim(),
+        saved: new Date().toISOString()
+      };
+      localStorage.setItem('journal_' + today, JSON.stringify(entry));
+      showToast('✅ Хадгалагдлаа!');
+      renderHistory();
+    }
+
+    function renderHistory() {
+      const entries = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('journal_')) {
+          const date = key.replace('journal_', '');
+          if (date !== today) {
+            try {
+              const e = JSON.parse(localStorage.getItem(key));
+              entries.push({ date, ...e });
+            } catch {}
+          }
+        }
+      }
+
+      entries.sort((a, b) => b.date.localeCompare(a.date));
+
+      const card = document.getElementById('history-card');
+      const list = document.getElementById('history-list');
+
+      if (entries.length === 0) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = 'block';
+      list.innerHTML = entries.slice(0, 7).map(e => `
+        <div class="history-entry">
+          <div class="history-date">${e.date}</div>
+          ${e.q1 ? `<div class="history-q">✅ Сайн хийсэн</div><div class="history-a">${e.q1}</div>` : ''}
+          ${e.q3 ? `<div class="history-q" style="margin-top:6px">🎯 Зорилго</div><div class="history-a">${e.q3}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    renderHistory();
+  </script>
+</body>
+</html>

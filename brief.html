@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Өглөөний Brief</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="page-header">
+    <div class="page-title">☀️ Өглөөний Brief</div>
+    <div class="page-subtitle">Claude-д илгээх prompt</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Өнөөдрийн routine summary</div>
+    <div class="prompt-box" id="prompt-text"></div>
+  </div>
+
+  <button class="btn-primary" onclick="copyAndOpen()">
+    📋 Хуулж Claude нээх
+  </button>
+
+  <button class="btn-secondary" onclick="copyOnly()">
+    Зөвхөн хуулах
+  </button>
+
+  <div class="card" style="margin-top: 4px;">
+    <div class="card-label">Хэрхэн ашиглах</div>
+    <div style="font-size: 14px; line-height: 1.7; color: var(--text-muted);">
+      1. <b style="color:var(--text)">Хуулж Claude нээх</b> товч дарна<br>
+      2. claude.ai нээгдэнэ<br>
+      3. Clipboard-аас paste хийнэ (⌘V / hold & paste)<br>
+      4. Brief авна 🎯
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="index.html">
+      <span class="icon">🏠</span>
+      <span>Home</span>
+    </a>
+    <a href="hanzi.html">
+      <span class="icon">汉</span>
+      <span>汉字</span>
+    </a>
+    <a href="news.html">
+      <span class="icon">📰</span>
+      <span>Мэдээ</span>
+    </a>
+    <a href="journal.html">
+      <span class="icon">📓</span>
+      <span>Journal</span>
+    </a>
+  </nav>
+
+  <script src="app.js"></script>
+  <script>
+    const prompt = buildPrompt();
+    document.getElementById('prompt-text').textContent = prompt;
+
+    async function copyOnly() {
+      try {
+        await navigator.clipboard.writeText(prompt);
+        showToast('✅ Clipboard-д хуулагдлаа!');
+      } catch {
+        showToast('⚠️ Гараар хуулаарай');
+      }
+    }
+
+    async function copyAndOpen() {
+      try {
+        await navigator.clipboard.writeText(prompt);
+      } catch {}
+      window.open('https://claude.ai/new', '_blank');
+      showToast('✅ Хуулагдлаа — paste хийгээрэй!');
+    }
+  </script>
+</body>
+</html>

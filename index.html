@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Jarvis">
+  <title>My Jarvis</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- CLOCK -->
+  <div class="clock-block">
+    <div class="clock-time" id="clock-time">00:00</div>
+    <div class="clock-date" id="clock-date"></div>
+  </div>
+
+  <!-- ROUTINE TRACKER -->
+  <div class="card">
+    <div class="card-label">Өдрийн routine</div>
+
+    <!-- WATER -->
+    <div class="routine-row">
+      <div>
+        <div class="routine-label">💧 Ус</div>
+        <div class="routine-sub" id="water-sub">0 / 8 шил</div>
+      </div>
+      <div class="water-controls">
+        <button class="btn-circle" id="water-minus" onclick="changeWater(-1)">−</button>
+        <span class="water-count" id="water-count">0</span>
+        <button class="btn-circle" id="water-plus" onclick="changeWater(1)">+</button>
+      </div>
+    </div>
+
+    <!-- EXERCISE -->
+    <div class="routine-row">
+      <div>
+        <div class="routine-label">🏃 Дасгал</div>
+        <div class="routine-sub">Өнөөдрийн workout</div>
+      </div>
+      <div class="checkbox-custom" id="cb-exercise" onclick="toggleCheck('exercise')"></div>
+    </div>
+
+    <!-- HANZI -->
+    <div class="routine-row">
+      <div>
+        <div class="routine-label">汉字 Хятад үсэг</div>
+        <div class="routine-sub">Flashcard хийсэн үү?</div>
+      </div>
+      <div class="checkbox-custom" id="cb-hanzi" onclick="toggleCheck('hanzi')"></div>
+    </div>
+  </div>
+
+  <!-- BRIEF BUTTON -->
+  <a class="btn-primary" href="brief.html">
+    ☀️ Өглөөний brief
+  </a>
+
+  <!-- JOURNAL BUTTON -->
+  <a class="btn-secondary" href="journal.html">
+    📓 Оройн journal
+  </a>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <a href="index.html" class="active">
+      <span class="icon">🏠</span>
+      <span>Home</span>
+    </a>
+    <a href="hanzi.html">
+      <span class="icon">汉</span>
+      <span>汉字</span>
+    </a>
+    <a href="news.html">
+      <span class="icon">📰</span>
+      <span>Мэдээ</span>
+    </a>
+    <a href="journal.html">
+      <span class="icon">📓</span>
+      <span>Journal</span>
+    </a>
+  </nav>
+
+  <script src="app.js"></script>
+  <script>
+    startClock();
+
+    function renderRoutine() {
+      const r = getRoutine();
+
+      document.getElementById('water-count').textContent = r.water;
+      document.getElementById('water-sub').textContent = r.water + ' / 8 шил';
+
+      const cbEx = document.getElementById('cb-exercise');
+      cbEx.textContent = r.exercise ? '✓' : '';
+      cbEx.classList.toggle('checked', r.exercise);
+
+      const cbHanzi = document.getElementById('cb-hanzi');
+      cbHanzi.textContent = r.hanzi ? '✓' : '';
+      cbHanzi.classList.toggle('checked', r.hanzi);
+    }
+
+    function changeWater(delta) {
+      const r = getRoutine();
+      r.water = Math.max(0, Math.min(8, r.water + delta));
+      saveRoutine(r);
+      renderRoutine();
+      if (r.water === 8) showToast('🎉 8 шил дүүрлээ!');
+    }
+
+    function toggleCheck(key) {
+      const r = getRoutine();
+      r[key] = !r[key];
+      saveRoutine(r);
+      renderRoutine();
+      if (key === 'exercise') showToast(r.exercise ? '✅ Дасгал хийсэн!' : '❌ Дасгал цуцлав');
+      if (key === 'hanzi') showToast(r.hanzi ? '✅ 汉字 хийсэн!' : '❌ 汉字 цуцлав');
+    }
+
+    renderRoutine();
+  </script>
+</body>
+</html>
