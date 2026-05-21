@@ -226,6 +226,22 @@ function hzResult(char, knew) {
 function renderFeed() {
   document.getElementById('feed').innerHTML =
     shuffle([cardNews(), cardHanzi(), cardQuote(), cardGlowup(), cardBiz()]).join('');
+  observeCards();
+}
+
+// ── SCROLL ANIMATIONS ─────────────────────────────────────────────
+
+function observeCards() {
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('in-view'), i * 60);
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08 });
+
+  document.querySelectorAll('.card').forEach(el => obs.observe(el));
 }
 
 // ── INIT ──────────────────────────────────────────────────────────
