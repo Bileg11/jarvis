@@ -378,6 +378,82 @@ body::before {
 .nav-item.active { color: var(--accent); }
 .nav-item .ni { font-size: 21px; line-height: 1; }
 
+/* ── JARVIS PANEL ────────────────────────── */
+.jarvis-panel {
+  margin: 0 14px 16px;
+  padding: 18px 20px;
+  background: rgba(124,92,252,0.07);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid rgba(124,92,252,0.22);
+  border-radius: 20px;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(124,92,252,0.12);
+  position: relative;
+  z-index: 1;
+}
+
+.jarvis-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.j-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: jdot 2.4s ease-in-out infinite;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+@keyframes jdot {
+  0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--accent); }
+  50%       { opacity: 0.35; box-shadow: none; }
+}
+
+.j-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  color: var(--accent);
+  flex: 1;
+}
+
+.j-refresh {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.2s, transform 0.4s;
+  border-radius: 6px;
+}
+.j-refresh:active { color: var(--accent); transform: rotate(180deg); }
+
+.j-msg {
+  font-size: 16px;
+  line-height: 1.65;
+  color: rgba(255,255,255,0.88);
+  min-height: 26px;
+  letter-spacing: -0.1px;
+}
+
+.j-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 15px;
+  background: var(--accent);
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: jblink 1s step-end infinite;
+}
+@keyframes jblink { 0%,100%{opacity:1} 50%{opacity:0} }
+
 /* ── TOAST ────────────────────────────────── */
 #toast {
   position: fixed;

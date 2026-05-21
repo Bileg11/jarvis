@@ -229,6 +229,102 @@ function renderFeed() {
   observeCards();
 }
 
+// ── JARVIS INTELLIGENCE ───────────────────────────────────────────
+
+function loadTodayLog() {
+  try { return JSON.parse(localStorage.getItem('jarvis_log_' + getToday())) || null; } catch { return null; }
+}
+
+function loadYesterdayLog() {
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  try { return JSON.parse(localStorage.getItem('jarvis_log_' + d.toISOString().split('T')[0])) || null; } catch { return null; }
+}
+
+function fmtH(hours) {
+  const h = Math.floor(hours);
+  const m = Math.round((hours - h) * 60);
+  return h + 'ц' + (m > 0 ? ' ' + m + 'мин' : '');
+}
+
+function generateJarvisMessage() {
+  const h    = new Date().getHours();
+  const r    = loadRoutine();
+  const tlog = loadTodayLog();
+  const ylog = loadYesterdayLog();
+
+  const water = tlog?.water?.total_ml || 0;
+  const goal  = 2000;
+  const done  = ['exercise','hanzi','read','journal'].filter(k => r[k]).length;
+  const sleep = ylog?.sleep?.hours || null;
+  const LABELS = { exercise:'дасгал', hanzi:'汉字', read:'унших', journal:'journal' };
+
+  // Late night 0–5
+  if (h < 5)
+    return 'Хожуу байна, Билэг. Унтах цаг болсон байна.';
+
+  // Morning 5–10
+  if (h < 10) {
+    const s = sleep ? `Өчигдөр ${fmtH(sleep)} унтсан.` : '';
+    const q = sleep ? (sleep >= 7.5 ? ' Сайн амарсан.' : sleep < 6 ? ' Арай бага байлаа.' : '') : '';
+    return `Өглөөний мэнд, Билэг. ${s}${q} Routine эхлэх цаг боллоо.`;
+  }
+
+  // Water critically behind
+  const expected = Math.round(((h - 7) / 15) * goal);
+  if (water < expected - 500 && h < 21)
+    return `${h} цаг болж байна. Ус ${water}ml л уусан. Одоо ${goal - water}ml үлдлээ — яарцгаая, Билэг.`;
+
+  // All done + water met — evening
+  if (h >= 17 && done === 4 && water >= goal)
+    return `Гайхалтай, Билэг. Өнөөдрийн бүх зорилго биелсэн байна. Journal-д бичиж тэмдэглэ.`;
+
+  // Night wrap-up
+  if (h >= 21) {
+    const undone = ['exercise','hanzi','read','journal'].filter(k => !r[k]);
+    const tail   = undone.length ? `Үлдсэн: ${undone.map(k => LABELS[k]).join(', ')}.` : 'Бүгд хийгдсэн.';
+    return `Унтахын өмнө journal бичиж, маргаашийн зорилгоо тавиарай. ${tail}`;
+  }
+
+  // Evening — missing items
+  if (h >= 17) {
+    const undone = ['exercise','hanzi','read','journal'].filter(k => !r[k]);
+    if (undone.length)
+      return `Орой болж байна. Үлдсэн: ${undone.map(k => LABELS[k]).join(', ')}. Дуусгацгаая.`;
+  }
+
+  // Midday specific nudges
+  if (!r.exercise && h >= 10 && h < 14)
+    return `${h} цаг. Дасгалаа хийсэн үү? Өдрийн хамгийн идэвхтэй цаг одоо байна.`;
+
+  if (!r.hanzi && h >= 13 && h < 18)
+    return `汉字 хийсэн үү? Routine: ${done}/4. Ус: ${water}ml.`;
+
+  // Default status
+  return `Routine: ${done}/4 хийгдсэн. Ус: ${water.toLocaleString()}ml / ${goal.toLocaleString()}ml. Сайн ажиллаж байна.`;
+}
+
+function typeJarvis(text) {
+  const el = document.getElementById('j-msg');
+  if (!el) return;
+  el.innerHTML = '';
+  const cursor = document.createElement('span');
+  cursor.className = 'j-cursor';
+  el.appendChild(cursor);
+  let i = 0;
+  const t = setInterval(() => {
+    if (i >= text.length) {
+      clearInterval(t);
+      setTimeout(() => cursor.remove(), 2000);
+      return;
+    }
+    el.insertBefore(document.createTextNode(text[i++]), cursor);
+  }, 20);
+}
+
+function refreshJarvis() {
+  typeJarvis(generateJarvisMessage());
+}
+
 // ── SCROLL ANIMATIONS ─────────────────────────────────────────────
 
 function observeCards() {
@@ -251,6 +347,11 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRoutine();
   renderFeed();
   setupMidnightReset();
+
+  // Jarvis — delayed for dramatic effect
+  setTimeout(() => typeJarvis(generateJarvisMessage()), 400);
+  // Auto-refresh every 5 minutes
+  setInterval(() => typeJarvis(generateJarvisMessage()), 5 * 60 * 1000);
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
