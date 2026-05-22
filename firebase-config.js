@@ -120,13 +120,18 @@ function _initFirebase() {
           if (typeof renderFromLog  === 'function') renderFromLog(lSnap.data());
         }
 
+        // Load pre-computed AI briefing from GitHub Actions
+        const bSnap = await _db.doc(`users/${uid}/briefings/latest`).get();
+        if (bSnap.exists) {
+          const { message, timestamp } = bSnap.data();
+          const ageHours = (Date.now() - new Date(timestamp)) / 3600000;
+          if (ageHours < 7 && message && typeof typeJarvis === 'function') {
+            setTimeout(() => typeJarvis(message), 800);
+          }
+        }
+
         setSyncState('ok');
         DB.ready = true;
-
-        // Refresh Jarvis message with latest data
-        if (typeof typeJarvis === 'function' && typeof generateJarvisMessage === 'function') {
-          typeJarvis(generateJarvisMessage());
-        }
 
       } catch (e) {
         console.warn('[Jarvis] Firestore sync алдаа:', e.message);

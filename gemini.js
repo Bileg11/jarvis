@@ -1,7 +1,9 @@
 // ── GEMINI AI ─────────────────────────────────────────────────────
 // aistudio.google.com → Get API key → Create API key
 
-const GEMINI_KEY  = "AIzaSyCTUuGEyxi6C4e2OnXMayWI-w1kalg9f0E";
+// API key — GitHub Actions Secrets-д хадгалагдана (scripts/briefing.js)
+// PWA direct call хэрэгтэй бол энд оруулж болно (repo private байх ёстой)
+const GEMINI_KEY  = "";
 const GEMINI_URL  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
 
 const JARVIS_SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах.
