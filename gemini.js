@@ -1,7 +1,7 @@
 // ── GEMINI AI ─────────────────────────────────────────────────────
 // aistudio.google.com → Get API key → Create API key
 
-const GEMINI_KEY  = "YOUR_KEY_HERE";
+const GEMINI_KEY  = "AIzaSyCTUuGEyxi6C4e2OnXMayWI-w1kalg9f0E";
 const GEMINI_URL  = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_KEY}`;
 
 const JARVIS_SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах.
