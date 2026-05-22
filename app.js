@@ -308,7 +308,7 @@ function changeMission(id, delta) {
   else if (pct >= 75 && pct - Math.round((m.val - 1) / m.max * 100) < 75) showToast(`🔥 ${m.label} 75% хүрлээ!`);
   else if (pct >= 50 && pct - Math.round((m.val - 1) / m.max * 100) < 50) showToast(`⚡ ${m.label} дунд шугам!`);
 
-  // Re-run Jarvis so it reflects new mission state
+  renderMissions();
   typeJarvis(generateJarvisMessage());
 }
 
@@ -322,7 +322,9 @@ function getMissionStats() {
   });
 }
 
-function cardMission() {
+function renderMissions() {
+  const el = document.getElementById('mission-section');
+  if (!el) return;
   const mstats = getMissionStats();
   const rows = mstats.map(m => {
     const statusColor = m.pct >= 100 ? 'var(--green)' : m.pct >= 50 ? 'var(--accent)' : 'var(--yellow)';
@@ -344,11 +346,12 @@ function cardMission() {
       <div class="mission-bar">
         <div class="mission-fill" id="mf-${m.id}" style="width:${m.pct}%"></div>
       </div>
-      ${m.left > 0 ? `<div class="mission-eta">≈ ${m.weeksLeft} долоо хоног · долоо хоногт ${m.weekly} ${m.unit}</div>` : '<div class="mission-eta" style="color:var(--green)">✅ Дууссан!</div>'}
+      ${m.left > 0
+        ? `<div class="mission-eta">≈ ${m.weeksLeft} долоо хоног · долоо хоногт ${m.weekly} ${m.unit}</div>`
+        : '<div class="mission-eta" style="color:var(--green)">✅ Дууссан!</div>'}
     </div>`;
   }).join('');
-  return `<div class="card card-mission">
-    <span class="card-tag">🎯 МИССИОН</span>
+  el.innerHTML = `<div class="mission-card">
     ${rows}
   </div>`;
 }
@@ -431,14 +434,10 @@ function renderFeed() {
   const r = loadRoutine();
   const h = new Date().getHours();
 
-  // Fixed first: mission card
-  const fixed = [cardMission()];
-
-  // Priority: put undone routine cards first, done ones shuffle at back
   const priority = [];
   const rest = [];
 
-  // Hanzi card: push front if not done
+  // Hanzi first if not done
   if (!r.hanzi) priority.push(cardHanzi());
   else rest.push(cardHanzi());
 
@@ -446,17 +445,14 @@ function renderFeed() {
   if (!r.exercise && h < 18) priority.push(cardGlowup());
   else rest.push(cardGlowup());
 
-  // Biz always in rest
   rest.push(cardBiz());
 
-  // News front if morning, else rest
   if (h < 11) priority.push(cardNews());
   else rest.push(cardNews());
 
-  // Quote always in rest
   rest.push(cardQuote());
 
-  const ordered = [...fixed, ...shuffle(priority), ...shuffle(rest)];
+  const ordered = [...shuffle(priority), ...shuffle(rest)];
   document.getElementById('feed').innerHTML = ordered.join('');
   observeCards();
 }
@@ -626,6 +622,7 @@ function observeCards() {
 document.addEventListener('DOMContentLoaded', () => {
   renderDate();
   renderRoutine();
+  renderMissions();
   renderFeed();
   setupMidnightReset();
 
