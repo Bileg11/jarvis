@@ -600,8 +600,14 @@ function typeJarvis(text) {
   }, 20);
 }
 
-function refreshJarvis() {
+async function refreshJarvis() {
+  // Rule-based message — instant, no latency
   typeJarvis(generateJarvisMessage());
+
+  // Gemini upgrade — fires in background, replaces when ready
+  if (typeof askGemini !== 'function') return;
+  const aiMsg = await askGemini(buildGeminiContext());
+  if (aiMsg) typeJarvis(aiMsg);
 }
 
 // ── SCROLL ANIMATIONS ─────────────────────────────────────────────
@@ -628,8 +634,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFeed();
   setupMidnightReset();
 
-  setTimeout(() => typeJarvis(generateJarvisMessage()), 400);
-  setInterval(() => typeJarvis(generateJarvisMessage()), 5 * 60 * 1000);
+  setTimeout(() => refreshJarvis(), 400);
+  setInterval(() => refreshJarvis(), 5 * 60 * 1000);
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(() => {});
