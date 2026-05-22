@@ -20,12 +20,12 @@
 // ══════════════════════════════════════════════════════════════
 
 const FIREBASE_CONFIG = {
-  apiKey:            "PASTE_HERE",
-  authDomain:        "PASTE_HERE",
-  projectId:         "PASTE_HERE",
-  storageBucket:     "PASTE_HERE",
-  messagingSenderId: "PASTE_HERE",
-  appId:             "PASTE_HERE"
+  apiKey:            "AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc",
+  authDomain:        "jarvis-bileg.firebaseapp.com",
+  projectId:         "jarvis-bileg",
+  storageBucket:     "jarvis-bileg.firebasestorage.app",
+  messagingSenderId: "59304492638",
+  appId:             "1:59304492638:web:9da4e7ceac790d1254becf"
 };
 
 // ── CONFIG БӨГЛӨӨГҮЙ БОЛ SKIP ─────────────────────────────────
