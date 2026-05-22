@@ -17,14 +17,9 @@ const db = getFirestore();
 
 // ── GEMINI ────────────────────────────────────────────────────────
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
-const model = genAI.getGenerativeModel({
-  model: 'gemini-1.5-flash',
-  systemInstruction: `Чи бол JARVIS — Билэгийн хувийн AI туслах.
-Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг.
-Зорилго: LFS Shanghai (Монгол аялагчдын VIP платформ), 汉字 HSK2, тогтмол фитнесс.
-Дүрэм: Монголоор 2-3 өгүүлбэр. Тодорхой тоо заавал. Шулуун, урам зориг өгөхүйц.
-Хамгийн ойрын нэг конкрет үйлдэл санал болго.`
-});
+const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг. Зорилго: LFS Shanghai платформ, 汉字 HSK2, фитнесс. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
 
 // ── STREAK HELPER ─────────────────────────────────────────────────
 async function getStreak(uid, key) {
@@ -86,7 +81,7 @@ Score: ${score}/100 | Routine: ${done}/4
 Унших: ${routine.read?'✓':'✗'} | Journal: ${routine.journal?'✓':'✗'}
 LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK2: ${hanziM.val}/300 үг | Workout: ${fitness.val}/30`;
 
-  const result  = await model.generateContent(prompt);
+  const result  = await model.generateContent(`${SYSTEM}\n\n${prompt}`);
   const message = result.response.text().trim();
 
   console.log(`[Jarvis] AI message: ${message}`);
