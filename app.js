@@ -114,6 +114,7 @@ function loadRoutine() {
 function saveRoutine(r) {
   localStorage.setItem('jarvis_r', JSON.stringify(r));
   localStorage.setItem('jarvis_r_' + r.date, JSON.stringify(r));
+  window.DB?.saveRoutine(r);
 }
 
 // ── STREAKS & SCORE ───────────────────────────────────────────────
@@ -286,6 +287,7 @@ function loadMissions() {
 
 function saveMissions(missions) {
   localStorage.setItem('jarvis_missions', JSON.stringify(missions));
+  window.DB?.saveMissions(missions);
 }
 
 function changeMission(id, delta) {

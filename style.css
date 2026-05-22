@@ -454,6 +454,43 @@ body::before {
 }
 @keyframes jblink { 0%,100%{opacity:1} 50%{opacity:0} }
 
+/* ── SYNC BAR ────────────────────────────── */
+.sync-bar {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 430px;
+  background: rgba(10,10,10,0.92);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 10px 20px;
+  padding-top: calc(10px + env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--text-2);
+  z-index: 200;
+}
+.sync-bar span { flex: 1; }
+.sync-bar button {
+  background: rgba(124,92,252,0.25);
+  border: 1px solid rgba(124,92,252,0.45);
+  border-radius: 20px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.sync-bar button:active { background: rgba(124,92,252,0.4); }
+
 /* ── SCORE CHIP ──────────────────────────── */
 .score-chip {
   display: inline-flex;

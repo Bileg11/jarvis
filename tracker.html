@@ -8,6 +8,9 @@
   <title>Tracker — Jarvis</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <style>
     body::before {
       content: '';
@@ -311,6 +314,7 @@
     <a class="nav-item"        href="index.html">   <span class="ni">⚙️</span><span>Тохиргоо</span></a>
   </nav>
 
+  <div id="sync-bar" class="sync-bar" style="display:none"></div>
   <div id="toast"></div>
 
   <script>
@@ -367,7 +371,28 @@
     function saveLogData(log) {
       localStorage.setItem(LOGKEY, JSON.stringify(log));
       flashSaved();
+      window.DB?.saveLog(getToday(), log);
     }
+
+    // Called by firebase-config.js after Firestore sync
+    window.renderFromLog = function(log) {
+      const merged = Object.assign(emptyLog(), log);
+      renderWater(merged);
+      renderShower(merged);
+      renderStudy(merged);
+      if (merged.sleep.bed)  document.getElementById('sleep-bed').value  = merged.sleep.bed;
+      if (merged.sleep.wake) document.getElementById('sleep-wake').value = merged.sleep.wake;
+      if (merged.sleep.bed && merged.sleep.wake) {
+        const [bh,bm] = merged.sleep.bed.split(':').map(Number);
+        const [wh,wm] = merged.sleep.wake.split(':').map(Number);
+        let min = (wh*60+wm)-(bh*60+bm);
+        if (min < 0) min += 1440;
+        const h = Math.floor(min/60), m = min%60;
+        document.getElementById('sleep-dur').textContent = `⏱ ${h}ц ${m>0?m+'мин ':''}унтсан`;
+        document.getElementById('sleep-badge').textContent = `${h}ц${m>0?' '+m+'м':''}`;
+      }
+      if (merged.note) document.getElementById('daily-note').value = merged.note;
+    };
 
     // ── water ─────────────────────────────
     function addWater(ml) {
@@ -530,5 +555,6 @@
       if (log.note) document.getElementById('daily-note').value = log.note;
     })();
   </script>
+  <script src="firebase-config.js"></script>
 </body>
 </html>

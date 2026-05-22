@@ -10,6 +10,9 @@
   <title>Jarvis</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 </head>
 <body>
 
@@ -107,8 +110,10 @@
     <a class="nav-item"        href="index.html">   <span class="ni">⚙️</span><span>Тохиргоо</span></a>
   </nav>
 
+  <div id="sync-bar" class="sync-bar" style="display:none"></div>
   <div id="toast"></div>
 
   <script src="app.js"></script>
+  <script src="firebase-config.js"></script>
 </body>
 </html>
