@@ -1,6 +1,5 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore }        = require('firebase-admin/firestore');
-const { GoogleGenerativeAI }  = require('@google/generative-ai');
 const fetch = (...a) => import('node-fetch').then(({ default: f }) => f(...a));
 
 // ── TIMEZONE: Shanghai (UTC+8) ────────────────────────────────────
@@ -16,10 +15,26 @@ initializeApp({ credential: cert(sa) });
 const db = getFirestore();
 
 // ── GEMINI ────────────────────────────────────────────────────────
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${process.env.GEMINI_KEY}`;
 
 const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг. Зорилго: LFS Shanghai платформ, 汉字 HSK2, фитнесс. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
+
+async function callGemini(prompt) {
+  const res = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: `${SYSTEM}\n\n${prompt}` }] }],
+      generationConfig: { maxOutputTokens: 160, temperature: 0.85 }
+    })
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Gemini ${res.status}: ${err}`);
+  }
+  const json = await res.json();
+  return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+}
 
 // ── STREAK HELPER ─────────────────────────────────────────────────
 async function getStreak(uid, key) {
@@ -81,8 +96,8 @@ Score: ${score}/100 | Routine: ${done}/4
 Унших: ${routine.read?'✓':'✗'} | Journal: ${routine.journal?'✓':'✗'}
 LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK2: ${hanziM.val}/300 үг | Workout: ${fitness.val}/30`;
 
-  const result  = await model.generateContent(`${SYSTEM}\n\n${prompt}`);
-  const message = result.response.text().trim();
+  const result  = await callGemini(prompt);
+  const message = result;
 
   console.log(`[Jarvis] AI message: ${message}`);
 
