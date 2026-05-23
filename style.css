@@ -491,6 +491,29 @@ body::before {
 }
 .sync-bar button:active { background: rgba(124,92,252,0.4); }
 
+/* email sign-in form inside sync-bar */
+.signin-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.signin-label { font-size: 13px; color: var(--text-2); white-space: nowrap; }
+.signin-form input {
+  flex: 1;
+  min-width: 120px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 6px 12px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+.signin-form input::placeholder { color: var(--text-3); }
+.si-err { font-size: 12px; color: #ff6b6b; width: 100%; }
+
 /* ── SCORE CHIP ──────────────────────────── */
 .score-chip {
   display: inline-flex;

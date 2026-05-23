@@ -49,18 +49,23 @@ function _initFirebase() {
   }
 
   // ── SYNC INDICATOR ───────────────────────────────────────────
-  function setSyncState(state) {
-    // state: 'off' | 'ok' | 'err'
+  function setSyncState(state, errMsg) {
     const bar = document.getElementById('sync-bar');
     if (!bar) return;
-    if (state === 'ok')  { bar.style.display = 'none'; return; }
+    if (state === 'ok') { bar.style.display = 'none'; return; }
     bar.style.display = 'flex';
     if (state === 'off') {
-      bar.innerHTML = `<span>☁️ Cloud sync идэвхгүй —</span>
-        <button onclick="signInGoogle()">Google-аар нэвтрэх</button>`;
+      bar.innerHTML = `
+        <div class="signin-form">
+          <span class="signin-label">☁️ Нэвтрэх</span>
+          <input id="si-email" type="email"   placeholder="Email"    autocomplete="email">
+          <input id="si-pass"  type="password" placeholder="Нууц үг" autocomplete="current-password">
+          <button onclick="signInEmail()">Нэвтрэх</button>
+          <span id="si-err" class="si-err"></span>
+        </div>`;
     }
     if (state === 'err') {
-      bar.innerHTML = `<span>⚠️ Firestore холболт алдаатай</span>`;
+      bar.innerHTML = `<span>⚠️ ${errMsg || 'Firestore холболт алдаатай'}</span>`;
     }
   }
 
@@ -170,11 +175,21 @@ function _initFirebase() {
     }
   });
 
-  window.signInGoogle = function () {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    _auth.signInWithRedirect(provider).catch(e => {
-      console.warn('[Jarvis] Google sign-in алдаа:', e.message);
-    });
+  window.signInEmail = async function () {
+    const email = document.getElementById('si-email')?.value.trim();
+    const pass  = document.getElementById('si-pass')?.value;
+    const errEl = document.getElementById('si-err');
+    if (!email || !pass) { if (errEl) errEl.textContent = 'Email болон нууц үг оруулна уу'; return; }
+    try {
+      await _auth.signInWithEmailAndPassword(email, pass);
+    } catch (e) {
+      const msg = e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password'
+        ? 'Email эсвэл нууц үг буруу'
+        : e.code === 'auth/invalid-email'
+        ? 'Email буруу форматтай'
+        : 'Нэвтрэх алдаа: ' + e.message;
+      if (errEl) errEl.textContent = msg;
+    }
   };
 
   window.signOut = function () {
