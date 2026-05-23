@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Life — Jarvis</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>
+    /* ── PAGE ───────────────────────────────────────────────────── */
+    .page-wrap {
+      padding: 0 14px 24px;
+    }
+
+    /* ── DATE NAV ────────────────────────────────────────────────── */
+    .date-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+    }
+    .date-nav button {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .date-nav button:active { opacity: 0.6; }
+    .date-center { text-align: center; }
+    .date-label  { font-size: 15px; font-weight: 700; }
+    .date-sub    { font-size: 11px; color: var(--text-2); margin-top: 1px; }
+
+    /* ── JARVIS OVERVIEW ─────────────────────────────────────────── */
+    .overview-card {
+      background: linear-gradient(135deg, rgba(124,92,252,0.12) 0%, rgba(96,165,250,0.06) 100%);
+      border: 1px solid rgba(124,92,252,0.25);
+      border-radius: 18px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .overview-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .ov-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: pulse-ov 2s infinite;
+    }
+    @keyframes pulse-ov {
+      0%,100%{ opacity:1; } 50%{ opacity:0.4; }
+    }
+    .ov-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
+    .ov-refresh {
+      margin-left: auto;
+      background: none; border: none;
+      color: var(--text-3); font-size: 16px; cursor: pointer;
+      transition: transform 0.4s;
+    }
+    .ov-refresh.spin { transform: rotate(360deg); }
+    .ov-text {
+      font-size: 13.5px;
+      line-height: 1.65;
+      color: var(--text-2);
+      min-height: 36px;
+    }
+
+    /* ── SECTION ACCORDION ───────────────────────────────────────── */
+    .section-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .section-card.open { border-color: var(--border2); }
+
+    .section-head {
+      display: flex;
+      align-items: center;
+      padding: 14px 16px;
+      cursor: pointer;
+      gap: 12px;
+      user-select: none;
+    }
+
+    .sec-icon {
+      width: 38px; height: 38px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .icon-lfs      { background: rgba(240,180,41,0.15);  border: 1px solid rgba(240,180,41,0.3); }
+    .icon-study    { background: rgba(96,165,250,0.12);  border: 1px solid rgba(96,165,250,0.3); }
+    .icon-business { background: rgba(74,222,128,0.12);  border: 1px solid rgba(74,222,128,0.3); }
+    .icon-fitness  { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); }
+
+    .sec-meta { flex: 1; min-width: 0; }
+    .sec-name { font-size: 15px; font-weight: 700; }
+    .sec-hint { font-size: 11px; color: var(--text-3); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .sec-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .badge-gold   { background: rgba(240,180,41,0.15); color: #f0b429; }
+    .badge-blue   { background: rgba(96,165,250,0.15); color: #60a5fa; }
+    .badge-green  { background: rgba(74,222,128,0.15); color: #4ade80; }
+    .badge-red    { background: rgba(248,113,113,0.15); color: #f87171; }
+
+    .sec-chevron {
+      color: var(--text-3);
+      font-size: 14px;
+      transition: transform 0.25s;
+    }
+    .section-card.open .sec-chevron { transform: rotate(180deg); color: var(--text-2); }
+
+    .section-body {
+      display: none;
+      padding: 0 14px 14px;
+      animation: fadeBody 0.2s ease;
+    }
+    .section-card.open .section-body { display: block; }
+    @keyframes fadeBody {
+      from { opacity:0; transform:translateY(-4px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── LFS ORDERS ──────────────────────────────────────────────── */
+    .add-order-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 11px;
+      background: rgba(240,180,41,0.08);
+      border: 1px dashed rgba(240,180,41,0.3);
+      border-radius: 12px;
+      color: #f0b429;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 12px;
+      transition: background 0.2s;
+    }
+    .add-order-btn:active { background: rgba(240,180,41,0.15); }
+
+    /* Add order form */
+    .order-form {
+      background: var(--bg3);
+      border: 1px solid var(--border2);
+      border-radius: 14px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .order-form.visible { display: block; }
+    .form-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .form-row:last-child { margin-bottom: 0; }
+    .fi {
+      flex: 1;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .fi:focus { border-color: rgba(240,180,41,0.5); }
+    .fi::placeholder { color: var(--text-3); }
+    select.fi { appearance: none; -webkit-appearance: none; }
+    select.fi option { background: #1a1a2e; }
+    .form-actions { display: flex; gap: 8px; }
+    .btn-add {
+      flex: 1;
+      background: linear-gradient(135deg, #b7791f, #f0b429);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-add:active { opacity: 0.85; }
+    .btn-cancel {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      color: var(--text-2);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* Order list */
+    .order-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .order-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .order-status-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-pending   { background: #f0b429; }
+    .status-confirmed { background: #60a5fa; box-shadow: 0 0 6px #60a5fa; }
+    .status-done      { background: #4ade80; }
+    .status-cancelled { background: #f87171; }
+
+    .order-info { flex: 1; min-width: 0; }
+    .order-name    { font-size: 14px; font-weight: 600; }
+    .order-detail  { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+
+    .order-price {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f0b429;
+      white-space: nowrap;
+    }
+
+    .order-actions {
+      display: flex;
+      gap: 4px;
+    }
+    .order-act-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-3);
+      border-radius: 8px;
+      width: 28px; height: 28px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .order-act-btn:active { background: var(--bg3); }
+
+    .empty-orders {
+      text-align: center;
+      color: var(--text-3);
+      font-size: 13px;
+      padding: 20px;
+    }
+
+    /* LFS stats row */
+    .lfs-stats {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .lfs-stat {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+    }
+    .lfs-stat-val { font-size: 20px; font-weight: 800; color: #f0b429; }
+    .lfs-stat-lbl { font-size: 10px; color: var(--text-3); margin-top: 2px; }
+
+    /* ── NOTES SECTIONS (study, business, fitness) ────────────────── */
+    .notes-ta {
+      width: 100%;
+      min-height: 100px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 13.5px;
+      font-family: inherit;
+      line-height: 1.6;
+      padding: 12px 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 8px;
+    }
+    .notes-ta:focus { border-color: var(--border2); }
+    .notes-ta::placeholder { color: var(--text-3); }
+
+    .notes-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .notes-ts { font-size: 11px; color: var(--text-3); }
+    .notes-save-btn {
+      background: var(--accent);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .notes-save-btn:active { opacity: 0.8; }
+
+    /* Fitness quick log */
+    .fitness-log-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .fitness-chip {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-2);
+      font-size: 12px;
+      padding: 8px 6px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+    .fitness-chip.active {
+      background: rgba(248,113,113,0.15);
+      border-color: rgba(248,113,113,0.4);
+      color: #f87171;
+    }
+    .fitness-chip:active { transform: scale(0.97); }
+
+    /* Progress bar */
+    .prog-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .prog-label { font-size: 12px; color: var(--text-2); width: 60px; flex-shrink: 0; }
+    .prog-bar { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+    .prog-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+    .prog-val { font-size: 12px; color: var(--text-2); width: 36px; text-align: right; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div>
+      <h1>Life OS</h1>
+      <div class="sub" id="life-date-txt"></div>
+    </div>
+    <div class="avatar">📋</div>
+  </header>
+
+  <div class="page-wrap">
+
+    <!-- DATE NAV -->
+    <div class="date-nav">
+      <button onclick="changeDay(-1)">‹</button>
+      <div class="date-center">
+        <div class="date-label" id="dn-label">—</div>
+        <div class="date-sub"  id="dn-sub">—</div>
+      </div>
+      <button onclick="changeDay(1)">›</button>
+    </div>
+
+    <!-- JARVIS OVERVIEW -->
+    <div class="overview-card">
+      <div class="overview-header">
+        <div class="ov-dot"></div>
+        <span class="ov-title">JARVIS Overview</span>
+        <button class="ov-refresh" id="ov-refresh" onclick="refreshOverview()" title="Шинэчлэх">↻</button>
+      </div>
+      <div class="ov-text" id="ov-text">Уншиж байна...</div>
+    </div>
+
+    <!-- ══ LFS SECTION ══════════════════════════════════════════ -->
+    <div class="section-card" id="sec-lfs">
+      <div class="section-head" onclick="toggleSec('lfs')">
+        <div class="sec-icon icon-lfs">💼</div>
+        <div class="sec-meta">
+          <div class="sec-name">LFS Shanghai</div>
+          <div class="sec-hint" id="lfs-hint">Өнөөдрийн захиалга...</div>
+        </div>
+        <span class="sec-badge badge-gold" id="lfs-badge">0</span>
+        <span class="sec-chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <!-- Stats -->
+        <div class="lfs-stats">
+          <div class="lfs-stat">
+            <div class="lfs-stat-val" id="lfs-today-cnt">0</div>
+            <div class="lfs-stat-lbl">Өнөөдөр</div>
+          </div>
+          <div class="lfs-stat">
+            <div class="lfs-stat-val" id="lfs-month-cnt">0</div>
+            <div class="lfs-stat-lbl">Энэ сар</div>
+          </div>
+          <div class="lfs-stat">
+            <div class="lfs-stat-val" id="lfs-revenue">¥0</div>
+            <div class="lfs-stat-lbl">Орлого</div>
+          </div>
+        </div>
+        <!-- Add button -->
+        <button class="add-order-btn" onclick="toggleOrderForm()">＋ Захиалга нэмэх</button>
+        <!-- Form -->
+        <div class="order-form" id="order-form">
+          <div class="form-row">
+            <input class="fi" id="of-name"    placeholder="Хэрэглэгчийн нэр" type="text">
+            <input class="fi" id="of-phone"   placeholder="Утас" type="tel" style="max-width:130px">
+          </div>
+          <div class="form-row">
+            <input class="fi" id="of-service" placeholder="Үйлчилгээ (Tour, VIP...)" type="text">
+            <input class="fi" id="of-amount"  placeholder="¥ Дүн" type="number" style="max-width:100px">
+          </div>
+          <div class="form-row">
+            <select class="fi" id="of-status">
+              <option value="pending">⏳ Хүлээгдэж байна</option>
+              <option value="confirmed">✅ Баталгаажсан</option>
+              <option value="done">🎉 Дууссан</option>
+              <option value="cancelled">❌ Цуцлагдсан</option>
+            </select>
+            <input class="fi" id="of-notes" placeholder="Тэмдэглэл..." type="text">
+          </div>
+          <div class="form-actions">
+            <button class="btn-add" onclick="addOrder()">Нэмэх</button>
+            <button class="btn-cancel" onclick="toggleOrderForm()">Болих</button>
+          </div>
+        </div>
+        <!-- Order list -->
+        <div class="order-list" id="order-list"></div>
+      </div>
+    </div>
+
+    <!-- ══ ХИЧЭЭЛ SECTION ════════════════════════════════════════ -->
+    <div class="section-card" id="sec-study">
+      <div class="section-head" onclick="toggleSec('study')">
+        <div class="sec-icon icon-study">📚</div>
+        <div class="sec-meta">
+          <div class="sec-name">Хичээл & HSK</div>
+          <div class="sec-hint" id="study-hint">Өнөөдрийн судалгаа...</div>
+        </div>
+        <span class="sec-badge badge-blue" id="study-badge">HSK4</span>
+        <span class="sec-chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="prog-row">
+          <span class="prog-label">汉字</span>
+          <div class="prog-bar"><div class="prog-fill" id="hz-prog" style="background:#60a5fa;width:0%"></div></div>
+          <span class="prog-val" id="hz-prog-val">0/300</span>
+        </div>
+        <textarea class="notes-ta" id="study-notes"
+          placeholder="Өнөөдөр юу сурсан бэ?
+• 难道(nándào) — гэтэл, яахав
+• 究竟(jiūjìng) — эцэст нь, яг юу
+• Дүрэм: 把字句 бүтэц
+• Унших: 3-р бүлэг дууссан..."></textarea>
+        <div class="notes-footer">
+          <span class="notes-ts" id="study-ts"></span>
+          <button class="notes-save-btn" onclick="saveNotes('study')" style="background:#60a5fa">Хадгалах</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ БИЗНЕС SECTION ════════════════════════════════════════ -->
+    <div class="section-card" id="sec-business">
+      <div class="section-head" onclick="toggleSec('business')">
+        <div class="sec-icon icon-business">💰</div>
+        <div class="sec-meta">
+          <div class="sec-name">Бизнес</div>
+          <div class="sec-hint" id="business-hint">Зорилго & тэмдэглэл...</div>
+        </div>
+        <span class="sec-badge badge-green" id="business-badge">—</span>
+        <span class="sec-chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <textarea class="notes-ta" id="business-notes"
+          placeholder="Өнөөдрийн бизнесийн тэмдэглэл:
+• LFS гол зорилт: 100 хэрэглэгч Q4-д
+• Маркетинг: Instagram post хийх
+• Ярилцсан: WeChat дээр 3 хүн
+• Дараагийн алхам: landing page шинэчлэх..."></textarea>
+        <div class="notes-footer">
+          <span class="notes-ts" id="business-ts"></span>
+          <button class="notes-save-btn" onclick="saveNotes('business')" style="background:#4ade80;color:#000">Хадгалах</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ FITNESS SECTION ═══════════════════════════════════════ -->
+    <div class="section-card" id="sec-fitness">
+      <div class="section-head" onclick="toggleSec('fitness')">
+        <div class="sec-icon icon-fitness">🏋️</div>
+        <div class="sec-meta">
+          <div class="sec-name">Fitness</div>
+          <div class="sec-hint" id="fitness-hint">Өнөөдрийн дасгал...</div>
+        </div>
+        <span class="sec-badge badge-red" id="fitness-badge">—</span>
+        <span class="sec-chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="fitness-log-row">
+          <div class="fitness-chip" id="chip-chest"    onclick="toggleChip('chest')"   >💪 Цээж</div>
+          <div class="fitness-chip" id="chip-back"     onclick="toggleChip('back')"    >🏃 Нуруу</div>
+          <div class="fitness-chip" id="chip-legs"     onclick="toggleChip('legs')"    >🦵 Хөл</div>
+          <div class="fitness-chip" id="chip-cardio"   onclick="toggleChip('cardio')"  >❤️ Кардио</div>
+          <div class="fitness-chip" id="chip-rest"     onclick="toggleChip('rest')"    >😴 Амрах</div>
+        </div>
+        <div class="prog-row">
+          <span class="prog-label">Энэ сар</span>
+          <div class="prog-bar"><div class="prog-fill" id="fit-prog" style="background:#f87171;width:0%"></div></div>
+          <span class="prog-val" id="fit-prog-val">0/30</span>
+        </div>
+        <textarea class="notes-ta" id="fitness-notes" style="min-height:80px"
+          placeholder="Дасгалын тэмдэглэл:
+• Bench press: 60kg × 3×10
+• Pull-up: 3×8
+• Protein: 120g идсэн..."></textarea>
+        <div class="notes-footer">
+          <span class="notes-ts" id="fitness-ts"></span>
+          <button class="notes-save-btn" onclick="saveNotes('fitness')" style="background:#f87171">Хадгалах</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /page-wrap -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <a class="nav-item"        href="index.html">    <span class="ni">🏠</span><span>Нүүр</span></a>
+    <a class="nav-item active" href="life.html">     <span class="ni">📋</span><span>Life OS</span></a>
+    <a class="nav-item"        href="dashboard.html"><span class="ni">📈</span><span>Статс</span></a>
+    <a class="nav-item"        href="chat.html">     <span class="ni">🤖</span><span>Chat</span></a>
+    <a class="nav-item"        href="profile.html">  <span class="ni">👤</span><span>Профайл</span></a>
+  </nav>
+
+  <div id="toast"></div>
+
+  <script src="app.js"></script>
+  <script src="gemini.js"></script>
+  <script src="firebase-config.js"></script>
+  <script>
+  // ── DATE ────────────────────────────────────────────────────────
+  const DAYS_MN = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+  const MONTHS_MN = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар',
+                     '7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
+  let _viewDate = new Date();
+
+  function dateKey(d) {
+    return d.toISOString().split('T')[0];
+  }
+
+  function renderDateNav() {
+    const today = dateKey(new Date());
+    const vd    = dateKey(_viewDate);
+    const day   = DAYS_MN[_viewDate.getDay()];
+    const label = vd === today
+      ? 'Өнөөдөр — ' + day
+      : `${_viewDate.getFullYear()}.${String(_viewDate.getMonth()+1).padStart(2,'0')}.${String(_viewDate.getDate()).padStart(2,'0')} — ${day}`;
+    document.getElementById('dn-label').textContent = label;
+    document.getElementById('dn-sub').textContent =
+      MONTHS_MN[_viewDate.getMonth()] + ' ' + _viewDate.getDate() + ', ' + _viewDate.getFullYear();
+    document.getElementById('life-date-txt').textContent = label;
+  }
+
+  function changeDay(d) {
+    _viewDate.setDate(_viewDate.getDate() + d);
+    renderDateNav();
+    renderOrders();
+    loadDayNotes();
+    loadDayFitnessChips();
+    buildOverview();
+  }
+
+  // ── TOAST ───────────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ── SECTION TOGGLE ──────────────────────────────────────────────
+  function toggleSec(id) {
+    const card = document.getElementById('sec-' + id);
+    card.classList.toggle('open');
+    const open = card.classList.contains('open');
+    // persist
+    const st = JSON.parse(localStorage.getItem('jarvis_life_open') || '{}');
+    st[id] = open;
+    localStorage.setItem('jarvis_life_open', JSON.stringify(st));
+  }
+
+  function restoreOpenSections() {
+    const st = JSON.parse(localStorage.getItem('jarvis_life_open') || '{"lfs":true}');
+    Object.entries(st).forEach(([id, open]) => {
+      if (open) document.getElementById('sec-' + id)?.classList.add('open');
+    });
+  }
+
+  // ── LFS ORDERS ──────────────────────────────────────────────────
+  const LFS_KEY = 'jarvis_lfs_orders';
+
+  function loadOrders() {
+    try { return JSON.parse(localStorage.getItem(LFS_KEY)) || []; }
+    catch { return []; }
+  }
+  function saveOrders(arr) {
+    localStorage.setItem(LFS_KEY, JSON.stringify(arr));
+  }
+
+  function toggleOrderForm() {
+    const f = document.getElementById('order-form');
+    f.classList.toggle('visible');
+    if (f.classList.contains('visible')) document.getElementById('of-name').focus();
+  }
+
+  function addOrder() {
+    const name    = document.getElementById('of-name').value.trim();
+    const phone   = document.getElementById('of-phone').value.trim();
+    const service = document.getElementById('of-service').value.trim();
+    const amount  = parseFloat(document.getElementById('of-amount').value) || 0;
+    const status  = document.getElementById('of-status').value;
+    const notes   = document.getElementById('of-notes').value.trim();
+    if (!name) { showToast('⚠️ Нэр оруулна уу'); return; }
+
+    const orders = loadOrders();
+    orders.unshift({
+      id: Date.now(),
+      date: dateKey(_viewDate),
+      name, phone, service, amount, status, notes
+    });
+    saveOrders(orders);
+
+    // clear form
+    ['of-name','of-phone','of-service','of-amount','of-notes'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('of-status').value = 'pending';
+    document.getElementById('order-form').classList.remove('visible');
+
+    renderOrders();
+    buildOverview();
+    showToast('✅ Захиалга нэмэгдлээ');
+  }
+
+  function deleteOrder(id) {
+    if (!confirm('Устгах уу?')) return;
+    const orders = loadOrders().filter(o => o.id !== id);
+    saveOrders(orders);
+    renderOrders();
+    buildOverview();
+  }
+
+  function cycleStatus(id) {
+    const cycle = ['pending','confirmed','done','cancelled'];
+    const orders = loadOrders();
+    const o = orders.find(x => x.id === id);
+    if (!o) return;
+    o.status = cycle[(cycle.indexOf(o.status) + 1) % cycle.length];
+    saveOrders(orders);
+    renderOrders();
+    buildOverview();
+  }
+
+  const STATUS_LABEL = { pending:'⏳', confirmed:'✅', done:'🎉', cancelled:'❌' };
+  const STATUS_CLASS = { pending:'status-pending', confirmed:'status-confirmed', done:'status-done', cancelled:'status-cancelled' };
+
+  function renderOrders() {
+    const vd     = dateKey(_viewDate);
+    const orders = loadOrders();
+    const today  = orders.filter(o => o.date === vd);
+    const month  = orders.filter(o => o.date.startsWith(vd.slice(0,7)));
+    const rev    = month.filter(o => o.status === 'done').reduce((s,o) => s + o.amount, 0);
+
+    document.getElementById('lfs-today-cnt').textContent = today.length;
+    document.getElementById('lfs-month-cnt').textContent = month.length;
+    document.getElementById('lfs-revenue').textContent   = rev > 0 ? '¥' + rev.toLocaleString() : '¥0';
+    document.getElementById('lfs-badge').textContent     = today.length;
+    document.getElementById('lfs-hint').textContent      = today.length
+      ? `${today.length} захиалга · ¥${today.reduce((s,o)=>s+o.amount,0).toLocaleString()}`
+      : 'Өнөөдөр захиалга байхгүй';
+
+    const el = document.getElementById('order-list');
+    if (!today.length) {
+      el.innerHTML = '<div class="empty-orders">Өнөөдөр захиалга байхгүй байна</div>';
+      return;
+    }
+
+    el.innerHTML = '';
+    today.forEach(o => {
+      const item = document.createElement('div');
+      item.className = 'order-item';
+      item.innerHTML = `
+        <div class="order-status-dot ${STATUS_CLASS[o.status]}"></div>
+        <div class="order-info">
+          <div class="order-name">${o.name}</div>
+          <div class="order-detail">${[o.service, o.phone, o.notes].filter(Boolean).join(' · ')}</div>
+        </div>
+        ${o.amount > 0 ? `<div class="order-price">¥${o.amount.toLocaleString()}</div>` : ''}
+        <div class="order-actions">
+          <button class="order-act-btn" onclick="cycleStatus(${o.id})" title="Статус өөрчлөх">${STATUS_LABEL[o.status]}</button>
+          <button class="order-act-btn" onclick="deleteOrder(${o.id})" title="Устгах">🗑</button>
+        </div>`;
+      el.appendChild(item);
+    });
+  }
+
+  // ── SECTION NOTES ───────────────────────────────────────────────
+  const NOTES_KEY = (sec, date) => `jarvis_life_notes_${sec}_${date}`;
+
+  function loadDayNotes() {
+    const vd = dateKey(_viewDate);
+    ['study','business','fitness'].forEach(sec => {
+      const text = localStorage.getItem(NOTES_KEY(sec, vd)) || '';
+      document.getElementById(sec + '-notes').value = text;
+      const ts = localStorage.getItem(NOTES_KEY(sec, vd) + '_ts');
+      document.getElementById(sec + '-ts').textContent = ts
+        ? '💾 ' + new Date(parseInt(ts)).toLocaleTimeString('mn-MN', {hour:'2-digit',minute:'2-digit'})
+        : '';
+      // hint
+      const lines = text.split('\n').filter(l => l.trim()).length;
+      document.getElementById(sec + '-hint').textContent = lines
+        ? `${lines} мөр тэмдэглэл` : 'Тэмдэглэл байхгүй';
+    });
+  }
+
+  function saveNotes(sec) {
+    const vd   = dateKey(_viewDate);
+    const text = document.getElementById(sec + '-notes').value;
+    const now  = Date.now();
+    localStorage.setItem(NOTES_KEY(sec, vd), text);
+    localStorage.setItem(NOTES_KEY(sec, vd) + '_ts', now.toString());
+    const lines = text.split('\n').filter(l=>l.trim()).length;
+    document.getElementById(sec + '-ts').textContent =
+      '💾 ' + new Date(now).toLocaleTimeString('mn-MN', {hour:'2-digit',minute:'2-digit'});
+    document.getElementById(sec + '-hint').textContent = lines
+      ? `${lines} мөр тэмдэглэл` : 'Тэмдэглэл байхгүй';
+    showToast('✅ Хадгалагдлаа');
+    buildOverview();
+  }
+
+  // ── FITNESS CHIPS ────────────────────────────────────────────────
+  const FIT_KEY = d => `jarvis_life_fit_${d}`;
+
+  function loadDayFitnessChips() {
+    const vd   = dateKey(_viewDate);
+    const chips = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
+    ['chest','back','legs','cardio','rest'].forEach(c => {
+      document.getElementById('chip-' + c).classList.toggle('active', chips.includes(c));
+    });
+    updateFitnessBadge(chips);
+    updateFitnessProgress();
+  }
+
+  function toggleChip(name) {
+    const vd    = dateKey(_viewDate);
+    const chips = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
+    const idx   = chips.indexOf(name);
+    if (idx >= 0) chips.splice(idx, 1); else chips.push(name);
+    localStorage.setItem(FIT_KEY(vd), JSON.stringify(chips));
+    document.getElementById('chip-' + name).classList.toggle('active', chips.includes(name));
+    updateFitnessBadge(chips);
+    updateFitnessProgress();
+    buildOverview();
+  }
+
+  function updateFitnessBadge(chips) {
+    const labels = { chest:'Цээж', back:'Нуруу', legs:'Хөл', cardio:'Кардио', rest:'Амрах' };
+    const active = chips.map(c => labels[c]).join(', ');
+    document.getElementById('fitness-badge').textContent  = active || '—';
+    document.getElementById('fitness-hint').textContent   = active || 'Дасгал тэмдэглэгдээгүй';
+  }
+
+  function updateFitnessProgress() {
+    // Энэ сарын дасгал хийсэн өдрүүд (rest биш)
+    const yr = _viewDate.getFullYear(), mo = _viewDate.getMonth() + 1;
+    const prefix = `jarvis_life_fit_${yr}-${String(mo).padStart(2,'0')}`;
+    let count = 0;
+    for (let k in localStorage) {
+      if (!k.startsWith(prefix)) continue;
+      const chips = JSON.parse(localStorage.getItem(k) || '[]');
+      if (chips.length && !chips.every(c => c === 'rest')) count++;
+    }
+    const goal = 30;
+    const pct  = Math.min(count / goal * 100, 100);
+    document.getElementById('fit-prog').style.width = pct + '%';
+    document.getElementById('fit-prog-val').textContent = `${count}/${goal}`;
+    document.getElementById('fitness-badge').textContent =
+      document.getElementById('fitness-badge').textContent || `${count}/${goal}`;
+  }
+
+  function updateHanziProgress() {
+    const missions = JSON.parse(localStorage.getItem('jarvis_missions') || '[]');
+    const hm = missions.find(m => m.id === 'hanziw') || {};
+    const val = hm.val || 0, max = hm.max || 300;
+    const pct = Math.min(val / max * 100, 100);
+    document.getElementById('hz-prog').style.width = pct + '%';
+    document.getElementById('hz-prog-val').textContent = `${val}/${max}`;
+  }
+
+  // ── JARVIS OVERVIEW ─────────────────────────────────────────────
+  function buildOverview() {
+    const vd     = dateKey(_viewDate);
+    const orders = loadOrders().filter(o => o.date === vd);
+    const fitC   = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
+    const studyN = localStorage.getItem(NOTES_KEY('study', vd)) || '';
+    const bizN   = localStorage.getItem(NOTES_KEY('business', vd)) || '';
+    const fitN   = localStorage.getItem(NOTES_KEY('fitness', vd)) || '';
+
+    const LABELS_FIT = { chest:'Цээж', back:'Нуруу', legs:'Хөл', cardio:'Кардио', rest:'Амрах' };
+    const fitStr = fitC.map(c => LABELS_FIT[c]).join(', ') || '—';
+
+    const STATUS_MN = { pending:'хүлээгдэж байна', confirmed:'баталгаажсан', done:'дууссан', cancelled:'цуцлагдсан' };
+    const orderSummary = orders.length
+      ? orders.map(o => `${o.name} (${o.service || '?'}) — ${STATUS_MN[o.status]}`).join('\n')
+      : 'Захиалга байхгүй';
+
+    const lines = [
+      `📅 ${document.getElementById('dn-label').textContent}`,
+      '',
+      `💼 LFS (${orders.length} захиалга):\n${orderSummary}`,
+      studyN.trim() ? `\n📚 Хичээл:\n${studyN.trim().split('\n').slice(0,3).join('\n')}` : '',
+      bizN.trim()   ? `\n💰 Бизнес:\n${bizN.trim().split('\n').slice(0,2).join('\n')}`   : '',
+      `\n🏋️ Fitness: ${fitStr}`,
+      fitN.trim()   ? fitN.trim().split('\n').slice(0,2).join('\n') : '',
+    ].filter(Boolean).join('\n');
+
+    document.getElementById('ov-text').textContent = lines;
+  }
+
+  async function refreshOverview() {
+    const btn = document.getElementById('ov-refresh');
+    btn.classList.add('spin');
+    setTimeout(() => btn.classList.remove('spin'), 600);
+
+    const key = localStorage.getItem('jarvis_gemini_key') || '';
+    if (!key) { buildOverview(); return; }
+
+    // Build a short prompt for AI summary
+    const vd     = dateKey(_viewDate);
+    const orders = loadOrders().filter(o => o.date === vd);
+    const fitC   = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
+    const LABELS_FIT = { chest:'Цээж', back:'Нуруу', legs:'Хөл', cardio:'Кардио', rest:'Амрах' };
+    const studyN = localStorage.getItem(NOTES_KEY('study', vd)) || '';
+    const bizN   = localStorage.getItem(NOTES_KEY('business', vd)) || '';
+
+    const ctx = `Өнөөдрийн Life OS нэгтгэл:
+LFS захиалга: ${orders.length > 0 ? orders.map(o=>`${o.name}(${o.status})`).join(', ') : 'байхгүй'}
+Fitness: ${fitC.map(c=>LABELS_FIT[c]).join(', ') || 'тэмдэглэгдээгүй'}
+Хичээл: ${studyN.split('\n').filter(Boolean).length} мөр
+Бизнес тэмдэглэл: ${bizN.split('\n').filter(Boolean).length} мөр
+
+Дээрхийг 2-3 өгүүлбэрээр нэгтгэж, чухал зүйлийг онцолно уу.`;
+
+    const el = document.getElementById('ov-text');
+    el.textContent = '...';
+
+    const cacheKey = `jarvis_overview_cache_${vd}`;
+    const cached   = localStorage.getItem(cacheKey);
+    // Don't use cached version for manual refresh
+    try {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: ctx }] }],
+          generationConfig: { maxOutputTokens: 200, temperature: 0.7 }
+        })
+      });
+      if (!res.ok) throw new Error(res.status);
+      const json = await res.json();
+      const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+      if (text) {
+        el.textContent = text;
+        localStorage.setItem(cacheKey, text);
+        return;
+      }
+    } catch {}
+
+    buildOverview(); // fallback
+  }
+
+  // ── INIT ────────────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    renderDateNav();
+    restoreOpenSections();
+    renderOrders();
+    loadDayNotes();
+    loadDayFitnessChips();
+    updateHanziProgress();
+    buildOverview();
+  });
+  </script>
+</body>
+</html>
