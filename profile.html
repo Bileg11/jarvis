@@ -212,8 +212,30 @@
 
     </div>
 
-    <!-- CHAT KEY (GitHub PAT → gpt-4o-mini) -->
-    <div class="sec-label" style="margin-top:20px">💬 JARVIS Chat</div>
+    <!-- PROXY URL ══════════════════════════════════════════════ -->
+    <div class="sec-label" style="margin-top:20px">🔧 Proxy (Санал болгосон)</div>
+    <div class="profile-section">
+      <div class="ps-row">
+        <span class="ps-label">CF Worker URL</span>
+        <span class="ps-val" id="proxy-status">—</span>
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">
+        Cloudflare Worker deploy хийсний дараа URL-г энд оруулна.<br>
+        Бүх API key сервер талд байна — phone-д юу ч хадгалагдахгүй.
+      </div>
+      <div class="ps-key-row">
+        <input id="prof-proxy" type="url" placeholder="https://jarvis-proxy.xxx.workers.dev" class="ps-input">
+        <button onclick="saveProxy()" class="ps-btn">Хадгал</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button onclick="testProxy()" class="ps-btn" id="test-proxy-btn" style="background:rgba(124,92,252,0.15);border-color:rgba(124,92,252,0.4);color:#a78bfa">⚡ Тест</button>
+        <button onclick="clearProxy()" class="ps-btn-danger" id="clear-proxy-btn" style="display:none">🗑 Устгах</button>
+      </div>
+      <div id="proxy-test-result" style="font-size:11px;margin-top:8px;color:#666"></div>
+    </div>
+
+    <!-- CHAT KEY (GitHub PAT → нөөц) -->
+    <div class="sec-label" style="margin-top:20px">💬 Direct Mode (нөөц)</div>
     <div class="profile-section">
       <div class="ps-row">
         <span class="ps-label">GitHub Token</span>
@@ -295,6 +317,12 @@
       document.getElementById('p-email').textContent = user.email || 'Нэвтрэх email байхгүй';
       document.getElementById('p-uid').textContent   = 'UID: ' + user.uid.slice(0,12) + '...';
 
+      // Proxy URL
+      const proxyUrl = localStorage.getItem('jarvis_proxy_url') || '';
+      const proxyEl  = document.getElementById('proxy-status');
+      proxyEl.textContent = proxyUrl ? '✅ ' + proxyUrl.replace('https://','').slice(0,30) + '...' : '❌ Тавигдаагүй';
+      document.getElementById('clear-proxy-btn').style.display = proxyUrl ? 'block' : 'none';
+
       // GitHub token
       const chatKey = localStorage.getItem('jarvis_chat_key') || '';
       document.getElementById('chat-key-status').textContent = chatKey ? '✅ ' + chatKey.slice(0,10) + '...' : '❌ Тавигдаагүй';
@@ -329,6 +357,47 @@
             ? 'Email эсвэл нууц үг буруу'
             : 'Алдаа: ' + e.message;
       }
+    }
+
+    function saveProxy() {
+      const val = document.getElementById('prof-proxy').value.trim().replace(/\/$/, '');
+      if (!val) return;
+      localStorage.setItem('jarvis_proxy_url', val);
+      document.getElementById('prof-proxy').value = '';
+      renderUser(_auth.currentUser);
+      showToast('✅ Proxy URL хадгалагдлаа');
+    }
+
+    async function testProxy() {
+      const url = localStorage.getItem('jarvis_proxy_url') || '';
+      if (!url) { showToast('⚠️ Эхлээд URL оруул'); return; }
+      const btn = document.getElementById('test-proxy-btn');
+      const res_el = document.getElementById('proxy-test-result');
+      btn.textContent = '⏳...'; btn.disabled = true;
+      res_el.textContent = '';
+      try {
+        const r    = await fetch(`${url}/ping`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await r.json();
+        if (data.ok) {
+          res_el.style.color = '#4ade80';
+          res_el.textContent = `✅ Proxy ажиллаж байна · Chat: ${data.chat?'✓':'✗'} · Intel: ${data.intel?'✓':'✗'}`;
+          showToast('✅ Proxy холбогдлоо!');
+        } else {
+          res_el.style.color = '#f87171';
+          res_el.textContent = '❌ Proxy хариу буруу байна';
+        }
+      } catch(e) {
+        res_el.style.color = '#f87171';
+        res_el.textContent = '❌ Холбогдсонгүй: ' + e.message;
+      }
+      btn.textContent = '⚡ Тест'; btn.disabled = false;
+    }
+
+    function clearProxy() {
+      if (!confirm('Proxy URL устгах уу?')) return;
+      localStorage.removeItem('jarvis_proxy_url');
+      renderUser(_auth.currentUser);
+      showToast('🗑 Proxy устгагдлаа');
     }
 
     function saveChatKey() {

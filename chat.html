@@ -601,8 +601,9 @@
     });
 
     function checkToken() {
-      const has = !!localStorage.getItem('jarvis_chat_key');
-      document.getElementById('token-row').style.display = has ? 'none' : 'flex';
+      const hasProxy = !!localStorage.getItem('jarvis_proxy_url');
+      const hasKey   = !!localStorage.getItem('jarvis_chat_key');
+      document.getElementById('token-row').style.display = (hasProxy || hasKey) ? 'none' : 'flex';
     }
 
     function saveToken() {

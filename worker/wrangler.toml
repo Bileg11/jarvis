@@ -1,0 +1,9 @@
+name = "jarvis-proxy"
+main = "index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Deploy: npx wrangler deploy
+# Secrets (нэг удаа тохируулна):
+#   npx wrangler secret put GITHUB_TOKEN
+#   npx wrangler secret put TAVILY_KEY

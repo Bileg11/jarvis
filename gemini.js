@@ -1,12 +1,26 @@
-// ── JARVIS AI — GitHub Models (gpt-4o-mini) ──────────────────────
-// Бүх AI дуудалт нэг API руу явна: https://models.inference.ai.azure.com
-// Key: localStorage-аас унших GitHub Personal Access Token
+// ── JARVIS AI ─────────────────────────────────────────────────────
+// Proxy mode  (санал болгосон):  Cloudflare Worker — key байхгүй
+// Direct mode (нөөц):  GitHub Models — localStorage key
 
 const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
 const CHAT_MODEL = 'gpt-4o-mini';
 
-function _getChatKey() {
-  return localStorage.getItem('jarvis_chat_key') || '';
+// Proxy URL — зөвхөн URL, secret биш → localStorage-д хадгалж болно
+function _getProxyUrl()  { return (localStorage.getItem('jarvis_proxy_url') || '').replace(/\/$/, ''); }
+function _getChatKey()   { return localStorage.getItem('jarvis_chat_key')   || ''; }
+
+// API хаяг болон header-г автоматаар сонгоно
+function _chatEndpoint() {
+  const proxy = _getProxyUrl();
+  if (proxy) return { url: `${proxy}/chat`, headers: { 'Content-Type': 'application/json' } };
+  return {
+    url:     CHAT_URL,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_getChatKey()}` }
+  };
+}
+
+function _isConfigured() {
+  return !!_getProxyUrl() || !!_getChatKey();
 }
 
 // ── SYSTEM PROMPT ─────────────────────────────────────────────────
@@ -34,34 +48,28 @@ Workout: ${d.fitness_val}/30 энэ сард
 }
 
 async function askGemini(d) {
-  const key = _getChatKey();
-  if (!key) return null;
+  if (!_isConfigured()) return null;
 
-  // localStorage cache — ижил weekday+hour-д нэг удаа л API дуудна
   const cacheKey = `jarvis_brief_cache_${d.weekday}_${d.hour}`;
-  const cached = localStorage.getItem(cacheKey);
+  const cached   = localStorage.getItem(cacheKey);
   if (cached) return cached;
 
   try {
-    const res = await fetch(CHAT_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${key}`
-      },
+    const ep  = _chatEndpoint();
+    const res = await fetch(ep.url, {
+      method: 'POST', headers: ep.headers,
       body: JSON.stringify({
         model: CHAT_MODEL,
         messages: [
           { role: 'system', content: JARVIS_SYSTEM },
           { role: 'user',   content: _buildPrompt(d) }
         ],
-        max_tokens:  300,
-        temperature: 0.85
+        max_tokens: 300, temperature: 0.85
       })
     });
     if (!res.ok) return null;
-    const json = await res.json();
-    const text = json.choices?.[0]?.message?.content?.trim() || null;
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content?.trim() || null;
     if (text) localStorage.setItem(cacheKey, text);
     return text;
   } catch {
@@ -110,8 +118,7 @@ async function syncChatFromFirestore() {
 
 // ── SEND CHAT ─────────────────────────────────────────────────────
 async function sendChatMessage(userText) {
-  const key = _getChatKey();
-  if (!key) return '⚙️ Профайл хуудсаас GitHub Token оруулна уу.';
+  if (!_isConfigured()) return '⚙️ Профайл хуудсанд Proxy URL эсвэл GitHub Token оруулна уу.';
 
   const r     = (typeof loadRoutine   === 'function') ? loadRoutine()   : {};
   const tlog  = (typeof loadTodayLog  === 'function') ? loadTodayLog()  : {};
@@ -130,21 +137,16 @@ async function sendChatMessage(userText) {
   const timer = setTimeout(() => ctrl.abort(), 20000);
 
   try {
-    const res = await fetch(CHAT_URL, {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${key}`
-      },
+    const ep  = _chatEndpoint();
+    const res = await fetch(ep.url, {
+      method: 'POST', signal: ctrl.signal, headers: ep.headers,
       body: JSON.stringify({
         model: CHAT_MODEL,
         messages: [
           { role: 'system', content: systemText },
           ..._chatHistory
         ],
-        max_tokens:  2048,
-        temperature: 1.0
+        max_tokens: 2048, temperature: 1.0
       })
     });
     clearTimeout(timer);
@@ -154,7 +156,7 @@ async function sendChatMessage(userText) {
       const msg = errBody?.error?.message || '';
       console.warn('[Chat] gpt-4o-mini', res.status, msg);
       _chatHistory.pop();
-      if (res.status === 401) return '🔑 Token буруу байна. Профайл → GitHub Token шалгана уу.';
+      if (res.status === 401) return '🔑 Token буруу байна. Профайл → тохиргоо шалгана уу.';
       if (res.status === 429) return '⏳ Хүсэлт хэт олон байна. 1 минут хүлээгээд дахин туршина уу.';
       return `❌ Алдаа ${res.status}. Профайл → Token шалгана уу.`;
     }
