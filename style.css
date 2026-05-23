@@ -667,6 +667,63 @@ body::before {
 }
 #toast.show { transform: translateX(-50%) translateY(0); }
 
+/* ── LOGIN MODAL ─────────────────────────── */
+#login-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(12px);
+}
+.login-box {
+  background: #111;
+  border: 1px solid var(--border2);
+  border-radius: 24px;
+  padding: 36px 28px;
+  width: 88%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.login-title {
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.login-box input {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: #fff;
+  font-size: 15px;
+  outline: none;
+}
+.login-box input:focus { border-color: var(--accent); }
+.login-box button {
+  background: var(--accent);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 13px;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.login-box button:active { opacity: 0.85; }
+.lm-err {
+  font-size: 13px;
+  color: #ff6b6b;
+  text-align: center;
+  min-height: 18px;
+}
+
 /* ── JARVIS CHAT ─────────────────────────── */
 .chat-fab {
   position: fixed;

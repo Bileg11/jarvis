@@ -18,6 +18,58 @@ function _uref(path) {
   return uid ? _db.doc(`users/${uid}/${path}`) : null;
 }
 
+// ── LOGIN MODAL ────────────────────────────────────────────────────
+function _showLoginModal() {
+  if (document.getElementById('login-modal')) return;
+  const m = document.createElement('div');
+  m.id = 'login-modal';
+  m.innerHTML = `
+    <div class="login-box">
+      <div class="login-title">🔐 JARVIS</div>
+      <input id="lm-email" type="email"    placeholder="Email"    autocomplete="email">
+      <input id="lm-pass"  type="password" placeholder="Нууц үг" autocomplete="current-password">
+      <button id="lm-btn"  onclick="window._doLogin()">Нэвтрэх</button>
+      <div  id="lm-err" class="lm-err"></div>
+    </div>`;
+  document.body.appendChild(m);
+
+  // Enter → нэвтрэх
+  m.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') window._doLogin(); });
+  });
+  setTimeout(() => document.getElementById('lm-email')?.focus(), 100);
+}
+
+function _hideLoginModal() {
+  document.getElementById('login-modal')?.remove();
+}
+
+window._doLogin = async function () {
+  const email = document.getElementById('lm-email')?.value.trim();
+  const pass  = document.getElementById('lm-pass')?.value;
+  const errEl = document.getElementById('lm-err');
+  const btn   = document.getElementById('lm-btn');
+
+  if (!email || !pass) { errEl.textContent = 'Email болон нууц үг оруулна уу'; return; }
+
+  btn.textContent = '...';
+  btn.disabled = true;
+
+  try {
+    await _auth.signInWithEmailAndPassword(email, pass);
+    // onAuthStateChanged дуудагдаж modal хаагдана
+  } catch (e) {
+    btn.textContent = 'Нэвтрэх';
+    btn.disabled = false;
+    errEl.textContent =
+      e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential'
+        ? 'Email эсвэл нууц үг буруу'
+        : e.code === 'auth/invalid-email'
+        ? 'Email буруу форматтай'
+        : 'Алдаа: ' + e.message;
+  }
+};
+
 // ── DB OBJECT ──────────────────────────────────────────────────────
 window.DB = {
   ready: false,
@@ -98,10 +150,7 @@ window.DB = {
       }
 
       if (typeof syncChatFromFirestore === 'function') syncChatFromFirestore();
-
       DB.ready = true;
-      const bar = document.getElementById('sync-bar');
-      if (bar) bar.style.display = 'none';
 
     } catch (e) {
       console.warn('[Jarvis] Firestore sync алдаа:', e.message);
@@ -109,15 +158,13 @@ window.DB = {
   }
 };
 
-// ── AUTO SIGN IN — хэрэглэгч юу ч хийхгүй ────────────────────────
+// ── AUTH STATE ─────────────────────────────────────────────────────
 _auth.onAuthStateChanged(user => {
   if (user) {
+    _hideLoginModal();
     DB.syncDown();
   } else {
-    // Anonymous-аар автоматаар нэвтрүүлнэ
-    _auth.signInAnonymously().catch(e => {
-      console.warn('[Jarvis] Anonymous auth алдаа:', e.message);
-    });
+    _showLoginModal();
   }
 });
 
