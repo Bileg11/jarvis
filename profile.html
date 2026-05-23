@@ -11,6 +11,18 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script>
+    // Firebase-г энд init хийнэ (firebase-config.js-г ашиглахгүй)
+    const _FC = {
+      apiKey:            "AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc",
+      authDomain:        "jarvis-bileg.firebaseapp.com",
+      projectId:         "jarvis-bileg",
+      storageBucket:     "jarvis-bileg.firebasestorage.app",
+      messagingSenderId: "59304492638",
+      appId:             "1:59304492638:web:9da4e7ceac790d1254becf"
+    };
+    firebase.initializeApp(_FC);
+  </script>
 </head>
 <body>
 
@@ -19,21 +31,21 @@
       <h1>Профайл</h1>
       <div class="sub">Дансны мэдээлэл</div>
     </div>
-    <div class="avatar" id="avatar-circle">?</div>
+    <div class="avatar" id="p-avatar-sm">?</div>
   </header>
 
   <div class="profile-wrap">
 
     <!-- ACCOUNT CARD -->
-    <div class="profile-card" id="profile-card">
-      <div class="profile-avatar-big" id="p-avatar">?</div>
+    <div class="profile-card">
+      <div class="profile-avatar-big" id="p-avatar-big">?</div>
       <div class="profile-name"  id="p-name">Уншиж байна...</div>
       <div class="profile-email" id="p-email"></div>
       <div class="profile-uid"   id="p-uid"></div>
     </div>
 
     <!-- GEMINI KEY -->
-    <div class="sec-label" style="margin-top:20px">JARVIS Chat тохиргоо</div>
+    <div class="sec-label" style="margin-top:20px">JARVIS Chat</div>
     <div class="profile-section">
       <div class="ps-row">
         <span class="ps-label">Gemini API Key</span>
@@ -46,25 +58,11 @@
       <button onclick="clearKey()" class="ps-btn-danger" id="clear-key-btn" style="display:none">🗑 Key устгах</button>
     </div>
 
-    <!-- CLOUD SYNC -->
-    <div class="sec-label" style="margin-top:20px">Cloud sync</div>
-    <div class="profile-section">
-      <div class="ps-row">
-        <span class="ps-label">Firestore</span>
-        <span class="ps-val" id="sync-status">—</span>
-      </div>
-      <div class="ps-row">
-        <span class="ps-label">Нэвтрэх төрөл</span>
-        <span class="ps-val" id="auth-type">—</span>
-      </div>
-    </div>
-
     <!-- ACTIONS -->
     <div class="sec-label" style="margin-top:20px">Үйлдэл</div>
     <div class="profile-section">
-      <button onclick="manualSync()" class="ps-action-btn">☁️ Одоо sync хийх</button>
-      <button onclick="clearChat()"  class="ps-action-btn">🗑 Чат түүх цэвэрлэх</button>
-      <button onclick="doSignOut()"  class="ps-action-btn danger">🚪 Гарах</button>
+      <button class="ps-action-btn" onclick="clearChat()">🗑 Чат түүх цэвэрлэх</button>
+      <button class="ps-action-btn danger" onclick="doSignOut()">🚪 Гарах</button>
     </div>
 
   </div>
@@ -80,87 +78,96 @@
 
   <div id="toast"></div>
 
-  <script src="firebase-config.js"></script>
+  <!-- LOGIN MODAL (нэвтрээгүй бол) -->
+  <div id="login-modal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px)">
+    <div class="login-box">
+      <div class="login-title">🔐 JARVIS</div>
+      <input id="lm-email" type="email"    placeholder="Email"    autocomplete="email">
+      <input id="lm-pass"  type="password" placeholder="Нууц үг" autocomplete="current-password">
+      <button id="lm-btn" onclick="doLogin()">Нэвтрэх</button>
+      <div id="lm-err" class="lm-err"></div>
+    </div>
+  </div>
+
   <script>
+    const _auth = firebase.auth();
+
     function showToast(msg) {
       const t = document.getElementById('toast');
-      t.textContent = msg;
-      t.classList.add('show');
+      t.textContent = msg; t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2500);
     }
 
-    function renderProfile(user) {
-      const initials = user?.email ? user.email[0].toUpperCase() : '?';
-      document.getElementById('avatar-circle').textContent = initials;
-      document.getElementById('p-avatar').textContent      = initials;
+    function renderUser(user) {
+      const modal = document.getElementById('login-modal');
+      if (!user) { modal.style.display = 'flex'; return; }
+      modal.style.display = 'none';
 
-      if (user?.email) {
-        document.getElementById('p-name').textContent  = user.email.split('@')[0];
-        document.getElementById('p-email').textContent = user.email;
-        document.getElementById('auth-type').textContent = '✉️ Email/Password';
-      } else if (user?.isAnonymous) {
-        document.getElementById('p-name').textContent  = 'Anonymous хэрэглэгч';
-        document.getElementById('p-email').textContent = 'Нэвтрээгүй байна';
-        document.getElementById('auth-type').textContent = '👤 Anonymous';
-      }
-
-      if (user?.uid) {
-        document.getElementById('p-uid').textContent = 'UID: ' + user.uid.slice(0,8) + '...';
-        document.getElementById('sync-status').textContent = '✅ Холбогдсон';
-      }
+      const letter = user.email ? user.email[0].toUpperCase() : '?';
+      document.getElementById('p-avatar-sm').textContent  = letter;
+      document.getElementById('p-avatar-big').textContent = letter;
+      document.getElementById('p-name').textContent  = user.email ? user.email.split('@')[0] : 'Anonymous';
+      document.getElementById('p-email').textContent = user.email || 'Нэвтрэх email байхгүй';
+      document.getElementById('p-uid').textContent   = 'UID: ' + user.uid.slice(0,12) + '...';
 
       // Gemini key
-      const key = localStorage.getItem('jarvis_gemini_key');
+      const key = localStorage.getItem('jarvis_gemini_key') || '';
       const keyEl = document.getElementById('key-status');
       const clearBtn = document.getElementById('clear-key-btn');
-      if (key) {
-        keyEl.textContent = '✅ Тавигдсан (' + key.slice(0,8) + '...)';
-        clearBtn.style.display = 'block';
-      } else {
-        keyEl.textContent = '❌ Тавигдаагүй';
-        clearBtn.style.display = 'none';
-      }
+      keyEl.textContent = key ? '✅ ' + key.slice(0,8) + '...' : '❌ Тавигдаагүй';
+      clearBtn.style.display = key ? 'block' : 'none';
     }
 
-    firebase.auth().onAuthStateChanged(user => {
-      if (user) renderProfile(user);
+    _auth.onAuthStateChanged(renderUser);
+
+    // Enter → нэвтрэх
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && document.getElementById('login-modal').style.display !== 'none') doLogin();
     });
+
+    async function doLogin() {
+      const email = document.getElementById('lm-email').value.trim();
+      const pass  = document.getElementById('lm-pass').value;
+      const errEl = document.getElementById('lm-err');
+      const btn   = document.getElementById('lm-btn');
+      if (!email || !pass) { errEl.textContent = 'Email болон нууц үг оруулна уу'; return; }
+      btn.textContent = '...'; btn.disabled = true;
+      try {
+        await _auth.signInWithEmailAndPassword(email, pass);
+      } catch(e) {
+        btn.textContent = 'Нэвтрэх'; btn.disabled = false;
+        errEl.textContent =
+          e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential'
+            ? 'Email эсвэл нууц үг буруу'
+            : 'Алдаа: ' + e.message;
+      }
+    }
 
     function saveKey() {
       const val = document.getElementById('prof-key').value.trim();
       if (!val) return;
       localStorage.setItem('jarvis_gemini_key', val);
       document.getElementById('prof-key').value = '';
-      renderProfile(firebase.auth().currentUser);
+      renderUser(_auth.currentUser);
       showToast('✅ API key хадгалагдлаа');
     }
 
     function clearKey() {
       if (!confirm('Key устгах уу?')) return;
       localStorage.removeItem('jarvis_gemini_key');
-      renderProfile(firebase.auth().currentUser);
+      renderUser(_auth.currentUser);
       showToast('🗑 Key устгагдлаа');
     }
 
     function clearChat() {
-      if (!confirm('Чат түүхийг бүрмөсөн устгах уу?')) return;
+      if (!confirm('Чат түүхийг устгах уу?')) return;
       localStorage.removeItem('jarvis_chat_history');
-      if (window.DB?.saveChatHistory) window.DB.saveChatHistory([]);
       showToast('🗑 Чат цэвэрлэгдлээ');
-    }
-
-    function manualSync() {
-      if (window.DB?.syncDown) {
-        window.DB.syncDown();
-        showToast('☁️ Sync хийгдлээ');
-      }
     }
 
     function doSignOut() {
       if (!confirm('Гарах уу?')) return;
-      firebase.auth().signOut().then(() => {
-        window.location.href = 'index.html';
-      });
+      _auth.signOut();
     }
   </script>
 </body>
