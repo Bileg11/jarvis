@@ -88,6 +88,23 @@ function _initFirebase() {
       ref.set(log).catch(() => {});
     },
 
+    // Chat history — Firestore-д хадгална
+    saveChatHistory(history) {
+      const ref = _uref('meta/chat');
+      if (!ref) return;
+      ref.set({ history, updatedAt: new Date().toISOString() }).catch(() => {});
+    },
+
+    async loadChatHistory() {
+      const ref = _uref('meta/chat');
+      if (!ref) return null;
+      try {
+        const snap = await ref.get();
+        if (snap.exists) return snap.data().history || [];
+      } catch {}
+      return null;
+    },
+
     // Pull Firestore → localStorage → re-render UI
     async syncDown() {
       const uid = _uid();
@@ -129,6 +146,9 @@ function _initFirebase() {
             setTimeout(() => typeJarvis(message), 800);
           }
         }
+
+        // Chat history
+        if (typeof syncChatFromFirestore === 'function') syncChatFromFirestore();
 
         setSyncState('ok');
         DB.ready = true;

@@ -68,19 +68,34 @@ async function askGemini(d) {
 }
 
 // ── CHAT (интерактив) ─────────────────────────────────────────────
-const CHAT_KEY = 'jarvis_chat_history';
-const MAX_MSGS = 40; // хадгалах дээд хэмжээ (20 солилцоо)
+const CHAT_LS  = 'jarvis_chat_history';
+const MAX_MSGS = 40;
 
+// localStorage: offline cache
 function _loadHistory() {
-  try { return JSON.parse(localStorage.getItem(CHAT_KEY)) || []; }
+  try { return JSON.parse(localStorage.getItem(CHAT_LS)) || []; }
   catch { return []; }
 }
 function _saveHistory(h) {
-  localStorage.setItem(CHAT_KEY, JSON.stringify(h));
+  localStorage.setItem(CHAT_LS, JSON.stringify(h));
+  // Firestore-д ч хадгал (нэвтэрсэн бол)
+  if (window.DB?.saveChatHistory) window.DB.saveChatHistory(h);
 }
 
-// Хуудас ачаалахад localStorage-аас уншина
 let _chatHistory = _loadHistory();
+
+// Firestore-оос sync хийнэ (нэвтэрсний дараа дуудагдана)
+async function syncChatFromFirestore() {
+  if (!window.DB?.loadChatHistory) return;
+  const cloud = await window.DB.loadChatHistory();
+  if (!cloud || cloud.length === 0) return;
+  // Cloud дата илүү урт бол ашиглана
+  if (cloud.length >= _chatHistory.length) {
+    _chatHistory = cloud;
+    _saveHistory(_chatHistory);
+    if (typeof loadChatHistory === 'function') loadChatHistory();
+  }
+}
 
 async function sendChatMessage(userText) {
   const key = _getKey();
