@@ -667,6 +667,107 @@ body::before {
 }
 #toast.show { transform: translateX(-50%) translateY(0); }
 
+/* ── PROFILE PAGE ────────────────────────── */
+.profile-wrap {
+  padding: 0 16px 100px;
+}
+.profile-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+.profile-avatar-big {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--accent);
+  font-size: 30px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.profile-name  { font-size: 18px; font-weight: 600; }
+.profile-email { font-size: 13px; color: var(--text-2); }
+.profile-uid   { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+.profile-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  padding: 4px 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.ps-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ps-row:last-child { border-bottom: none; }
+.ps-label { font-size: 14px; color: var(--text-2); }
+.ps-val   { font-size: 13px; color: var(--text); }
+.ps-key-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.ps-input {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 13px;
+  outline: none;
+}
+.ps-btn {
+  background: rgba(124,92,252,0.2);
+  border: 1px solid rgba(124,92,252,0.4);
+  border-radius: 10px;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ps-btn-danger {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  font-size: 13px;
+  padding: 10px 16px;
+  cursor: pointer;
+  text-align: left;
+}
+.ps-action-btn {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+.ps-action-btn:last-child { border-bottom: none; }
+.ps-action-btn.danger { color: #ff6b6b; }
+.ps-action-btn:active { background: var(--bg3); }
+
 /* ── ACCOUNT MENU ────────────────────────── */
 .account-menu {
   position: fixed;

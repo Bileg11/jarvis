@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Профайл — Jarvis</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+  <header class="header">
+    <div>
+      <h1>Профайл</h1>
+      <div class="sub">Дансны мэдээлэл</div>
+    </div>
+    <div class="avatar" id="avatar-circle">?</div>
+  </header>
+
+  <div class="profile-wrap">
+
+    <!-- ACCOUNT CARD -->
+    <div class="profile-card" id="profile-card">
+      <div class="profile-avatar-big" id="p-avatar">?</div>
+      <div class="profile-name"  id="p-name">Уншиж байна...</div>
+      <div class="profile-email" id="p-email"></div>
+      <div class="profile-uid"   id="p-uid"></div>
+    </div>
+
+    <!-- GEMINI KEY -->
+    <div class="sec-label" style="margin-top:20px">JARVIS Chat тохиргоо</div>
+    <div class="profile-section">
+      <div class="ps-row">
+        <span class="ps-label">Gemini API Key</span>
+        <span class="ps-val" id="key-status">—</span>
+      </div>
+      <div class="ps-key-row">
+        <input id="prof-key" type="password" placeholder="Шинэ key оруулах..." class="ps-input">
+        <button onclick="saveKey()" class="ps-btn">Хадгал</button>
+      </div>
+      <button onclick="clearKey()" class="ps-btn-danger" id="clear-key-btn" style="display:none">🗑 Key устгах</button>
+    </div>
+
+    <!-- CLOUD SYNC -->
+    <div class="sec-label" style="margin-top:20px">Cloud sync</div>
+    <div class="profile-section">
+      <div class="ps-row">
+        <span class="ps-label">Firestore</span>
+        <span class="ps-val" id="sync-status">—</span>
+      </div>
+      <div class="ps-row">
+        <span class="ps-label">Нэвтрэх төрөл</span>
+        <span class="ps-val" id="auth-type">—</span>
+      </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="sec-label" style="margin-top:20px">Үйлдэл</div>
+    <div class="profile-section">
+      <button onclick="manualSync()" class="ps-action-btn">☁️ Одоо sync хийх</button>
+      <button onclick="clearChat()"  class="ps-action-btn">🗑 Чат түүх цэвэрлэх</button>
+      <button onclick="doSignOut()"  class="ps-action-btn danger">🚪 Гарах</button>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <a class="nav-item"        href="index.html">    <span class="ni">🏠</span><span>Нүүр</span></a>
+    <a class="nav-item"        href="tracker.html">  <span class="ni">📊</span><span>Tracker</span></a>
+    <a class="nav-item"        href="dashboard.html"><span class="ni">📈</span><span>Статс</span></a>
+    <a class="nav-item"        href="index.html">    <span class="ni" style="font-family:serif">汉</span><span>汉字</span></a>
+    <a class="nav-item active" href="profile.html">  <span class="ni">👤</span><span>Профайл</span></a>
+  </nav>
+
+  <div id="toast"></div>
+
+  <script src="firebase-config.js"></script>
+  <script>
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function renderProfile(user) {
+      const initials = user?.email ? user.email[0].toUpperCase() : '?';
+      document.getElementById('avatar-circle').textContent = initials;
+      document.getElementById('p-avatar').textContent      = initials;
+
+      if (user?.email) {
+        document.getElementById('p-name').textContent  = user.email.split('@')[0];
+        document.getElementById('p-email').textContent = user.email;
+        document.getElementById('auth-type').textContent = '✉️ Email/Password';
+      } else if (user?.isAnonymous) {
+        document.getElementById('p-name').textContent  = 'Anonymous хэрэглэгч';
+        document.getElementById('p-email').textContent = 'Нэвтрээгүй байна';
+        document.getElementById('auth-type').textContent = '👤 Anonymous';
+      }
+
+      if (user?.uid) {
+        document.getElementById('p-uid').textContent = 'UID: ' + user.uid.slice(0,8) + '...';
+        document.getElementById('sync-status').textContent = '✅ Холбогдсон';
+      }
+
+      // Gemini key
+      const key = localStorage.getItem('jarvis_gemini_key');
+      const keyEl = document.getElementById('key-status');
+      const clearBtn = document.getElementById('clear-key-btn');
+      if (key) {
+        keyEl.textContent = '✅ Тавигдсан (' + key.slice(0,8) + '...)';
+        clearBtn.style.display = 'block';
+      } else {
+        keyEl.textContent = '❌ Тавигдаагүй';
+        clearBtn.style.display = 'none';
+      }
+    }
+
+    firebase.auth().onAuthStateChanged(user => {
+      if (user) renderProfile(user);
+    });
+
+    function saveKey() {
+      const val = document.getElementById('prof-key').value.trim();
+      if (!val) return;
+      localStorage.setItem('jarvis_gemini_key', val);
+      document.getElementById('prof-key').value = '';
+      renderProfile(firebase.auth().currentUser);
+      showToast('✅ API key хадгалагдлаа');
+    }
+
+    function clearKey() {
+      if (!confirm('Key устгах уу?')) return;
+      localStorage.removeItem('jarvis_gemini_key');
+      renderProfile(firebase.auth().currentUser);
+      showToast('🗑 Key устгагдлаа');
+    }
+
+    function clearChat() {
+      if (!confirm('Чат түүхийг бүрмөсөн устгах уу?')) return;
+      localStorage.removeItem('jarvis_chat_history');
+      if (window.DB?.saveChatHistory) window.DB.saveChatHistory([]);
+      showToast('🗑 Чат цэвэрлэгдлээ');
+    }
+
+    function manualSync() {
+      if (window.DB?.syncDown) {
+        window.DB.syncDown();
+        showToast('☁️ Sync хийгдлээ');
+      }
+    }
+
+    function doSignOut() {
+      if (!confirm('Гарах уу?')) return;
+      firebase.auth().signOut().then(() => {
+        window.location.href = 'index.html';
+      });
+    }
+  </script>
+</body>
+</html>
