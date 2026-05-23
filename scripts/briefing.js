@@ -14,59 +14,60 @@ const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 initializeApp({ credential: cert(sa) });
 const db = getFirestore();
 
-// ── GEMINI — all on v1beta, smallest model last ───────────────────
-// gemini-1.5-flash and gemini-2.0-flash both live on v1beta
-const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-const KEY  = process.env.GEMINI_KEY;
+// ── CHATGPT (GitHub Models — gpt-4o-mini) ─────────────────────────
+const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
-const GEMINI_ENDPOINTS = [
-  `${BASE}/gemini-2.5-flash:generateContent?key=${KEY}`,
-  `${BASE}/gemini-2.0-flash:generateContent?key=${KEY}`,
-  `${BASE}/gemini-1.5-flash:generateContent?key=${KEY}`,
-  `${BASE}/gemini-1.5-flash-8b:generateContent?key=${KEY}`,
-];
+const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг. Зорилго: тогтмол фитнесс, LFS Shanghai бизнес, HSK4 шалгалт. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
 
-const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг. Зорилго: тогтмол фитнесс, өөрийн бизнес эхлүүлэх, HSK4 шалгалт өгөх, LFS Shanghai-г том болгох. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
-
-async function callGemini(prompt) {
-  for (const url of GEMINI_ENDPOINTS) {
-    const model = url.match(/models\/([^:]+)/)?.[1] || 'unknown';
-    console.log(`[Jarvis] Туршиж байна: ${model}`);
-
-    try {
-      const res = await fetch(url, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: `${SYSTEM}\n\n${prompt}` }] }],
-          generationConfig: { maxOutputTokens: 160, temperature: 0.85 }
-        })
-      });
-
-      if (res.status === 429) {
-        console.warn(`[Jarvis] ${model} → quota дүүрсэн, дараагийг туршина`);
-        continue;
-      }
-      if (!res.ok) {
-        const err = await res.text();
-        console.warn(`[Jarvis] ${model} → ${res.status}: ${err.slice(0, 120)}`);
-        continue;
-      }
-
-      const json = await res.json();
-      const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-      if (text) {
-        console.log(`[Jarvis] ${model} ✓`);
-        return text;
-      }
-    } catch (e) {
-      console.warn(`[Jarvis] ${model} → fetch алдаа: ${e.message}`);
-    }
+async function callAI(prompt) {
+  if (!GITHUB_TOKEN) {
+    console.warn('[Jarvis] GITHUB_TOKEN байхгүй — fallback ашиглана');
+    return null;
   }
-  return null; // бүх endpoint дүүрсэн → fallback message ашиглана
+
+  console.log('[Jarvis] gpt-4o-mini руу хүсэлт илгээж байна...');
+  try {
+    const res = await fetch(CHAT_URL, {
+      method:  'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${GITHUB_TOKEN}`
+      },
+      body: JSON.stringify({
+        model:       'gpt-4o-mini',
+        messages:    [
+          { role: 'system', content: SYSTEM },
+          { role: 'user',   content: prompt }
+        ],
+        max_tokens:  200,
+        temperature: 0.85
+      })
+    });
+
+    if (res.status === 429) {
+      console.warn('[Jarvis] gpt-4o-mini → rate limit');
+      return null;
+    }
+    if (!res.ok) {
+      const err = await res.text();
+      console.warn(`[Jarvis] gpt-4o-mini → ${res.status}: ${err.slice(0,120)}`);
+      return null;
+    }
+
+    const json = await res.json();
+    const text = json.choices?.[0]?.message?.content?.trim();
+    if (text) {
+      console.log('[Jarvis] gpt-4o-mini ✓');
+      return text;
+    }
+  } catch (e) {
+    console.warn('[Jarvis] fetch алдаа:', e.message);
+  }
+  return null;
 }
 
-// ── FALLBACK MESSAGE (AI байхгүй үед) ────────────────────────────
+// ── FALLBACK MESSAGE ──────────────────────────────────────────────
 function buildFallbackMessage(score, done, water, routine, exStreak, hzStreak) {
   const items = [];
   if (!routine.exercise) items.push('дасгал хий');
@@ -75,7 +76,7 @@ function buildFallbackMessage(score, done, water, routine, exStreak, hzStreak) {
   if (!routine.journal)  items.push('journal бич');
   if (water < 2000)      items.push(`ус ${2000-water}ml уу`);
 
-  const next = items[0] || 'бүгдийг гүйцэтгэлээ';
+  const next = items[0] || 'бүгдийг гүйцэтгэлээ 🎉';
   return `Score ${score}/100 | ${done}/4 routine. Дасгал ${exStreak}🔥 | 汉字 ${hzStreak}🔥. Дараагийн алхам: ${next}.`;
 }
 
@@ -108,9 +109,9 @@ async function main() {
     db.doc(`users/${uid}/meta/missions`).get(),
   ]);
 
-  const routine  = routineSnap.exists ? routineSnap.data()            : {};
-  const log      = logSnap.exists     ? logSnap.data()                : {};
-  const missions = missSnap.exists    ? (missSnap.data().list || [])  : [];
+  const routine  = routineSnap.exists ? routineSnap.data()           : {};
+  const log      = logSnap.exists     ? logSnap.data()               : {};
+  const missions = missSnap.exists    ? (missSnap.data().list || []) : [];
 
   const water   = log.water?.total_ml || 0;
   const sleep   = log.sleep?.hours    || null;
@@ -134,15 +135,14 @@ Score: ${score}/100 | Routine: ${done}/4
 Ус: ${water}ml/2000ml (${Math.round(water/20)}%) | Нойр: ${sleep ? sleep.toFixed(1)+'ц' : 'бүртгэгдээгүй'}
 Дасгал: ${routine.exercise?'✓':'✗'} (${exStreak}хоног🔥) | 汉字: ${routine.hanzi?'✓':'✗'} (${hzStreak}хоног🔥)
 Унших: ${routine.read?'✓':'✗'} | Journal: ${routine.journal?'✓':'✗'}
-LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK2: ${hanziM.val}/300 үг | Workout: ${fitness.val}/30`;
+LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK4: ${hanziM.val}/300 үг | Workout: ${fitness.val}/30`;
 
-  const aiMsg   = await callGemini(prompt);
+  const aiMsg   = await callAI(prompt);
   const message = aiMsg || buildFallbackMessage(score, done, water, routine, exStreak, hzStreak);
 
-  if (!aiMsg) console.log('[Jarvis] AI quota дүүрсэн — fallback message ашигласан');
+  if (!aiMsg) console.log('[Jarvis] AI хариу өгсөнгүй — fallback ашигласан');
   console.log(`[Jarvis] Message: ${message}`);
 
-  // Firestore-д бичнэ
   await db.doc(`users/${uid}/briefings/latest`).set({
     message,
     hour,
@@ -159,7 +159,7 @@ LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK2: ${hanziM.val}/300 үг | W
 
   if (token && chatId && token !== 'PASTE_HERE') {
     const icons = { 'Өглөө':'🌅', 'Өдөр':'☀️', 'Орой':'🌙' };
-    const label = aiMsg ? '' : ' _(AI quota)_';
+    const label = aiMsg ? '' : ' _(fallback)_';
     const text  = `${icons[timeLabel]} <b>JARVIS</b> · ${timeLabel}${label}\n\n${message}\n\n<i>Score: ${score}/100</i>`;
     const res   = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method:  'POST',

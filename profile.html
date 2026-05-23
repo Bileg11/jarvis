@@ -227,20 +227,6 @@
       <button onclick="clearChatKey()" class="ps-btn-danger" id="clear-chat-key-btn" style="display:none">🗑 Token устгах</button>
     </div>
 
-    <!-- GEMINI KEY (briefing only) -->
-    <div class="sec-label" style="margin-top:20px">🤖 Briefing (Gemini)</div>
-    <div class="profile-section">
-      <div class="ps-row">
-        <span class="ps-label">Gemini API Key</span>
-        <span class="ps-val" id="key-status">—</span>
-      </div>
-      <div style="font-size:11px;color:#888;margin-bottom:8px">aistudio.google.com → Get API key</div>
-      <div class="ps-key-row">
-        <input id="prof-key" type="password" placeholder="AIza..." class="ps-input">
-        <button onclick="saveKey()" class="ps-btn">Хадгал</button>
-      </div>
-      <button onclick="clearKey()" class="ps-btn-danger" id="clear-key-btn" style="display:none">🗑 Key устгах</button>
-    </div>
 
     <!-- ACTIONS -->
     <div class="sec-label" style="margin-top:20px">Үйлдэл</div>
@@ -294,17 +280,10 @@
       document.getElementById('p-email').textContent = user.email || 'Нэвтрэх email байхгүй';
       document.getElementById('p-uid').textContent   = 'UID: ' + user.uid.slice(0,12) + '...';
 
-      // GitHub chat key
+      // GitHub token (chat + briefing бүгд)
       const chatKey = localStorage.getItem('jarvis_chat_key') || '';
       document.getElementById('chat-key-status').textContent = chatKey ? '✅ ' + chatKey.slice(0,10) + '...' : '❌ Тавигдаагүй';
       document.getElementById('clear-chat-key-btn').style.display = chatKey ? 'block' : 'none';
-
-      // Gemini briefing key
-      const key = localStorage.getItem('jarvis_gemini_key') || '';
-      const keyEl = document.getElementById('key-status');
-      const clearBtn = document.getElementById('clear-key-btn');
-      keyEl.textContent = key ? '✅ ' + key.slice(0,8) + '...' : '❌ Тавигдаагүй';
-      clearBtn.style.display = key ? 'block' : 'none';
     }
 
     _auth.onAuthStateChanged(renderUser);
@@ -346,22 +325,6 @@
       localStorage.removeItem('jarvis_chat_key');
       renderUser(_auth.currentUser);
       showToast('🗑 Token устгагдлаа');
-    }
-
-    function saveKey() {
-      const val = document.getElementById('prof-key').value.trim();
-      if (!val) return;
-      localStorage.setItem('jarvis_gemini_key', val);
-      document.getElementById('prof-key').value = '';
-      renderUser(_auth.currentUser);
-      showToast('✅ Gemini key хадгалагдлаа');
-    }
-
-    function clearKey() {
-      if (!confirm('Gemini key устгах уу?')) return;
-      localStorage.removeItem('jarvis_gemini_key');
-      renderUser(_auth.currentUser);
-      showToast('🗑 Key устгагдлаа');
     }
 
     function clearChat() {

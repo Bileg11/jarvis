@@ -13,6 +13,8 @@ env:
 jobs:
   briefing:
     runs-on: ubuntu-latest
+    permissions:
+      models: read            # GitHub Models API-д хандах эрх
     steps:
       - uses: actions/checkout@v4
 
@@ -20,17 +22,14 @@ jobs:
         with:
           node-version: '24'
 
-      - name: Debug — verify script version
-        run: grep -n "GEMINI_ENDPOINTS" scripts/briefing.js | head -5
-
       - name: Install dependencies
         run: npm ci --prefix scripts
 
       - name: Run Jarvis briefing
         env:
-          GEMINI_KEY:                ${{ secrets.GEMINI_KEY }}
-          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          USER_UID:                  ${{ secrets.USER_UID }}
-          TELEGRAM_TOKEN:            ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID:          ${{ secrets.TELEGRAM_CHAT_ID }}
+          GITHUB_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                 ${{ secrets.USER_UID }}
+          TELEGRAM_TOKEN:           ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID:         ${{ secrets.TELEGRAM_CHAT_ID }}
         run: node scripts/briefing.js

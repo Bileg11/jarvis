@@ -861,10 +861,9 @@
     btn.classList.add('spin');
     setTimeout(() => btn.classList.remove('spin'), 600);
 
-    const key = localStorage.getItem('jarvis_gemini_key') || '';
+    const key = localStorage.getItem('jarvis_chat_key') || '';
     if (!key) { buildOverview(); return; }
 
-    // Build a short prompt for AI summary
     const vd     = dateKey(_viewDate);
     const orders = loadOrders().filter(o => o.date === vd);
     const fitC   = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
@@ -872,38 +871,35 @@
     const studyN = localStorage.getItem(NOTES_KEY('study', vd)) || '';
     const bizN   = localStorage.getItem(NOTES_KEY('business', vd)) || '';
 
-    const ctx = `Өнөөдрийн Life OS нэгтгэл:
+    const prompt = `Өнөөдрийн Life OS нэгтгэл:
 LFS захиалга: ${orders.length > 0 ? orders.map(o=>`${o.name}(${o.status})`).join(', ') : 'байхгүй'}
 Fitness: ${fitC.map(c=>LABELS_FIT[c]).join(', ') || 'тэмдэглэгдээгүй'}
-Хичээл: ${studyN.split('\n').filter(Boolean).length} мөр
-Бизнес тэмдэглэл: ${bizN.split('\n').filter(Boolean).length} мөр
+Хичээл: ${studyN.split('\n').filter(Boolean).length} мөр тэмдэглэл
+Бизнес: ${bizN.split('\n').filter(Boolean).length} мөр тэмдэглэл
 
-Дээрхийг 2-3 өгүүлбэрээр нэгтгэж, чухал зүйлийг онцолно уу.`;
+Дээрхийг 2-3 өгүүлбэрээр нэгтгэж, чухал зүйлийг онцолно уу. Монголоор хариулна уу.`;
 
     const el = document.getElementById('ov-text');
     el.textContent = '...';
 
-    const cacheKey = `jarvis_overview_cache_${vd}`;
-    const cached   = localStorage.getItem(cacheKey);
-    // Don't use cached version for manual refresh
     try {
-      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + key;
-      const res = await fetch(url, {
+      const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${key}`
+        },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: ctx }] }],
-          generationConfig: { maxOutputTokens: 200, temperature: 0.7 }
+          model:       'gpt-4o-mini',
+          messages:    [{ role: 'user', content: prompt }],
+          max_tokens:  200,
+          temperature: 0.7
         })
       });
       if (!res.ok) throw new Error(res.status);
       const json = await res.json();
-      const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-      if (text) {
-        el.textContent = text;
-        localStorage.setItem(cacheKey, text);
-        return;
-      }
+      const text = json.choices?.[0]?.message?.content?.trim() || '';
+      if (text) { el.textContent = text; return; }
     } catch {}
 
     buildOverview(); // fallback
