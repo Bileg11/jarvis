@@ -68,20 +68,30 @@ async function askGemini(d) {
 }
 
 // ── CHAT (интерактив) ─────────────────────────────────────────────
-// history: [{ role:'user'|'model', parts:[{text}] }]
-const _chatHistory = [];
+const CHAT_KEY = 'jarvis_chat_history';
+const MAX_MSGS = 40; // хадгалах дээд хэмжээ (20 солилцоо)
+
+function _loadHistory() {
+  try { return JSON.parse(localStorage.getItem(CHAT_KEY)) || []; }
+  catch { return []; }
+}
+function _saveHistory(h) {
+  localStorage.setItem(CHAT_KEY, JSON.stringify(h));
+}
+
+// Хуудас ачаалахад localStorage-аас уншина
+let _chatHistory = _loadHistory();
 
 async function sendChatMessage(userText) {
   const key = _getKey();
   if (!key) return '⚙️ Эхлээд Settings-д Gemini API key оруул.';
 
-  // Тухайн өдрийн context системийн мессежэд нэм
   const r     = (typeof loadRoutine === 'function')   ? loadRoutine()   : {};
   const tlog  = (typeof loadTodayLog === 'function')  ? loadTodayLog()  : {};
   const score = (typeof getDailyScore === 'function') ? getDailyScore() : 0;
   const water = tlog?.water?.total_ml || 0;
 
-  const ctx = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
+  const ctx        = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
   const systemText = `${JARVIS_SYSTEM}\n\n${ctx}`;
 
   _chatHistory.push({ role: 'user', parts: [{ text: userText }] });
@@ -99,26 +109,30 @@ async function sendChatMessage(userText) {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      if (err?.error?.code === 429) {
-        _chatHistory.pop();
-        return '⏳ API quota дүүрсэн. Хэсэг хүлээгээд дахин туршина уу.';
-      }
       _chatHistory.pop();
+      if (err?.error?.code === 429) return '⏳ API quota дүүрсэн. Хэсэг хүлээгээд дахин туршина уу.';
       return '❌ Алдаа гарлаа. Дахин туршина уу.';
     }
 
-    const json   = await res.json();
-    const reply  = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '...';
+    const json  = await res.json();
+    const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '...';
     _chatHistory.push({ role: 'model', parts: [{ text: reply }] });
 
-    // History-г 20 мессежтэй хязгаарлана (memory)
-    if (_chatHistory.length > 20) _chatHistory.splice(0, 2);
+    // Хэт урт болвол хуучин мессежийг устга
+    if (_chatHistory.length > MAX_MSGS) _chatHistory.splice(0, 2);
 
+    _saveHistory(_chatHistory); // localStorage-д хадгал
     return reply;
   } catch {
     _chatHistory.pop();
     return '❌ Холболт алдаатай байна.';
   }
+}
+
+// Chat history цэвэрлэх (гадаас дуудна)
+function clearChatHistory() {
+  _chatHistory = [];
+  _saveHistory([]);
 }
 
 // ── CONTEXT BUILDER ───────────────────────────────────────────────

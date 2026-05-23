@@ -123,11 +123,10 @@
           <div class="j-dot"></div>
           <span>JARVIS Chat</span>
         </div>
+        <button class="chat-clear" onclick="onClearChat()" title="Түүх устгах">🗑</button>
         <button class="chat-close" onclick="toggleChat()">✕</button>
       </div>
-      <div class="chat-messages" id="chat-messages">
-        <div class="chat-msg model">Сайн уу! Юу асуух вэ? 💬</div>
-      </div>
+      <div class="chat-messages" id="chat-messages"></div>
       <div class="chat-input-row">
         <input class="chat-input" id="chat-input" type="text"
                placeholder="Асуулт бич..." autocomplete="off"
@@ -152,8 +151,32 @@
       const open = overlay.classList.toggle('open');
       if (open) {
         checkKeyRow();
+        loadChatHistory();
         document.getElementById('chat-input').focus();
       }
+    }
+
+    // localStorage-аас түүх уншиж харуулна
+    function loadChatHistory() {
+      const el = document.getElementById('chat-messages');
+      el.innerHTML = '';
+      const history = _loadHistory();
+      if (history.length === 0) {
+        appendMsg('model', 'Сайн уу! Юу асуух вэ? 💬');
+        return;
+      }
+      history.forEach(m => {
+        const text = m.parts?.[0]?.text || '';
+        appendMsg(m.role === 'user' ? 'user' : 'model', text);
+      });
+    }
+
+    function onClearChat() {
+      if (!confirm('Чат түүхийг устгах уу?')) return;
+      clearChatHistory();
+      const el = document.getElementById('chat-messages');
+      el.innerHTML = '';
+      appendMsg('model', 'Түүх цэвэрлэгдлээ. Юу асуух вэ? 💬');
     }
 
     function checkKeyRow() {

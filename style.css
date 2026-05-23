@@ -704,7 +704,7 @@ body::before {
   font-weight: 600;
   font-size: 15px;
 }
-.chat-close {
+.chat-close, .chat-clear {
   background: none;
   border: none;
   color: var(--text-2);
@@ -712,6 +712,7 @@ body::before {
   cursor: pointer;
   padding: 4px 8px;
 }
+.chat-clear { margin-left: auto; }
 
 .chat-messages {
   flex: 1;
