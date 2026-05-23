@@ -113,8 +113,85 @@
   <div id="sync-bar" class="sync-bar" style="display:none"></div>
   <div id="toast"></div>
 
+  <!-- JARVIS CHAT -->
+  <button class="chat-fab" id="chat-fab" onclick="toggleChat()" title="JARVIS-тай чатлах">🤖</button>
+
+  <div class="chat-overlay" id="chat-overlay">
+    <div class="chat-box">
+      <div class="chat-header">
+        <div class="chat-title">
+          <div class="j-dot"></div>
+          <span>JARVIS Chat</span>
+        </div>
+        <button class="chat-close" onclick="toggleChat()">✕</button>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-msg model">Сайн уу! Юу асуух вэ? 💬</div>
+      </div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-input" type="text"
+               placeholder="Асуулт бич..." autocomplete="off"
+               onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="chat-send" onclick="sendChat()">➤</button>
+      </div>
+      <div class="chat-key-row" id="chat-key-row" style="display:none">
+        <input class="chat-key-input" id="chat-key-input" type="password"
+               placeholder="Gemini API key оруул...">
+        <button class="chat-key-save" onclick="saveGeminiKey()">Хадгал</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
   <script src="gemini.js"></script>
   <script src="firebase-config.js"></script>
+  <script>
+    // ── CHAT UI ───────────────────────────────────────────────────
+    function toggleChat() {
+      const overlay = document.getElementById('chat-overlay');
+      const open = overlay.classList.toggle('open');
+      if (open) {
+        checkKeyRow();
+        document.getElementById('chat-input').focus();
+      }
+    }
+
+    function checkKeyRow() {
+      const hasKey = !!localStorage.getItem('jarvis_gemini_key');
+      document.getElementById('chat-key-row').style.display = hasKey ? 'none' : 'flex';
+    }
+
+    function saveGeminiKey() {
+      const key = document.getElementById('chat-key-input').value.trim();
+      if (!key) return;
+      localStorage.setItem('jarvis_gemini_key', key);
+      document.getElementById('chat-key-input').value = '';
+      document.getElementById('chat-key-row').style.display = 'none';
+      appendMsg('model', '✅ Key хадгалагдлаа! Одоо асуугаарай.');
+    }
+
+    function appendMsg(role, text) {
+      const el = document.getElementById('chat-messages');
+      const div = document.createElement('div');
+      div.className = `chat-msg ${role}`;
+      div.textContent = text;
+      el.appendChild(div);
+      el.scrollTop = el.scrollHeight;
+      return div;
+    }
+
+    async function sendChat() {
+      const input = document.getElementById('chat-input');
+      const text  = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      appendMsg('user', text);
+
+      const typing = appendMsg('model', '...');
+      const reply  = await sendChatMessage(text);
+      typing.textContent = reply;
+    }
+  </script>
 </body>
 </html>
