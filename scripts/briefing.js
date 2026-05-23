@@ -14,24 +14,27 @@ const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 initializeApp({ credential: cert(sa) });
 const db = getFirestore();
 
-// ── GEMINI — dual endpoint with auto-fallback ─────────────────────
-// Primary:  gemini-2.0-flash on v1beta (latest model)
-// Fallback: gemini-1.5-flash on v1     (stable, confirmed working)
+// ── GEMINI — all on v1beta, smallest model last ───────────────────
+// gemini-1.5-flash and gemini-2.0-flash both live on v1beta
+const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const KEY  = process.env.GEMINI_KEY;
+
 const GEMINI_ENDPOINTS = [
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_KEY}`,
-  `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_KEY}`,
+  `${BASE}/gemini-2.0-flash:generateContent?key=${KEY}`,
+  `${BASE}/gemini-1.5-flash:generateContent?key=${KEY}`,
+  `${BASE}/gemini-1.5-flash-8b:generateContent?key=${KEY}`,
 ];
 
 const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг. Зорилго: LFS Shanghai платформ, 汉字 HSK2, фитнесс. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
 
 async function callGemini(prompt) {
   for (const url of GEMINI_ENDPOINTS) {
-    const modelName = url.match(/models\/([^:]+)/)?.[1] || 'unknown';
-    console.log(`[Jarvis] Gemini туршиж байна: ${modelName}`);
+    const model = url.match(/models\/([^:]+)/)?.[1] || 'unknown';
+    console.log(`[Jarvis] Туршиж байна: ${model}`);
 
     try {
       const res = await fetch(url, {
-        method: 'POST',
+        method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: `${SYSTEM}\n\n${prompt}` }] }],
@@ -39,23 +42,40 @@ async function callGemini(prompt) {
         })
       });
 
+      if (res.status === 429) {
+        console.warn(`[Jarvis] ${model} → quota дүүрсэн, дараагийг туршина`);
+        continue;
+      }
       if (!res.ok) {
-        const errText = await res.text();
-        console.warn(`[Jarvis] ${modelName} алдаа ${res.status}: ${errText.slice(0, 120)}`);
-        continue; // try next endpoint
+        const err = await res.text();
+        console.warn(`[Jarvis] ${model} → ${res.status}: ${err.slice(0, 120)}`);
+        continue;
       }
 
       const json = await res.json();
       const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
       if (text) {
-        console.log(`[Jarvis] ${modelName} ✓`);
+        console.log(`[Jarvis] ${model} ✓`);
         return text;
       }
     } catch (e) {
-      console.warn(`[Jarvis] ${modelName} fetch алдаа: ${e.message}`);
+      console.warn(`[Jarvis] ${model} → fetch алдаа: ${e.message}`);
     }
   }
-  throw new Error('Бүх Gemini endpoint амжилтгүй боллоо');
+  return null; // бүх endpoint дүүрсэн → fallback message ашиглана
+}
+
+// ── FALLBACK MESSAGE (AI байхгүй үед) ────────────────────────────
+function buildFallbackMessage(score, done, water, routine, exStreak, hzStreak) {
+  const items = [];
+  if (!routine.exercise) items.push('дасгал хий');
+  if (!routine.hanzi)    items.push('汉字 давта');
+  if (!routine.read)     items.push('ном унши');
+  if (!routine.journal)  items.push('journal бич');
+  if (water < 2000)      items.push(`ус ${2000-water}ml уу`);
+
+  const next = items[0] || 'бүгдийг гүйцэтгэлээ';
+  return `Score ${score}/100 | ${done}/4 routine. Дасгал ${exStreak}🔥 | 汉字 ${hzStreak}🔥. Дараагийн алхам: ${next}.`;
 }
 
 // ── STREAK HELPER ─────────────────────────────────────────────────
@@ -81,7 +101,6 @@ async function main() {
 
   console.log(`[Jarvis] ${today} ${hour}:00 (${timeLabel}) — briefing эхлэв`);
 
-  // Firestore-оос өгөгдөл уншина
   const [routineSnap, logSnap, missSnap] = await Promise.all([
     db.doc(`users/${uid}/routines/${today}`).get(),
     db.doc(`users/${uid}/logs/${today}`).get(),
@@ -103,13 +122,11 @@ async function main() {
   const hanziM  = missions.find(m => m.id === 'hanziw')  || { val:0, max:300 };
   const fitness = missions.find(m => m.id === 'fitness') || { val:0, max:30  };
 
-  // Streak (зэрэгцээ уншина)
   const [exStreak, hzStreak] = await Promise.all([
     getStreak(uid, 'exercise'),
     getStreak(uid, 'hanzi'),
   ]);
 
-  // Gemini prompt
   const prompt =
 `[${timeLabel} ${hour}:00 | ${DAYS[now.getDay()]}]
 Score: ${score}/100 | Routine: ${done}/4
@@ -118,34 +135,38 @@ Score: ${score}/100 | Routine: ${done}/4
 Унших: ${routine.read?'✓':'✗'} | Journal: ${routine.journal?'✓':'✗'}
 LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK2: ${hanziM.val}/300 үг | Workout: ${fitness.val}/30`;
 
-  const message = await callGemini(prompt);
+  const aiMsg   = await callGemini(prompt);
+  const message = aiMsg || buildFallbackMessage(score, done, water, routine, exStreak, hzStreak);
 
-  console.log(`[Jarvis] AI message: ${message}`);
+  if (!aiMsg) console.log('[Jarvis] AI quota дүүрсэн — fallback message ашигласан');
+  console.log(`[Jarvis] Message: ${message}`);
 
-  // Firestore-д бичнэ — PWA уншина
+  // Firestore-д бичнэ
   await db.doc(`users/${uid}/briefings/latest`).set({
     message,
     hour,
     date:      today,
     score,
+    ai:        !!aiMsg,
     timestamp: new Date().toISOString()
   });
-  console.log('[Jarvis] Firestore-д бичигдлээ ✓');
+  console.log('[Jarvis] Firestore ✓');
 
-  // ── TELEGRAM ────────────────────────────────────────────────────
+  // ── TELEGRAM ─────────────────────────────────────────────────
   const token  = process.env.TELEGRAM_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
   if (token && chatId && token !== 'PASTE_HERE') {
     const icons = { 'Өглөө':'🌅', 'Өдөр':'☀️', 'Орой':'🌙' };
-    const text  = `${icons[timeLabel]} <b>JARVIS</b> · ${timeLabel}\n\n${message}\n\n<i>Score: ${score}/100</i>`;
+    const label = aiMsg ? '' : ' _(AI quota)_';
+    const text  = `${icons[timeLabel]} <b>JARVIS</b> · ${timeLabel}${label}\n\n${message}\n\n<i>Score: ${score}/100</i>`;
     const res   = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
     });
     const data = await res.json();
-    if (data.ok) console.log('[Jarvis] Telegram илгээгдлээ ✓');
+    if (data.ok) console.log('[Jarvis] Telegram ✓');
     else         console.error('[Jarvis] Telegram алдаа:', data.description);
   }
 }
