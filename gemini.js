@@ -119,28 +119,27 @@ async function sendChatMessage(userText) {
     const timer = setTimeout(() => ctrl.abort(), 15000);
 
     try {
+      // system_instruction-г эхний user мессежэд оруулна (бүх model дэмждэг)
+      const contents = [
+        { role: 'user',  parts: [{ text: systemText }] },
+        { role: 'model', parts: [{ text: 'Ойлголоо, бэлэн байна.' }] },
+        ..._chatHistory
+      ];
+
       const res = await fetch(url, {
         method: 'POST',
         signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemText }] },
-          contents: _chatHistory,
+          contents,
           generationConfig: { maxOutputTokens: 300, temperature: 0.9 }
         })
       });
       clearTimeout(timer);
 
-      if (res.status === 429) { continue; } // quota → дараагийн model
-      if (res.status === 403) { continue; } // эрх байхгүй → дараагийн model
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        if (err?.error?.code === 400) {
-          _chatHistory.pop();
-          return '❌ API key буруу байна. Профайл → key шалгана уу.';
-        }
-        continue;
-      }
+      if (res.status === 429) { continue; }
+      if (res.status === 403) { continue; }
+      if (!res.ok) { continue; }
 
       const json  = await res.json();
       const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '...';
