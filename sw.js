@@ -1,4 +1,4 @@
-const CACHE = 'jarvis-v5';
+const CACHE = 'jarvis-v6';
 const ASSETS = ['./', './index.html', './tracker.html', './profile.html', './style.css', './app.js', './gemini.js', './firebase-config.js', './manifest.json'];
 
 self.addEventListener('install', e => {
