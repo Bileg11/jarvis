@@ -1,5 +1,5 @@
-const CACHE = 'jarvis-v2';
-const ASSETS = ['./', './index.html', './style.css', './app.js', './manifest.json'];
+const CACHE = 'jarvis-v5';
+const ASSETS = ['./', './index.html', './tracker.html', './profile.html', './style.css', './app.js', './gemini.js', './firebase-config.js', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
