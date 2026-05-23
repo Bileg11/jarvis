@@ -488,6 +488,50 @@
     }
     .chip:hover { border-color: var(--accent); color: var(--accent); }
     .chip:active { transform: scale(0.96); }
+
+    /* ── INTEL BUTTON ────────────────────────────────────────────── */
+    .intel-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: linear-gradient(135deg, rgba(0,198,255,0.1), rgba(124,92,252,0.1));
+      border: 1px solid rgba(0,198,255,0.35);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 11px;
+      border-radius: 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .intel-btn:hover { background: rgba(0,198,255,0.15); border-color: var(--accent); }
+    .intel-btn:active { transform: scale(0.96); }
+    .intel-btn:disabled { opacity: 0.45; cursor: default; transform: none; }
+    .intel-btn .pulse {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      animation: blink 1s infinite;
+      flex-shrink: 0;
+    }
+    @keyframes scanning {
+      0%   { content: '🔍'; }
+      33%  { content: '📡'; }
+      66%  { content: '⚡'; }
+      100% { content: '🔍'; }
+    }
+
+    /* Intel chip in empty state */
+    .chip.intel {
+      background: linear-gradient(135deg, rgba(0,198,255,0.08), rgba(124,92,252,0.08));
+      border-color: rgba(0,198,255,0.3);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .chip.intel:hover { background: rgba(0,198,255,0.15); border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -505,7 +549,10 @@
       </div>
     </div>
     <div class="header-right">
-      <button class="clear-btn" onclick="onClear()">🗑 Цэвэрлэх</button>
+      <button class="intel-btn" id="intel-btn" onclick="scanIntel()">
+        <span class="pulse"></span>🌐 Intel
+      </button>
+      <button class="clear-btn" onclick="onClear()">🗑</button>
     </div>
   </header>
 
@@ -540,6 +587,7 @@
 
   <script src="app.js"></script>
   <script src="gemini.js"></script>
+  <script src="intel.js"></script>
   <script src="firebase-config.js"></script>
   <script>
     const msgsEl  = document.getElementById('messages');
@@ -592,6 +640,7 @@
           <div class="empty-title">JARVIS бэлэн байна</div>
           <div class="empty-sub">Дасгал, бизнес, хятад хэл —<br>юу ч асуугаарай</div>
           <div class="quick-chips">
+            <div class="chip intel" onclick="scanIntel()">🌐 Шуурхай дэлхийн мэдээ</div>
             <div class="chip" onclick="quickSend(this)">📊 Өнөөдрийн байдал</div>
             <div class="chip" onclick="quickSend(this)">💪 Дасгалын зөвлөгөө</div>
             <div class="chip" onclick="quickSend(this)">🏢 LFS стратеги</div>
@@ -684,6 +733,26 @@
     function autoResize(el) {
       el.style.height = 'auto';
       el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+    }
+
+    // ── INTEL SCAN ────────────────────────────────────────────────
+    async function scanIntel() {
+      const btn = document.getElementById('intel-btn');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="pulse"></span>⏳ Хайж байна...'; }
+
+      const typing = addTyping();
+
+      const reply = await fetchLiveIntel(progress => {
+        if (typing && typing.querySelector('.bubble')) {
+          typing.querySelector('.bubble').innerHTML =
+            `<div style="font-size:12px;color:#64748b">${progress}</div>`;
+        }
+      });
+
+      typing.remove();
+      addMsg('bot', reply);
+
+      if (btn) { btn.disabled = false; btn.innerHTML = '<span class="pulse"></span>🌐 Intel'; }
     }
 
     // ── CLEAR ─────────────────────────────────────────────────────
