@@ -10,6 +10,7 @@ const FIREBASE_CONFIG = {
 firebase.initializeApp(FIREBASE_CONFIG);
 
 const _db   = firebase.firestore();
+_db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
 const _auth = firebase.auth();
 
 function _uid()  { return _auth.currentUser?.uid || null; }

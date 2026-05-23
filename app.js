@@ -582,17 +582,20 @@ function generateJarvisMessage() {
   return `Score: ${score}/100. Routine: ${done}/4. Ус: ${water}ml/${WATER_GOAL}ml. LFS: ${lfs?.val ?? 0}/${lfs?.max}.`;
 }
 
+let _typeTimer = null;
 function typeJarvis(text) {
   const el = document.getElementById('j-msg');
   if (!el) return;
+  if (_typeTimer) { clearInterval(_typeTimer); _typeTimer = null; }
   el.innerHTML = '';
   const cursor = document.createElement('span');
   cursor.className = 'j-cursor';
   el.appendChild(cursor);
   let i = 0;
-  const t = setInterval(() => {
+  _typeTimer = setInterval(() => {
+    if (!cursor.parentNode) { clearInterval(_typeTimer); _typeTimer = null; return; }
     if (i >= text.length) {
-      clearInterval(t);
+      clearInterval(_typeTimer); _typeTimer = null;
       setTimeout(() => cursor.remove(), 2000);
       return;
     }
