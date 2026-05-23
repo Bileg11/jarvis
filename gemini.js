@@ -2,7 +2,7 @@
 // API key: app дотор Settings → тавьсны дараа localStorage-д хадгалагдана
 // GitHub-д хэзээ ч upload хийгдэхгүй — аюулгүй
 
-const BASE_URL = 'https://generativelanguage.googleapis.com/v1/models';
+const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // localStorage-аас key уншина (app дотроос тавьдаг)
 function _getKey() {
