@@ -250,19 +250,26 @@
     </div>
 
 
-    <!-- TAVILY KEY (Intel Hub) -->
-    <div class="sec-label" style="margin-top:20px">🌐 Intel Hub (Tavily)</div>
+    <!-- INTEL TRIGGER TOKEN -->
+    <div class="sec-label" style="margin-top:20px">🌐 Intel Hub</div>
     <div class="profile-section">
       <div class="ps-row">
-        <span class="ps-label">Tavily API Key</span>
-        <span class="ps-val" id="tavily-key-status">—</span>
+        <span class="ps-label">Trigger Token</span>
+        <span class="ps-val" id="trigger-status">—</span>
       </div>
-      <div style="font-size:11px;color:#888;margin-bottom:8px">tavily.com → Sign up → Free tier (1000 хайлт/сар)</div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">
+        github.com → Settings → Developer settings → Fine-grained tokens<br>
+        → Repository: <b>jarvis</b> → Actions: <b>Read &amp; Write</b> → Generate
+      </div>
       <div class="ps-key-row">
-        <input id="prof-tavily-key" type="password" placeholder="tvly-..." class="ps-input">
-        <button onclick="saveTavilyKey()" class="ps-btn">Хадгал</button>
+        <input id="prof-trigger" type="password" placeholder="github_pat_..." class="ps-input">
+        <button onclick="saveTriggerToken()" class="ps-btn">Хадгал</button>
       </div>
-      <button onclick="clearTavilyKey()" class="ps-btn-danger" id="clear-tavily-key-btn" style="display:none">🗑 Key устгах</button>
+      <button onclick="clearTriggerToken()" class="ps-btn-danger" id="clear-trigger-btn" style="display:none">🗑 Устгах</button>
+      <div style="font-size:11px;color:#555;margin-top:8px">
+        ✅ TAVILY_KEY болон GITHUB_TOKEN нь GitHub Secrets-т хадгалагдана<br>
+        ✅ Энэ token зөвхөн workflow эхлүүлнэ — code/secret унших эрхгүй
+      </div>
     </div>
 
     <!-- ACTIONS -->
@@ -328,10 +335,10 @@
       document.getElementById('chat-key-status').textContent = chatKey ? '✅ ' + chatKey.slice(0,10) + '...' : '❌ Тавигдаагүй';
       document.getElementById('clear-chat-key-btn').style.display = chatKey ? 'block' : 'none';
 
-      // Tavily key
-      const tavKey = localStorage.getItem('jarvis_tavily_key') || '';
-      document.getElementById('tavily-key-status').textContent = tavKey ? '✅ ' + tavKey.slice(0,10) + '...' : '❌ Тавигдаагүй';
-      document.getElementById('clear-tavily-key-btn').style.display = tavKey ? 'block' : 'none';
+      // Intel trigger token
+      const triggerKey = localStorage.getItem('jarvis_gh_trigger') || '';
+      document.getElementById('trigger-status').textContent = triggerKey ? '✅ ' + triggerKey.slice(0,12) + '...' : '❌ Тавигдаагүй';
+      document.getElementById('clear-trigger-btn').style.display = triggerKey ? 'block' : 'none';
     }
 
     _auth.onAuthStateChanged(renderUser);
@@ -416,20 +423,20 @@
       showToast('🗑 Token устгагдлаа');
     }
 
-    function saveTavilyKey() {
-      const val = document.getElementById('prof-tavily-key').value.trim();
+    function saveTriggerToken() {
+      const val = document.getElementById('prof-trigger').value.trim();
       if (!val) return;
-      localStorage.setItem('jarvis_tavily_key', val);
-      document.getElementById('prof-tavily-key').value = '';
+      localStorage.setItem('jarvis_gh_trigger', val);
+      document.getElementById('prof-trigger').value = '';
       renderUser(_auth.currentUser);
-      showToast('✅ Tavily key хадгалагдлаа');
+      showToast('✅ Trigger Token хадгалагдлаа');
     }
 
-    function clearTavilyKey() {
-      if (!confirm('Tavily key устгах уу?')) return;
-      localStorage.removeItem('jarvis_tavily_key');
+    function clearTriggerToken() {
+      if (!confirm('Trigger Token устгах уу?')) return;
+      localStorage.removeItem('jarvis_gh_trigger');
       renderUser(_auth.currentUser);
-      showToast('🗑 Tavily key устгагдлаа');
+      showToast('🗑 Token устгагдлаа');
     }
 
     function clearChat() {

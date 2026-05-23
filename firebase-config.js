@@ -14,6 +14,8 @@ _db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
 const _auth = firebase.auth();
 
 function _uid()  { return _auth.currentUser?.uid || null; }
+window._uid = _uid;
+window._db  = _db;
 function _uref(path) {
   const uid = _uid();
   return uid ? _db.doc(`users/${uid}/${path}`) : null;

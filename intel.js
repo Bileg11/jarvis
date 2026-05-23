@@ -1,184 +1,117 @@
 // ── JARVIS INTEL HUB ──────────────────────────────────────────────
-// Proxy mode (санал болгосон): CF Worker /intel → бүх key серверт
-// Direct mode (нөөц): Tavily + GitHub Models шууд (key localStorage-д)
+// GitHub Actions (TAVILY_KEY + GITHUB_TOKEN secrets) → Firestore → Апп
+// Апп тал зөвхөн "trigger token" хадгална (workflow scope л байхад хангалттай)
 
-const TAVILY_URL = 'https://api.tavily.com/search';
+const INTEL_REPO     = 'Bileg11/jarvis';
+const INTEL_WORKFLOW = 'intel.yml';
 
-function _getTavilyKey()  { return localStorage.getItem('jarvis_tavily_key') || ''; }
-function _getProxyUrlI()  { return (localStorage.getItem('jarvis_proxy_url') || '').replace(/\/$/, ''); }
+function _getTriggerToken() { return localStorage.getItem('jarvis_gh_trigger') || ''; }
+function _getProxyUrl()     { return (localStorage.getItem('jarvis_proxy_url') || '').replace(/\/$/, ''); }
 
-// ── ХАЙЛТЫН ЗАПРОСУУД ─────────────────────────────────────────────
-const INTEL_QUERIES = [
-  {
-    id:    'ai_tech',
-    label: '🤖 AI & Технологи',
-    query: 'new AI model release artificial intelligence breakthrough technology news today 2026'
-  },
-  {
-    id:    'social',
-    label: '🐦 X / Нийгмийн медиа',
-    query: 'Elon Musk Donald Trump X Twitter post statement announcement today'
-  },
-  {
-    id:    'world',
-    label: '🌍 Дэлхий & Монгол',
-    query: 'Mongolia world breaking news major events today 2026'
-  }
-];
-
-// ── НЭГЖ ХАЙЛТ ────────────────────────────────────────────────────
-async function _tavilySearch(query, key) {
-  const ctrl  = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 12000);
+// ── FIRESTORE-ООС УНШИНА ──────────────────────────────────────────
+async function loadIntelFromFirestore() {
+  if (!window.DB?._db && !window._db) return null;
+  const db  = window._db || window.DB?._db;
+  const uid = window._uid?.() || firebase?.auth?.()?.currentUser?.uid;
+  if (!uid || !db) return null;
   try {
-    const res = await fetch(TAVILY_URL, {
-      method:  'POST',
-      signal:  ctrl.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        api_key:         key,
-        query,
-        search_depth:    'basic',
-        include_answer:  true,
-        max_results:     5,
-        include_domains: [],
-        exclude_domains: []
-      })
-    });
-    clearTimeout(timer);
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      console.warn('[Intel] Tavily', res.status, e?.detail || '');
-      return null;
-    }
-    return await res.json();
-  } catch (e) {
-    clearTimeout(timer);
-    if (e.name !== 'AbortError') console.warn('[Intel] fetch:', e.message);
-    return null;
-  }
+    const snap = await db.doc(`users/${uid}/intel/latest`).get();
+    if (!snap.exists) return null;
+    return snap.data();
+  } catch { return null; }
 }
 
-// ── БРИФИНГ PROMPT ҮҮСГЭХ ─────────────────────────────────────────
-function _buildIntelPrompt(results) {
-  const ts = new Date().toLocaleString('mn-MN', {
-    timeZone: 'Asia/Shanghai',
-    month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
+// ── GITHUB ACTIONS TRIGGER ────────────────────────────────────────
+async function triggerIntelWorkflow(token) {
+  const res = await fetch(
+    `https://api.github.com/repos/${INTEL_REPO}/actions/workflows/${INTEL_WORKFLOW}/dispatches`,
+    {
+      method:  'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept':        'application/vnd.github+json',
+        'Content-Type':  'application/json'
+      },
+      body: JSON.stringify({ ref: 'main' })
+    }
+  );
+  return res.status === 204; // 204 = амжилтай
+}
+
+// ── FIRESTORE POLL (workflow дуустал хүлээнэ) ─────────────────────
+async function pollFirestoreForIntel(maxWait = 90000) {
+  const start    = Date.now();
+  const today    = new Date().toISOString().split('T')[0];
+  const interval = 4000;
+
+  return new Promise(resolve => {
+    const check = async () => {
+      const data = await loadIntelFromFirestore();
+      if (data?.date === today && data?.message) {
+        resolve(data.message);
+        return;
+      }
+      if (Date.now() - start > maxWait) {
+        resolve(null);
+        return;
+      }
+      setTimeout(check, interval);
+    };
+    setTimeout(check, interval);
   });
-
-  let raw = `Хайлтын үр дүн [${ts} Шанхайн цаг]:\n\n`;
-
-  results.forEach((r, i) => {
-    const q = INTEL_QUERIES[i];
-    raw += `--- ${q.label} ---\n`;
-    if (!r) { raw += '(Хайлт амжилтгүй болсон)\n\n'; return; }
-
-    if (r.answer) raw += `AI нэгтгэл: ${r.answer}\n\n`;
-
-    (r.results || []).slice(0, 4).forEach(item => {
-      const snippet = (item.content || '').slice(0, 300).replace(/\s+/g, ' ');
-      raw += `• [${item.title}]\n  ${snippet}\n  🔗 ${item.url}\n\n`;
-    });
-  });
-
-  return `${raw}
-──────────────────────────────────────────
-Дээрх бодит цагийн хайлтын мэдээллийг "JARVIS Intel Брифинг" болгон Монгол хэлээр нэгтгэ.
-
-Дараах бүтэцтэй байлга:
-
-🤖 **AI & ТЕХНОЛОГИ**
-• [Шинэ model/tool/update байвал онцол, байхгүй бол "Өнөөдөр том мэдэгдэл гараагүй" гэ]
-
-🐦 **ELON & TRUMP — X МЭДЭГДЭЛ**
-• [Тэдний чухал мэдэгдэл, post, statement]
-
-🌍 **ДЭЛХИЙ & МОНГОЛ**
-• [Том үйл явдал, Монгол мэдээ байвал онцол]
-
-⚡ **JARVIS ЗӨВЛӨГӨӨ**
-[Энэ мэдээллийн дагуу Билэгт нэг практик зөвлөгөө]
-
-Товч, конкрет, хэрэгтэй мэдлэгт л анхаар. Хоосон мэдэгдэл бүү бич.`;
 }
 
 // ── ҮНДСЭН ФУНКЦ ──────────────────────────────────────────────────
 async function fetchLiveIntel(onProgress) {
-  const proxyUrl  = _getProxyUrlI();
-  const tavilyKey = _getTavilyKey();
-  const chatKey   = localStorage.getItem('jarvis_chat_key') || '';
 
-  // ── PROXY горим ─────────────────────────────────────────────────
+  // 1. Firestore-д өнөөдрийн intel байвал шууд буцаана (cache)
+  if (onProgress) onProgress('📂 Хадгалагдсан мэдээ шалгаж байна...');
+  const cached = await loadIntelFromFirestore();
+  if (cached?.date === new Date().toISOString().split('T')[0] && cached?.message) {
+    return cached.message + '\n\n_⏱ Кэш: ' + new Date(cached.timestamp).toLocaleTimeString('mn-MN', {hour:'2-digit',minute:'2-digit'}) + '_';
+  }
+
+  // 2. Proxy горим (Cloudflare Worker)
+  const proxyUrl = _getProxyUrl();
   if (proxyUrl) {
-    if (onProgress) onProgress('🔍 Дэлхийн мэдээ хайж байна...');
-    const ctrl  = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 30000);
+    if (onProgress) onProgress('🔍 Proxy-гаар хайж байна...');
     try {
       const res = await fetch(`${proxyUrl}/intel`, {
-        method: 'POST', signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ts: Date.now() })
       });
-      clearTimeout(timer);
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        return `❌ Proxy алдаа ${res.status}: ${err.error || ''}`;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.message) return data.message;
       }
-      const data = await res.json();
-      return data.message || '...';
-    } catch (e) {
-      clearTimeout(timer);
-      if (e.name === 'AbortError') return '⏳ Proxy хариу удаашрав (30с). Дахин туршина уу.';
-      return '❌ Proxy холболтын алдаа: ' + e.message;
+    } catch {}
+  }
+
+  // 3. GitHub Actions trigger горим
+  const triggerToken = _getTriggerToken();
+  if (triggerToken) {
+    if (onProgress) onProgress('⚡ GitHub Actions эхлүүлж байна...');
+    const triggered = await triggerIntelWorkflow(triggerToken);
+
+    if (!triggered) {
+      return '❌ Workflow trigger амжилтгүй. Профайл → Trigger Token шалгана уу.';
     }
+
+    if (onProgress) onProgress('⏳ Actions ажиллаж байна (~30с)... Firestore хүлээж байна');
+
+    const result = await pollFirestoreForIntel(90000);
+    if (result) return result;
+    return '⏳ Actions дуусаагүй байна. 1 минутын дараа дахин дарна уу.';
   }
 
-  // ── DIRECT горим (нөөц, key байвал) ────────────────────────────
-  if (!tavilyKey) {
-    return `⚙️ **Тохиргоо хэрэгтэй байна.**
+  // 4. Тохиргоо байхгүй
+  return `⚙️ **Intel Hub тохируулаагүй байна.**
 
-Профайл → 🔧 Proxy URL оруул (санал болгосон)
-  → Бүх key серверт хадгалагдана, phone-д юу ч байхгүй
+Профайл → **⚡ Trigger Token** оруул:
+→ github.com → Settings → Developer settings
+→ Personal access tokens → Fine-grained
+→ Repository: jarvis → Permission: Actions = Read & Write
+→ Token-г Профайл хуудсанд хадгал
 
-Эсвэл Профайл → 🌐 Intel Hub → Tavily key оруул`;
-  }
-  if (!chatKey) return '⚙️ Профайл → GitHub Token оруулна уу.';
-
-  if (onProgress) onProgress('🔍 Дэлхийн мэдээ хайж байна...');
-
-  const rawResults = await Promise.all(
-    INTEL_QUERIES.map(q => _tavilySearch(q.query, tavilyKey))
-  );
-
-  const successCount = rawResults.filter(Boolean).length;
-  if (successCount === 0) return '❌ Хайлт бүхэлдээ амжилтгүй. Tavily key шалгана уу.';
-
-  if (onProgress) onProgress(`📡 ${successCount}/3 хайлт амжилтай — AI нэгтгэж байна...`);
-
-  const prompt = _buildIntelPrompt(rawResults);
-  const ctrl   = new AbortController();
-  const timer  = setTimeout(() => ctrl.abort(), 25000);
-
-  try {
-    const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
-      method: 'POST', signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${chatKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Та JARVIS — Билэгийн хувийн AI туслах. Монголоор хариулна уу.' },
-          { role: 'user',   content: prompt }
-        ],
-        max_tokens: 1200, temperature: 0.6
-      })
-    });
-    clearTimeout(timer);
-    if (!res.ok) return `❌ AI алдаа ${res.status}.`;
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() || '...';
-  } catch (e) {
-    clearTimeout(timer);
-    if (e.name === 'AbortError') return '⏳ AI хариу удаашрав. Дахин туршина уу.';
-    return '❌ Холболтын алдаа: ' + e.message;
-  }
+*(Энэ token зөвхөн workflow эхлүүлдэг — code эсвэл secret унших эрхгүй)*`;
 }

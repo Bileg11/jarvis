@@ -1,0 +1,32 @@
+name: Jarvis Intel Hub
+
+on:
+  schedule:
+    - cron: '0 23 * * *'   # 07:00 Shanghai — өглөөний брифинг
+  workflow_dispatch:         # Апп-аас гараар дуудах боломж
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  intel:
+    runs-on: ubuntu-latest
+    permissions:
+      models: read            # GitHub Models (gpt-4o-mini)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci --prefix scripts
+
+      - name: Run Intel Worker
+        env:
+          GITHUB_TOKEN:             ${{ secrets.GITHUB_TOKEN }}
+          TAVILY_KEY:               ${{ secrets.TAVILY_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                 ${{ secrets.USER_UID }}
+        run: node scripts/intel-worker.js
