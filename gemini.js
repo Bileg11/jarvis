@@ -97,9 +97,11 @@ async function syncChatFromFirestore() {
   }
 }
 
+const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+
 async function sendChatMessage(userText) {
   const key = _getKey();
-  if (!key) return '⚙️ Эхлээд Settings-д Gemini API key оруул.';
+  if (!key) return '⚙️ Профайл хуудсаас Gemini API key оруулна уу.';
 
   const r     = (typeof loadRoutine === 'function')   ? loadRoutine()   : {};
   const tlog  = (typeof loadTodayLog === 'function')  ? loadTodayLog()  : {};
@@ -111,43 +113,50 @@ async function sendChatMessage(userText) {
 
   _chatHistory.push({ role: 'user', parts: [{ text: userText }] });
 
-  // 15 секундын timeout
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 15000);
+  for (const model of CHAT_MODELS) {
+    const url  = `${BASE_URL}/${model}:generateContent?key=${key}`;
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 15000);
 
-  try {
-    const res = await fetch(_getUrl(), {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemText }] },
-        contents: _chatHistory,
-        generationConfig: { maxOutputTokens: 300, temperature: 0.9 }
-      })
-    });
-    clearTimeout(timer);
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemText }] },
+          contents: _chatHistory,
+          generationConfig: { maxOutputTokens: 300, temperature: 0.9 }
+        })
+      });
+      clearTimeout(timer);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      _chatHistory.pop();
-      if (err?.error?.code === 429) return '⏳ Quota дүүрсэн. Хэсэг хүлээгээд дахин туршина уу.';
-      return `❌ Алдаа ${res.status}. Дахин туршина уу.`;
+      if (res.status === 429) { continue; } // quota → дараагийн model
+      if (res.status === 403) { continue; } // эрх байхгүй → дараагийн model
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        if (err?.error?.code === 400) {
+          _chatHistory.pop();
+          return '❌ API key буруу байна. Профайл → key шалгана уу.';
+        }
+        continue;
+      }
+
+      const json  = await res.json();
+      const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '...';
+      _chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+      if (_chatHistory.length > MAX_MSGS) _chatHistory.splice(0, 2);
+      _saveHistory(_chatHistory);
+      return reply;
+
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') continue;
     }
-
-    const json  = await res.json();
-    const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '...';
-    _chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-
-    if (_chatHistory.length > MAX_MSGS) _chatHistory.splice(0, 2);
-    _saveHistory(_chatHistory);
-    return reply;
-  } catch (e) {
-    clearTimeout(timer);
-    _chatHistory.pop();
-    if (e.name === 'AbortError') return '⏱️ Хариу удааширлаа (15с). Дахин туршина уу.';
-    return '❌ Холболт алдаатай байна.';
   }
+
+  _chatHistory.pop();
+  return '⏳ Бүх model хариу өгөхгүй байна. API key шалгаад дахин туршина уу.';
 }
 
 // Chat history цэвэрлэх (гадаас дуудна)
