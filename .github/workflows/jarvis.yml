@@ -17,6 +17,9 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Debug — verify script version
+        run: grep -n "GEMINI_ENDPOINTS\|gemini-" scripts/briefing.js
+
       - name: Install dependencies
         run: npm ci --prefix scripts
 

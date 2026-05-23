@@ -14,26 +14,48 @@ const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 initializeApp({ credential: cert(sa) });
 const db = getFirestore();
 
-// ── GEMINI ────────────────────────────────────────────────────────
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_KEY}`;
+// ── GEMINI — dual endpoint with auto-fallback ─────────────────────
+// Primary:  gemini-2.0-flash on v1beta (latest model)
+// Fallback: gemini-1.5-flash on v1     (stable, confirmed working)
+const GEMINI_ENDPOINTS = [
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_KEY}`,
+  `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_KEY}`,
+];
 
 const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг. Зорилго: LFS Shanghai платформ, 汉字 HSK2, фитнесс. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
 
 async function callGemini(prompt) {
-  const res = await fetch(GEMINI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: `${SYSTEM}\n\n${prompt}` }] }],
-      generationConfig: { maxOutputTokens: 160, temperature: 0.85 }
-    })
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Gemini ${res.status}: ${err}`);
+  for (const url of GEMINI_ENDPOINTS) {
+    const modelName = url.match(/models\/([^:]+)/)?.[1] || 'unknown';
+    console.log(`[Jarvis] Gemini туршиж байна: ${modelName}`);
+
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: `${SYSTEM}\n\n${prompt}` }] }],
+          generationConfig: { maxOutputTokens: 160, temperature: 0.85 }
+        })
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.warn(`[Jarvis] ${modelName} алдаа ${res.status}: ${errText.slice(0, 120)}`);
+        continue; // try next endpoint
+      }
+
+      const json = await res.json();
+      const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (text) {
+        console.log(`[Jarvis] ${modelName} ✓`);
+        return text;
+      }
+    } catch (e) {
+      console.warn(`[Jarvis] ${modelName} fetch алдаа: ${e.message}`);
+    }
   }
-  const json = await res.json();
-  return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  throw new Error('Бүх Gemini endpoint амжилтгүй боллоо');
 }
 
 // ── STREAK HELPER ─────────────────────────────────────────────────
@@ -96,8 +118,7 @@ Score: ${score}/100 | Routine: ${done}/4
 Унших: ${routine.read?'✓':'✗'} | Journal: ${routine.journal?'✓':'✗'}
 LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK2: ${hanziM.val}/300 үг | Workout: ${fitness.val}/30`;
 
-  const result  = await callGemini(prompt);
-  const message = result;
+  const message = await callGemini(prompt);
 
   console.log(`[Jarvis] AI message: ${message}`);
 
