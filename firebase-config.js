@@ -112,17 +112,34 @@ window.DB = {
     return null;
   },
 
+  // ── SETTINGS (API key-үүд бүх төхөөрөмж дээр sync) ──────────────
+  saveSettings(patch) {
+    const ref = _uref('meta/settings');
+    if (!ref) return;
+    ref.set({ ...patch, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+  },
+
+  async loadSettings() {
+    const ref = _uref('meta/settings');
+    if (!ref) return null;
+    try {
+      const snap = await ref.get();
+      return snap.exists ? snap.data() : null;
+    } catch { return null; }
+  },
+
   async syncDown() {
     const uid = _uid();
     if (!uid) return;
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const [rSnap, mSnap, lSnap, bSnap] = await Promise.all([
+      const [rSnap, mSnap, lSnap, bSnap, sSnap] = await Promise.all([
         _db.doc(`users/${uid}/routines/${today}`).get(),
         _db.doc(`users/${uid}/meta/missions`).get(),
         _db.doc(`users/${uid}/logs/${today}`).get(),
         _db.doc(`users/${uid}/briefings/latest`).get(),
+        _db.doc(`users/${uid}/meta/settings`).get(),   // ← шинэ
       ]);
 
       if (rSnap.exists) {
@@ -149,6 +166,28 @@ window.DB = {
         const ageHours = (Date.now() - new Date(timestamp)) / 3600000;
         if (ageHours < 7 && message && typeof typeJarvis === 'function') {
           setTimeout(() => typeJarvis(message), 800);
+        }
+      }
+
+      // ── Settings sync: Firestore → localStorage ─────────────────
+      if (sSnap.exists) {
+        const s = sSnap.data();
+        const MAP = {
+          chat_key:    'jarvis_chat_key',
+          gh_trigger:  'jarvis_gh_trigger',
+          proxy_url:   'jarvis_proxy_url',
+          core_memory: 'jarvis_core_memory',
+        };
+        let changed = false;
+        Object.entries(MAP).forEach(([field, lsKey]) => {
+          if (s[field]) {
+            localStorage.setItem(lsKey, s[field]);
+            changed = true;
+          }
+        });
+        // Profile хуудас дээр байвал дахин render хийнэ
+        if (changed && typeof renderUser === 'function') {
+          renderUser(_auth.currentUser);
         }
       }
 

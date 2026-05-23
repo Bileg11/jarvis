@@ -370,9 +370,10 @@
       const val = document.getElementById('prof-proxy').value.trim().replace(/\/$/, '');
       if (!val) return;
       localStorage.setItem('jarvis_proxy_url', val);
+      window.DB?.saveSettings({ proxy_url: val });
       document.getElementById('prof-proxy').value = '';
       renderUser(_auth.currentUser);
-      showToast('✅ Proxy URL хадгалагдлаа');
+      showToast('✅ Proxy URL хадгалагдлаа ☁️');
     }
 
     async function testProxy() {
@@ -411,9 +412,10 @@
       const val = document.getElementById('prof-chat-key').value.trim();
       if (!val) return;
       localStorage.setItem('jarvis_chat_key', val);
+      window.DB?.saveSettings({ chat_key: val });
       document.getElementById('prof-chat-key').value = '';
       renderUser(_auth.currentUser);
-      showToast('✅ GitHub Token хадгалагдлаа');
+      showToast('✅ GitHub Token хадгалагдлаа ☁️');
     }
 
     function clearChatKey() {
@@ -427,9 +429,10 @@
       const val = document.getElementById('prof-trigger').value.trim();
       if (!val) return;
       localStorage.setItem('jarvis_gh_trigger', val);
+      window.DB?.saveSettings({ gh_trigger: val });
       document.getElementById('prof-trigger').value = '';
       renderUser(_auth.currentUser);
-      showToast('✅ Trigger Token хадгалагдлаа');
+      showToast('✅ Trigger Token хадгалагдлаа ☁️');
     }
 
     function clearTriggerToken() {
