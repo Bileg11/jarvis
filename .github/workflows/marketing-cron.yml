@@ -1,17 +1,21 @@
 name: LFS Ghost Marketer Cron
 
 on:
-  schedule:
-    - cron: '0 4 * * *'
-    - cron: '0 10 * * *'
   workflow_dispatch:
 
 jobs:
   post-generator:
     runs-on: ubuntu-latest
     env:
-      # GitHub-ийн шинэ дүрэмд зориулж Node.js 24-ийг шууд идэвхжүүлэх үүднээс нэмэв
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      # Энд код доторх нэрсүүдтэйгээ яг таарууллаа:
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+      TELEGRAM_ID: ${{ secrets.TELEGRAM_ID }}
+      INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+      ACCESS_TOKEN_META: ${{ secrets.ACCESS_TOKEN_META }}
+      FACEBOOK_ID: ${{ secrets.FACEBOOK_ID }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,11 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 24  # Энийг 24 болгож шинэчлэв
+          node-version: '24'
 
       - name: Run Ghost Marketer Script
-        env:
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_ID }}
         run: node ghost-poster.js
