@@ -23,8 +23,14 @@
       <div class="sub" id="date-txt"></div>
       <div class="score-chip" id="score-chip"></div>
     </div>
-    <div class="avatar">Б</div>
+    <div class="avatar" id="avatar-btn" onclick="toggleAccountMenu()">Б</div>
   </header>
+
+  <!-- ACCOUNT MENU -->
+  <div id="account-menu" class="account-menu" style="display:none">
+    <div id="account-info" class="account-info">Уншиж байна...</div>
+    <button onclick="if(confirm('Гарах уу?')){window.signOut?.();document.getElementById('account-menu').style.display='none'}">🚪 Гарах</button>
+  </div>
 
   <!-- JARVIS PANEL -->
   <div class="jarvis-panel">
@@ -145,6 +151,26 @@
   <script src="gemini.js"></script>
   <script src="firebase-config.js"></script>
   <script>
+    // ── ACCOUNT MENU ─────────────────────────────────────────────
+    function toggleAccountMenu() {
+      const menu = document.getElementById('account-menu');
+      const open = menu.style.display === 'none';
+      menu.style.display = open ? 'block' : 'none';
+      if (open) {
+        const user = firebase.auth().currentUser;
+        const info = document.getElementById('account-info');
+        if (user?.email) info.textContent = '✉️ ' + user.email;
+        else if (user?.isAnonymous) info.textContent = '👤 Anonymous (нэвтрээгүй)';
+        else info.textContent = '—';
+      }
+    }
+    document.addEventListener('click', e => {
+      const menu = document.getElementById('account-menu');
+      if (menu && !menu.contains(e.target) && e.target.id !== 'avatar-btn') {
+        menu.style.display = 'none';
+      }
+    });
+
     // ── CHAT UI ───────────────────────────────────────────────────
     function toggleChat() {
       const overlay = document.getElementById('chat-overlay');
