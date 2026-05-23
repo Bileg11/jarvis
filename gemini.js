@@ -87,7 +87,7 @@ async function syncChatFromFirestore() {
   }
 }
 
-const CHAT_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
 async function sendChatMessage(userText) {
   const key = _getKey();
