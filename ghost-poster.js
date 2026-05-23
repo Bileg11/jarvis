@@ -5,14 +5,12 @@ const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const sampleKeywords = ["shanghai skyline", "shanghai street food", "china cyberpunk city", "shanghai traditional garden"];
 const randomKeyword = sampleKeywords[Math.floor(Math.random() * sampleKeywords.length)];
 
-// Систем өөрөө форматыг санамсаргүйгээр сонгоно: SINGLE (1 зураг), CAROUSEL (3 зураг), VIDEO (Рээлс бичлэг)
 const formats = ["SINGLE", "CAROUSEL", "VIDEO"];
 const chosenFormat = formats[Math.floor(Math.random() * formats.length)];
 
-// 1. Pexels-ээс зураг хайх
 async function fetchPexelsImages(keyword, count = 1) {
     try {
-        const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(keyword)}&per_page=${count}`, {
+        const response = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(keyword)}&per_page=count`, {
             headers: { 'Authorization': PEXELS_API_KEY }
         });
         const data = await response.json();
@@ -25,7 +23,6 @@ async function fetchPexelsImages(keyword, count = 1) {
     }
 }
 
-// 2. Pexels-ээс видео хайх
 async function fetchPexelsVideo(keyword) {
     try {
         const response = await fetch(`https://api.api.pexels.com/videos/search?query=${encodeURIComponent(keyword)}&per_page=1`, {
@@ -33,7 +30,7 @@ async function fetchPexelsVideo(keyword) {
         });
         const data = await response.json();
         if (data.videos && data.videos.length > 0) {
-            return data.videos[0].video_files[0].link; // Видеоны шууд линк
+            return data.videos[0].video_files[0].link;
         }
         return null;
     } catch (e) {
@@ -41,7 +38,6 @@ async function fetchPexelsVideo(keyword) {
     }
 }
 
-// 3. Телеграм руу Медиаг нь шидэх
 async function sendMedia(format, mediaUrls, videoUrl) {
     let url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/`;
     let body = { chat_id: TELEGRAM_CHAT_ID };
@@ -53,7 +49,6 @@ async function sendMedia(format, mediaUrls, videoUrl) {
         url += "sendVideo";
         body.video = videoUrl;
     } else {
-        // CAROUSEL буюу олон зураг илгээх бүтэц
         url += "sendMediaGroup";
         body.media = mediaUrls.map(link => ({ type: "photo", media: link }));
     }
@@ -65,11 +60,10 @@ async function sendMedia(format, mediaUrls, videoUrl) {
             body: JSON.stringify(body)
         });
     } catch (error) {
-        console.error("Медиа илгээхэд алдаа гарлаа:", error);
+        console.error("Error sending media:", error);
     }
 }
 
-// 4. Доороос нь постын текст болон шийдвэрлэх товчлуурыг залгаж илгээх
 async function sendDraftText(format, keyword) {
     const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
     
@@ -77,13 +71,18 @@ async function sendDraftText(format, keyword) {
                      `📊 *Контентын формат:* \`${format}\`\n` +
                      `🔍 *Хайсан трэнд сэдэв:* \`${keyword}\`\n\n` +
                      `📝 *Постны текст:* "Амьдралдаа заавал үзэх ёстой Шанхай хотын гайхамшиг. LFS Shanghai-тай хамт дурсамжаа бүтээгээрэй. ✈️"\n\n` +
-                     `👇 Доорх товчлуураар сошиал руу нийтлэх эсэхийг шийднэ үү.`;
+                     `👇 Доорх товчлууруудаар сошиал руу нийтлэх эсэхийг шийднэ үү.`;
 
+    // Энд 4 товчлуурыг бүгдийг нь гоёор өрж тавилаа
     const keyboard = {
         inline_keyboard: [
             [
                 { text: "✅ Постлох", callback_data: "approve_post" },
                 { text: "❌ Алгасах", callback_data: "reject_post" }
+            ],
+            [
+                { text: "🔄 Зураг солих", callback_data: "change_image" },
+                { text: "✍️ Текст солих", callback_data: "change_text" }
             ]
         ]
     };
@@ -99,28 +98,25 @@ async function sendDraftText(format, keyword) {
                 reply_markup: keyboard
             })
         });
-        console.log("Драфт текстийг товчлууртай нь амжилттай явууллаа!");
+        console.log("Draft text sent!");
     } catch (e) {
-        console.error("Текст илгээхэд алдаа гарлаа:", e);
+        console.error("Error sending text:", e);
     }
 }
 
 async function start() {
-    console.log(`🚀 Мотор ажиллаж байна. Сонгосон формат: ${chosenFormat}`);
-    
     let mediaUrls = [];
     let videoUrl = null;
 
     if (chosenFormat === "CAROUSEL") {
-        mediaUrls = await fetchPexelsImages(randomKeyword, 3); // 3 зураг татна
+        mediaUrls = await fetchPexelsImages(randomKeyword, 3);
     } else if (chosenFormat === "VIDEO") {
         videoUrl = await fetchPexelsVideo(randomKeyword);
-        if (!videoUrl) mediaUrls = await fetchPexelsImages(randomKeyword, 1); // Видео олдохгүй бол зураг руу шилжинэ
+        if (!videoUrl) mediaUrls = await fetchPexelsImages(randomKeyword, 1);
     } else {
-        mediaUrls = await fetchPexelsImages(randomKeyword, 1); // 1 зураг татна
+        mediaUrls = await fetchPexelsImages(randomKeyword, 1);
     }
 
-    // Телеграм руу медиа болон текстийг дарааллаар нь шидэх
     await sendMedia(chosenFormat, mediaUrls, videoUrl);
     await sendDraftText(chosenFormat, randomKeyword);
 }
