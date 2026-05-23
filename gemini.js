@@ -13,19 +13,15 @@ function _getUrl(model = 'gemini-2.5-flash') {
   return `${BASE_URL}/${model}:generateContent?key=${_getKey()}`;
 }
 
-const JARVIS_SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах.
-Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг.
-Зорилго 1: Тогтмол фитнесс — биеийн байдал, хүч чадал сайжруулах.
-Зорилго 2: Өөрийн бизнес эхлүүлэх — LFS Shanghai-г бодит, том бизнес болгох.
-Зорилго 3: HSK4 шалгалт өгөх — хятад хэлний дунд шатны мэдлэг.
-Зорилго 4: LFS Shanghai өргөжүүлэх — Монгол аялагчдад үйлчлэх том платформ.
+const JARVIS_SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Монголоор хариул. Өөрийгөө танилцуулах хэрэггүй.
+
+Билэгийн тухай: 18 настай, Шанхайд амьдардаг. Зорилго: фитнесс, LFS Shanghai бизнес, HSK4 шалгалт.
 
 Дүрэм:
-- Монголоор хариулна
-- 2-3 өгүүлбэр — утасны дэлгэцэнд багтах
-- Тодорхой тоо заавал ашигла (ml, %, streak, score)
-- Шулуун, мэргэжлийн, урам зориг өгөхүйц
-- Хамгийн ойрын нэг үйлдлийг санал болго`;
+- Шууд асуултад хариул — "Би бол JARVIS" гэж эхлэхгүй
+- Товч, тодорхой — 3-4 өгүүлбэр хүртэл
+- Практик зөвлөгөө өг
+- Монгол хэлээр`;
 
 // ── BRIEFING (автомат, өдөрт 3 удаа) ────────────────────────────
 function _buildPrompt(d) {
@@ -132,7 +128,7 @@ async function sendChatMessage(userText) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents,
-          generationConfig: { maxOutputTokens: 300, temperature: 0.9 }
+          generationConfig: { maxOutputTokens: 600, temperature: 0.9 }
         })
       });
       clearTimeout(timer);
