@@ -87,7 +87,7 @@ async function syncChatFromFirestore() {
   }
 }
 
-const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
+const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash-8b'];
 
 async function sendChatMessage(userText) {
   const key = _getKey();
@@ -132,6 +132,10 @@ async function sendChatMessage(userText) {
         const errBody = await res.json().catch(() => ({}));
         const msg = errBody?.error?.message || '';
         console.warn(`[Chat] ${model} ${res.status}:`, msg);
+        if (res.status === 429) {
+          _chatHistory.pop();
+          return '⏳ Quota дүүрсэн байна. 1 минут хүлээгээд дахин туршина уу.';
+        }
         lastErr = `${res.status}: ${msg.slice(0, 80)}`;
         continue;
       }
