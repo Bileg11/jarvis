@@ -103,6 +103,7 @@ async function sendChatMessage(userText) {
 
   _chatHistory.push({ role: 'user', parts: [{ text: userText }] });
 
+  let lastErr = '';
   for (const model of CHAT_MODELS) {
     const url  = `${BASE_URL}/${model}:generateContent?key=${key}`;
     const ctrl = new AbortController();
@@ -127,9 +128,13 @@ async function sendChatMessage(userText) {
       });
       clearTimeout(timer);
 
-      if (res.status === 429) { continue; }
-      if (res.status === 403) { continue; }
-      if (!res.ok) { continue; }
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const msg = errBody?.error?.message || '';
+        console.warn(`[Chat] ${model} ${res.status}:`, msg);
+        lastErr = `${res.status}: ${msg.slice(0, 80)}`;
+        continue;
+      }
 
       const json  = await res.json();
       const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '...';
@@ -140,12 +145,13 @@ async function sendChatMessage(userText) {
 
     } catch (e) {
       clearTimeout(timer);
-      if (e.name === 'AbortError') continue;
+      lastErr = e.name;
+      console.warn(`[Chat] ${model} catch:`, e.message);
     }
   }
 
   _chatHistory.pop();
-  return '⏳ Бүх model хариу өгөхгүй байна. API key шалгаад дахин туршина уу.';
+  return `❌ ${lastErr || 'Алдаа'}. Профайл → API key шалгана уу.`;
 }
 
 // Chat history цэвэрлэх (гадаас дуудна)
