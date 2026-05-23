@@ -8,6 +8,136 @@
   <title>Профайл — Jarvis</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <style>
+    /* ── CORE MEMORY CARD ──────────────────────────────────────── */
+    .mem-card {
+      margin: 20px 0 0;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(240,180,41,0.25);
+      background: linear-gradient(135deg, rgba(240,180,41,0.04) 0%, rgba(0,0,0,0) 100%);
+    }
+
+    .mem-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      transition: background 0.15s;
+    }
+    .mem-header:active { background: rgba(240,180,41,0.05); }
+
+    .mem-title-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mem-icon {
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .mem-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #f0b429;
+      letter-spacing: 0.3px;
+    }
+
+    .mem-sub {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .mem-chevron {
+      font-size: 18px;
+      color: #f0b429;
+      transition: transform 0.25s;
+      display: inline-block;
+    }
+    .mem-card.open .mem-chevron { transform: rotate(180deg); }
+
+    .mem-body {
+      display: none;
+      padding: 0 14px 14px;
+      animation: slideDown 0.2s ease;
+    }
+    .mem-card.open .mem-body { display: block; }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .mem-hint {
+      font-size: 12px;
+      color: #666;
+      line-height: 1.6;
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      border-left: 3px solid rgba(240,180,41,0.4);
+    }
+    .mem-hint strong { color: #f0b429; }
+
+    .mem-textarea {
+      width: 100%;
+      min-height: 180px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      color: #e2e8f0;
+      font-size: 13.5px;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
+      line-height: 1.65;
+      padding: 12px 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .mem-textarea:focus {
+      border-color: rgba(240,180,41,0.5);
+      box-shadow: 0 0 0 3px rgba(240,180,41,0.07);
+    }
+    .mem-textarea::placeholder { color: #3a3a3a; }
+
+    .mem-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .mem-count {
+      font-size: 11px;
+      color: #555;
+    }
+
+    .mem-save-btn {
+      background: linear-gradient(135deg, #b7791f 0%, #f0b429 100%);
+      color: #000;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 12px rgba(240,180,41,0.25);
+    }
+    .mem-save-btn:active { transform: scale(0.96); }
+    .mem-save-btn.saved {
+      background: #166534;
+      color: #fff;
+      box-shadow: none;
+    }
+  </style>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -42,6 +172,44 @@
       <div class="profile-name"  id="p-name">Уншиж байна...</div>
       <div class="profile-email" id="p-email"></div>
       <div class="profile-uid"   id="p-uid"></div>
+    </div>
+
+    <!-- ══ CORE MEMORY ══════════════════════════════════════════ -->
+    <div class="mem-card" id="mem-card">
+
+      <div class="mem-header" onclick="toggleMem()">
+        <div class="mem-title-row">
+          <span class="mem-icon">🧠</span>
+          <div>
+            <div class="mem-title">JARVIS Core Memory</div>
+            <div class="mem-sub" id="mem-sub">Уншиж байна...</div>
+          </div>
+        </div>
+        <span class="mem-chevron" id="mem-chevron">▾</span>
+      </div>
+
+      <div class="mem-body" id="mem-body">
+        <div class="mem-hint">
+          Энд өөрийнхөө хувийн мэдээлэл, зорилго, номны тэмдэглэл, HSK үгсийн жагсаалт гэх мэтийг бич.
+          JARVIS <strong>бүх чатад</strong> энэ контекстийг ашиглана.
+        </div>
+        <textarea
+          id="mem-text"
+          class="mem-textarea"
+          placeholder="Жишээ нь:
+• Би 18 настай, Шанхайд амьдардаг, өдөр бүр 6:30-д босдог
+• LFS Shanghai: Монгол аялагчдад зориулсан VIP платформ, одоо 12 хэрэглэгч
+• HSK4 шалгалт 2025 оны 10-р сарын 20-нд
+• Атомик зуршлын гол санаа: 1% дэвшил өдөр бүр
+• Цээжлэх үгс: 难道(nándào), 究竟(jiūjìng), 既然(jìrán)..."
+          oninput="onMemInput()"
+        ></textarea>
+        <div class="mem-footer">
+          <span class="mem-count" id="mem-count">0 тэмдэгт</span>
+          <button class="mem-save-btn" id="mem-save-btn" onclick="saveMemory()">💾 Санах ойг хадгалах</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- CHAT KEY (GitHub PAT → gpt-4o-mini) -->
@@ -88,7 +256,7 @@
     <a class="nav-item"        href="index.html">    <span class="ni">🏠</span><span>Нүүр</span></a>
     <a class="nav-item"        href="tracker.html">  <span class="ni">📊</span><span>Tracker</span></a>
     <a class="nav-item"        href="dashboard.html"><span class="ni">📈</span><span>Статс</span></a>
-    <a class="nav-item"        href="index.html">    <span class="ni" style="font-family:serif">汉</span><span>汉字</span></a>
+    <a class="nav-item"        href="chat.html">     <span class="ni">🤖</span><span>Chat</span></a>
     <a class="nav-item active" href="profile.html">  <span class="ni">👤</span><span>Профайл</span></a>
   </nav>
 
@@ -206,6 +374,78 @@
       if (!confirm('Гарах уу?')) return;
       _auth.signOut();
     }
+
+    // ── CORE MEMORY ───────────────────────────────────────────────
+    function initMemory() {
+      const text = localStorage.getItem('jarvis_core_memory') || '';
+      const ta   = document.getElementById('mem-text');
+      ta.value   = text;
+      updateMemCount();
+      updateMemSub();
+    }
+
+    function toggleMem() {
+      document.getElementById('mem-card').classList.toggle('open');
+    }
+
+    function onMemInput() {
+      updateMemCount();
+      // saved state-г reset хийнэ
+      const btn = document.getElementById('mem-save-btn');
+      btn.classList.remove('saved');
+      btn.textContent = '💾 Санах ойг хадгалах';
+    }
+
+    function updateMemCount() {
+      const len = (document.getElementById('mem-text').value || '').length;
+      document.getElementById('mem-count').textContent =
+        len > 0 ? len.toLocaleString() + ' тэмдэгт' : '0 тэмдэгт';
+    }
+
+    function updateMemSub() {
+      const text  = localStorage.getItem('jarvis_core_memory') || '';
+      const saved = localStorage.getItem('jarvis_core_memory_saved');
+      const el    = document.getElementById('mem-sub');
+      if (!text.trim()) {
+        el.textContent = 'Одоогоор хоосон';
+        return;
+      }
+      const len   = text.length;
+      const lines = text.split('\n').filter(l => l.trim()).length;
+      let timeStr = '';
+      if (saved) {
+        const diff = Date.now() - parseInt(saved);
+        const m = Math.floor(diff / 60000);
+        const h = Math.floor(diff / 3600000);
+        const d = Math.floor(diff / 86400000);
+        timeStr = d > 0 ? ` · ${d}өдрийн өмнө` : h > 0 ? ` · ${h}цагийн өмнө` : m > 0 ? ` · ${m}мин өмнө` : ' · Саяхан';
+      }
+      el.textContent = `${lines} мөр · ${len.toLocaleString()} тэмдэгт${timeStr}`;
+    }
+
+    function saveMemory() {
+      const text = document.getElementById('mem-text').value;
+      localStorage.setItem('jarvis_core_memory', text);
+      localStorage.setItem('jarvis_core_memory_saved', Date.now().toString());
+      updateMemSub();
+      const btn = document.getElementById('mem-save-btn');
+      btn.classList.add('saved');
+      btn.textContent = '✅ Хадгалагдлаа!';
+      showToast('🧠 Санах ой хадгалагдлаа');
+      setTimeout(() => {
+        btn.classList.remove('saved');
+        btn.textContent = '💾 Санах ойг хадгалах';
+      }, 2500);
+    }
+
+    // нэвтэрсний дараа memory-г уншина
+    const _origRenderUser = renderUser;
+    window.addEventListener('DOMContentLoaded', () => {
+      initMemory();
+      // Memory section default open бол автоматаар нээнэ (санах ой хоосон бол)
+      const mem = localStorage.getItem('jarvis_core_memory') || '';
+      if (!mem.trim()) document.getElementById('mem-card').classList.add('open');
+    });
   </script>
 </body>
 </html>

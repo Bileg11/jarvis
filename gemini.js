@@ -125,8 +125,11 @@ async function sendChatMessage(userText) {
   const score = (typeof getDailyScore  === 'function') ? getDailyScore()  : 0;
   const water = tlog?.water?.total_ml || 0;
 
-  const ctx = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
-  const systemText = `${JARVIS_SYSTEM}\n\n${ctx}`;
+  const ctx        = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
+  const coreMemory = (localStorage.getItem('jarvis_core_memory') || '').trim();
+  const systemText = coreMemory
+    ? `${JARVIS_SYSTEM}\n\n${ctx}\n\n[ХЭРЭГЛЭГЧИЙН ХУВИЙН КОНТЕКСТ БОЛОН САНАХ ОЙ]:\n${coreMemory}`
+    : `${JARVIS_SYSTEM}\n\n${ctx}`;
 
   // Хэрэглэгчийн мессежийг түүхэнд нэмнэ
   _chatHistory.push({ role: 'user', content: userText });
