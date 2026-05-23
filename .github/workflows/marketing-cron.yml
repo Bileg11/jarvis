@@ -1,0 +1,26 @@
+name: LFS Ghost Marketer Cron
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+    - cron: '0 10 * * *'
+  workflow_dispatch: # Гараар ажиллуулах товчлуур идэвхжүүлэх
+
+jobs:
+  post-generator:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/sets-up-node@v4
+        with:
+          node-version: 20
+
+      - name: Run Ghost Marketer Script
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_ID }}
+        run: node ghost-poster.js
