@@ -50,8 +50,7 @@ async function askGemini(d) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: JARVIS_SYSTEM }] },
-        contents: [{ role: 'user', parts: [{ text: _buildPrompt(d) }] }],
+        contents: [{ role: 'user', parts: [{ text: `${JARVIS_SYSTEM}\n\n${_buildPrompt(d)}` }] }],
         generationConfig: { maxOutputTokens: 1000, temperature: 0.85, topP: 0.95 }
       })
     });
@@ -117,14 +116,17 @@ async function sendChatMessage(userText) {
     const timer = setTimeout(() => ctrl.abort(), 15000);
 
     try {
-      const contents = [..._chatHistory];
+      const contents = [
+        { role: 'user',  parts: [{ text: `${JARVIS_SYSTEM}\n\n${ctx}` }] },
+        { role: 'model', parts: [{ text: 'Ойлголоо, бэлэн байна.' }] },
+        ..._chatHistory
+      ];
 
       const res = await fetch(url, {
         method: 'POST',
         signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: `${JARVIS_SYSTEM}\n\n${ctx}` }] },
           contents,
           generationConfig: { maxOutputTokens: 2048, temperature: 1.0 }
         })
