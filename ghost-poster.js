@@ -53,7 +53,7 @@ async function sendDraftText(format, keyword) {
                      `📊 *Контентын формат:* \`${format}\`\n` +
                      `🔍 *Хайсан трэнд сэдэв:* \`${keyword}\`\n\n` +
                      `📝 *Постны текст:* "Амьдралдаа заавал үзэх ёстой Шанхай хотын гайхамшиг. LFS Shanghai-тай хамт дурсамжаа бүтээгээрэй. ✈️"\n\n` +
-                     `👇 Доорх товчлууруудаар удирдоорой (Идэвхтэй хугацаа: 2 минут):`;
+                     `👇 Доорх товчлууруудаар удирдаарай (Идэвхтэй хугацаа: 2 минут):`;
     const keyboard = {
         inline_keyboard: [
             [{ text: "✅ Постлох", callback_data: "approve" }, { text: "❌ Алгасах", callback_data: "reject" }],
@@ -116,7 +116,7 @@ async function mainProcess() {
 
                         let updatedText = "";
                         if (action === "approve") {
-                            updatedText = `*✅ АМЖИЛТТАЙ ПОСТЛОГДЛОО!*\n\n🚀 Контент амжилттай Инстаграм руу илгээгдлөө! (Маргааш хоёулаа Meta API холбохоор яг жинхэнэ Инстаграм руу чинь шууд ордог болно. Өнөөдөртөө систем маань амжилттай ажиллаж дууслаа!).`;
+                            updatedText = `*✅ АМЖИЛТТАЙ ПОСТЛОГДЛОО!*\n\n🚀 Контент амжилттай Инстаграм руу илгээгдлээ! (Маргааш хоёулаа Meta API холбохоор яг жинхэнэ Инстаграм руу чинь шууд ордог болно. Өнөөдөртөө систем маань амжилттай ажиллаж дууслаа!).`;
                             await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
