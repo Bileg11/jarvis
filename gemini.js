@@ -2,14 +2,14 @@
 // API key: app дотор Settings → тавьсны дараа localStorage-д хадгалагдана
 // GitHub-д хэзээ ч upload хийгдэхгүй — аюулгүй
 
-const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+const BASE_URL = 'https://generativelanguage.googleapis.com/v1/models';
 
 // localStorage-аас key уншина (app дотроос тавьдаг)
 function _getKey() {
   return localStorage.getItem('jarvis_gemini_key') || '';
 }
 
-function _getUrl(model = 'gemini-2.5-flash') {
+function _getUrl(model = 'gemini-2.0-flash') {
   return `${BASE_URL}/${model}:generateContent?key=${_getKey()}`;
 }
 
@@ -40,18 +40,26 @@ async function askGemini(d) {
   const key = _getKey();
   if (!key) return null;
 
+  // localStorage cache — ижил weekday+hour-д нэг удаа л API дуудна
+  const cacheKey = `jarvis_brief_cache_${d.weekday}_${d.hour}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) return cached;
+
   try {
     const res = await fetch(_getUrl(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `${JARVIS_SYSTEM}\n\n${_buildPrompt(d)}` }] }],
-        generationConfig: { maxOutputTokens: 160, temperature: 0.85, topP: 0.95 }
+        systemInstruction: { parts: [{ text: JARVIS_SYSTEM }] },
+        contents: [{ role: 'user', parts: [{ text: _buildPrompt(d) }] }],
+        generationConfig: { maxOutputTokens: 1000, temperature: 0.85, topP: 0.95 }
       })
     });
     if (!res.ok) return null;
     const json = await res.json();
-    return json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+    const text = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+    if (text) localStorage.setItem(cacheKey, text);
+    return text;
   } catch {
     return null;
   }
@@ -87,7 +95,7 @@ async function syncChatFromFirestore() {
   }
 }
 
-const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash-8b'];
+const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
 
 async function sendChatMessage(userText) {
   const key = _getKey();
@@ -98,8 +106,7 @@ async function sendChatMessage(userText) {
   const score = (typeof getDailyScore === 'function') ? getDailyScore() : 0;
   const water = tlog?.water?.total_ml || 0;
 
-  const ctx        = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
-  const systemText = `${JARVIS_SYSTEM}\n\n${ctx}`;
+  const ctx = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
 
   _chatHistory.push({ role: 'user', parts: [{ text: userText }] });
 
@@ -110,18 +117,14 @@ async function sendChatMessage(userText) {
     const timer = setTimeout(() => ctrl.abort(), 15000);
 
     try {
-      // system_instruction-г эхний user мессежэд оруулна (бүх model дэмждэг)
-      const contents = [
-        { role: 'user',  parts: [{ text: systemText }] },
-        { role: 'model', parts: [{ text: 'Ойлголоо, бэлэн байна.' }] },
-        ..._chatHistory
-      ];
+      const contents = [..._chatHistory];
 
       const res = await fetch(url, {
         method: 'POST',
         signal: ctrl.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          systemInstruction: { parts: [{ text: `${JARVIS_SYSTEM}\n\n${ctx}` }] },
           contents,
           generationConfig: { maxOutputTokens: 2048, temperature: 1.0 }
         })
