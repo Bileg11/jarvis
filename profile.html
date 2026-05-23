@@ -44,15 +44,31 @@
       <div class="profile-uid"   id="p-uid"></div>
     </div>
 
-    <!-- GEMINI KEY -->
-    <div class="sec-label" style="margin-top:20px">JARVIS Chat</div>
+    <!-- CHAT KEY (GitHub PAT → gpt-4o-mini) -->
+    <div class="sec-label" style="margin-top:20px">💬 JARVIS Chat</div>
+    <div class="profile-section">
+      <div class="ps-row">
+        <span class="ps-label">GitHub Token</span>
+        <span class="ps-val" id="chat-key-status">—</span>
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">github.com → Settings → Developer settings → Personal access tokens → ghp_...</div>
+      <div class="ps-key-row">
+        <input id="prof-chat-key" type="password" placeholder="ghp_..." class="ps-input">
+        <button onclick="saveChatKey()" class="ps-btn">Хадгал</button>
+      </div>
+      <button onclick="clearChatKey()" class="ps-btn-danger" id="clear-chat-key-btn" style="display:none">🗑 Token устгах</button>
+    </div>
+
+    <!-- GEMINI KEY (briefing only) -->
+    <div class="sec-label" style="margin-top:20px">🤖 Briefing (Gemini)</div>
     <div class="profile-section">
       <div class="ps-row">
         <span class="ps-label">Gemini API Key</span>
         <span class="ps-val" id="key-status">—</span>
       </div>
+      <div style="font-size:11px;color:#888;margin-bottom:8px">aistudio.google.com → Get API key</div>
       <div class="ps-key-row">
-        <input id="prof-key" type="password" placeholder="Шинэ key оруулах..." class="ps-input">
+        <input id="prof-key" type="password" placeholder="AIza..." class="ps-input">
         <button onclick="saveKey()" class="ps-btn">Хадгал</button>
       </div>
       <button onclick="clearKey()" class="ps-btn-danger" id="clear-key-btn" style="display:none">🗑 Key устгах</button>
@@ -110,7 +126,12 @@
       document.getElementById('p-email').textContent = user.email || 'Нэвтрэх email байхгүй';
       document.getElementById('p-uid').textContent   = 'UID: ' + user.uid.slice(0,12) + '...';
 
-      // Gemini key
+      // GitHub chat key
+      const chatKey = localStorage.getItem('jarvis_chat_key') || '';
+      document.getElementById('chat-key-status').textContent = chatKey ? '✅ ' + chatKey.slice(0,10) + '...' : '❌ Тавигдаагүй';
+      document.getElementById('clear-chat-key-btn').style.display = chatKey ? 'block' : 'none';
+
+      // Gemini briefing key
       const key = localStorage.getItem('jarvis_gemini_key') || '';
       const keyEl = document.getElementById('key-status');
       const clearBtn = document.getElementById('clear-key-btn');
@@ -143,17 +164,33 @@
       }
     }
 
+    function saveChatKey() {
+      const val = document.getElementById('prof-chat-key').value.trim();
+      if (!val) return;
+      localStorage.setItem('jarvis_chat_key', val);
+      document.getElementById('prof-chat-key').value = '';
+      renderUser(_auth.currentUser);
+      showToast('✅ GitHub Token хадгалагдлаа');
+    }
+
+    function clearChatKey() {
+      if (!confirm('GitHub Token устгах уу?')) return;
+      localStorage.removeItem('jarvis_chat_key');
+      renderUser(_auth.currentUser);
+      showToast('🗑 Token устгагдлаа');
+    }
+
     function saveKey() {
       const val = document.getElementById('prof-key').value.trim();
       if (!val) return;
       localStorage.setItem('jarvis_gemini_key', val);
       document.getElementById('prof-key').value = '';
       renderUser(_auth.currentUser);
-      showToast('✅ API key хадгалагдлаа');
+      showToast('✅ Gemini key хадгалагдлаа');
     }
 
     function clearKey() {
-      if (!confirm('Key устгах уу?')) return;
+      if (!confirm('Gemini key устгах уу?')) return;
       localStorage.removeItem('jarvis_gemini_key');
       renderUser(_auth.currentUser);
       showToast('🗑 Key устгагдлаа');

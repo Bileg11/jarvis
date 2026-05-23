@@ -1,23 +1,24 @@
-// ── GEMINI AI ─────────────────────────────────────────────────────
-// API key: app дотор Settings → тавьсны дараа localStorage-д хадгалагдана
-// GitHub-д хэзээ ч upload хийгдэхгүй — аюулгүй
+// ── JARVIS AI ──────────────────────────────────────────────────────
+// Briefing : Gemini REST API (jarvis_gemini_key)
+// Chat     : GitHub Models / OpenAI-compatible gpt-4o-mini (jarvis_chat_key)
+// API key-үүд хэзээ ч GitHub-д upload хийгдэхгүй — localStorage-д л байна
 
-const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
-
-// localStorage-аас key уншина (app дотроос тавьдаг)
-function _getKey() {
+// ── KEYS ──────────────────────────────────────────────────────────
+function _getGeminiKey() {
   return localStorage.getItem('jarvis_gemini_key') || '';
 }
-
-function _getUrl(model = 'gemini-2.0-flash') {
-  return `${BASE_URL}/${model}:generateContent?key=${_getKey()}`;
+function _getChatKey() {
+  return localStorage.getItem('jarvis_chat_key') || '';
 }
 
+// ── JARVIS SYSTEM PROMPT ──────────────────────────────────────────
 const JARVIS_SYSTEM = `Та Билэгийн хувийн AI туслах юм. Билэг бол 18 настай Монгол залуу, Шанхайд амьдардаг. Түүний зорилго: фитнесс, LFS Shanghai бизнес, HSK4 хятад хэлний шалгалт.
 
 Монгол хэлээр байнга хариулна уу. Асуултад бүрэн, байгалийн байдлаар хариулна уу.`;
 
-// ── BRIEFING (автомат, өдөрт 3 удаа) ────────────────────────────
+// ── BRIEFING (Gemini, автомат өдөрт 3 удаа) ──────────────────────
+const _GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+
 function _buildPrompt(d) {
   const LABELS = { exercise:'дасгал', hanzi:'汉字', read:'унших', journal:'journal', water:'ус' };
   const weakLabel = d.weakest ? (LABELS[d.weakest] || d.weakest) : 'мэдэгдэхгүй';
@@ -37,7 +38,7 @@ Workout: ${d.fitness_val}/30 энэ сард
 }
 
 async function askGemini(d) {
-  const key = _getKey();
+  const key = _getGeminiKey();
   if (!key) return null;
 
   // localStorage cache — ижил weekday+hour-д нэг удаа л API дуудна
@@ -46,7 +47,8 @@ async function askGemini(d) {
   if (cached) return cached;
 
   try {
-    const res = await fetch(_getUrl(), {
+    const url = `${_GEMINI_BASE}/gemini-2.0-flash:generateContent?key=${key}`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -64,120 +66,138 @@ async function askGemini(d) {
   }
 }
 
-// ── CHAT (интерактив) ─────────────────────────────────────────────
-const CHAT_LS  = 'jarvis_chat_history';
-const MAX_MSGS = 40;
+// ── CHAT (gpt-4o-mini via GitHub Models) ─────────────────────────
+const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
+const CHAT_MODEL = 'gpt-4o-mini';
+const CHAT_LS    = 'jarvis_chat_history';
+const MAX_MSGS   = 40; // хос мессеж = 20 turn
 
-// localStorage: offline cache
-function _loadHistory() {
-  try { return JSON.parse(localStorage.getItem(CHAT_LS)) || []; }
-  catch { return []; }
+// ── HISTORY FORMAT ────────────────────────────────────────────────
+// OpenAI стандарт: { role: 'user'|'assistant', content: '...' }
+// Хуучин Gemini формат: { role: 'user'|'model', parts: [{ text }] }
+// _migrateMsg() — аль форматаас ч зөв объект буцаана
+
+function _migrateMsg(m) {
+  if (typeof m.content === 'string') {
+    // Аль хэдийн OpenAI формат — role 'model' → 'assistant' засна
+    return { role: m.role === 'model' ? 'assistant' : m.role, content: m.content };
+  }
+  // Gemini формат → OpenAI рүү хөрвүүлэх
+  const text = m.parts?.[0]?.text || '';
+  const role = m.role === 'model' ? 'assistant' : (m.role || 'user');
+  return { role, content: text };
 }
+
+function _loadHistory() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_LS)) || [];
+    return raw.map(_migrateMsg);
+  } catch { return []; }
+}
+
 function _saveHistory(h) {
   localStorage.setItem(CHAT_LS, JSON.stringify(h));
-  // Firestore-д ч хадгал (нэвтэрсэн бол)
   if (window.DB?.saveChatHistory) window.DB.saveChatHistory(h);
 }
 
 let _chatHistory = _loadHistory();
 
-// Firestore-оос sync хийнэ (нэвтэрсний дараа дуудагдана)
+// Firestore-оос sync — хуучин формат байвал migrate хийнэ
 async function syncChatFromFirestore() {
   if (!window.DB?.loadChatHistory) return;
   const cloud = await window.DB.loadChatHistory();
   if (!cloud || cloud.length === 0) return;
-  // Cloud дата илүү урт бол ашиглана
-  if (cloud.length >= _chatHistory.length) {
-    _chatHistory = cloud;
+  const migrated = cloud.map(_migrateMsg);
+  if (migrated.length >= _chatHistory.length) {
+    _chatHistory = migrated;
     _saveHistory(_chatHistory);
     if (typeof loadChatHistory === 'function') loadChatHistory();
   }
 }
 
-const CHAT_MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b'];
-
+// ── SEND CHAT ─────────────────────────────────────────────────────
 async function sendChatMessage(userText) {
-  const key = _getKey();
-  if (!key) return '⚙️ Профайл хуудсаас Gemini API key оруулна уу.';
+  const key = _getChatKey();
+  if (!key) return '⚙️ Профайл хуудсаас GitHub Token оруулна уу.';
 
-  const r     = (typeof loadRoutine === 'function')   ? loadRoutine()   : {};
-  const tlog  = (typeof loadTodayLog === 'function')  ? loadTodayLog()  : {};
-  const score = (typeof getDailyScore === 'function') ? getDailyScore() : 0;
+  const r     = (typeof loadRoutine    === 'function') ? loadRoutine()    : {};
+  const tlog  = (typeof loadTodayLog   === 'function') ? loadTodayLog()   : {};
+  const score = (typeof getDailyScore  === 'function') ? getDailyScore()  : 0;
   const water = tlog?.water?.total_ml || 0;
 
   const ctx = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
+  const systemText = `${JARVIS_SYSTEM}\n\n${ctx}`;
 
-  _chatHistory.push({ role: 'user', parts: [{ text: userText }] });
+  // Хэрэглэгчийн мессежийг түүхэнд нэмнэ
+  _chatHistory.push({ role: 'user', content: userText });
 
-  let lastErr = '';
-  for (const model of CHAT_MODELS) {
-    const url  = `${BASE_URL}/${model}:generateContent?key=${key}`;
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 15000);
+  const ctrl  = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
 
-    try {
-      const contents = [
-        { role: 'user',  parts: [{ text: `${JARVIS_SYSTEM}\n\n${ctx}` }] },
-        { role: 'model', parts: [{ text: 'Ойлголоо, бэлэн байна.' }] },
-        ..._chatHistory
-      ];
+  try {
+    const messages = [
+      { role: 'system', content: systemText },
+      ..._chatHistory
+    ];
 
-      const res = await fetch(url, {
-        method: 'POST',
-        signal: ctrl.signal,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents,
-          generationConfig: { maxOutputTokens: 2048, temperature: 1.0 }
-        })
-      });
-      clearTimeout(timer);
+    const res = await fetch(CHAT_URL, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: {
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: CHAT_MODEL,
+        messages,
+        max_tokens:  2048,
+        temperature: 1.0
+      })
+    });
+    clearTimeout(timer);
 
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        const msg = errBody?.error?.message || '';
-        console.warn(`[Chat] ${model} ${res.status}:`, msg);
-        if (res.status === 429) {
-          _chatHistory.pop();
-          return '⏳ Quota дүүрсэн байна. 1 минут хүлээгээд дахин туршина уу.';
-        }
-        lastErr = `${res.status}: ${msg.slice(0, 80)}`;
-        continue;
-      }
-
-      const json  = await res.json();
-      const reply = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '...';
-      _chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-      if (_chatHistory.length > MAX_MSGS) _chatHistory.splice(0, 2);
-      _saveHistory(_chatHistory);
-      return reply;
-
-    } catch (e) {
-      clearTimeout(timer);
-      lastErr = e.name;
-      console.warn(`[Chat] ${model} catch:`, e.message);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      const msg = errBody?.error?.message || '';
+      console.warn('[Chat] gpt-4o-mini', res.status, msg);
+      _chatHistory.pop();
+      if (res.status === 401) return '🔑 Token буруу байна. Профайл → GitHub Token шалгана уу.';
+      if (res.status === 429) return '⏳ Хүсэлт хэт олон байна. 1 минут хүлээгээд дахин туршина уу.';
+      return `❌ Алдаа ${res.status}. Профайл → Token шалгана уу.`;
     }
-  }
 
-  _chatHistory.pop();
-  return `❌ ${lastErr || 'Алдаа'}. Профайл → API key шалгана уу.`;
+    const json  = await res.json();
+    const reply = json.choices?.[0]?.message?.content?.trim() || '...';
+
+    _chatHistory.push({ role: 'assistant', content: reply });
+    if (_chatHistory.length > MAX_MSGS) _chatHistory.splice(0, 2);
+    _saveHistory(_chatHistory);
+    return reply;
+
+  } catch (e) {
+    clearTimeout(timer);
+    console.warn('[Chat] fetch error:', e.message);
+    _chatHistory.pop();
+    if (e.name === 'AbortError') return '⏳ Хариу удаашрав (20с). Дахин туршина уу.';
+    return '❌ Холболтын алдаа. Интернэт шалгана уу.';
+  }
 }
 
-// Chat history цэвэрлэх (гадаас дуудна)
+// Chat history цэвэрлэх
 function clearChatHistory() {
   _chatHistory = [];
   _saveHistory([]);
 }
 
-// ── CONTEXT BUILDER ───────────────────────────────────────────────
+// ── CONTEXT BUILDER (briefing-д хэрэглэнэ) ───────────────────────
 function buildGeminiContext() {
   const DAYS = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
   const h    = new Date().getHours();
-  const r    = (typeof loadRoutine === 'function')    ? loadRoutine()    : {};
-  const tlog = (typeof loadTodayLog === 'function')   ? loadTodayLog()   : {};
-  const ylog = (typeof loadYesterdayLog === 'function')? loadYesterdayLog(): {};
-  const s7   = (typeof get7DayStats === 'function')   ? get7DayStats()   : {};
-  const ms   = (typeof getMissionStats === 'function')? getMissionStats() : [];
+  const r    = (typeof loadRoutine        === 'function') ? loadRoutine()        : {};
+  const tlog = (typeof loadTodayLog       === 'function') ? loadTodayLog()       : {};
+  const ylog = (typeof loadYesterdayLog   === 'function') ? loadYesterdayLog()   : {};
+  const s7   = (typeof get7DayStats       === 'function') ? get7DayStats()       : {};
+  const ms   = (typeof getMissionStats    === 'function') ? getMissionStats()    : [];
 
   const lfs     = ms.find?.(m => m.id === 'lfs')     || {};
   const hanziM  = ms.find?.(m => m.id === 'hanziw')  || {};

@@ -142,7 +142,7 @@
       </div>
       <div class="chat-key-row" id="chat-key-row" style="display:none">
         <input class="chat-key-input" id="chat-key-input" type="password"
-               placeholder="Gemini API key оруул...">
+               placeholder="GitHub Token оруул (ghp_...)">
         <button class="chat-key-save" onclick="saveGeminiKey()">Хадгал</button>
       </div>
     </div>
@@ -193,7 +193,7 @@
         return;
       }
       history.forEach(m => {
-        const text = m.parts?.[0]?.text || '';
+        const text = m.content || m.parts?.[0]?.text || '';
         appendMsg(m.role === 'user' ? 'user' : 'model', text);
       });
     }
@@ -207,17 +207,17 @@
     }
 
     function checkKeyRow() {
-      const hasKey = !!localStorage.getItem('jarvis_gemini_key');
+      const hasKey = !!localStorage.getItem('jarvis_chat_key');
       document.getElementById('chat-key-row').style.display = hasKey ? 'none' : 'flex';
     }
 
     function saveGeminiKey() {
       const key = document.getElementById('chat-key-input').value.trim();
       if (!key) return;
-      localStorage.setItem('jarvis_gemini_key', key);
+      localStorage.setItem('jarvis_chat_key', key);
       document.getElementById('chat-key-input').value = '';
       document.getElementById('chat-key-row').style.display = 'none';
-      appendMsg('model', '✅ Key хадгалагдлаа! Одоо асуугаарай.');
+      appendMsg('model', '✅ GitHub Token хадгалагдлаа! Одоо асуугаарай.');
     }
 
     function appendMsg(role, text) {
