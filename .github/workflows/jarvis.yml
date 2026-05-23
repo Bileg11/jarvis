@@ -18,16 +18,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: npm ci --prefix scripts
-      
-      # Хуучин briefing
+
+      - name: Install dependencies
+        run: npm ci --prefix scripts
+
       - name: Run Jarvis briefing
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID: ${{ secrets.USER_UID }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: node scripts/briefing.js
 
-      # ШИНЭ: Ghost Marketer-ийн тохиргоог энд нэмлээ
       - name: Run Ghost Marketer
         env:
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
@@ -35,4 +38,5 @@ jobs:
           TELEGRAM_ID: ${{ secrets.TELEGRAM_ID }}
           INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
           ACCESS_TOKEN_META: ${{ secrets.ACCESS_TOKEN_META }}
+          FACEBOOK_ID: ${{ secrets.FACEBOOK_ID }}
         run: node ghost-poster.js
