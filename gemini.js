@@ -123,7 +123,7 @@ async function sendChatMessage(userText) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents,
-          generationConfig: { maxOutputTokens: 1024, temperature: 1.0 }
+          generationConfig: { maxOutputTokens: 2048, temperature: 1.0 }
         })
       });
       clearTimeout(timer);
