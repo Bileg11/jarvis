@@ -172,7 +172,7 @@ function _initFirebase() {
 
   window.signInGoogle = function () {
     const provider = new firebase.auth.GoogleAuthProvider();
-    _auth.signInWithPopup(provider).catch(e => {
+    _auth.signInWithRedirect(provider).catch(e => {
       console.warn('[Jarvis] Google sign-in алдаа:', e.message);
     });
   };
