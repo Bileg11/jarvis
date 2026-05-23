@@ -20,6 +20,7 @@ const BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const KEY  = process.env.GEMINI_KEY;
 
 const GEMINI_ENDPOINTS = [
+  `${BASE}/gemini-2.5-flash:generateContent?key=${KEY}`,
   `${BASE}/gemini-2.0-flash:generateContent?key=${KEY}`,
   `${BASE}/gemini-1.5-flash:generateContent?key=${KEY}`,
   `${BASE}/gemini-1.5-flash-8b:generateContent?key=${KEY}`,
