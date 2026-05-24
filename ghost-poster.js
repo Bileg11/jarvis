@@ -59,7 +59,7 @@ async function markUsed(imageId) {
 }
 
 // ── TAVILY — TRENDING TOPIC ───────────────────────────────────────
-const TOPIC_POOL = [
+const SHANGHAI_TOPICS = [
   'Shanghai travel tips for Mongolians 2025',
   'Shanghai tourism hidden gems attractions',
   'Shanghai street food guide Mongolian tourists',
@@ -74,8 +74,21 @@ const TOPIC_POOL = [
   'Shanghai business district Pudong modern life',
 ];
 
+const MONGOLIA_TOPICS = [
+  'Mongolia trending news today',
+  'Ulaanbaatar events concerts 2025',
+  'Mongolia viral social media today',
+  'Mongolia sports news today',
+  'Mongolia entertainment celebrity news',
+  'Монгол мэдээ өнөөдөр trending',
+];
+
 async function getTrend() {
-  const q = TOPIC_POOL[Math.floor(Math.random() * TOPIC_POOL.length)];
+  // 30% магадлалтай Монголын trend, 70% Shanghai
+  const isMongolia = Math.random() < 0.3;
+  const pool = isMongolia ? MONGOLIA_TOPICS : SHANGHAI_TOPICS;
+  const q    = pool[Math.floor(Math.random() * pool.length)];
+
   try {
     const res = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -88,29 +101,32 @@ async function getTrend() {
       .join(' ')
       .replace(/\s+/g, ' ')
       .slice(0, 900);
-    return { query: q, snippets };
+    return { query: q, snippets, isMongolia };
   } catch (e) {
     console.warn('[Tavily]', e.message);
-    return { query: q, snippets: '' };
+    return { query: q, snippets: '', isMongolia };
   }
 }
 
 // ── GPT-4o-mini — CAPTION + HASHTAGS (тусдаа) ────────────────────
-async function generateContent(query, snippets) {
+async function generateContent(query, snippets, isMongolia = false) {
+  const context = isMongolia
+    ? `Монгол дахь trending сэдвийг LFS Shanghai брэндтэй холбон пост бич. LFS Shanghai нь Монголчуудад Шанхайд туслах платформ учраас Монголын хамааралтай.`
+    : `Шанхайн туслалцааны платформ LFS Shanghai-н өнцгөөс пост бич.`;
+
   const prompt = `Та LFS Shanghai компанийн Instagram маркетинг менежер юм.
 LFS Shanghai — Монгол аялагчдад зориулсан Шанхайн VIP туслалцааны платформ (bileg11.github.io).
 
-Дараах мэдээллээс сэдэвлэн Instagram пост бич:
-Сэдэв: ${query}
-Мэдээлэл: ${snippets || 'Шанхай хот дэлхийн хамгийн динамик мегаполисуудын нэг.'}
+${context}
 
-CAPTION (яг энэ форматаар буцаана):
+Сэдэв: ${query}
+Мэдээлэл: ${snippets || 'Монголчуудын сонирхол татсан сэдэв.'}
+
 CAPTION:
-[3-4 өгүүлбэр, Монгол хэлээр, inspire+inform, LFS Shanghai нэг удаа байгалийн байдлаар, 4-6 emoji, "👉 bileg11.github.io" CTA заавал]
+[3-4 өгүүлбэр, Монгол хэлээр, байгалийн, sэтгэл хөдлөм, LFS Shanghai нэг удаа дурдана, 4-6 emoji, "👉 bileg11.github.io" CTA]
 
 HASHTAGS:
-[18-22 hashtag, Монгол+Англи+Хятад хосолсон, #-тай, зайгаар тусгаарлана]
-Жишээ: #Шанхай #Shanghai #上海 #LFSShanghai #МонголАялал #ChinaTravel #蒙古旅行 #ShanghaiLife
+[18-22 hashtag Монгол+Англи+Хятад, зайгаар тусгаарласан]
 
 Зөвхөн CAPTION: болон HASHTAGS: хэсгүүдийг буцаана.`;
 
@@ -384,11 +400,11 @@ async function main() {
   console.log(`[JARVIS] Used images: ${usedIds.size}`);
 
   // 2. Trending topic via Tavily
-  const { query, snippets } = await getTrend();
+  const { query, snippets, isMongolia } = await getTrend();
   console.log(`[JARVIS] Topic: ${query}`);
 
   // 3. AI caption + hashtags via GPT-4o-mini
-  const generated = await generateContent(query, snippets);
+  const generated = await generateContent(query, snippets, isMongolia);
   let caption  = generated?.caption  || `Шанхай хот — Монгол аялагчдын хамгийн их сонирхдог газруудын нэг! 🌆✨\n\nБунд дахь гэрэлтэй тэнгэр, орчин үеийн архитектур, баялаг хоол — LFS Shanghai бүгдийг нэг дор санал болгодог.\n\n👉 bileg11.github.io`;
   let hashtags = generated?.hashtags || `#Шанхай #Shanghai #上海 #LFSShanghai #МонголАялал #ШанхайАмьдрал #ChinaTravel #蒙古旅行 #ShanghaiLife #AmazingShanghai #TravelChina #上海旅游 #МонголШанхай #VIPTravel #ШанхайХот #ShanghaiSkyline #ExploreShanghai #Mongols #TravelAsia #旅行`;
 

@@ -1,0 +1,29 @@
+name: JARVIS Comment Replier
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # 2 цаг тутамд
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  reply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix scripts
+      - name: Reply to comments
+        env:
+          INSTAGRAM_BUSINESS_ID:     ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+          ACCESS_TOKEN_META:         ${{ secrets.ACCESS_TOKEN_META }}
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                  ${{ secrets.USER_UID }}
+          SYSTEM_USE_TOKEN:          ${{ secrets.SYSTEM_USE_TOKEN }}
+          TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+        run: NODE_PATH=./scripts/node_modules node scripts/comment-reply.js
