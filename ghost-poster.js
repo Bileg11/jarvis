@@ -329,13 +329,13 @@ async function editDraftCaption(msgId, caption, img, slot) {
 
 // ── APPROVAL LOOP ─────────────────────────────────────────────────
 // Хариу ирэхгүй бол 15 минутын дараа АВТОМАТ post хийнэ
-async function approvalLoop({ msgId, caption, hashtags, img, slot, usedIds }) {
+async function approvalLoop({ msgId, caption, hashtags, img, slot, usedIds, startOffset }) {
   let curCaption = caption;
   let curImg     = img;
   let curMsgId   = msgId;
   let state      = 'approval';   // 'approval' | 'waiting_text'
   let editMsgId  = null;
-  let offset     = 0;
+  let offset     = startOffset || 0;
 
   const AUTO_POST_MS = 15 * 60 * 1000; // 15 min → auto post
   const DEADLINE     = Date.now() + AUTO_POST_MS;
@@ -448,16 +448,22 @@ async function main() {
   }
   console.log(`[JARVIS] Image: ${img.source} ${img.id}`);
 
-  // 5. Send Telegram draft
+  // 5. Одоогийн Telegram offset авна (хуучин update алгасахын тулд)
+  const offsetRes  = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?limit=1&offset=-1`);
+  const offsetData = await offsetRes.json();
+  const lastUpd    = offsetData.result || [];
+  const startOffset = lastUpd.length ? lastUpd[lastUpd.length - 1].update_id + 1 : 0;
+
+  // 6. Send Telegram draft
   const msgId = await sendDraft(caption, img, slot);
   if (!msgId) {
     console.error('[JARVIS] Telegram draft failed');
     process.exit(1);
   }
-  console.log(`[JARVIS] Draft sent. MsgID: ${msgId}`);
+  console.log(`[JARVIS] Draft sent. MsgID: ${msgId}, offset: ${startOffset}`);
 
-  // 6. Approval loop (15 min → auto post)
-  await approvalLoop({ msgId, caption, hashtags, img, slot, usedIds });
+  // 7. Approval loop (15 min → auto post)
+  await approvalLoop({ msgId, caption, hashtags, img, slot, usedIds, startOffset });
 
   console.log('[JARVIS] Done.');
   process.exit(0);
