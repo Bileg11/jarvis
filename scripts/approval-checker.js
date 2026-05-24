@@ -204,7 +204,8 @@ async function main() {
   // ── Update-үүдийг боловсруулна ───────────────────────────────
   for (const upd of updates) {
     const cb = upd.callback_query;
-    if (!cb || cb.message?.message_id !== p.msgId) continue;
+    // != ашиглана: Firestore number vs Telegram number type mismatch-г зөвшөөрнө
+    if (!cb || cb.message?.message_id != p.msgId) continue;
 
     await tg('answerCallbackQuery', { callback_query_id: cb.id });
 

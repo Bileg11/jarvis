@@ -177,11 +177,15 @@ async function main() {
   if (!img) { console.error('[Ghost] No image found'); process.exit(1); }
   console.log(`[Ghost] Image: ${img.source} ${img.id}`);
 
-  // Telegram-н сүүлийн update_id авна
-  const tgRes    = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?limit=1&offset=-1`);
-  const tgData   = await tgRes.json();
-  const lastUpdates = tgData.result || [];
-  const tgOffset = lastUpdates.length ? lastUpdates[lastUpdates.length - 1].update_id + 1 : 0;
+  // Telegram-н бүх хуучин update-г цэвэрлэж шинэ offset авна
+  const tgRes1   = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?limit=100`);
+  const tgData1  = await tgRes1.json();
+  const allUpds  = tgData1.result || [];
+  const tgOffset = allUpds.length ? allUpds[allUpds.length - 1].update_id + 1 : 0;
+  // Хуучин update-г acknowledge хийнэ
+  if (tgOffset > 0) {
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?offset=${tgOffset}&limit=1`);
+  }
 
   const msgId = await sendDraft(caption, img, slot);
   if (!msgId) { console.error('[Ghost] Telegram send failed'); process.exit(1); }
