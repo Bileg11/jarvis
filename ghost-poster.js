@@ -207,10 +207,22 @@ async function fetchImage(usedIds, excludeId = null) {
   return img;
 }
 
+// ── FETCH WITH TIMEOUT ────────────────────────────────────────────
+async function fetchWithTimeout(url, opts, ms = 15000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { ...opts, signal: ctrl.signal });
+    return r;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 // ── INSTAGRAM PUBLISH + FIRST COMMENT ────────────────────────────
 async function postToIG(imageUrl, caption, hashtags) {
   try {
-    const cRes = await fetch(`https://graph.facebook.com/v25.0/${IG_ID}/media`, {
+    const cRes = await fetchWithTimeout(`https://graph.facebook.com/v25.0/${IG_ID}/media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image_url: imageUrl, caption, access_token: META_TOKEN }),
@@ -218,9 +230,9 @@ async function postToIG(imageUrl, caption, hashtags) {
     const cData = await cRes.json();
     if (cData.error || !cData.id) return { ok: false, err: cData.error?.message || 'Container алдаа' };
 
-    await sleep(4000);
+    await sleep(3000);
 
-    const pRes = await fetch(`https://graph.facebook.com/v25.0/${IG_ID}/media_publish`, {
+    const pRes = await fetchWithTimeout(`https://graph.facebook.com/v25.0/${IG_ID}/media_publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ creation_id: cData.id, access_token: META_TOKEN }),
@@ -228,14 +240,13 @@ async function postToIG(imageUrl, caption, hashtags) {
     const pData = await pRes.json();
     if (pData.error) return { ok: false, err: pData.error.message };
 
-    // Hashtag → first comment
+    // Hashtag → first comment (background, алдаа гарсан ч post хийгдсэн)
     if (hashtags && pData.id) {
-      await sleep(2000);
-      await fetch(`https://graph.facebook.com/v25.0/${pData.id}/comments`, {
+      fetchWithTimeout(`https://graph.facebook.com/v25.0/${pData.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: hashtags, access_token: META_TOKEN }),
-      });
+      }).catch(() => {});
     }
 
     return { ok: true, postId: pData.id };
@@ -246,9 +257,9 @@ async function postToIG(imageUrl, caption, hashtags) {
 
 // ── FACEBOOK PAGE PUBLISH ─────────────────────────────────────────
 async function postToFB(imageUrl, caption, hashtags) {
-  if (!FB_PAGE_ID) return { ok: false, err: 'FACEBOOK_PAGE_ID байхгүй' };
+  if (!FB_PAGE_ID) return { ok: false, err: 'FACEBOOK_PAGE_ID secret байхгүй' };
   try {
-    const res = await fetch(`https://graph.facebook.com/v25.0/${FB_PAGE_ID}/photos`, {
+    const res = await fetchWithTimeout(`https://graph.facebook.com/v25.0/${FB_PAGE_ID}/photos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
