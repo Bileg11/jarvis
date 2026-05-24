@@ -116,12 +116,26 @@ async function postToBoth(p) {
 }
 
 async function publishAndNotify(p, label = '') {
-  const { ig, fb } = await postToBoth(p);
+  // IG эхэлж post хийнэ
+  const ig = await postToIG(p.imageUrl, p.caption, p.hashtags);
   await markImageUsed(p.imageId);
   await clearPending();
-  const igMsg = ig.ok ? `✅ Instagram` : `❌ Instagram: ${ig.err}`;
-  const fbMsg = fb.ok ? `✅ Facebook`  : `❌ Facebook: ${fb.err}`;
-  await tgMsg(`${label}\n${igMsg}\n${fbMsg}`);
+
+  // IG үр дүнг шууд мэдэгдэнэ
+  if (ig.ok) {
+    await tgMsg(`${label}✅ Instagram нийтлэгдлээ!`);
+  } else {
+    await tgMsg(`${label}❌ Instagram алдаа: ${ig.err}`);
+    return;
+  }
+
+  // FB-г тусдаа явуулна (алдаа гарсан ч IG-г блок болохгүй)
+  const fb = await postToFB(p.imageUrl, p.caption, p.hashtags);
+  if (fb.ok) {
+    await tgMsg(`✅ Facebook нийтлэгдлээ!`);
+  } else {
+    await tgMsg(`❌ Facebook алдаа: ${fb.err}`);
+  }
 }
 
 // ── NEW IMAGE ─────────────────────────────────────────────────────
