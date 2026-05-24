@@ -1,29 +1,39 @@
-name: LFS Ghost Marketer Cron
+name: LFS Ghost Marketer
 
 on:
-  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * *'    # 08:00 Shanghai (UTC+8) — Өглөөний пост
+    - cron: '0 10 * * *'   # 18:00 Shanghai (UTC+8) — Оройн пост
+  workflow_dispatch:        # Гараар дуудах боломж
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  post-generator:
+  ghost-post:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      # Энд код доторх нэрсүүдтэйгээ яг таарууллаа:
-      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-      TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
-      TELEGRAM_ID: ${{ secrets.TELEGRAM_ID }}
-      INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
-      ACCESS_TOKEN_META: ${{ secrets.ACCESS_TOKEN_META }}
-      FACEBOOK_ID: ${{ secrets.FACEBOOK_ID }}
-
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
           node-version: '24'
 
-      - name: Run Ghost Marketer Script
-        run: node ghost-poster.js
+      - name: Install dependencies
+        run: npm ci --prefix scripts
+
+      - name: Run Ghost Marketer
+        env:
+          PEXELS_API_KEY:            ${{ secrets.PEXELS_API_KEY }}
+          UNSPLASH_ACCESS_KEY:       ${{ secrets.UNSPLASH_ACCESS_KEY }}
+          TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+          INSTAGRAM_BUSINESS_ID:     ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+          ACCESS_TOKEN_META:         ${{ secrets.ACCESS_TOKEN_META }}
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                  ${{ secrets.USER_UID }}
+          TAVILY_KEY:                ${{ secrets.TAVILY_KEY }}
+          SYSTEM_USE_TOKEN:          ${{ secrets.SYSTEM_USE_TOKEN }}
+        run: NODE_PATH=./scripts/node_modules node ghost-poster.js
