@@ -95,8 +95,8 @@ async function getTrend() {
   }
 }
 
-// ── GPT-4o-mini — CAPTION + HASHTAGS ─────────────────────────────
-async function generateCaption(query, snippets) {
+// ── GPT-4o-mini — CAPTION + HASHTAGS (тусдаа) ────────────────────
+async function generateContent(query, snippets) {
   const prompt = `Та LFS Shanghai компанийн Instagram маркетинг менежер юм.
 LFS Shanghai — Монгол аялагчдад зориулсан Шанхайн VIP туслалцааны платформ (bileg11.github.io).
 
@@ -104,16 +104,15 @@ LFS Shanghai — Монгол аялагчдад зориулсан Шанхай
 Сэдэв: ${query}
 Мэдээлэл: ${snippets || 'Шанхай хот дэлхийн хамгийн динамик мегаполисуудын нэг.'}
 
-Дүрэм:
-- Монгол хэлээр бич
-- 3-4 сэтгэл хөдөлгөм өгүүлбэр (inspire + inform)
-- LFS Shanghai-г байгалийн байдлаар нэг удаа дурдана
-- Emoji зохилдуулна (4-6 ш)
-- Заавал "👉 bileg11.github.io" гэсэн CTA нэмнэ
-- Дараа нь ШУУД 18-22 hashtag бич (Монгол + Англи + Хятад, #-тай)
-  Жишээ: #Шанхай #Shanghai #上海 #LFSShanghai #МонголАялал #ШанхайАмьдрал #ChinaTravel #蒙古旅行
+CAPTION (яг энэ форматаар буцаана):
+CAPTION:
+[3-4 өгүүлбэр, Монгол хэлээр, inspire+inform, LFS Shanghai нэг удаа байгалийн байдлаар, 4-6 emoji, "👉 bileg11.github.io" CTA заавал]
 
-Зөвхөн постын текст буцаана, өөр тайлбар хэрэгтэй.`;
+HASHTAGS:
+[18-22 hashtag, Монгол+Англи+Хятад хосолсон, #-тай, зайгаар тусгаарлана]
+Жишээ: #Шанхай #Shanghai #上海 #LFSShanghai #МонголАялал #ChinaTravel #蒙古旅行 #ShanghaiLife
+
+Зөвхөн CAPTION: болон HASHTAGS: хэсгүүдийг буцаана.`;
 
   try {
     const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
@@ -130,7 +129,13 @@ LFS Shanghai — Монгол аялагчдад зориулсан Шанхай
       }),
     });
     const data = await res.json();
-    return data.choices?.[0]?.message?.content?.trim() || null;
+    const raw = data.choices?.[0]?.message?.content?.trim() || '';
+    // Parse CAPTION: and HASHTAGS: sections
+    const capMatch  = raw.match(/CAPTION:\s*([\s\S]*?)(?=HASHTAGS:|$)/i);
+    const hashMatch = raw.match(/HASHTAGS:\s*([\s\S]*?)$/i);
+    const caption   = capMatch?.[1]?.trim()  || null;
+    const hashtags  = hashMatch?.[1]?.trim() || null;
+    return caption ? { caption, hashtags } : null;
   } catch (e) {
     console.warn('[GPT]', e.message);
     return null;
@@ -185,9 +190,10 @@ async function fetchImage(usedIds, excludeId = null) {
   return img;
 }
 
-// ── INSTAGRAM PUBLISH ─────────────────────────────────────────────
-async function postToIG(imageUrl, caption) {
+// ── INSTAGRAM PUBLISH + FIRST COMMENT (hashtags) ─────────────────
+async function postToIG(imageUrl, caption, hashtags) {
   try {
+    // 1. Create media container
     const cRes = await fetch(`https://graph.facebook.com/v25.0/${IG_ID}/media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -200,6 +206,7 @@ async function postToIG(imageUrl, caption) {
 
     await sleep(4000); // Media processing
 
+    // 2. Publish
     const pRes = await fetch(`https://graph.facebook.com/v25.0/${IG_ID}/media_publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -207,7 +214,20 @@ async function postToIG(imageUrl, caption) {
     });
     const pData = await pRes.json();
     if (pData.error) return { ok: false, err: pData.error.message };
-    return { ok: true, postId: pData.id };
+
+    const postId = pData.id;
+
+    // 3. Post hashtags as first comment (caption цэвэр байхад)
+    if (hashtags && postId) {
+      await sleep(2000);
+      await fetch(`https://graph.facebook.com/v25.0/${postId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: hashtags, access_token: META_TOKEN }),
+      });
+    }
+
+    return { ok: true, postId };
   } catch (e) {
     return { ok: false, err: e.message };
   }
@@ -216,7 +236,7 @@ async function postToIG(imageUrl, caption) {
 // ── TELEGRAM DRAFT UI ─────────────────────────────────────────────
 function draftText(caption, source, keyword, slot) {
   const label = slot === 'morning' ? '🌅 Өглөөний пост' : '🌆 Оройн пост';
-  return `🤖 *JARVIS GHOST MARKETER*\n${label} · 📸 ${source} (${keyword})\n\n${caption}\n\n_Доорх товчлуурыг дарж үйлдлийг сонгоно уу._`;
+  return `🤖 *JARVIS GHOST MARKETER*\n${label} · 📸 ${source} (${keyword})\n\n${caption}\n\n_15 минут хариу ирэхгүй бол автомат нийтлэгдэнэ._`;
 }
 
 function draftKeyboard() {
@@ -256,7 +276,8 @@ async function editDraftCaption(msgId, caption, img, slot) {
 }
 
 // ── APPROVAL LOOP ─────────────────────────────────────────────────
-async function approvalLoop({ msgId, caption, img, slot, usedIds }) {
+// Хариу ирэхгүй бол 15 минутын дараа АВТОМАТ post хийнэ
+async function approvalLoop({ msgId, caption, hashtags, img, slot, usedIds }) {
   let curCaption = caption;
   let curImg     = img;
   let curMsgId   = msgId;
@@ -264,7 +285,8 @@ async function approvalLoop({ msgId, caption, img, slot, usedIds }) {
   let editMsgId  = null;
   let offset     = 0;
 
-  const DEADLINE = Date.now() + 15 * 60 * 1000; // 15 min
+  const AUTO_POST_MS = 15 * 60 * 1000; // 15 min → auto post
+  const DEADLINE     = Date.now() + AUTO_POST_MS;
 
   while (Date.now() < DEADLINE) {
     let res;
@@ -285,7 +307,7 @@ async function approvalLoop({ msgId, caption, img, slot, usedIds }) {
 
         if (cb.data === 'approve') {
           await tgMsg('⏳ Instagram-д нийтэлж байна...');
-          const r = await postToIG(curImg.url, curCaption);
+          const r = await postToIG(curImg.url, curCaption, hashtags);
           if (r.ok) {
             await markUsed(curImg.id);
             await tgMsg(`✅ Амжилттай нийтлэгдлээ!\n🆔 Post ID: \`${r.postId}\``);
@@ -296,7 +318,7 @@ async function approvalLoop({ msgId, caption, img, slot, usedIds }) {
         }
 
         if (cb.data === 'reject') {
-          await tgMsg('❌ Пост цуцлагдлаа.');
+          await tgMsg('❌ Пост цуцлагдлаа. Дараагийн schedule хүртэл хүлээнэ.');
           return;
         }
 
@@ -307,7 +329,6 @@ async function approvalLoop({ msgId, caption, img, slot, usedIds }) {
             await tgMsg('⚠️ Шинэ зураг олдсонгүй. Одоогийн зургаа хэрэглэнэ.');
           } else {
             curImg = newImg;
-            // Telegram-д зураг засах боломжгүй → шинэ мессеж илгээнэ
             const nr = await sendDraft(curCaption, curImg, slot);
             if (nr) curMsgId = nr;
           }
@@ -341,7 +362,15 @@ async function approvalLoop({ msgId, caption, img, slot, usedIds }) {
     await sleep(2000);
   }
 
-  await tgMsg('⏰ 15 минут дууслаа. Пост цуцлагдлаа.');
+  // ── Timeout → AUTO POST ──────────────────────────────────────────
+  await tgMsg('⏰ 15 минут хариу ирсэнгүй — автомат нийтэлж байна...');
+  const r = await postToIG(curImg.url, curCaption, hashtags);
+  if (r.ok) {
+    await markUsed(curImg.id);
+    await tgMsg(`✅ Автомат нийтлэгдлээ!\n🆔 Post ID: \`${r.postId}\``);
+  } else {
+    await tgMsg(`❌ Автомат post алдаа:\n\`${r.err}\``);
+  }
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────
@@ -358,11 +387,10 @@ async function main() {
   const { query, snippets } = await getTrend();
   console.log(`[JARVIS] Topic: ${query}`);
 
-  // 3. AI caption via GPT-4o-mini
-  let caption = await generateCaption(query, snippets);
-  if (!caption) {
-    caption = `Шанхай хот — Монгол аялагчдын хамгийн их сонирхдог газруудын нэг! 🌆✨\n\nБунд дахь гэрэлтэй тэнгэр, орчин үеийн архитектур, баялаг хоол — LFS Shanghai бүгдийг нэг дор санал болгодог.\n\n👉 bileg11.github.io\n\n#Шанхай #Shanghai #上海 #LFSShanghai #МонголАялал #ШанхайАмьдрал #ChinaTravel #蒙古旅行 #ShanghaiLife #AmazingShanghai #TravelChina #上海旅游 #МонголШанхай #VIPTravel #ШанхайХот #ShanghaiSkyline #ExploreShanghai #Mongols #TravelAsia #旅行`;
-  }
+  // 3. AI caption + hashtags via GPT-4o-mini
+  const generated = await generateContent(query, snippets);
+  let caption  = generated?.caption  || `Шанхай хот — Монгол аялагчдын хамгийн их сонирхдог газруудын нэг! 🌆✨\n\nБунд дахь гэрэлтэй тэнгэр, орчин үеийн архитектур, баялаг хоол — LFS Shanghai бүгдийг нэг дор санал болгодог.\n\n👉 bileg11.github.io`;
+  let hashtags = generated?.hashtags || `#Шанхай #Shanghai #上海 #LFSShanghai #МонголАялал #ШанхайАмьдрал #ChinaTravel #蒙古旅行 #ShanghaiLife #AmazingShanghai #TravelChina #上海旅游 #МонголШанхай #VIPTravel #ШанхайХот #ShanghaiSkyline #ExploreShanghai #Mongols #TravelAsia #旅行`;
 
   // 4. Fresh image (not used before)
   const img = await fetchImage(usedIds);
@@ -380,8 +408,8 @@ async function main() {
   }
   console.log(`[JARVIS] Draft sent. MsgID: ${msgId}`);
 
-  // 6. Approval loop (15 min)
-  await approvalLoop({ msgId, caption, img, slot, usedIds });
+  // 6. Approval loop (15 min → auto post)
+  await approvalLoop({ msgId, caption, hashtags, img, slot, usedIds });
 
   console.log('[JARVIS] Done.');
   process.exit(0);
