@@ -31,6 +31,7 @@ jobs:
           TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
           TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
           INSTAGRAM_BUSINESS_ID:     ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+          FACEBOOK_PAGE_ID:          ${{ secrets.FACEBOOK_PAGE_ID }}
           ACCESS_TOKEN_META:         ${{ secrets.ACCESS_TOKEN_META }}
           FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           USER_UID:                  ${{ secrets.USER_UID }}

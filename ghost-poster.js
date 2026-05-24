@@ -14,6 +14,7 @@ const {
   TELEGRAM_BOT_TOKEN_JARVIS: TG_TOKEN,
   TELEGRAM_ID:               TG_CHAT,
   INSTAGRAM_BUSINESS_ID:     IG_ID,
+  FACEBOOK_PAGE_ID:          FB_PAGE_ID,
   ACCESS_TOKEN_META:         META_TOKEN,
   FIREBASE_SERVICE_ACCOUNT,
   USER_UID,
@@ -206,23 +207,19 @@ async function fetchImage(usedIds, excludeId = null) {
   return img;
 }
 
-// ── INSTAGRAM PUBLISH + FIRST COMMENT (hashtags) ─────────────────
+// ── INSTAGRAM PUBLISH + FIRST COMMENT ────────────────────────────
 async function postToIG(imageUrl, caption, hashtags) {
   try {
-    // 1. Create media container
     const cRes = await fetch(`https://graph.facebook.com/v25.0/${IG_ID}/media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image_url: imageUrl, caption, access_token: META_TOKEN }),
     });
     const cData = await cRes.json();
-    if (cData.error || !cData.id) {
-      return { ok: false, err: cData.error?.message || 'Container ID алдаа' };
-    }
+    if (cData.error || !cData.id) return { ok: false, err: cData.error?.message || 'Container алдаа' };
 
-    await sleep(4000); // Media processing
+    await sleep(4000);
 
-    // 2. Publish
     const pRes = await fetch(`https://graph.facebook.com/v25.0/${IG_ID}/media_publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -231,22 +228,50 @@ async function postToIG(imageUrl, caption, hashtags) {
     const pData = await pRes.json();
     if (pData.error) return { ok: false, err: pData.error.message };
 
-    const postId = pData.id;
-
-    // 3. Post hashtags as first comment (caption цэвэр байхад)
-    if (hashtags && postId) {
+    // Hashtag → first comment
+    if (hashtags && pData.id) {
       await sleep(2000);
-      await fetch(`https://graph.facebook.com/v25.0/${postId}/comments`, {
+      await fetch(`https://graph.facebook.com/v25.0/${pData.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: hashtags, access_token: META_TOKEN }),
       });
     }
 
-    return { ok: true, postId };
+    return { ok: true, postId: pData.id };
   } catch (e) {
     return { ok: false, err: e.message };
   }
+}
+
+// ── FACEBOOK PAGE PUBLISH ─────────────────────────────────────────
+async function postToFB(imageUrl, caption, hashtags) {
+  if (!FB_PAGE_ID) return { ok: false, err: 'FACEBOOK_PAGE_ID байхгүй' };
+  try {
+    const res = await fetch(`https://graph.facebook.com/v25.0/${FB_PAGE_ID}/photos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url:          imageUrl,
+        message:      `${caption}\n\n${hashtags || ''}`.trim(),
+        access_token: META_TOKEN,
+      }),
+    });
+    const data = await res.json();
+    if (data.error) return { ok: false, err: data.error.message };
+    return { ok: true, postId: data.id };
+  } catch (e) {
+    return { ok: false, err: e.message };
+  }
+}
+
+// ── IG + FB ХОЁУЛАНД НЭГЭН ЗЭРЭГ ────────────────────────────────
+async function postToBoth(imageUrl, caption, hashtags) {
+  const [ig, fb] = await Promise.all([
+    postToIG(imageUrl, caption, hashtags),
+    postToFB(imageUrl, caption, hashtags),
+  ]);
+  return { ig, fb };
 }
 
 // ── TELEGRAM DRAFT UI ─────────────────────────────────────────────
@@ -322,14 +347,12 @@ async function approvalLoop({ msgId, caption, hashtags, img, slot, usedIds }) {
         await tg('answerCallbackQuery', { callback_query_id: cb.id });
 
         if (cb.data === 'approve') {
-          await tgMsg('⏳ Instagram-д нийтэлж байна...');
-          const r = await postToIG(curImg.url, curCaption, hashtags);
-          if (r.ok) {
-            await markUsed(curImg.id);
-            await tgMsg(`✅ Амжилттай нийтлэгдлээ!\n🆔 Post ID: \`${r.postId}\``);
-          } else {
-            await tgMsg(`❌ Instagram алдаа:\n\`${r.err}\``);
-          }
+          await tgMsg('⏳ Instagram + Facebook-д нийтэлж байна...');
+          const { ig, fb } = await postToBoth(curImg.url, curCaption, hashtags);
+          await markUsed(curImg.id);
+          const igMsg = ig.ok ? `✅ Instagram: \`${ig.postId}\`` : `❌ Instagram: ${ig.err}`;
+          const fbMsg = fb.ok ? `✅ Facebook: \`${fb.postId}\``  : `❌ Facebook: ${fb.err}`;
+          await tgMsg(`${igMsg}\n${fbMsg}`);
           return;
         }
 
@@ -380,13 +403,11 @@ async function approvalLoop({ msgId, caption, hashtags, img, slot, usedIds }) {
 
   // ── Timeout → AUTO POST ──────────────────────────────────────────
   await tgMsg('⏰ 15 минут хариу ирсэнгүй — автомат нийтэлж байна...');
-  const r = await postToIG(curImg.url, curCaption, hashtags);
-  if (r.ok) {
-    await markUsed(curImg.id);
-    await tgMsg(`✅ Автомат нийтлэгдлээ!\n🆔 Post ID: \`${r.postId}\``);
-  } else {
-    await tgMsg(`❌ Автомат post алдаа:\n\`${r.err}\``);
-  }
+  const { ig, fb } = await postToBoth(curImg.url, curCaption, hashtags);
+  await markUsed(curImg.id);
+  const igMsg = ig.ok ? `✅ Instagram: \`${ig.postId}\`` : `❌ Instagram: ${ig.err}`;
+  const fbMsg = fb.ok ? `✅ Facebook: \`${fb.postId}\``  : `❌ Facebook: ${fb.err}`;
+  await tgMsg(`🤖 Автомат:\n${igMsg}\n${fbMsg}`);
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────
