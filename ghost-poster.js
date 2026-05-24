@@ -1,95 +1,56 @@
 // ── JARVIS GHOST MARKETER ─────────────────────────────────────────
-// Tavily → trending topic → GPT-4o-mini caption → Pexels/Unsplash image
-// → Telegram draft (approve / reject / new image / edit text)
-// → Instagram publish
-// Firestore-д ашигласан зурагны ID хадгалж давтахгүй
+// Агуулга үүсгэж Telegram-д draft явуулаад ШУУД гарна
+// Approval-г approval-checker.js тусдаа job шалгана
 
 'use strict';
 const admin = require('firebase-admin');
 
-// ── ENV ───────────────────────────────────────────────────────────
 const {
   PEXELS_API_KEY,
   UNSPLASH_ACCESS_KEY,
   TELEGRAM_BOT_TOKEN_JARVIS: TG_TOKEN,
   TELEGRAM_ID:               TG_CHAT,
-  INSTAGRAM_BUSINESS_ID:     IG_ID,
-  FACEBOOK_PAGE_ID:          FB_PAGE_ID,
-  ACCESS_TOKEN_META:         META_TOKEN,
   FIREBASE_SERVICE_ACCOUNT,
   USER_UID,
   TAVILY_KEY,
   SYSTEM_USE_TOKEN:          GITHUB_TOKEN,
 } = process.env;
 
-// ── FIREBASE ──────────────────────────────────────────────────────
 const sa = JSON.parse(FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({ credential: admin.credential.cert(sa) });
 const db = admin.firestore();
 
-// ── HELPERS ───────────────────────────────────────────────────────
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-async function tg(method, body) {
-  const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-}
-
-async function tgMsg(text) {
-  return tg('sendMessage', { chat_id: TG_CHAT, text, parse_mode: 'Markdown' });
-}
-
-// ── USED IMAGES (Firestore dedup) ─────────────────────────────────
+// ── USED IMAGES ───────────────────────────────────────────────────
 async function getUsedIds() {
   const snap = await db.doc(`users/${USER_UID}/marketing/usedImages`).get();
   return new Set(snap.exists ? (snap.data().ids || []) : []);
 }
 
-async function markUsed(imageId) {
-  const ref = db.doc(`users/${USER_UID}/marketing/usedImages`);
-  const snap = await ref.get();
-  const ids  = snap.exists ? (snap.data().ids || []) : [];
-  if (ids.includes(imageId)) return;
-  ids.push(imageId);
-  if (ids.length > 600) ids.splice(0, ids.length - 600);
-  await ref.set({ ids, updatedAt: new Date().toISOString() });
-}
-
-// ── TAVILY — TRENDING TOPIC ───────────────────────────────────────
+// ── TAVILY ────────────────────────────────────────────────────────
 const SHANGHAI_TOPICS = [
   'Shanghai travel tips for Mongolians 2025',
   'Shanghai tourism hidden gems attractions',
-  'Shanghai street food guide Mongolian tourists',
-  'Shanghai luxury experience VIP travel',
-  'Mongolia expat life in Shanghai guide',
+  'Shanghai street food guide tourists',
+  'Shanghai luxury VIP travel experience',
+  'Mongolia expat life Shanghai guide',
   'Shanghai Bund night skyline tourism',
-  'Shanghai traditional culture modern city life',
-  'China travel visa tips Mongolia tourists',
-  'Shanghai medical tourism international packages',
-  'Shanghai fashion shopping Nanjing Road',
-  'Shanghai Disney resort family travel',
-  'Shanghai business district Pudong modern life',
+  'Shanghai traditional culture modern city',
+  'China travel visa tips Mongolia',
+  'Shanghai medical tourism packages',
+  'Shanghai fashion Nanjing Road shopping',
 ];
 
 const MONGOLIA_TOPICS = [
   'Mongolia trending news today',
   'Ulaanbaatar events concerts 2025',
   'Mongolia viral social media today',
-  'Mongolia sports news today',
-  'Mongolia entertainment celebrity news',
-  'Монгол мэдээ өнөөдөр trending',
+  'Mongolia sports entertainment news',
 ];
 
 async function getTrend() {
-  // 30% магадлалтай Монголын trend, 70% Shanghai
   const isMongolia = Math.random() < 0.3;
   const pool = isMongolia ? MONGOLIA_TOPICS : SHANGHAI_TOPICS;
   const q    = pool[Math.floor(Math.random() * pool.length)];
-
   try {
     const res = await fetch('https://api.tavily.com/search', {
       method: 'POST',
@@ -97,85 +58,56 @@ async function getTrend() {
       body: JSON.stringify({ api_key: TAVILY_KEY, query: q, max_results: 3, search_depth: 'basic' }),
     });
     const data = await res.json();
-    const snippets = (data.results || [])
-      .map(r => r.content || r.snippet || '')
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .slice(0, 900);
+    const snippets = (data.results || []).map(r => r.content || '').join(' ').slice(0, 900);
     return { query: q, snippets, isMongolia };
-  } catch (e) {
-    console.warn('[Tavily]', e.message);
+  } catch {
     return { query: q, snippets: '', isMongolia };
   }
 }
 
-// ── GPT-4o-mini — CAPTION + HASHTAGS (тусдаа) ────────────────────
-async function generateContent(query, snippets, isMongolia = false) {
-  const context = isMongolia
-    ? `Монгол дахь trending сэдвийг LFS Shanghai брэндтэй холбон пост бич. LFS Shanghai нь Монголчуудад Шанхайд туслах платформ учраас Монголын хамааралтай.`
-    : `Шанхайн туслалцааны платформ LFS Shanghai-н өнцгөөс пост бич.`;
+// ── GPT CAPTION ───────────────────────────────────────────────────
+async function generateContent(query, snippets, isMongolia) {
+  const ctx = isMongolia
+    ? 'Монголын trending сэдвийг LFS Shanghai брэндтэй байгалийн байдлаар холбо.'
+    : 'LFS Shanghai — Монгол аялагчдын Шанхайн VIP платформ.';
 
-  const prompt = `Та LFS Shanghai компанийн Instagram маркетинг менежер юм.
-LFS Shanghai — Монгол аялагчдад зориулсан Шанхайн VIP туслалцааны платформ (bileg11.github.io).
-
-${context}
-
+  const prompt = `${ctx}
 Сэдэв: ${query}
-Мэдээлэл: ${snippets || 'Монголчуудын сонирхол татсан сэдэв.'}
+Мэдээлэл: ${snippets || 'Шанхай хот.'}
 
 CAPTION:
-[3-4 өгүүлбэр, Монгол хэлээр, байгалийн, sэтгэл хөдлөм, LFS Shanghai нэг удаа дурдана, 4-6 emoji, "👉 bileg11.github.io" CTA]
+[3-4 өгүүлбэр, Монгол, inspire+inform, 4-6 emoji, "👉 bileg11.github.io" CTA]
 
 HASHTAGS:
-[18-22 hashtag Монгол+Англи+Хятад, зайгаар тусгаарласан]
+[18-22 hashtag Монгол+Англи+Хятад, зайгаар]
 
-Зөвхөн CAPTION: болон HASHTAGS: хэсгүүдийг буцаана.`;
+Зөвхөн CAPTION: HASHTAGS: хэсгүүд буцаана.`;
 
   try {
     const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${GITHUB_TOKEN}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 700,
-        temperature: 0.88,
-      }),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GITHUB_TOKEN}` },
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 700, temperature: 0.88 }),
     });
     const data = await res.json();
-    const raw = data.choices?.[0]?.message?.content?.trim() || '';
-    // Parse CAPTION: and HASHTAGS: sections
-    const capMatch  = raw.match(/CAPTION:\s*([\s\S]*?)(?=HASHTAGS:|$)/i);
-    const hashMatch = raw.match(/HASHTAGS:\s*([\s\S]*?)$/i);
-    const caption   = capMatch?.[1]?.trim()  || null;
-    const hashtags  = hashMatch?.[1]?.trim() || null;
-    return caption ? { caption, hashtags } : null;
-  } catch (e) {
-    console.warn('[GPT]', e.message);
-    return null;
-  }
+    const raw  = data.choices?.[0]?.message?.content?.trim() || '';
+    const cap  = raw.match(/CAPTION:\s*([\s\S]*?)(?=HASHTAGS:|$)/i)?.[1]?.trim();
+    const hash = raw.match(/HASHTAGS:\s*([\s\S]*?)$/i)?.[1]?.trim();
+    return { caption: cap || null, hashtags: hash || null };
+  } catch { return { caption: null, hashtags: null }; }
 }
 
-// ── IMAGE SOURCES ─────────────────────────────────────────────────
-const IMG_KEYWORDS = [
-  'shanghai skyline night', 'shanghai bund river', 'shanghai modern tower',
-  'shanghai street food market', 'shanghai traditional garden temple',
-  'china city lights luxury', 'shanghai pudong aerial view',
-  'mongolia travel adventure landscape', 'shanghai fashion district',
-  'china travel culture heritage', 'shanghai rooftop view city',
-  'shanghai metro modern transport',
+// ── IMAGES ────────────────────────────────────────────────────────
+const IMG_KW = [
+  'shanghai skyline night', 'shanghai bund river', 'shanghai modern architecture',
+  'shanghai street food', 'shanghai traditional garden', 'china luxury city',
+  'shanghai pudong view', 'mongolia landscape', 'china culture heritage',
 ];
 
 async function pexelsImage(usedIds) {
-  const kw = IMG_KEYWORDS[Math.floor(Math.random() * IMG_KEYWORDS.length)];
+  const kw = IMG_KW[Math.floor(Math.random() * IMG_KW.length)];
   try {
-    const res = await fetch(
-      `https://api.pexels.com/v1/search?query=${encodeURIComponent(kw)}&per_page=20&orientation=portrait`,
-      { headers: { 'Authorization': PEXELS_API_KEY } }
-    );
+    const res  = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(kw)}&per_page=20&orientation=portrait`, { headers: { 'Authorization': PEXELS_API_KEY } });
     const data = await res.json();
     const fresh = (data.photos || []).filter(p => !usedIds.has(`px_${p.id}`));
     if (!fresh.length) return null;
@@ -185,12 +117,9 @@ async function pexelsImage(usedIds) {
 }
 
 async function unsplashImage(usedIds) {
-  const kw = IMG_KEYWORDS[Math.floor(Math.random() * IMG_KEYWORDS.length)];
+  const kw = IMG_KW[Math.floor(Math.random() * IMG_KW.length)];
   try {
-    const res = await fetch(
-      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(kw)}&per_page=20&orientation=portrait`,
-      { headers: { 'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}` } }
-    );
+    const res  = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(kw)}&per_page=20&orientation=portrait`, { headers: { 'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}` } });
     const data = await res.json();
     const fresh = (data.results || []).filter(p => !usedIds.has(`us_${p.id}`));
     if (!fresh.length) return null;
@@ -199,277 +128,80 @@ async function unsplashImage(usedIds) {
   } catch { return null; }
 }
 
-async function fetchImage(usedIds, excludeId = null) {
-  const excl = new Set([...usedIds, ...(excludeId ? [excludeId] : [])]);
+async function fetchImage(usedIds) {
   const usePx = Math.random() > 0.5;
-  let img = usePx ? await pexelsImage(excl) : await unsplashImage(excl);
-  if (!img) img = usePx ? await unsplashImage(excl) : await pexelsImage(excl);
+  let img = usePx ? await pexelsImage(usedIds) : await unsplashImage(usedIds);
+  if (!img) img = usePx ? await unsplashImage(usedIds) : await pexelsImage(usedIds);
   return img;
 }
 
-// ── FETCH WITH TIMEOUT ────────────────────────────────────────────
-async function fetchWithTimeout(url, opts, ms = 15000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  try {
-    const r = await fetch(url, { ...opts, signal: ctrl.signal });
-    return r;
-  } finally {
-    clearTimeout(t);
-  }
-}
-
-// ── INSTAGRAM PUBLISH + FIRST COMMENT ────────────────────────────
-async function postToIG(imageUrl, caption, hashtags) {
-  try {
-    const cRes = await fetchWithTimeout(`https://graph.facebook.com/v25.0/${IG_ID}/media`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_url: imageUrl, caption, access_token: META_TOKEN }),
-    });
-    const cData = await cRes.json();
-    if (cData.error || !cData.id) return { ok: false, err: cData.error?.message || 'Container алдаа' };
-
-    await sleep(3000);
-
-    const pRes = await fetchWithTimeout(`https://graph.facebook.com/v25.0/${IG_ID}/media_publish`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ creation_id: cData.id, access_token: META_TOKEN }),
-    });
-    const pData = await pRes.json();
-    if (pData.error) return { ok: false, err: pData.error.message };
-
-    // Hashtag → first comment (background, алдаа гарсан ч post хийгдсэн)
-    if (hashtags && pData.id) {
-      fetchWithTimeout(`https://graph.facebook.com/v25.0/${pData.id}/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: hashtags, access_token: META_TOKEN }),
-      }).catch(() => {});
-    }
-
-    return { ok: true, postId: pData.id };
-  } catch (e) {
-    return { ok: false, err: e.message };
-  }
-}
-
-// ── FACEBOOK PAGE PUBLISH ─────────────────────────────────────────
-async function postToFB(imageUrl, caption, hashtags) {
-  if (!FB_PAGE_ID) return { ok: false, err: 'FACEBOOK_PAGE_ID secret байхгүй' };
-  try {
-    const res = await fetchWithTimeout(`https://graph.facebook.com/v25.0/${FB_PAGE_ID}/photos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url:          imageUrl,
-        message:      `${caption}\n\n${hashtags || ''}`.trim(),
-        access_token: META_TOKEN,
-      }),
-    });
-    const data = await res.json();
-    if (data.error) return { ok: false, err: data.error.message };
-    return { ok: true, postId: data.id };
-  } catch (e) {
-    return { ok: false, err: e.message };
-  }
-}
-
-// ── IG + FB ХОЁУЛАНД НЭГЭН ЗЭРЭГ ────────────────────────────────
-async function postToBoth(imageUrl, caption, hashtags) {
-  const [ig, fb] = await Promise.all([
-    postToIG(imageUrl, caption, hashtags),
-    postToFB(imageUrl, caption, hashtags),
-  ]);
-  return { ig, fb };
-}
-
-// ── TELEGRAM DRAFT UI ─────────────────────────────────────────────
-function draftText(caption, source, keyword, slot) {
-  const label = slot === 'morning' ? '🌅 Өглөөний пост' : '🌆 Оройн пост';
-  return `🤖 *JARVIS GHOST MARKETER*\n${label} · 📸 ${source} (${keyword})\n\n${caption}\n\n_15 минут хариу ирэхгүй бол автомат нийтлэгдэнэ._`;
-}
-
-function draftKeyboard() {
-  return {
-    inline_keyboard: [
-      [
-        { text: '✅ Пост болгох',  callback_data: 'approve'   },
-        { text: '❌ Цуцлах',       callback_data: 'reject'    },
-      ],
-      [
-        { text: '🖼️ Зураг солих', callback_data: 'new_image' },
-        { text: '✏️ Текст засах', callback_data: 'edit_text' },
-      ],
-    ],
-  };
-}
-
+// ── TELEGRAM DRAFT ────────────────────────────────────────────────
 async function sendDraft(caption, img, slot) {
-  const res = await tg('sendPhoto', {
-    chat_id:      TG_CHAT,
-    photo:        img.url,
-    caption:      draftText(caption, img.source, img.keyword, slot),
-    parse_mode:   'Markdown',
-    reply_markup: draftKeyboard(),
+  const label = slot === 'morning' ? '🌅 Өглөөний' : '🌆 Оройн';
+  const text  = `🤖 *JARVIS GHOST MARKETER*\n${label} пост · 📸 ${img.source}\n\n${caption}\n\n_Approve хийхгүй бол 15 минутын дараа автомат нийтлэгдэнэ._`;
+  const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendPhoto`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id:      TG_CHAT,
+      photo:        img.url,
+      caption:      text,
+      parse_mode:   'Markdown',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '✅ Пост болгох', callback_data: 'approve' }, { text: '❌ Цуцлах', callback_data: 'reject' }],
+          [{ text: '🖼️ Зураг солих', callback_data: 'new_image' }, { text: '✏️ Текст засах', callback_data: 'edit_text' }],
+        ],
+      },
+    }),
   });
-  return res.result?.message_id || null;
-}
-
-async function editDraftCaption(msgId, caption, img, slot) {
-  await tg('editMessageCaption', {
-    chat_id:      TG_CHAT,
-    message_id:   msgId,
-    caption:      draftText(caption, img.source, img.keyword, slot),
-    parse_mode:   'Markdown',
-    reply_markup: draftKeyboard(),
-  });
-}
-
-// ── APPROVAL LOOP ─────────────────────────────────────────────────
-// Хариу ирэхгүй бол 15 минутын дараа АВТОМАТ post хийнэ
-async function approvalLoop({ msgId, caption, hashtags, img, slot, usedIds, startOffset }) {
-  let curCaption = caption;
-  let curImg     = img;
-  let curMsgId   = msgId;
-  let state      = 'approval';   // 'approval' | 'waiting_text'
-  let editMsgId  = null;
-  let offset     = startOffset || 0;
-
-  const AUTO_POST_MS = 15 * 60 * 1000; // 15 min → auto post
-  const DEADLINE     = Date.now() + AUTO_POST_MS;
-
-  while (Date.now() < DEADLINE) {
-    let res;
-    try {
-      res = await fetch(
-        `https://api.telegram.org/bot${TG_TOKEN}/getUpdates?offset=${offset}&timeout=5`
-      );
-      res = await res.json();
-    } catch { await sleep(3000); continue; }
-
-    for (const upd of (res.result || [])) {
-      offset = upd.update_id + 1;
-
-      // ── Button press ────────────────────────────────────
-      const cb = upd.callback_query;
-      if (state === 'approval' && cb?.message?.message_id === curMsgId) {
-        await tg('answerCallbackQuery', { callback_query_id: cb.id });
-
-        if (cb.data === 'approve') {
-          await tgMsg('⏳ Instagram + Facebook-д нийтэлж байна...');
-          const { ig, fb } = await postToBoth(curImg.url, curCaption, hashtags);
-          await markUsed(curImg.id);
-          const igMsg = ig.ok ? `✅ Instagram: \`${ig.postId}\`` : `❌ Instagram: ${ig.err}`;
-          const fbMsg = fb.ok ? `✅ Facebook: \`${fb.postId}\``  : `❌ Facebook: ${fb.err}`;
-          await tgMsg(`${igMsg}\n${fbMsg}`);
-          return;
-        }
-
-        if (cb.data === 'reject') {
-          await tgMsg('❌ Пост цуцлагдлаа. Дараагийн schedule хүртэл хүлээнэ.');
-          return;
-        }
-
-        if (cb.data === 'new_image') {
-          await tgMsg('🔍 Шинэ зураг хайж байна...');
-          const newImg = await fetchImage(usedIds, curImg.id);
-          if (!newImg) {
-            await tgMsg('⚠️ Шинэ зураг олдсонгүй. Одоогийн зургаа хэрэглэнэ.');
-          } else {
-            curImg = newImg;
-            const nr = await sendDraft(curCaption, curImg, slot);
-            if (nr) curMsgId = nr;
-          }
-        }
-
-        if (cb.data === 'edit_text') {
-          state = 'waiting_text';
-          const er = await tg('sendMessage', {
-            chat_id:      TG_CHAT,
-            text:         '✏️ Шинэ постын текстийг энд reply хийж бичнэ үү:',
-            reply_markup: { force_reply: true, selective: false },
-          });
-          editMsgId = er.result?.message_id;
-        }
-      }
-
-      // ── Text reply (after ✏️) ───────────────────────────
-      const msg = upd.message;
-      if (
-        state === 'waiting_text' &&
-        msg?.reply_to_message?.message_id === editMsgId &&
-        msg?.text
-      ) {
-        curCaption = msg.text;
-        state      = 'approval';
-        await editDraftCaption(curMsgId, curCaption, curImg, slot);
-        await tgMsg('✅ Текст шинэчлэгдлээ. Draft-аас үргэлжлүүлнэ үү.');
-      }
-    }
-
-    await sleep(2000);
-  }
-
-  // ── Timeout → AUTO POST ──────────────────────────────────────────
-  await tgMsg('⏰ 15 минут хариу ирсэнгүй — автомат нийтэлж байна...');
-  const { ig, fb } = await postToBoth(curImg.url, curCaption, hashtags);
-  await markUsed(curImg.id);
-  const igMsg = ig.ok ? `✅ Instagram: \`${ig.postId}\`` : `❌ Instagram: ${ig.err}`;
-  const fbMsg = fb.ok ? `✅ Facebook: \`${fb.postId}\``  : `❌ Facebook: ${fb.err}`;
-  await tgMsg(`🤖 Автомат:\n${igMsg}\n${fbMsg}`);
+  const data = await res.json();
+  return data.result?.message_id || null;
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────
 async function main() {
   const utcH = new Date().getUTCHours();
-  const slot  = utcH < 6 ? 'morning' : 'evening'; // 08:00 / 18:00 Shanghai
-  console.log(`[JARVIS] Ghost Marketer — ${slot} | ${new Date().toISOString()}`);
+  const slot  = utcH < 6 ? 'morning' : 'evening';
+  console.log(`[Ghost] ${slot} | ${new Date().toISOString()}`);
 
-  // 1. Used image IDs from Firestore
   const usedIds = await getUsedIds();
-  console.log(`[JARVIS] Used images: ${usedIds.size}`);
-
-  // 2. Trending topic via Tavily
   const { query, snippets, isMongolia } = await getTrend();
-  console.log(`[JARVIS] Topic: ${query}`);
+  console.log(`[Ghost] Topic: ${query}`);
 
-  // 3. AI caption + hashtags via GPT-4o-mini
-  const generated = await generateContent(query, snippets, isMongolia);
-  let caption  = generated?.caption  || `Шанхай хот — Монгол аялагчдын хамгийн их сонирхдог газруудын нэг! 🌆✨\n\nБунд дахь гэрэлтэй тэнгэр, орчин үеийн архитектур, баялаг хоол — LFS Shanghai бүгдийг нэг дор санал болгодог.\n\n👉 bileg11.github.io`;
-  let hashtags = generated?.hashtags || `#Шанхай #Shanghai #上海 #LFSShanghai #МонголАялал #ШанхайАмьдрал #ChinaTravel #蒙古旅行 #ShanghaiLife #AmazingShanghai #TravelChina #上海旅游 #МонголШанхай #VIPTravel #ШанхайХот #ShanghaiSkyline #ExploreShanghai #Mongols #TravelAsia #旅行`;
+  const gen     = await generateContent(query, snippets, isMongolia);
+  const caption  = gen.caption  || 'Шанхай хот — Монгол аялагчдын мөрөөдлийн газар! 🌆\n\n👉 bileg11.github.io';
+  const hashtags = gen.hashtags || '#Шанхай #Shanghai #LFSShanghai #МонголАялал';
 
-  // 4. Fresh image (not used before)
   const img = await fetchImage(usedIds);
-  if (!img) {
-    await tgMsg('⚠️ Зураг олдсонгүй — Pexels/Unsplash нөөц дууссан байж болно.');
-    process.exit(1);
-  }
-  console.log(`[JARVIS] Image: ${img.source} ${img.id}`);
+  if (!img) { console.error('[Ghost] No image found'); process.exit(1); }
+  console.log(`[Ghost] Image: ${img.source} ${img.id}`);
 
-  // 5. Одоогийн Telegram offset авна (хуучин update алгасахын тулд)
-  const offsetRes  = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?limit=1&offset=-1`);
-  const offsetData = await offsetRes.json();
-  const lastUpd    = offsetData.result || [];
-  const startOffset = lastUpd.length ? lastUpd[lastUpd.length - 1].update_id + 1 : 0;
+  // Telegram-н сүүлийн update_id авна
+  const tgRes    = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?limit=1&offset=-1`);
+  const tgData   = await tgRes.json();
+  const lastUpdates = tgData.result || [];
+  const tgOffset = lastUpdates.length ? lastUpdates[lastUpdates.length - 1].update_id + 1 : 0;
 
-  // 6. Send Telegram draft
   const msgId = await sendDraft(caption, img, slot);
-  if (!msgId) {
-    console.error('[JARVIS] Telegram draft failed');
-    process.exit(1);
-  }
-  console.log(`[JARVIS] Draft sent. MsgID: ${msgId}, offset: ${startOffset}`);
+  if (!msgId) { console.error('[Ghost] Telegram send failed'); process.exit(1); }
+  console.log(`[Ghost] Draft sent. msgId: ${msgId}`);
 
-  // 7. Approval loop (15 min → auto post)
-  await approvalLoop({ msgId, caption, hashtags, img, slot, usedIds, startOffset });
+  // Firestore-д pending state хадгална → approval-checker.js авна
+  await db.doc(`users/${USER_UID}/marketing/pendingPost`).set({
+    caption, hashtags,
+    imageUrl:  img.url,
+    imageId:   img.id,
+    imageSource: img.source,
+    imageKeyword: img.keyword,
+    slot, msgId, tgOffset,
+    status:    'pending',
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+  });
 
-  console.log('[JARVIS] Done.');
+  console.log('[Ghost] State saved to Firestore. Exiting.');
   process.exit(0);
 }
 
-main().catch(e => {
-  console.error('[JARVIS] Fatal:', e.message);
-  process.exit(1);
-});
+main().catch(e => { console.error('[Ghost] Fatal:', e.message); process.exit(1); });

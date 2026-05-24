@@ -1,0 +1,32 @@
+name: JARVIS Approval Checker
+
+on:
+  schedule:
+    - cron: '*/2 * * * *'   # 2 минут тутамд Telegram шалгана
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix scripts
+      - name: Check approvals
+        env:
+          TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+          INSTAGRAM_BUSINESS_ID:     ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+          FACEBOOK_PAGE_ID:          ${{ secrets.FACEBOOK_PAGE_ID }}
+          ACCESS_TOKEN_META:         ${{ secrets.ACCESS_TOKEN_META }}
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                  ${{ secrets.USER_UID }}
+          SYSTEM_USE_TOKEN:          ${{ secrets.SYSTEM_USE_TOKEN }}
+          PEXELS_API_KEY:            ${{ secrets.PEXELS_API_KEY }}
+          UNSPLASH_ACCESS_KEY:       ${{ secrets.UNSPLASH_ACCESS_KEY }}
+        run: NODE_PATH=./scripts/node_modules node scripts/approval-checker.js
