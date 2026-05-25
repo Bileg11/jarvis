@@ -88,8 +88,10 @@ LFS Shanghai бол Монгол аялагчдын Шанхайдах VIP ту�
     });
     clearTimeout(t);
     const d = await r.json();
+    if (d.error) console.error('[Meta] GPT API error:', d.error.message);
     return d.choices?.[0]?.message?.content?.trim() || null;
-  } catch {
+  } catch (e) {
+    console.error('[Meta] GPT error:', e.message);
     return null;
   }
 }
