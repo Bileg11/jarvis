@@ -53,24 +53,7 @@ async function markReplied(id) {
 
 // ── GPT REPLY ─────────────────────────────────────────────────────
 async function generateReply(userText, platform) {
-  const platformNote = platform === 'fb'
-    ? 'Facebook Messenger-ээр'
-    : 'Instagram DM-ээр';
-
-  const prompt = `Та LFS Shanghai-н туслах юм. Монгол аялагч ${platformNote} дараах мессеж явуулсан:
-
-"${userText}"
-
-LFS Shanghai бол Монгол аялагчдын Шанхайдах VIP туслалцааны платформ. Вебсайт: bileg11.github.io
-
-Дараах зааврыг дагана:
-- Найрсаг, мэргэжлийн, богино
-- 2-3 өгүүлбэр, Монголоор
-- Тусламж санал болго
-- Вебсайт руу чиглүүл (биг форматгүй, энгийн текст)
-- Emoji 1-2 ширхэг
-
-Зөвхөн хариу текстийг буцаа.`;
+  const prompt = `You are a helpful customer support assistant for LFS Shanghai, a VIP travel assistance platform for tourists in Shanghai, China. A customer sent this message: "${userText}". Write a friendly, helpful reply in Mongolian language (2-3 sentences). Include the website bileg11.github.io as plain text. Return only the reply.`;
 
   try {
     const ctrl = new AbortController();
