@@ -183,6 +183,21 @@ async function generateReply(userText, history = []) {
   }
 }
 
+// ── SENDER ACTIONS (mark seen + typing) ──────────────────────────
+async function senderAction(recipientId, action, accessToken) {
+  try {
+    await fetch('https://graph.facebook.com/v25.0/me/messages', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient:     { id: recipientId },
+        sender_action: action,
+        access_token:  accessToken,
+      }),
+    });
+  } catch {}
+}
+
 // ── SEND MESSAGE ──────────────────────────────────────────────────
 async function sendReply(recipientId, text, accessToken) {
   try {
@@ -222,10 +237,15 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   const replied = await getReplied();
   if (replied.has(mid)) return;
 
+  // Уншсан болгох + шивж байна... (Gemini-с өмнө)
+  await senderAction(senderId, 'mark_seen',  accessToken);
+  await senderAction(senderId, 'typing_on',  accessToken);
+
   // Хэрэглэгчийн өмнөх яриаг уншина
   const history = await getChatHistory(senderId);
 
   const reply = await generateReply(text, history);
+  await senderAction(senderId, 'typing_off', accessToken);
   if (!reply) return;  // SKIP эсвэл алдаа → илгээхгүй
 
   const ok = await sendReply(senderId, reply, accessToken);
