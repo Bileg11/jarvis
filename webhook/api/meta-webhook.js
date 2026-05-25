@@ -261,17 +261,6 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
     await saveChatHistory(senderId, text, reply);
   }
 
-  // Telegram мэдэгдэл
-  const icon = platform === 'fb' ? '💬 FB' : '📸 IG';
-  if (ok) {
-    await tgNotify(
-      `${icon} *DM хариу илгээлээ*\n\n` +
-      `📩 ${text}\n\n` +
-      `🤖 ${reply}`
-    );
-  } else {
-    await tgNotify(`${icon} *DM reply алдаа*\n📩 "${text.slice(0, 80)}"`);
-  }
 }
 
 // ══════════════════════════════════════════════════════════════════
