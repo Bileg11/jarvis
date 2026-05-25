@@ -121,13 +121,18 @@ async function main() {
 
   console.log('[Intel] GPT ✓');
 
-  // Firestore-д хадгална
-  await db.doc(`users/${uid}/intel/latest`).set({
+  // Firestore-д хадгална — daily history + latest
+  const date = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const payload = {
     message,
     timestamp: new Date().toISOString(),
-    date:      now.toISOString().split('T')[0],
-    sources:   ok
-  });
+    date,
+    sources: ok,
+  };
+  await Promise.all([
+    db.doc(`users/${uid}/intel/daily/${date}`).set(payload),   // history
+    db.doc(`users/${uid}/intel/latest`).set(payload),          // backward compat
+  ]);
 
   console.log('[Intel] Firestore ✓');
   console.log('[Intel] Preview:', message.slice(0, 120) + '...');

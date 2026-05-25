@@ -1,0 +1,9 @@
+{
+  "name": "jarvis-webhook",
+  "version": "1.0.0",
+  "description": "JARVIS Telegram webhook — instant responses",
+  "dependencies": {
+    "firebase-admin": "^12.0.0",
+    "node-fetch": "^2.7.0"
+  }
+}

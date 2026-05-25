@@ -1,8 +1,7 @@
 name: JARVIS Manual Poster
 
+# ⛔ DISABLED — Vercel webhook-р солигдсон (instant response)
 on:
-  schedule:
-    - cron: '*/5 * * * *'   # 5 минут тутамд Telegram шалгана
   workflow_dispatch:
 
 env:

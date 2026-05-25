@@ -1,9 +1,10 @@
 name: JARVIS Chat
 
+# ⛔ DISABLED — Vercel webhook-р солигдсон (instant response)
+# Vercel deploy хийсний дараа энэ workflow хэрэггүй болно
+
 on:
-  schedule:
-    - cron: '* * * * *'   # 1 минут тутамд Telegram шалгана
-  workflow_dispatch:
+  workflow_dispatch:   # Зөвхөн гараар test хийхэд
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
