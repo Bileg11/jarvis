@@ -46,6 +46,17 @@ async function markReplied(id) {
   }
 }
 
+// ── Өдрийн comment log хадгална (briefing-д ашиглана) ────────────
+async function logDailyComment(username, text) {
+  const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const ref   = db.doc(`users/${USER_UID}/marketing/commentLog`);
+  const snap  = await ref.get();
+  const data  = snap.exists ? snap.data() : {};
+  const list  = data[today] || [];
+  list.push({ username, text: text.slice(0, 100), at: new Date().toISOString() });
+  await ref.set({ [today]: list }, { merge: true });
+}
+
 // ── IG: сүүлийн постуудыг авна ────────────────────────────────────
 async function getRecentMedia(limit = 8) {
   const res = await fetch(
@@ -136,6 +147,7 @@ async function main() {
       const ok = await postReply(comment.id, reply);
       if (ok) {
         await markReplied(comment.id);
+        await logDailyComment(comment.username || 'unknown', comment.text);
         totalReplied++;
         console.log(`[CommentReply] Replied to @${comment.username}: "${comment.text.slice(0, 40)}..."`);
         await sleep(2000); // Rate limit

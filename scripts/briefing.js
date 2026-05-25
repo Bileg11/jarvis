@@ -103,15 +103,19 @@ async function main() {
 
   console.log(`[Jarvis] ${today} ${hour}:00 (${timeLabel}) — briefing эхлэв`);
 
-  const [routineSnap, logSnap, missSnap] = await Promise.all([
+  const [routineSnap, logSnap, missSnap, commentLogSnap] = await Promise.all([
     db.doc(`users/${uid}/routines/${today}`).get(),
     db.doc(`users/${uid}/logs/${today}`).get(),
     db.doc(`users/${uid}/meta/missions`).get(),
+    db.doc(`users/${uid}/marketing/commentLog`).get(),
   ]);
 
   const routine  = routineSnap.exists ? routineSnap.data()           : {};
   const log      = logSnap.exists     ? logSnap.data()               : {};
   const missions = missSnap.exists    ? (missSnap.data().list || []) : [];
+
+  // Өдрийн comment лог (зөвхөн орой харуулна)
+  const todayComments = commentLogSnap.exists ? (commentLogSnap.data()?.[today] || []) : [];
 
   const water   = log.water?.total_ml || 0;
   const sleep   = log.sleep?.hours    || null;
@@ -129,13 +133,18 @@ async function main() {
     getStreak(uid, 'hanzi'),
   ]);
 
+  // Орой дээр comment brief нэмнэ
+  const commentSection = (timeLabel === 'Орой' && todayComments.length > 0)
+    ? `\nIG Comment: ${todayComments.length} comment хариулав\n${todayComments.slice(0,3).map(c=>`  • @${c.username}: "${c.text.slice(0,50)}"`).join('\n')}`
+    : '';
+
   const prompt =
 `[${timeLabel} ${hour}:00 | ${DAYS[now.getDay()]}]
 Score: ${score}/100 | Routine: ${done}/4
 Ус: ${water}ml/2000ml (${Math.round(water/20)}%) | Нойр: ${sleep ? sleep.toFixed(1)+'ц' : 'бүртгэгдээгүй'}
 Дасгал: ${routine.exercise?'✓':'✗'} (${exStreak}хоног🔥) | 汉字: ${routine.hanzi?'✓':'✗'} (${hzStreak}хоног🔥)
 Унших: ${routine.read?'✓':'✗'} | Journal: ${routine.journal?'✓':'✗'}
-LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK4: ${hanziM.val}/300 үг | Workout: ${fitness.val}/30`;
+LFS: ${lfs.val}/${lfs.max} хэрэглэгч | HSK4: ${hanziM.val}/300 үг | Workout: ${fitness.val}/30${commentSection}`;
 
   const aiMsg   = await callAI(prompt);
   const message = aiMsg || buildFallbackMessage(score, done, water, routine, exStreak, hzStreak);
