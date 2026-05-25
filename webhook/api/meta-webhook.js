@@ -120,6 +120,68 @@ async function trackDailyUser(senderId) {
   } catch {}
 }
 
+// ── MORNING BRIEF (server.js-с cron дуудна, 07:30 Шанхай) ────────
+async function sendMorningBrief() {
+  try {
+    // Өчигдрийн аналитик
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const snap = await db.doc(`users/${UID}/analytics/${yesterday}`).get();
+    const d = snap.exists ? snap.data() : {};
+
+    const userCount     = (d.users    || []).length;
+    const guideCount    = d.guide     || 0;
+    const medicalCount  = d.medical   || 0;
+    const agentCount    = d.agent     || 0;
+    const escalateCount = d.escalate  || 0;
+
+    // Gemini-аар өдрийн зөвлөгөө үүсгэнэ
+    const prompt = `LFS Shanghai бизнесийн өчигдрийн тоо: нийт ${userCount} хүн хандсан, ${guideCount} нь гайд, ${medicalCount} нь эмнэлэг сонирхсон, ${agentCount} нь ажилтан дуудсан. Билэгт зориулж өнөөдрийн 1-2 өгүүлбэр практик зөвлөгөө өг. Монголоор, товч, дотно.`;
+
+    let advice = '';
+    if (GEMINI_KEY) {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            generationConfig: { maxOutputTokens: 150, temperature: 0.8 },
+          }),
+        }
+      );
+      const data = await r.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const part  = parts.find(p => !p.thought && p.text) || parts[0];
+      advice = part?.text?.trim() || '';
+    }
+
+    const now = new Date();
+    const days = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
+    const dayName = days[now.getDay()];
+    const dateStr = now.toISOString().slice(0, 10);
+
+    const brief =
+`🌅 *Өглөөний мэнд, Билэг.*
+_${dayName}, ${dateStr} | Шанхай 07:30_
+\`────────────────────\`
+📊 *Өчигдрийн LFS тойм:*
+• Нийт хандсан: *${userCount}* хүн
+• Гайд сонирхсон: *${guideCount}* хүн
+• Эмнэлэг сонирхсон: *${medicalCount}* хүн
+• Ажилтан дуудсан: *${agentCount}* удаа${escalateCount > 0 ? `\n• ⚠️ Бухимдсан хэрэглэгч: *${escalateCount}*` : ''}
+
+💡 *Өнөөдрийн зөвлөгөө:*
+${advice || 'Өнөөдөр ч гэсэн LFS-г өсгөхийн тулд нэг жижиг алхам хий.'}
+
+⚡ _Жарвис ажиллаж байна._`;
+
+    await tgNotify(brief);
+  } catch (e) {
+    console.error('[Brief] Morning brief error:', e.message);
+  }
+}
+
 // ── DAILY EXECUTIVE REPORT (server.js-с cron дуудна) ─────────────
 async function sendDailyReport() {
   try {
@@ -504,6 +566,7 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
 // EXPRESS HANDLERS
 // ══════════════════════════════════════════════════════════════════
 module.exports = {
+  sendMorningBrief,
   sendDailyReport,
 
   verify(req, res) {

@@ -27,6 +27,13 @@ app.post('/api/meta-webhook', metaHook.handle);
 
 app.listen(PORT, () => console.log(`[JARVIS] Server running on port ${PORT}`));
 
+// ── MORNING BRIEF — өдөр бүр 07:30 (UTC+8 = 23:30 UTC өмнөх өдөр) ─
+// Railway UTC: 23:30 = Шанхайн 07:30
+cron.schedule('30 23 * * *', () => {
+  console.log('[JARVIS] Sending morning brief...');
+  metaHook.sendMorningBrief();
+});
+
 // ── DAILY EXECUTIVE REPORT — өдөр бүр 22:00 (UTC+8 = 14:00 UTC) ──
 // Railway UTC цаг дээр ажилладаг тул 14:00 UTC = Шанхайн 22:00
 cron.schedule('0 14 * * *', () => {
