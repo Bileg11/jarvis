@@ -177,16 +177,19 @@ async function logWater(ml) {
 
 // ── GPT CAPTION ───────────────────────────────────────────────────
 async function generateCaption(hint = '') {
-  const prompt = `LFS Shanghai Instagram.${hint ? ` Тэмдэглэл: "${hint}"` : ' Шанхайн VIP аялал.'}
-CAPTION: [3-4 өгүүлбэр, Монгол, 4-6 emoji, "👉 bileg11.github.io" CTA]
-HASHTAGS: [18-22 hashtag Монгол+Англи+Хятад, зайгаар]
-Зөвхөн CAPTION: HASHTAGS: форматаар буцаа.`;
+  const prompt = hint
+    ? `LFS Shanghai IG post. "${hint}" тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io" нэмж бич. Дараа нь 10 hashtag зайгаар. Формат: CAPTION: ... HASHTAGS: ...`
+    : `LFS Shanghai Шанхай аялал тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io". Дараа нь 10 hashtag. Формат: CAPTION: ... HASHTAGS: ...`;
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
     const r = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 600, temperature: 0.88 }),
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 280, temperature: 0.85 }),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
     const d   = await r.json();
     const raw = d.choices?.[0]?.message?.content || '';
     return {
