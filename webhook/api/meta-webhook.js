@@ -150,6 +150,7 @@ async function generateReply(userText, history = []) {
         }
       );
       const d = await r.json();
+      if (d.error) console.error('[Gemini] API error:', JSON.stringify(d.error));
       raw = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
 
     } else {
@@ -243,8 +244,10 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
 
   // Хэрэглэгчийн өмнөх яриаг уншина
   const history = await getChatHistory(senderId);
+  console.log(`[Meta] generating reply for "${text.slice(0,40)}" history=${history.length}`);
 
   const reply = await generateReply(text, history);
+  console.log(`[Meta] reply: ${reply === null ? 'SKIP/null' : reply.slice(0,60)}`);
   await senderAction(senderId, 'typing_off', accessToken);
   if (!reply) return;  // SKIP эсвэл алдаа → илгээхгүй
 
