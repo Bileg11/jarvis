@@ -478,14 +478,11 @@ async function handleText(msg) {
 // VERCEL HANDLER
 // ══════════════════════════════════════════════════════════════════
 module.exports = async (req, res) => {
-  // Always respond 200 immediately (Telegram requires fast response)
-  res.status(200).json({ ok: true });
-
-  if (req.method !== 'POST') return;
+  if (req.method !== 'POST') return res.status(200).send('JARVIS webhook OK');
 
   try {
     const upd = req.body;
-    if (!upd || !UID) return;
+    if (!upd || !UID) return res.status(200).json({ ok: true });
 
     if (upd.callback_query) {
       await handleCallback(upd.callback_query);
@@ -497,4 +494,7 @@ module.exports = async (req, res) => {
   } catch (e) {
     console.error('[Webhook] Error:', e.message);
   }
+
+  // Processing дууссаны ДАРАА respond — Vercel function alive байна
+  res.status(200).json({ ok: true });
 };
