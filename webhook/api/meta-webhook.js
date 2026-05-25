@@ -178,17 +178,24 @@ module.exports = {
 
     try {
       const body = req.body;
-      if (body.object !== 'instagram' && body.object !== 'page') return;
+      console.log('[Meta] POST received. object:', body.object, '| entries:', body.entry?.length);
+
+      if (body.object !== 'instagram' && body.object !== 'page') {
+        console.log('[Meta] Ignored object type:', body.object);
+        return;
+      }
 
       const isIG = body.object === 'instagram';
       const accessToken = isIG ? META_TOKEN : await getPageToken();
       const platform    = isIG ? 'ig' : 'fb';
 
       for (const entry of (body.entry || [])) {
+        console.log('[Meta] Entry ID:', entry.id, '| messaging count:', entry.messaging?.length, '| changes count:', entry.changes?.length);
         // Messaging events (IG DM + FB Messenger)
         for (const event of (entry.messaging || [])) {
           const senderId = event.sender?.id;
           const msg      = event.message;
+          console.log('[Meta] Event — sender:', senderId, '| has message:', !!msg, '| is_echo:', msg?.is_echo);
 
           // Өөрийн page/account-н мессеж алгасна
           if (!senderId || senderId === IG_ID || senderId === FB_ID) continue;
