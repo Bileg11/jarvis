@@ -269,17 +269,16 @@ async function handleCallback(cb) {
       console.log('[GPT] Result:', JSON.stringify(gen));
       const caption  = gen.caption  || 'LFS Shanghai 🌆\n👉 bileg11.github.io';
       const hashtags = gen.hashtags || '#LFSShanghai #Shanghai';
-      console.log('[Draft] photoUrl:', ms.photoUrl?.slice(0, 60));
       const draft    = await tgCall('sendPhoto', {
-        chat_id: TG_CHAT, photo: ms.photoUrl,
+        chat_id: TG_CHAT, photo: ms.fileId || ms.photoUrl,
         caption: `📋 *Draft:*\n\n${caption}`, parse_mode: 'Markdown',
         reply_markup: { inline_keyboard: [[
           { text: '✅ Post хийх', callback_data: 'manual_post' },
           { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
         ]]},
       });
-      console.log('[Draft] sendPhoto result:', JSON.stringify(draft).slice(0, 200));
-      await manualRef().set({ status: 'waiting_final', photoUrl: ms.photoUrl, caption, hashtags, draftMsgId: draft.result?.message_id || null });
+      console.log('[Draft] sendPhoto result:', JSON.stringify(draft).slice(0, 100));
+      await manualRef().set({ status: 'waiting_final', photoUrl: ms.photoUrl, fileId: ms.fileId, caption, hashtags, draftMsgId: draft.result?.message_id || null });
       return;
     }
     if (cmd === 'manual_cap') {
@@ -323,22 +322,20 @@ async function handlePhoto(msg) {
   const userCaption = msg.caption || '';
 
   if (userCaption) {
-    // Caption байвал шууд AI сайжруулж draft явуулна
     await tgSend('🤖 Caption бэлдэж байна...');
     const gen      = await generateCaption(userCaption);
     const caption  = gen.caption  || userCaption;
     const hashtags = gen.hashtags || '#LFSShanghai #Shanghai';
     const draft    = await tgCall('sendPhoto', {
-      chat_id: TG_CHAT, photo: photoUrl,
+      chat_id: TG_CHAT, photo: fileId,  // file_id ашиглана
       caption: `📋 *Draft:*\n\n${caption}`, parse_mode: 'Markdown',
       reply_markup: { inline_keyboard: [[
         { text: '✅ Post хийх', callback_data: 'manual_post' },
         { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
       ]]},
     });
-    await manualRef().set({ status: 'waiting_final', photoUrl, caption, hashtags, draftMsgId: draft.result?.message_id || null });
+    await manualRef().set({ status: 'waiting_final', photoUrl, fileId, caption, hashtags, draftMsgId: draft.result?.message_id || null });
   } else {
-    // Сонголт өгнө
     const choice = await tgCall('sendMessage', {
       chat_id: TG_CHAT,
       text: '📸 Зураг хүлээн авлаа! Caption яаж хийх вэ?',
@@ -348,7 +345,7 @@ async function handlePhoto(msg) {
         { text: '❌ Цуцлах',       callback_data: 'cancel'     },
       ]]},
     });
-    await manualRef().set({ status: 'waiting_choice', photoUrl, choiceMsgId: choice.result?.message_id });
+    await manualRef().set({ status: 'waiting_choice', photoUrl, fileId, choiceMsgId: choice.result?.message_id });
   }
 }
 
