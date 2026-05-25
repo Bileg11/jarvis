@@ -259,8 +259,9 @@ async function sendWithButtons(recipientId, text, platform, accessToken) {
 
 // ── WELCOME MESSAGE (Get Started / шинэ хэрэглэгч) ───────────────
 async function sendWelcome(recipientId, accessToken) {
+  console.log(`[Meta] sendWelcome → ${recipientId}`);
   try {
-    await fetch('https://graph.facebook.com/v25.0/me/messages', {
+    const r = await fetch('https://graph.facebook.com/v25.0/me/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -282,7 +283,10 @@ async function sendWelcome(recipientId, accessToken) {
         access_token: accessToken,
       }),
     });
-  } catch {}
+    const d = await r.json();
+    if (d.error) console.error('[Meta] sendWelcome API error:', JSON.stringify(d.error));
+    else console.log('[Meta] sendWelcome OK, msg_id:', d.message_id);
+  } catch (e) { console.error('[Meta] sendWelcome catch:', e.message); }
 }
 
 // ── FB Page Access Token ──────────────────────────────────────────
@@ -376,8 +380,9 @@ module.exports = {
           if (event.postback) {
             const payload = event.postback.payload;
             const pid     = `pb_${senderId}_${Date.now()}`;
+            console.log(`[Meta] postback: ${payload} from ${senderId}`);
             if (payload === 'GET_STARTED') {
-              sendWelcome(senderId, accessToken).catch(() => {});
+              sendWelcome(senderId, accessToken).catch(e => console.error('[Meta] sendWelcome error:', e.message));
             } else if (payload === 'GUIDE_INFO') {
               processMessage(senderId, 'Хөтөч үйлчилгээний үнэ болон дэлгэрэнгүй мэдээллийг хэлнэ үү', pid, platform, accessToken).catch(() => {});
             } else if (payload === 'MEDICAL_INFO') {
