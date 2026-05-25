@@ -504,6 +504,4 @@ module.exports = async (req, res) => {
     console.error('[Webhook] Error:', e.message);
   }
 
-  // Railway persistent server — async processing үргэлжилнэ
-  res.status(200).json({ ok: true });
 };
