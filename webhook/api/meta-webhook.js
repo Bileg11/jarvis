@@ -26,6 +26,8 @@ const TG_TOKEN     = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT      = process.env.TELEGRAM_ID;
 
 // ── HELPERS ───────────────────────────────────────────────────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 async function tgNotify(text) {
   try {
     await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
@@ -125,13 +127,13 @@ async function generateReply(userText, history = []) {
     let raw = null;
 
     if (GEMINI_KEY) {
-      // ── Gemini 2.0 Flash — history + current message ────────────
+      // ── Gemini 1.5 Flash (v1) — system prompt first-turn workaround
       const contents = [
-        // Өмнөх яриа (хэрэглэгч + бот ээлжлэн)
-        ...history.map(m => ({
-          role:  m.role,
-          parts: [{ text: m.text }],
-        })),
+        // System prompt → fake first exchange (v1 doesn't support system_instruction)
+        { role: 'user',  parts: [{ text: LFS_SYSTEM }] },
+        { role: 'model', parts: [{ text: 'Ойлголоо.' }] },
+        // Өмнөх яриа
+        ...history.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
         // Одоогийн мессеж
         { role: 'user', parts: [{ text: userText }] },
       ];
@@ -142,7 +144,6 @@ async function generateReply(userText, history = []) {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            system_instruction: { parts: [{ text: LFS_SYSTEM }] },
             contents,
             generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
           }),
@@ -238,9 +239,11 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   const replied = await getReplied();
   if (replied.has(mid)) return;
 
-  // Уншсан болгох + шивж байна... (Gemini-с өмнө)
-  await senderAction(senderId, 'mark_seen',  accessToken);
-  await senderAction(senderId, 'typing_on',  accessToken);
+  // 1.5с хүлээгээд "уншсан" болгоно — хүн шиг санагдуулна
+  await sleep(1500);
+  await senderAction(senderId, 'mark_seen', accessToken);
+  await sleep(800);
+  await senderAction(senderId, 'typing_on', accessToken);
 
   // Хэрэглэгчийн өмнөх яриаг уншина
   const history = await getChatHistory(senderId);
