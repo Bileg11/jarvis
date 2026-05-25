@@ -127,8 +127,8 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   if (ok) {
     await tgNotify(
       `${icon} *DM хариу илгээлээ*\n\n` +
-      `📩 "${text.slice(0, 100)}"\n` +
-      `🤖 "${reply.slice(0, 120)}"`
+      `📩 ${text}\n\n` +
+      `🤖 ${reply}`
     );
   } else {
     await tgNotify(`${icon} *DM reply алдаа*\n📩 "${text.slice(0, 80)}"`);
