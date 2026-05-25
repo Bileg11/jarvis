@@ -178,8 +178,8 @@ async function logWater(ml) {
 // ── GPT CAPTION ───────────────────────────────────────────────────
 async function generateCaption(hint = '') {
   const prompt = hint
-    ? `LFS Shanghai IG post. "${hint}" тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io" нэмж бич. Дараа нь 10 hashtag зайгаар. Формат: CAPTION: ... HASHTAGS: ...`
-    : `LFS Shanghai Шанхай аялал тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io". Дараа нь 10 hashtag. Формат: CAPTION: ... HASHTAGS: ...`;
+    ? `LFS Shanghai IG post. "${hint}" тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io" гэж энгийн текстээр нэмж бич (link format хэрэггүй). Дараа нь 10 hashtag зайгаар. Формат: CAPTION: ... HASHTAGS: ...`
+    : `LFS Shanghai Шанхай аялал тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io" гэж энгийн текстээр бич (link format хэрэггүй). Дараа нь 10 hashtag. Формат: CAPTION: ... HASHTAGS: ...`;
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
