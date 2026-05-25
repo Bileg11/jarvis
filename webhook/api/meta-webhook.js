@@ -389,7 +389,7 @@ module.exports = {
             const payload = event.postback.payload;
             const pid     = `pb_${senderId}_${Date.now()}`;
             console.log(`[Meta] postback: ${payload} from ${senderId}`);
-            if (payload === 'GET_STARTED') {
+            if (payload === 'GET_STARTED' || payload === 'WELCOME_MESSAGE') {
               sendWelcome(senderId, accessToken).catch(e => console.error('[Meta] sendWelcome error:', e.message));
             } else if (payload === 'GUIDE_INFO') {
               processMessage(senderId, 'Хөтөч үйлчилгээний үнэ болон дэлгэрэнгүй мэдээллийг хэлнэ үү', pid, platform, accessToken).catch(() => {});
