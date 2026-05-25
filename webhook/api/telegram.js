@@ -208,7 +208,6 @@ async function generateCaption(hint = '') {
 async function handleCallback(cb) {
   const { data: cmd, message, id: cbId } = cb;
   const msgId = message.message_id;
-  console.log('[Callback] cmd:', cmd);
   await tgAnswer(cbId);
 
   // ── Ghost post approval ───────────────────────────────────────
@@ -264,9 +263,7 @@ async function handleCallback(cb) {
   if (ms.status === 'waiting_choice') {
     if (cmd === 'ai_caption') {
       await tgSend('🤖 Caption үүсгэж байна...');
-      console.log('[GPT] Calling generateCaption, GH_TOKEN prefix:', GH_TOKEN?.slice(0,5));
       const gen      = await generateCaption();
-      console.log('[GPT] Result:', JSON.stringify(gen));
       const caption  = gen.caption  || 'LFS Shanghai 🌆\n👉 bileg11.github.io';
       const hashtags = gen.hashtags || '#LFSShanghai #Shanghai';
       const draft    = await tgCall('sendPhoto', {
@@ -277,7 +274,6 @@ async function handleCallback(cb) {
           { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
         ]]},
       });
-      console.log('[Draft] sendPhoto result:', JSON.stringify(draft).slice(0, 100));
       await manualRef().set({ status: 'waiting_final', photoUrl: ms.photoUrl, fileId: ms.fileId, caption, hashtags, draftMsgId: draft.result?.message_id || null });
       return;
     }
@@ -295,9 +291,7 @@ async function handleCallback(cb) {
   if (ms.status === 'waiting_final') {
     if (cmd === 'manual_post') {
       await tgSend('⏳ IG + FB-д нийтэлж байна...');
-      console.log('[Post] Starting IG post, photoUrl:', ms.photoUrl?.slice(0,60));
       const igResult = await postToIG(ms.photoUrl, ms.caption, ms.hashtags);
-      console.log('[Post] IG result:', JSON.stringify(igResult));
 
       // FB post — 15s timeout
       let fbMsg = '';
@@ -320,11 +314,9 @@ async function handleCallback(cb) {
         );
         clearTimeout(fbTimeout);
         const fbData = await fbRes.json();
-        console.log('[Post] FB result:', JSON.stringify(fbData).slice(0,150));
         fbMsg = !fbData.error ? '✅ FB нийтлэгдлээ!' : `❌ FB: ${fbData.error?.message}`;
       } catch (e) {
         fbMsg = `❌ FB алдаа: ${e.message}`;
-        console.log('[Post] FB error:', e.message);
       }
 
       // Telegram-д үр дүн явуулна

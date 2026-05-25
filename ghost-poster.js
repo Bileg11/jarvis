@@ -218,7 +218,7 @@ async function main() {
     imageId:   img.id,
     imageSource: img.source,
     imageKeyword: img.keyword,
-    slot, msgId, tgOffset,
+    slot, telegramMsgId: msgId, tgOffset,
     status:    'pending',
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
