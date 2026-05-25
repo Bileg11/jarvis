@@ -141,14 +141,18 @@ async function generateReply(userText, history = []) {
           body: JSON.stringify({
             system_instruction: { parts: [{ text: LFS_SYSTEM }] },
             contents,
-            generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
+            generationConfig: { maxOutputTokens: 400, temperature: 0.7 },
           }),
           signal: ctrl.signal,
         }
       );
       const d = await r.json();
       if (d.error) console.error('[Gemini] API error:', JSON.stringify(d.error));
-      raw = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+      // thinking model-д parts[0] = thought, parts[1] = хариу
+      // thought биш эхний part-г авна
+      const parts = d.candidates?.[0]?.content?.parts || [];
+      const textPart = parts.find(p => !p.thought && p.text) || parts[0];
+      raw = textPart?.text?.trim() || null;
 
     } else {
       // ── GitHub Models fallback — history OpenAI format ──────────
