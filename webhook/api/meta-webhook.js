@@ -15,11 +15,12 @@ if (!admin.apps.length) {
 }
 const db = admin.firestore();
 
-const META_TOKEN   = process.env.ACCESS_TOKEN_META;
-const IG_ID        = process.env.INSTAGRAM_BUSINESS_ID;
-const FB_ID        = process.env.FACEBOOK_PAGE_ID;
-const GH_TOKEN     = process.env.META_BOT_TOKEN || process.env.SYSTEM_USE_TOKEN;
-const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
+const META_TOKEN    = process.env.ACCESS_TOKEN_META;
+const IG_ID         = process.env.INSTAGRAM_BUSINESS_ID;
+const FB_ID         = process.env.FACEBOOK_PAGE_ID;
+const GH_TOKEN      = process.env.META_BOT_TOKEN || process.env.SYSTEM_USE_TOKEN;
+const GEMINI_KEY    = process.env.GEMINI_API_KEY;
+const VERIFY_TOKEN  = process.env.META_WEBHOOK_VERIFY_TOKEN;
 const UID          = process.env.USER_UID;
 const TG_TOKEN     = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT      = process.env.TELEGRAM_ID;
@@ -52,70 +53,85 @@ async function markReplied(id) {
 }
 
 // ── LFS KNOWLEDGE BASE ────────────────────────────────────────────
-const LFS_SYSTEM = `You are a friendly customer support assistant for LFS Shanghai (bileg11.github.io).
-LFS Shanghai provides VIP travel assistance for Mongolian tourists visiting Shanghai, China.
-Always reply in Mongolian language. Be concise (2-4 sentences). Never use markdown formatting.
+const LFS_SYSTEM = `Чи LFS Shanghai-н зочин хүлээн авагч. Монгол хэлээр богино, энгийн, хүний дуугаар хариул. Робот шиг биш — найз шиг.
 
-MEDICAL PACKAGES (both include the SAME tests):
-Both packages include: Цусны ерөнхий шинжилгээ, Цусны биохими (элэг, бөөр, чихэр), Зүрхний ЭКГ, Хэт авиан шинжилгээ (элэг, бөөр, дотоод эрхтэн), Хувийн сувилагч + Монгол орчуулагч, VIP тасаг.
-The difference is the length of stay and what's included beyond medical:
+ДҮРЭМ:
+- Зөвхөн Монгол хэлээр
+- 1-3 өгүүлбэр, товч
+- Markdown, emoji, formal үг хэрэглэхгүй
+- Хэрэв мессеж нь зүгээр мэндчилгээ, "ok", "баяр", тусламж хүсэхгүй casual яриа бол — яг "SKIP" гэж хариул, өөр юм бичихгүй
+- Тодорхой асуулт, үнэ, захиалга, үйлчилгээ асуувал хариул
 
-- Golden Package (Алтан багц): 2,050,000₮ per person — 5 days, 4 nights
-  Medical tests (same as Silver) + full city tours every day + luxury buffet meals + shopping guide (Xintiandi, LV, Starbucks) + airport pickup and drop-off. Hotel and flights NOT included.
+ЭРҮҮЛ МЭНДИЙН БАГЦУУД (хоёулаа адилхан шинжилгээтэй):
+Аль ч багцад: цусны ерөнхий + биохими (элэг, бөөр, чихэр), ЭКГ, хэт авиан шинжилгээ, Монгол орчуулагч + хувийн сувилагч, VIP тасаг.
+- Алтан багц: 2,050,000₮ — 5 хоног 4 шөнө. Шинжилгээ + хот аялал бүх өдөр + хоол + шоппинг хөтөч + нисэх буудал угтах/хүргэх. Буудал, нислэг тусдаа.
+- Мөнгөн багц: 950,000₮ — 2 өдөр. Адилхан шинжилгээ + 1 өдрийн хот аялал. Нисэх буудал угтах орно. Буудал, нислэг тусдаа.
 
-- Silver Package (Мөнгөн багц): 950,000₮ per person — 2 days
-  Same medical tests as Golden + 1 day city tour. Shorter stay, more affordable option.
-  Airport pickup included. Hotel and flights NOT included.
+ТУСДАА ҮЙЛЧИЛГЭЭ:
+- Хөтөч: 500 юань/өдөр
+- Орчуулагч: 500 юань/өдөр
+- Буудал захиалга: 50 юань/удаа
+- Нисэх буудлаас угтах/хүргэх: 200 юань/удаа (Пүдун PVG болон Хунцяо SHA аль алинаас)
+- Оюутны зөвлөгөө: 20,000₮ нэг удаа — Alipay, WeChat Pay, SIM, метро, VPN, аппууд, виз
+- Группийн хөнгөлөлт боломжтой
 
-INDIVIDUAL SERVICES (bookable separately):
-- Guide: 500 yuan/day — Mongolian-speaking, city navigation, restaurants/shops
-- Translator: 500 yuan/day — Mongolian-Chinese, medical translation, business negotiations
-- Hotel booking: 50 yuan/time — central Shanghai, tailored to budget
-- Airport pickup/drop-off: 200 yuan/time — both Pudong (PVG) and Hongqiao (SHA) airports
-- Student digital consultation: 20,000₮ one-time — Alipay/WeChat Pay setup, SIM card, metro card, cheap food, VPN, essential apps, visa (X1/X2) advice
-- Group discounts available for large groups or multi-day bookings
+ЗАХИАЛГА: bileg11.github.io/booking/ эсвэл Facebook. 24 цагт хариу өгнө.
+ЭМНЭЛЭГ: 光明中医院 — Шанхайн шилдэг, VIP тасаг, хүлээлгүй, хариу тухайн өдрөө.
+ТӨЛБӨР: Монгол банкны дансаар (₮) эсвэл Шанхайд юаниар.`;
 
-BOOKING:
-- Website: bileg11.github.io/booking/
-- Facebook: facebook.com/profile.php?id=100076380514835
-- We respond within 24 hours
+// ── AI REPLY (Gemini 2.0 Flash, fallback → GitHub Models) ────────
+async function generateReply(userText) {
+  const userPrompt = `Хэрэглэгч: "${userText}"`;
 
-KEY FACTS:
-- Private service only — no group tours with strangers
-- Mongolian-speaking staff (also Chinese and English)
-- Operating hours: Mon-Sun 09:00-21:00 Shanghai time
-- Partner hospital: 光明中医院 (top Shanghai hospital, VIP ward, no waiting, results same day)
-- Payment: Mongolian bank transfer (₮) or cash yuan in Shanghai
-
-When asked about price/packages, explain both options clearly.
-When asked how to book, direct them to bileg11.github.io or Facebook.
-If unsure, invite them to contact us via Facebook or the website.`;
-
-// ── GPT REPLY ─────────────────────────────────────────────────────
-async function generateReply(userText, platform) {
-  const prompt = `A customer sent this message to LFS Shanghai: "${userText}". Write a helpful reply in Mongolian language (2-4 sentences, no markdown). If relevant, mention bileg11.github.io. Return only the reply text.`;
+  const ctrl = new AbortController();
+  const t    = setTimeout(() => ctrl.abort(), 20000);
 
   try {
-    const ctrl = new AbortController();
-    const t    = setTimeout(() => ctrl.abort(), 20000);
-    const r    = await fetch('https://models.inference.ai.azure.com/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: LFS_SYSTEM },
-          { role: 'user',   content: prompt },
-        ],
-        max_tokens: 250,
-        temperature: 0.7,
-      }),
-      signal: ctrl.signal,
-    });
+    let raw = null;
+
+    if (GEMINI_KEY) {
+      // ── Gemini 2.0 Flash (үнэгүй) ──────────────────────────────
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: LFS_SYSTEM }] },
+            contents:           [{ role: 'user', parts: [{ text: userPrompt }] }],
+            generationConfig:   { maxOutputTokens: 200, temperature: 0.7 },
+          }),
+          signal: ctrl.signal,
+        }
+      );
+      const d = await r.json();
+      raw = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+    } else {
+      // ── GitHub Models fallback ──────────────────────────────────
+      const r = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
+        body: JSON.stringify({
+          model:    'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: LFS_SYSTEM },
+            { role: 'user',   content: userPrompt },
+          ],
+          max_tokens:  200,
+          temperature: 0.7,
+        }),
+        signal: ctrl.signal,
+      });
+      const d = await r.json();
+      raw = d.choices?.[0]?.message?.content?.trim() || null;
+    }
+
     clearTimeout(t);
-    const d = await r.json();
-    return d.choices?.[0]?.message?.content?.trim() || null;
+    if (!raw || raw === 'SKIP') return null;   // SKIP → хариу илгээхгүй
+    return raw;
+
   } catch {
+    clearTimeout(t);
     return null;
   }
 }
@@ -159,7 +175,7 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   const replied = await getReplied();
   if (replied.has(mid)) return;
 
-  const reply = await generateReply(text, platform);
+  const reply = await generateReply(text);
   if (!reply) return;
 
   const ok = await sendReply(senderId, reply, accessToken);
