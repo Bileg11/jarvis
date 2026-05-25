@@ -127,14 +127,9 @@ async function generateReply(userText, history = []) {
     let raw = null;
 
     if (GEMINI_KEY) {
-      // ── Gemini 1.5 Flash (v1) — system prompt first-turn workaround
+      // ── Gemini 1.5 Flash (v1) ────────────────────────────────────
       const contents = [
-        // System prompt → fake first exchange (v1 doesn't support system_instruction)
-        { role: 'user',  parts: [{ text: LFS_SYSTEM }] },
-        { role: 'model', parts: [{ text: 'Ойлголоо.' }] },
-        // Өмнөх яриа
         ...history.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
-        // Одоогийн мессеж
         { role: 'user', parts: [{ text: userText }] },
       ];
 
@@ -144,6 +139,7 @@ async function generateReply(userText, history = []) {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            systemInstruction: { parts: [{ text: LFS_SYSTEM }] },
             contents,
             generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
           }),
@@ -242,7 +238,7 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   // 1.5с хүлээгээд "уншсан" болгоно — хүн шиг санагдуулна
   await sleep(1500);
   await senderAction(senderId, 'mark_seen', accessToken);
-  await sleep(800);
+  await sleep(1000);
   await senderAction(senderId, 'typing_on', accessToken);
 
   // Хэрэглэгчийн өмнөх яриаг уншина
