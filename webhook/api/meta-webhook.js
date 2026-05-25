@@ -18,7 +18,7 @@ const db = admin.firestore();
 const META_TOKEN   = process.env.ACCESS_TOKEN_META;
 const IG_ID        = process.env.INSTAGRAM_BUSINESS_ID;
 const FB_ID        = process.env.FACEBOOK_PAGE_ID;
-const GH_TOKEN     = process.env.SYSTEM_USE_TOKEN;
+const GH_TOKEN     = process.env.META_BOT_TOKEN || process.env.SYSTEM_USE_TOKEN;
 const VERIFY_TOKEN = process.env.META_WEBHOOK_VERIFY_TOKEN;
 const UID          = process.env.USER_UID;
 const TG_TOKEN     = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
@@ -51,9 +51,39 @@ async function markReplied(id) {
   }
 }
 
+// ── LFS KNOWLEDGE BASE ────────────────────────────────────────────
+const LFS_SYSTEM = `You are a friendly customer support assistant for LFS Shanghai (bileg11.github.io).
+LFS Shanghai provides VIP travel assistance for Mongolian tourists visiting Shanghai, China.
+Always reply in Mongolian language. Be concise (2-4 sentences). Never use markdown formatting.
+
+SERVICES & PRICING:
+- Golden Package (most popular): 2,050,000₮ per person — 5 days, 4 nights
+  Includes: airport pickup, VIP medical checkup, personal nurse/translator, city tour all days, luxury buffet meals, shopping guide (Xintiandi, LV, Starbucks), airport drop-off. Hotel and flights NOT included.
+- Guide service: 500 yuan/day — Mongolian-speaking, city navigation, restaurant/shop recommendations
+- Translator: 500 yuan/day — Mongolian-Chinese translation, medical translation, business negotiations
+- Hotel booking: 50 yuan/time — central Shanghai hotels, tailored to budget and location
+- Airport pickup/drop-off: 200 yuan/time — both Pudong (PVG) and Hongqiao (SHA) airports
+- Student/Young traveler digital consultation: 20,000₮ one-time — covers Alipay/WeChat Pay setup, SIM card, metro card, cheap restaurants, VPN setup, essential apps, visa (X1/X2) advice, safety tips
+- Group discounts available for large groups or multi-day bookings
+
+BOOKING:
+- Website: bileg11.github.io/booking/
+- Facebook: facebook.com/profile.php?id=100076380514835
+- We respond within 24 hours after receiving booking info
+
+KEY FACTS:
+- Private service only — no group tours with strangers
+- Mongolian-speaking staff (also Chinese and English)
+- Operating hours: Mon-Sun 09:00-21:00 Shanghai time
+- Services available: health/medical tourism, city tours, shopping, business interpreter, student guidance
+
+When asked about price, always mention the Golden Package first, then individual services.
+When asked how to book, direct them to bileg11.github.io or Facebook.
+If unsure about a specific question, invite them to contact us directly via Facebook or the website.`;
+
 // ── GPT REPLY ─────────────────────────────────────────────────────
 async function generateReply(userText, platform) {
-  const prompt = `You are a helpful customer support assistant for LFS Shanghai, a VIP travel assistance platform for tourists in Shanghai, China. A customer sent this message: "${userText}". Write a friendly, helpful reply in Mongolian language (2-3 sentences). Include the website bileg11.github.io as plain text. Return only the reply.`;
+  const prompt = `A customer sent this message to LFS Shanghai: "${userText}". Write a helpful reply in Mongolian language (2-4 sentences, no markdown). If relevant, mention bileg11.github.io. Return only the reply text.`;
 
   try {
     const ctrl = new AbortController();
@@ -63,9 +93,12 @@ async function generateReply(userText, platform) {
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        max_tokens: 200,
-        temperature: 0.8,
+        messages: [
+          { role: 'system', content: LFS_SYSTEM },
+          { role: 'user',   content: prompt },
+        ],
+        max_tokens: 250,
+        temperature: 0.7,
       }),
       signal: ctrl.signal,
     });
