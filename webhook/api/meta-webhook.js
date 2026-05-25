@@ -71,10 +71,8 @@ async function generateReply(userText, platform) {
     });
     clearTimeout(t);
     const d = await r.json();
-    if (d.error) console.error('[Meta] GPT API error:', d.error.message);
     return d.choices?.[0]?.message?.content?.trim() || null;
-  } catch (e) {
-    console.error('[Meta] GPT error:', e.message);
+  } catch {
     return null;
   }
 }
@@ -116,21 +114,12 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   if (!text || !mid) return;
 
   const replied = await getReplied();
-  if (replied.has(mid)) {
-    console.log('[Meta] Dedup skip — mid already replied:', mid?.slice(0,20));
-    return;
-  }
+  if (replied.has(mid)) return;
 
-  console.log('[Meta] Generating reply for:', text.slice(0,50));
   const reply = await generateReply(text, platform);
-  console.log('[Meta] GPT reply:', reply?.slice(0,80) || 'NULL');
   if (!reply) return;
 
-  console.log('[Meta] Sending to sender:', senderId);
   const ok = await sendReply(senderId, reply, accessToken);
-  console.log('[Meta] sendReply result:', ok);
-
-  // Reply явуулсны дараа л mark хийнэ
   if (ok) await markReplied(mid);
 
   // Telegram мэдэгдэл
@@ -171,24 +160,17 @@ module.exports = {
 
     try {
       const body = req.body;
-      console.log('[Meta] POST received. object:', body.object, '| entries:', body.entry?.length);
-
-      if (body.object !== 'instagram' && body.object !== 'page') {
-        console.log('[Meta] Ignored object type:', body.object);
-        return;
-      }
+      if (body.object !== 'instagram' && body.object !== 'page') return;
 
       const isIG = body.object === 'instagram';
       const accessToken = isIG ? META_TOKEN : await getPageToken();
       const platform    = isIG ? 'ig' : 'fb';
 
       for (const entry of (body.entry || [])) {
-        console.log('[Meta] Entry ID:', entry.id, '| messaging count:', entry.messaging?.length, '| changes count:', entry.changes?.length);
         // Messaging events (IG DM + FB Messenger)
         for (const event of (entry.messaging || [])) {
           const senderId = event.sender?.id;
           const msg      = event.message;
-          console.log('[Meta] Event — sender:', senderId, '| has message:', !!msg, '| is_echo:', msg?.is_echo);
 
           // Өөрийн page/account-н мессеж алгасна
           if (!senderId || senderId === IG_ID || senderId === FB_ID) continue;
@@ -197,14 +179,11 @@ module.exports = {
 
           const text = msg.text || '';
           const mid  = msg.mid  || '';
-          console.log('[Meta] text:', text.slice(0,50), '| mid:', mid?.slice(0,20));
 
           if (text && mid) {
             processMessage(senderId, text, mid, platform, accessToken).catch(
               e => console.error('[Meta] processMessage error:', e.message)
             );
-          } else {
-            console.log('[Meta] Skipped — text or mid empty');
           }
         }
 
