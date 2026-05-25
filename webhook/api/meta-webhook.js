@@ -54,8 +54,8 @@ async function markReplied(id) {
 
 // ── CHAT HISTORY (Firestore per sender) ──────────────────────────
 // 24 цаг хэрэглэхгүй байвал санах ойг цэвэрлэнэ
-const HISTORY_LIMIT = 6;   // 3 хэрэглэгч + 3 бот = 6 мессеж
-const HISTORY_TTL   = 24 * 60 * 60 * 1000; // 24 цаг
+const HISTORY_LIMIT = 6;                        // 3 хэрэглэгч + 3 бот = 6 мессеж
+const HISTORY_TTL   = 14 * 24 * 60 * 60 * 1000; // 14 хоног
 
 async function getChatHistory(senderId) {
   try {
