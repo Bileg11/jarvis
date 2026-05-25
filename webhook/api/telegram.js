@@ -208,6 +208,7 @@ async function generateCaption(hint = '') {
 async function handleCallback(cb) {
   const { data: cmd, message, id: cbId } = cb;
   const msgId = message.message_id;
+  console.log('[Callback] cmd:', cmd);
   await tgAnswer(cbId);
 
   // ── Ghost post approval ───────────────────────────────────────
@@ -263,7 +264,9 @@ async function handleCallback(cb) {
   if (ms.status === 'waiting_choice') {
     if (cmd === 'ai_caption') {
       await tgSend('🤖 Caption үүсгэж байна...');
+      console.log('[GPT] Calling generateCaption, GH_TOKEN prefix:', GH_TOKEN?.slice(0,5));
       const gen      = await generateCaption();
+      console.log('[GPT] Result:', JSON.stringify(gen));
       const caption  = gen.caption  || 'LFS Shanghai 🌆\n👉 bileg11.github.io';
       const hashtags = gen.hashtags || '#LFSShanghai #Shanghai';
       const draft    = await tgCall('sendPhoto', {
