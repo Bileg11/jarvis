@@ -182,7 +182,7 @@ async function generateCaption(hint = '') {
     : `LFS Shanghai Шанхай аялал тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io". Дараа нь 10 hashtag. Формат: CAPTION: ... HASHTAGS: ...`;
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000); // 8s timeout
+    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
     const r = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
@@ -196,7 +196,10 @@ async function generateCaption(hint = '') {
       caption:  raw.match(/CAPTION:\s*([\s\S]*?)(?=HASHTAGS:|$)/i)?.[1]?.trim() || null,
       hashtags: raw.match(/HASHTAGS:\s*([\s\S]*?)$/i)?.[1]?.trim() || null,
     };
-  } catch { return { caption: null, hashtags: null }; }
+  } catch (e) {
+    console.error('[GPT] Error:', e.message);
+    return { caption: null, hashtags: null };
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
