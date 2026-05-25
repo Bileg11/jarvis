@@ -98,7 +98,8 @@ const LFS_SYSTEM = `Чи LFS Shanghai-н менежер. Монгол хэлээ
 - Зөвхөн Монгол хэлээр
 - 2-4 өгүүлбэр, тодорхой
 - Markdown, formal үг хэрэглэхгүй
-- Зүгээр мэндчилгээ, "ok", "баяр", "👍" гэх мэт casual мессежид — яг "SKIP" гэж хариул, өөр юм бичихгүй
+- Зүгээр мэндчилгээ, "ok", "баяр", "👍" гэх мэт casual мессежид — яг "SKIP" гэж хариул
+- LFS-тэй огт холбогдохгүй асуулт, эсвэл хариулж чадахгүй бол — яг "HUMAN" гэж хариул
 - Үнэ, захиалга, үйлчилгээ, шинжилгээ асуувал дэлгэрэнгүй хариул
 
 ХӨТӨЧ ҮЙЛЧИЛГЭЭ — 500 юань/өдөр:
@@ -222,6 +223,68 @@ async function sendReply(recipientId, text, accessToken) {
   }
 }
 
+// ── REPLY WITH BUTTONS (FB only, IG plain text) ──────────────────
+async function sendWithButtons(recipientId, text, platform, accessToken) {
+  // IG template дэмждэггүй тул plain text явуулна
+  if (platform === 'ig') return sendReply(recipientId, text, accessToken);
+
+  try {
+    const r = await fetch('https://graph.facebook.com/v25.0/me/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient:    { id: recipientId },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'button',
+              text: text.slice(0, 640),   // FB limit
+              buttons: [
+                { type: 'web_url',  url: 'https://bileg11.github.io/booking/', title: 'Захиалга өгөх' },
+                { type: 'postback', payload: 'CONNECT_AGENT', title: 'Ажилтан дуудах' },
+              ],
+            },
+          },
+        },
+        access_token: accessToken,
+      }),
+    });
+    const d = await r.json();
+    return !d.error;
+  } catch {
+    return false;
+  }
+}
+
+// ── WELCOME MESSAGE (Get Started / шинэ хэрэглэгч) ───────────────
+async function sendWelcome(recipientId, accessToken) {
+  try {
+    await fetch('https://graph.facebook.com/v25.0/me/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: { id: recipientId },
+        message: {
+          attachment: {
+            type: 'template',
+            payload: {
+              template_type: 'button',
+              text: 'Сайн байна уу! LFS Shanghai-д тавтай морил. Та юу мэдмээр байна вэ?',
+              buttons: [
+                { type: 'postback', payload: 'GUIDE_INFO',    title: 'Шанхай гайд' },
+                { type: 'postback', payload: 'MEDICAL_INFO',  title: 'Эмнэлгийн багц' },
+                { type: 'postback', payload: 'CONNECT_AGENT', title: 'Менежер дуудах' },
+              ],
+            },
+          },
+        },
+        access_token: accessToken,
+      }),
+    });
+  } catch {}
+}
+
 // ── FB Page Access Token ──────────────────────────────────────────
 async function getPageToken() {
   try {
@@ -255,15 +318,21 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   const reply = await generateReply(text, history);
   console.log(`[Meta] reply: ${reply === null ? 'SKIP/null' : reply.slice(0,60)}`);
   await senderAction(senderId, 'typing_off', accessToken);
-  if (!reply) return;  // SKIP эсвэл алдаа → илгээхгүй
+  if (!reply) return;  // SKIP → илгээхгүй
 
-  const ok = await sendReply(senderId, reply, accessToken);
-  if (ok) {
+  // HUMAN → ажилтан дуудах, Telegram alert
+  if (reply.trim() === 'HUMAN') {
+    await sendReply(senderId, 'Би таныг ажилтантай холбож байна, түр хүлээнэ үү...', accessToken);
     await markReplied(mid);
-    // Яриаг Firestore-д хадгална (дараагийн мессежид context болно)
-    await saveChatHistory(senderId, text, reply);
+    await tgNotify(`⚠️ *Ажилтан дуудсан!*\nID: ${senderId}\nМессеж: "${text.slice(0, 100)}"`);
+    return;
   }
 
+  const ok = await sendWithButtons(senderId, reply, platform, accessToken);
+  if (ok) {
+    await markReplied(mid);
+    await saveChatHistory(senderId, text, reply);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -301,16 +370,31 @@ module.exports = {
         // Messaging events (IG DM + FB Messenger)
         for (const event of (entry.messaging || [])) {
           const senderId = event.sender?.id;
-          const msg      = event.message;
-
-          // Өөрийн page/account-н мессеж алгасна
           if (!senderId || senderId === IG_ID || senderId === FB_ID) continue;
-          // Echo / delivery / read алгасна
+
+          // ── Postback (товч дарах, Get Started) ──────────────────
+          if (event.postback) {
+            const payload = event.postback.payload;
+            const pid     = `pb_${senderId}_${Date.now()}`;
+            if (payload === 'GET_STARTED') {
+              sendWelcome(senderId, accessToken).catch(() => {});
+            } else if (payload === 'GUIDE_INFO') {
+              processMessage(senderId, 'Хөтөч үйлчилгээний үнэ болон дэлгэрэнгүй мэдээллийг хэлнэ үү', pid, platform, accessToken).catch(() => {});
+            } else if (payload === 'MEDICAL_INFO') {
+              processMessage(senderId, 'Эмнэлгийн багцуудын үнэ болон дэлгэрэнгүй мэдээллийг хэлнэ үү', pid, platform, accessToken).catch(() => {});
+            } else if (payload === 'CONNECT_AGENT') {
+              sendReply(senderId, 'Би таныг ажилтантай холбож байна, түр хүлээнэ үү...', accessToken).catch(() => {});
+              tgNotify(`⚠️ *Ажилтан дуудсан!*\nFB ID: ${senderId}`).catch(() => {});
+            }
+            continue;
+          }
+
+          // ── Энгийн мессеж ────────────────────────────────────────
+          const msg = event.message;
           if (!msg || msg.is_echo || event.delivery || event.read) continue;
 
           const text = msg.text || '';
           const mid  = msg.mid  || '';
-
           if (text && mid) {
             processMessage(senderId, text, mid, platform, accessToken).catch(
               e => console.error('[Meta] processMessage error:', e.message)
