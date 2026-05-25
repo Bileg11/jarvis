@@ -299,19 +299,25 @@ async function handleCallback(cb) {
       const igResult = await postToIG(ms.photoUrl, ms.caption, ms.hashtags);
       console.log('[Post] IG result:', JSON.stringify(igResult));
 
-      // FB post
+      // FB post — 15s timeout
       let fbMsg = '';
       try {
+        const fbCtrl = new AbortController();
+        const fbTimeout = setTimeout(() => fbCtrl.abort(), 15000);
         const fbRes  = await fetch(
           `https://graph.facebook.com/v25.0/${FB_ID}/photos?url=${encodeURIComponent(ms.photoUrl)}&message=${encodeURIComponent(ms.caption)}&access_token=${META_TOKEN}`,
-          { method: 'POST' }
+          { method: 'POST', signal: fbCtrl.signal }
         );
+        clearTimeout(fbTimeout);
         const fbData = await fbRes.json();
+        console.log('[Post] FB result:', JSON.stringify(fbData).slice(0,150));
         fbMsg = !fbData.error ? '✅ FB нийтлэгдлээ!' : `❌ FB: ${fbData.error?.message}`;
       } catch (e) {
         fbMsg = `❌ FB алдаа: ${e.message}`;
+        console.log('[Post] FB error:', e.message);
       }
 
+      // Telegram-д үр дүн явуулна
       if (igResult.ok) {
         await tgSend(`✅ *IG нийтлэгдлээ!*\n${fbMsg}`);
       } else {
