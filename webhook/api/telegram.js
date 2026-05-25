@@ -294,12 +294,26 @@ async function handleCallback(cb) {
   // Final approve
   if (ms.status === 'waiting_final') {
     if (cmd === 'manual_post') {
-      await tgSend('⏳ IG-д нийтэлж байна...');
-      const result = await postToIG(ms.photoUrl, ms.caption, ms.hashtags);
-      if (result.ok) {
-        await tgSend(`✅ *IG-д нийтлэгдлээ!*`);
+      await tgSend('⏳ IG + FB-д нийтэлж байна...');
+      const igResult = await postToIG(ms.photoUrl, ms.caption, ms.hashtags);
+
+      // FB post
+      let fbMsg = '';
+      try {
+        const fbRes  = await fetch(
+          `https://graph.facebook.com/v25.0/${FB_ID}/photos?url=${encodeURIComponent(ms.photoUrl)}&message=${encodeURIComponent(ms.caption)}&access_token=${META_TOKEN}`,
+          { method: 'POST' }
+        );
+        const fbData = await fbRes.json();
+        fbMsg = !fbData.error ? '✅ FB нийтлэгдлээ!' : `❌ FB: ${fbData.error?.message}`;
+      } catch (e) {
+        fbMsg = `❌ FB алдаа: ${e.message}`;
+      }
+
+      if (igResult.ok) {
+        await tgSend(`✅ *IG нийтлэгдлээ!*\n${fbMsg}`);
       } else {
-        await tgSend(`❌ Алдаа: ${result.err}`);
+        await tgSend(`❌ IG алдаа: ${igResult.err}\n${fbMsg}`);
       }
       await manualRef().delete();
       return;
