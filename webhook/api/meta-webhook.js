@@ -135,10 +135,14 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
 
   await markReplied(mid);
 
+  console.log('[Meta] Generating reply for:', text.slice(0,50));
   const reply = await generateReply(text, platform);
+  console.log('[Meta] GPT reply:', reply?.slice(0,80) || 'NULL');
   if (!reply) return;
 
+  console.log('[Meta] Sending to sender:', senderId);
   const ok = await sendReply(senderId, reply, accessToken);
+  console.log('[Meta] sendReply result:', ok);
 
   // Telegram мэдэгдэл
   const icon = platform === 'fb' ? '💬 FB' : '📸 IG';
@@ -204,12 +208,14 @@ module.exports = {
 
           const text = msg.text || '';
           const mid  = msg.mid  || '';
+          console.log('[Meta] text:', text.slice(0,50), '| mid:', mid?.slice(0,20));
 
           if (text && mid) {
-            // async — res аль хэдийн явсан
             processMessage(senderId, text, mid, platform, accessToken).catch(
               e => console.error('[Meta] processMessage error:', e.message)
             );
+          } else {
+            console.log('[Meta] Skipped — text or mid empty');
           }
         }
 
