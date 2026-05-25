@@ -269,6 +269,7 @@ async function handleCallback(cb) {
       console.log('[GPT] Result:', JSON.stringify(gen));
       const caption  = gen.caption  || 'LFS Shanghai 🌆\n👉 bileg11.github.io';
       const hashtags = gen.hashtags || '#LFSShanghai #Shanghai';
+      console.log('[Draft] photoUrl:', ms.photoUrl?.slice(0, 60));
       const draft    = await tgCall('sendPhoto', {
         chat_id: TG_CHAT, photo: ms.photoUrl,
         caption: `📋 *Draft:*\n\n${caption}`, parse_mode: 'Markdown',
@@ -277,6 +278,7 @@ async function handleCallback(cb) {
           { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
         ]]},
       });
+      console.log('[Draft] sendPhoto result:', JSON.stringify(draft).slice(0, 200));
       await manualRef().set({ status: 'waiting_final', photoUrl: ms.photoUrl, caption, hashtags, draftMsgId: draft.result?.message_id || null });
       return;
     }
