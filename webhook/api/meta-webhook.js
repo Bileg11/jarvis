@@ -52,6 +52,43 @@ async function markReplied(id) {
   }
 }
 
+// ── CHAT HISTORY (Firestore per sender) ──────────────────────────
+// 24 цаг хэрэглэхгүй байвал санах ойг цэвэрлэнэ
+const HISTORY_LIMIT = 6;   // 3 хэрэглэгч + 3 бот = 6 мессеж
+const HISTORY_TTL   = 24 * 60 * 60 * 1000; // 24 цаг
+
+async function getChatHistory(senderId) {
+  try {
+    const snap = await db.doc(`users/${UID}/chatHistory/${senderId}`).get();
+    if (!snap.exists) return [];
+    const data = snap.data();
+    // 24 цаг өнгөрсөн бол хуучин санах ойг хаяна
+    if (data.updatedAt) {
+      const age = Date.now() - new Date(data.updatedAt).getTime();
+      if (age > HISTORY_TTL) return [];
+    }
+    return data.messages || [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveChatHistory(senderId, userText, botReply) {
+  try {
+    const ref  = db.doc(`users/${UID}/chatHistory/${senderId}`);
+    const snap = await ref.get();
+    const msgs = snap.exists ? (snap.data().messages || []) : [];
+
+    msgs.push({ role: 'user',  text: userText  });
+    msgs.push({ role: 'model', text: botReply  });
+
+    // Сүүлийн HISTORY_LIMIT мессежийг л хадгална
+    if (msgs.length > HISTORY_LIMIT) msgs.splice(0, msgs.length - HISTORY_LIMIT);
+
+    await ref.set({ messages: msgs, updatedAt: new Date().toISOString() });
+  } catch {}
+}
+
 // ── LFS KNOWLEDGE BASE ────────────────────────────────────────────
 const LFS_SYSTEM = `Чи LFS Shanghai-н зочин хүлээн авагч. Монгол хэлээр богино, энгийн, хүний дуугаар хариул. Робот шиг биш — найз шиг.
 
@@ -80,9 +117,7 @@ const LFS_SYSTEM = `Чи LFS Shanghai-н зочин хүлээн авагч. М�
 ТӨЛБӨР: Монгол банкны дансаар (₮) эсвэл Шанхайд юаниар.`;
 
 // ── AI REPLY (Gemini 2.0 Flash, fallback → GitHub Models) ────────
-async function generateReply(userText) {
-  const userPrompt = `Хэрэглэгч: "${userText}"`;
-
+async function generateReply(userText, history = []) {
   const ctrl = new AbortController();
   const t    = setTimeout(() => ctrl.abort(), 20000);
 
@@ -90,7 +125,17 @@ async function generateReply(userText) {
     let raw = null;
 
     if (GEMINI_KEY) {
-      // ── Gemini 2.0 Flash (үнэгүй) ──────────────────────────────
+      // ── Gemini 2.0 Flash — history + current message ────────────
+      const contents = [
+        // Өмнөх яриа (хэрэглэгч + бот ээлжлэн)
+        ...history.map(m => ({
+          role:  m.role,
+          parts: [{ text: m.text }],
+        })),
+        // Одоогийн мессеж
+        { role: 'user', parts: [{ text: userText }] },
+      ];
+
       const r = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
         {
@@ -98,28 +143,30 @@ async function generateReply(userText) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             system_instruction: { parts: [{ text: LFS_SYSTEM }] },
-            contents:           [{ role: 'user', parts: [{ text: userPrompt }] }],
-            generationConfig:   { maxOutputTokens: 200, temperature: 0.7 },
+            contents,
+            generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
           }),
           signal: ctrl.signal,
         }
       );
       const d = await r.json();
       raw = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+
     } else {
-      // ── GitHub Models fallback ──────────────────────────────────
+      // ── GitHub Models fallback — history OpenAI format ──────────
+      const messages = [
+        { role: 'system', content: LFS_SYSTEM },
+        ...history.map(m => ({
+          role:    m.role === 'model' ? 'assistant' : 'user',
+          content: m.text,
+        })),
+        { role: 'user', content: userText },
+      ];
+
       const r = await fetch('https://models.inference.ai.azure.com/chat/completions', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
-        body: JSON.stringify({
-          model:    'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: LFS_SYSTEM },
-            { role: 'user',   content: userPrompt },
-          ],
-          max_tokens:  200,
-          temperature: 0.7,
-        }),
+        body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 200, temperature: 0.7 }),
         signal: ctrl.signal,
       });
       const d = await r.json();
@@ -127,7 +174,7 @@ async function generateReply(userText) {
     }
 
     clearTimeout(t);
-    if (!raw || raw === 'SKIP') return null;   // SKIP → хариу илгээхгүй
+    if (!raw || raw.trim() === 'SKIP') return null;  // casual → илгээхгүй
     return raw;
 
   } catch {
@@ -175,11 +222,18 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   const replied = await getReplied();
   if (replied.has(mid)) return;
 
-  const reply = await generateReply(text);
-  if (!reply) return;
+  // Хэрэглэгчийн өмнөх яриаг уншина
+  const history = await getChatHistory(senderId);
+
+  const reply = await generateReply(text, history);
+  if (!reply) return;  // SKIP эсвэл алдаа → илгээхгүй
 
   const ok = await sendReply(senderId, reply, accessToken);
-  if (ok) await markReplied(mid);
+  if (ok) {
+    await markReplied(mid);
+    // Яриаг Firestore-д хадгална (дараагийн мессежид context болно)
+    await saveChatHistory(senderId, text, reply);
+  }
 
   // Telegram мэдэгдэл
   const icon = platform === 'fb' ? '💬 FB' : '📸 IG';
