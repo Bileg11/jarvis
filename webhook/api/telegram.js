@@ -486,9 +486,12 @@ async function handleText(msg) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(200).send('JARVIS webhook OK');
 
+  // Telegram-д ШУУД хариулна — retry хийхгүй
+  res.status(200).json({ ok: true });
+
   try {
     const upd = req.body;
-    if (!upd || !UID) return res.status(200).json({ ok: true });
+    if (!upd || !UID) return;
 
     if (upd.callback_query) {
       await handleCallback(upd.callback_query);
@@ -501,6 +504,6 @@ module.exports = async (req, res) => {
     console.error('[Webhook] Error:', e.message);
   }
 
-  // Processing дууссаны ДАРАА respond — Vercel function alive байна
+  // Railway persistent server — async processing үргэлжилнэ
   res.status(200).json({ ok: true });
 };
