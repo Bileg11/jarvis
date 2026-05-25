@@ -274,7 +274,7 @@ async function handleCallback(cb) {
           { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
         ]]},
       });
-      await manualRef().set({ status: 'waiting_final', photoUrl: ms.photoUrl, caption, hashtags, draftMsgId: draft.result?.message_id });
+      await manualRef().set({ status: 'waiting_final', photoUrl: ms.photoUrl, caption, hashtags, draftMsgId: draft.result?.message_id || null });
       return;
     }
     if (cmd === 'manual_cap') {
@@ -331,7 +331,7 @@ async function handlePhoto(msg) {
         { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
       ]]},
     });
-    await manualRef().set({ status: 'waiting_final', photoUrl, caption, hashtags, draftMsgId: draft.result?.message_id });
+    await manualRef().set({ status: 'waiting_final', photoUrl, caption, hashtags, draftMsgId: draft.result?.message_id || null });
   } else {
     // Сонголт өгнө
     const choice = await tgCall('sendMessage', {
