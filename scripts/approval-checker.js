@@ -2,283 +2,208 @@
 // 2 минут тутамд ажиллаж Telegram callback шалгана
 // Approve → IG+FB post / Reject → цуцлах / Expire → auto-post
 
-'use strict';
 const admin = require('firebase-admin');
+const fetch = require('node-fetch');
 
-const {
-  TELEGRAM_BOT_TOKEN_JARVIS: TG_TOKEN,
-  TELEGRAM_ID:               TG_CHAT,
-  INSTAGRAM_BUSINESS_ID:     IG_ID,
-  FACEBOOK_PAGE_ID:          FB_PAGE_ID,
-  ACCESS_TOKEN_META:         META_TOKEN,
-  FIREBASE_SERVICE_ACCOUNT,
-  USER_UID,
-  SYSTEM_USE_TOKEN:          GITHUB_TOKEN,
-  PEXELS_API_KEY,
-  UNSPLASH_ACCESS_KEY,
-} = process.env;
-
-const sa = JSON.parse(FIREBASE_SERVICE_ACCOUNT);
-admin.initializeApp({ credential: admin.credential.cert(sa) });
+if (!admin.apps.length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+}
 const db = admin.firestore();
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const TG_TOKEN      = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
+const TG_CHAT_ID    = process.env.TELEGRAM_ID;
+const META_TOKEN    = process.env.ACCESS_TOKEN_META;
+const FB_PAGE_ID    = process.env.FACEBOOK_PAGE_ID || process.env.FACEBOOK_ID;
+const IG_BUSINESS_ID = process.env.INSTAGRAM_BUSINESS_ID;
+const PEXELS_KEY    = process.env.PEXELS_API_KEY;
+const UNSPLASH_KEY  = process.env.UNSPLASH_ACCESS_KEY;
+const USER_UID      = process.env.USER_UID;
 
-async function tg(method, body) {
+const pendingRef = db.doc(`users/${USER_UID}/marketing/pendingPost`);
+const configRef  = db.doc(`users/${USER_UID}/meta/settings`);
+
+// ── TELEGRAM HELPERS ──────────────────────────────────────────────
+async function tgSend(method, body) {
   const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/${method}`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
   });
   return res.json();
 }
-const tgMsg = text => tg('sendMessage', { chat_id: TG_CHAT, text, parse_mode: 'Markdown' });
 
-// ── FIRESTORE STATE ───────────────────────────────────────────────
-async function getPending() {
-  const snap = await db.doc(`users/${USER_UID}/marketing/pendingPost`).get();
-  if (!snap.exists) return null;
-  const d = snap.data();
-  if (d.status !== 'pending') return null;
-  return d;
+async function tgMsg(text) {
+  return tgSend('sendMessage', { chat_id: TG_CHAT_ID, text, parse_mode: 'Markdown' });
 }
 
-async function clearPending() {
-  await db.doc(`users/${USER_UID}/marketing/pendingPost`).set({ status: 'done', clearedAt: new Date().toISOString() });
-}
-
-async function markImageUsed(imageId) {
-  const ref  = db.doc(`users/${USER_UID}/marketing/usedImages`);
-  const snap = await ref.get();
-  const ids  = snap.exists ? (snap.data().ids || []) : [];
-  if (!ids.includes(imageId)) {
-    ids.push(imageId);
-    if (ids.length > 600) ids.splice(0, ids.length - 600);
-    await ref.set({ ids, updatedAt: new Date().toISOString() });
-  }
-}
-
-// ── FETCH WITH TIMEOUT ────────────────────────────────────────────
-async function fetchT(url, opts, ms = 15000) {
-  const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), ms);
-  try { return await fetch(url, { ...opts, signal: ctrl.signal }); }
-  finally { clearTimeout(t); }
-}
-
-// ── IG POST ───────────────────────────────────────────────────────
-async function postToIG(imageUrl, caption, hashtags) {
-  try {
-    const cRes  = await fetchT(`https://graph.facebook.com/v25.0/${IG_ID}/media`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_url: imageUrl, caption, access_token: META_TOKEN }),
-    });
-    const cData = await cRes.json();
-    if (cData.error || !cData.id) return { ok: false, err: cData.error?.message || 'Container алдаа' };
-
-    await sleep(3000);
-
-    const pRes  = await fetchT(`https://graph.facebook.com/v25.0/${IG_ID}/media_publish`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ creation_id: cData.id, access_token: META_TOKEN }),
-    });
-    const pData = await pRes.json();
-    if (pData.error) return { ok: false, err: pData.error.message };
-
-    if (hashtags && pData.id) {
-      fetchT(`https://graph.facebook.com/v25.0/${pData.id}/comments`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: hashtags, access_token: META_TOKEN }),
-      }).catch(() => {});
-    }
-    return { ok: true, postId: pData.id };
-  } catch (e) { return { ok: false, err: e.message }; }
-}
-
-// ── FB POST ───────────────────────────────────────────────────────
-async function postToFB(imageUrl, caption, hashtags) {
-  if (!FB_PAGE_ID) return { ok: false, err: 'FACEBOOK_PAGE_ID байхгүй' };
-  try {
-    const res  = await fetchT(`https://graph.facebook.com/v25.0/${FB_PAGE_ID}/photos`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: imageUrl, message: `${caption}\n\n${hashtags || ''}`.trim(), access_token: META_TOKEN }),
-    });
-    const data = await res.json();
-    if (data.error) return { ok: false, err: data.error.message };
-    return { ok: true, postId: data.id };
-  } catch (e) { return { ok: false, err: e.message }; }
-}
-
-async function postToBoth(p) {
-  const [ig, fb] = await Promise.all([
-    postToIG(p.imageUrl, p.caption, p.hashtags),
-    postToFB(p.imageUrl, p.caption, p.hashtags),
-  ]);
-  return { ig, fb };
-}
-
-async function publishAndNotify(p, label = '') {
-  // IG эхэлж post хийнэ
-  const ig = await postToIG(p.imageUrl, p.caption, p.hashtags);
-  await markImageUsed(p.imageId);
-  await clearPending();
-
-  // IG үр дүнг шууд мэдэгдэнэ
-  if (ig.ok) {
-    await tgMsg(`${label}✅ Instagram нийтлэгдлээ!`);
-  } else {
-    await tgMsg(`${label}❌ Instagram алдаа: ${ig.err}`);
-    return;
-  }
-
-  // FB-г тусдаа явуулна (алдаа гарсан ч IG-г блок болохгүй)
-  const fb = await postToFB(p.imageUrl, p.caption, p.hashtags);
-  if (fb.ok) {
-    await tgMsg(`✅ Facebook нийтлэгдлээ!`);
-  } else {
-    await tgMsg(`❌ Facebook алдаа: ${fb.err}`);
-  }
+// ── DRAFT TELEGRAM ────────────────────────────────────────────────
+async function sendTelegramDraft(caption, imageUrl) {
+  const res = await tgSend('sendPhoto', {
+    chat_id:    TG_CHAT_ID,
+    photo:      imageUrl,
+    caption:    `🤖 *Jarvis Draft Post:*\n\n${caption}`,
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: '✅ Approve', callback_data: 'approve' }, { text: '❌ Reject', callback_data: 'reject' }],
+        [{ text: '🖼 New Image', callback_data: 'new_image' }, { text: '✏️ Edit Text', callback_data: 'edit_text' }],
+      ],
+    },
+  });
+  return res.result?.message_id;
 }
 
 // ── NEW IMAGE ─────────────────────────────────────────────────────
-const IMG_KW = ['shanghai skyline night','shanghai bund river','shanghai modern architecture','shanghai street food','china luxury city','mongolia landscape'];
-
-async function getNewImage(usedImageId) {
-  const usedSnap = await db.doc(`users/${USER_UID}/marketing/usedImages`).get();
-  const usedIds  = new Set(usedSnap.exists ? (usedSnap.data().ids || []) : []);
-  usedIds.add(usedImageId);
-
-  const kw  = IMG_KW[Math.floor(Math.random() * IMG_KW.length)];
-  const usePx = Math.random() > 0.5;
-
-  async function tryPexels() {
-    const res  = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(kw)}&per_page=15&orientation=portrait`, { headers: { 'Authorization': PEXELS_API_KEY } });
-    const data = await res.json();
-    const fresh = (data.photos || []).filter(p => !usedIds.has(`px_${p.id}`));
-    if (!fresh.length) return null;
-    const p = fresh[Math.floor(Math.random() * Math.min(fresh.length, 8))];
-    return { id: `px_${p.id}`, url: p.src.large2x || p.src.large };
+async function fetchNewImage(query) {
+  try {
+    const useUnsplash = Math.random() > 0.5;
+    if (useUnsplash && UNSPLASH_KEY) {
+      const res  = await fetch(`https://api.unsplash.com/search/photos?query=${query}&client_id=${UNSPLASH_KEY}`);
+      const data = await res.json();
+      if (data.results?.length > 0) return data.results[0].urls.regular;
+    }
+    if (PEXELS_KEY) {
+      const res  = await fetch(`https://api.pexels.com/v1/search?query=${query}&per_page=1`, { headers: { Authorization: PEXELS_KEY } });
+      const data = await res.json();
+      if (data.photos?.length > 0) return data.photos[0].src.large2x;
+    }
+  } catch (e) {
+    console.error('Зураг татахад алдаа:', e.message);
   }
-  async function tryUnsplash() {
-    const res  = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(kw)}&per_page=15&orientation=portrait`, { headers: { 'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}` } });
-    const data = await res.json();
-    const fresh = (data.results || []).filter(p => !usedIds.has(`us_${p.id}`));
-    if (!fresh.length) return null;
-    const p = fresh[Math.floor(Math.random() * Math.min(fresh.length, 8))];
-    return { id: `us_${p.id}`, url: p.urls.regular };
-  }
-
-  let img = usePx ? await tryPexels() : await tryUnsplash();
-  if (!img) img = usePx ? await tryUnsplash() : await tryPexels();
-  return img;
+  return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570';
 }
 
-// ── SEND NEW DRAFT ────────────────────────────────────────────────
-async function sendNewDraft(p, newImg) {
-  const label = p.slot === 'morning' ? '🌅 Өглөөний' : '🌆 Оройн';
-  const text  = `🤖 *JARVIS GHOST MARKETER*\n${label} пост · 🖼️ Шинэ зураг\n\n${p.caption}\n\n_Approve хийхгүй бол автомат нийтлэгдэнэ._`;
-  const res = await tg('sendPhoto', {
-    chat_id: TG_CHAT, photo: newImg.url, caption: text, parse_mode: 'Markdown',
-    reply_markup: { inline_keyboard: [
-      [{ text: '✅ Пост болгох', callback_data: 'approve' }, { text: '❌ Цуцлах', callback_data: 'reject' }],
-      [{ text: '🖼️ Зураг солих', callback_data: 'new_image' }, { text: '✏️ Текст засах', callback_data: 'edit_text' }],
-    ]},
-  });
-  return res.result?.message_id || null;
+// ── PUBLISH TO META ───────────────────────────────────────────────
+async function publishToMeta(caption, imageUrl) {
+  try {
+    // 1. Instagram container
+    const igRes  = await fetch(`https://graph.facebook.com/v25.0/${IG_BUSINESS_ID}/media?image_url=${encodeURIComponent(imageUrl)}&caption=${encodeURIComponent(caption)}&access_token=${META_TOKEN}`, { method: 'POST' });
+    const igData = await igRes.json();
+
+    if (igData.id) {
+      // 2. Instagram publish
+      await fetch(`https://graph.facebook.com/v25.0/${IG_BUSINESS_ID}/media_publish?creation_id=${igData.id}&access_token=${META_TOKEN}`, { method: 'POST' });
+    } else {
+      await tgMsg(`❌ Instagram алдаа: ${igData.error?.message || 'Container үүсгэж чадсангүй'}`);
+      return false;
+    }
+
+    // 3. Facebook Page
+    const fbRes  = await fetch(`https://graph.facebook.com/v25.0/${FB_PAGE_ID}/photos?url=${encodeURIComponent(imageUrl)}&message=${encodeURIComponent(caption)}&access_token=${META_TOKEN}`, { method: 'POST' });
+    const fbData = await fbRes.json();
+
+    // ✅ FIX 2: Telegram-д үр дүн мэдэгдэнэ
+    const igMsg = igData.id  ? '✅ Instagram нийтлэгдлээ!'        : '❌ Instagram алдаа';
+    const fbMsg = !fbData.error ? '✅ Facebook нийтлэгдлээ!'      : `❌ Facebook алдаа: ${fbData.error?.message}`;
+    await tgMsg(`${igMsg}\n${fbMsg}`);
+
+    return true;
+  } catch (error) {
+    console.error('Meta API алдаа:', error);
+    await tgMsg(`❌ Meta API алдаа: ${error.message}`);
+    return false;
+  }
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────
-async function main() {
-  console.log('[Checker] Running...');
+async function run() {
+  const pendingSnap = await pendingRef.get();
+  if (!pendingSnap.exists) {
+    console.log('[1] Pending post байхгүй байна.');
+    return;
+  }
 
-  const p = await getPending();
-  if (!p) { console.log('[Checker] No pending post.'); return; }
-  console.log(`[Checker] Pending post found. msgId: ${p.msgId}`);
+  const postData    = pendingSnap.data();
+  const diffMinutes = (Date.now() - new Date(postData.createdAt).getTime()) / 60000;
 
-  // ── Expire шалга → auto-post ─────────────────────────────────
-  if (new Date() > new Date(p.expiresAt)) {
-    console.log('[Checker] Expired → auto-posting...');
+  // [2] 15 мин expire → auto-post
+  if (diffMinutes >= 15) {
+    console.log('[2] 15 минут өнгөрсөн → автомат post...');
     await tgMsg('⏰ 15 минут дууслаа — автомат нийтэлж байна...');
-    await publishAndNotify(p, '🤖 Автомат:');
+    const ok = await publishToMeta(postData.caption, postData.imageUrl);
+    if (ok) await pendingRef.delete();
     return;
   }
 
-  // ── Telegram updates авна ────────────────────────────────────
-  const updRes  = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?offset=${p.tgOffset}&limit=50`);
-  const updData = await updRes.json();
-  const updates = updData.result || [];
+  // [3] Telegram offset авна
+  const configSnap = await configRef.get();
+  let tgOffset     = configSnap.exists ? (configSnap.data().tgOffset || 0) : 0;
 
-  if (updates.length === 0) {
-    console.log('[Checker] No new Telegram updates.');
+  const tgRes  = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getUpdates?offset=${tgOffset}`);
+  const tgData = await tgRes.json();
+
+  if (!tgData.ok || !tgData.result.length) {
+    console.log('[3] Шинэ Telegram команд ирээгүй байна.');
     return;
   }
 
-  // Offset шинэчилнэ
-  const newOffset = updates[updates.length - 1].update_id + 1;
-  await db.doc(`users/${USER_UID}/marketing/pendingPost`).set({ tgOffset: newOffset }, { merge: true });
+  let latestOffset = tgOffset;
 
-  // ── Update-үүдийг боловсруулна ───────────────────────────────
-  for (const upd of updates) {
-    const cb = upd.callback_query;
-    // != ашиглана: Firestore number vs Telegram number type mismatch-г зөвшөөрнө
-    if (!cb || cb.message?.message_id != p.msgId) continue;
+  for (const update of tgData.result) {
+    latestOffset = update.update_id + 1;
 
-    await tg('answerCallbackQuery', { callback_query_id: cb.id });
+    // [4.A] Callback товчлуурууд
+    if (update.callback_query) {
+      const { data: command, message, id: cbId } = update.callback_query;
+      const msgId = message.message_id;
 
-    if (cb.data === 'approve') {
-      await tgMsg('⏳ Нийтэлж байна...');
-      await publishAndNotify(p, '');
-      return;
-    }
+      // answerCallbackQuery — товч "дарагдсан" харагдана
+      await tgSend('answerCallbackQuery', { callback_query_id: cbId });
 
-    if (cb.data === 'reject') {
-      await clearPending();
-      await tgMsg('❌ Пост цуцлагдлаа.');
-      return;
-    }
+      // ✅ FIX 1: != ашиглана (type mismatch зөвшөөрнө)
+      if (msgId != postData.telegramMsgId) continue;
 
-    if (cb.data === 'new_image') {
-      const newImg = await getNewImage(p.imageId);
-      if (!newImg) { await tgMsg('⚠️ Шинэ зураг олдсонгүй.'); return; }
-      const newMsgId = await sendNewDraft(p, newImg);
-      await db.doc(`users/${USER_UID}/marketing/pendingPost`).set({
-        imageUrl: newImg.url, imageId: newImg.id, msgId: newMsgId,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-      }, { merge: true });
-      return;
-    }
-
-    if (cb.data === 'edit_text') {
-      await tgMsg('✏️ Шинэ текстийг Telegram-д тусдаа мессежээр явуул — дараагийн шалгалтад авна.');
-      return;
-    }
-  }
-
-  // ── edit_text-н хариу мессеж шалга ──────────────────────────
-  for (const upd of updates) {
-    const msg = upd.message;
-    if (msg?.text && msg.chat?.id?.toString() === TG_CHAT?.toString() && !msg.photo) {
-      // Хэрэглэгч текст явуулсан → caption болгоно
-      const newCaption = msg.text;
-      await db.doc(`users/${USER_UID}/marketing/pendingPost`).set({ caption: newCaption }, { merge: true });
-      await tgMsg(`✅ Caption шинэчлэгдлээ. Дараагийн шалгалтад draft харагдана.`);
-
-      // Шинэ draft явуулна
-      const label = p.slot === 'morning' ? '🌅 Өглөөний' : '🌆 Оройн';
-      const text  = `🤖 *JARVIS GHOST MARKETER*\n${label} пост\n\n${newCaption}\n\n_Approve хийхгүй бол автомат нийтлэгдэнэ._`;
-      const r = await tg('sendPhoto', {
-        chat_id: TG_CHAT, photo: p.imageUrl, caption: text, parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [
-          [{ text: '✅ Пост болгох', callback_data: 'approve' }, { text: '❌ Цуцлах', callback_data: 'reject' }],
-          [{ text: '🖼️ Зураг солих', callback_data: 'new_image' }, { text: '✏️ Текст засах', callback_data: 'edit_text' }],
-        ]},
-      });
-      if (r.result?.message_id) {
-        await db.doc(`users/${USER_UID}/marketing/pendingPost`).set({ msgId: r.result.message_id }, { merge: true });
+      if (command === 'approve') {
+        console.log('✅ Approve дарагдлаа...');
+        await tgMsg('⏳ Нийтэлж байна...');
+        const ok = await publishToMeta(postData.caption, postData.imageUrl);
+        if (ok) {
+          await tgSend('editMessageCaption', {
+            chat_id: TG_CHAT_ID, message_id: msgId,
+            caption: `✅ *Амжилттай нийтлэгдлээ!*\n\n${postData.caption}`,
+            parse_mode: 'Markdown',
+          });
+          await pendingRef.delete();
+        }
       }
-      return;
+
+      else if (command === 'reject') {
+        console.log('❌ Reject дарагдлаа...');
+        await tgSend('editMessageCaption', {
+          chat_id: TG_CHAT_ID, message_id: msgId,
+          caption: '❌ *Постыг цуцалсан.*', parse_mode: 'Markdown',
+        });
+        await pendingRef.delete();
+      }
+
+      else if (command === 'new_image') {
+        console.log('🖼 Шинэ зураг хайж байна...');
+        const newImgUrl = await fetchNewImage(postData.topic || 'shanghai');
+        const newMsgId  = await sendTelegramDraft(postData.caption, newImgUrl);
+        await pendingRef.update({ imageUrl: newImgUrl, telegramMsgId: newMsgId, createdAt: new Date().toISOString() });
+      }
+
+      else if (command === 'edit_text') {
+        await tgMsg('✏️ Шинэ текстаа reply хийж бичнэ үү:');
+        await pendingRef.update({ waitingForText: true });
+      }
+    }
+
+    // [4.B] Хэрэглэгчийн шинэ текст
+    if (update.message?.text && postData.waitingForText) {
+      const newText  = update.message.text;
+      console.log(`✏️ Текст засагдлаа: ${newText}`);
+      const newMsgId = await sendTelegramDraft(newText, postData.imageUrl);
+      await pendingRef.update({
+        caption: newText, telegramMsgId: newMsgId,
+        waitingForText: false, createdAt: new Date().toISOString(),
+      });
     }
   }
 
-  console.log('[Checker] No matching action found.');
+  // Offset хадгалах
+  await configRef.set({ tgOffset: latestOffset }, { merge: true });
 }
 
-main().catch(e => { console.error('[Checker] Fatal:', e.message); process.exit(1); });
+run().catch(console.error);

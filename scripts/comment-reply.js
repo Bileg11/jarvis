@@ -143,10 +143,10 @@ async function main() {
     }
   }
 
-  const msg = totalReplied > 0
-    ? `💬 *Comment Reply:* ${totalReplied} comment-д хариулав`
-    : `💬 *Comment Reply:* Шинэ comment байхгүй`;
-  await tgMsg(msg);
+  // Зөвхөн хариулсан үед Telegram-д мэдэгдэнэ (spam болгохгүй)
+  if (totalReplied > 0) {
+    await tgMsg(`💬 *Comment Reply:* ${totalReplied} comment-д хариулав`);
+  }
 
   console.log(`[CommentReply] Done. Replied: ${totalReplied}`);
 }

@@ -2,9 +2,9 @@ name: Jarvis Daily Briefing
 
 on:
   schedule:
-    - cron: '0 23 * * *'
-    - cron: '0 5 * * *'
-    - cron: '0 13 * * *'
+    - cron: '0 23 * * *'   # 07:00 Shanghai
+    - cron: '0 5 * * *'    # 13:00 Shanghai
+    - cron: '0 13 * * *'   # 21:00 Shanghai
   workflow_dispatch:
 
 env:
@@ -24,19 +24,11 @@ jobs:
 
       - name: Run Jarvis briefing
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          USER_UID: ${{ secrets.USER_UID }}
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: node scripts/briefing.js
-
-      - name: Run Ghost Marketer
-        env:
-          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          GITHUB_TOKEN:              ${{ secrets.GITHUB_TOKEN }}
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                  ${{ secrets.USER_UID }}
           TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
-          TELEGRAM_ID: ${{ secrets.TELEGRAM_ID }}
-          INSTAGRAM_BUSINESS_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
-          ACCESS_TOKEN_META: ${{ secrets.ACCESS_TOKEN_META }}
-          FACEBOOK_ID: ${{ secrets.FACEBOOK_ID }}
-        run: node ghost-poster.js
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+          SYSTEM_USE_TOKEN:          ${{ secrets.SYSTEM_USE_TOKEN }}
+          TAVILY_KEY:                ${{ secrets.TAVILY_KEY }}
+        run: node scripts/briefing.js
