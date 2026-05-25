@@ -259,7 +259,6 @@ async function sendWithButtons(recipientId, text, platform, accessToken) {
 
 // ── WELCOME MESSAGE (Get Started / шинэ хэрэглэгч) ───────────────
 async function sendWelcome(recipientId, accessToken) {
-  console.log(`[Meta] sendWelcome → ${recipientId}`);
   try {
     const r = await fetch('https://graph.facebook.com/v25.0/me/messages', {
       method: 'POST',
@@ -284,8 +283,7 @@ async function sendWelcome(recipientId, accessToken) {
       }),
     });
     const d = await r.json();
-    if (d.error) console.error('[Meta] sendWelcome API error:', JSON.stringify(d.error));
-    else console.log('[Meta] sendWelcome OK, msg_id:', d.message_id);
+    if (d.error) console.error('[Meta] sendWelcome error:', JSON.stringify(d.error));
   } catch (e) { console.error('[Meta] sendWelcome catch:', e.message); }
 }
 
@@ -317,10 +315,7 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
 
   // Хэрэглэгчийн өмнөх яриаг уншина
   const history = await getChatHistory(senderId);
-  console.log(`[Meta] generating reply for "${text.slice(0,40)}" history=${history.length}`);
-
   const reply = await generateReply(text, history);
-  console.log(`[Meta] reply: ${reply === null ? 'SKIP/null' : reply.slice(0,60)}`);
   await senderAction(senderId, 'typing_off', accessToken);
 
   // SKIP авбал FB-д welcome товчлуур явуул
@@ -388,7 +383,6 @@ module.exports = {
           if (event.postback) {
             const payload = event.postback.payload;
             const pid     = `pb_${senderId}_${Date.now()}`;
-            console.log(`[Meta] postback: ${payload} from ${senderId}`);
             if (payload === 'GET_STARTED' || payload === 'WELCOME_MESSAGE') {
               sendWelcome(senderId, accessToken).catch(e => console.error('[Meta] sendWelcome error:', e.message));
             } else if (payload === 'GUIDE_INFO') {
