@@ -305,8 +305,13 @@ async function handleCallback(cb) {
         const fbCtrl = new AbortController();
         const fbTimeout = setTimeout(() => fbCtrl.abort(), 15000);
         const fbRes  = await fetch(
-          `https://graph.facebook.com/v25.0/${FB_ID}/photos?url=${encodeURIComponent(ms.photoUrl)}&message=${encodeURIComponent(ms.caption)}&access_token=${META_TOKEN}`,
-          { method: 'POST', signal: fbCtrl.signal }
+          `https://graph.facebook.com/v25.0/${FB_ID}/photos`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: ms.photoUrl, message: ms.caption, access_token: META_TOKEN }),
+            signal: fbCtrl.signal,
+          }
         );
         clearTimeout(fbTimeout);
         const fbData = await fbRes.json();
