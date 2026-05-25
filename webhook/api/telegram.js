@@ -304,12 +304,17 @@ async function handleCallback(cb) {
       try {
         const fbCtrl = new AbortController();
         const fbTimeout = setTimeout(() => fbCtrl.abort(), 15000);
+        // Page Access Token авна
+        const ptRes  = await fetch(`https://graph.facebook.com/v25.0/${FB_ID}?fields=access_token&access_token=${META_TOKEN}`);
+        const ptData = await ptRes.json();
+        const pageToken = ptData.access_token || META_TOKEN;
+
         const fbRes  = await fetch(
           `https://graph.facebook.com/v25.0/${FB_ID}/photos`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: ms.photoUrl, message: ms.caption, access_token: META_TOKEN }),
+            body: JSON.stringify({ url: ms.photoUrl, message: ms.caption, access_token: pageToken }),
             signal: fbCtrl.signal,
           }
         );
