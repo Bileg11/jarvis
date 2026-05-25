@@ -295,7 +295,9 @@ async function handleCallback(cb) {
   if (ms.status === 'waiting_final') {
     if (cmd === 'manual_post') {
       await tgSend('⏳ IG + FB-д нийтэлж байна...');
+      console.log('[Post] Starting IG post, photoUrl:', ms.photoUrl?.slice(0,60));
       const igResult = await postToIG(ms.photoUrl, ms.caption, ms.hashtags);
+      console.log('[Post] IG result:', JSON.stringify(igResult));
 
       // FB post
       let fbMsg = '';
