@@ -1,0 +1,27 @@
+name: JARVIS Chat
+
+on:
+  schedule:
+    - cron: '* * * * *'   # 1 минут тутамд Telegram шалгана
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  chat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix scripts
+      - name: Handle Telegram commands
+        env:
+          TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                  ${{ secrets.USER_UID }}
+          SYSTEM_USE_TOKEN:          ${{ secrets.SYSTEM_USE_TOKEN }}
+        run: NODE_PATH=./scripts/node_modules node scripts/jarvis-chat.js

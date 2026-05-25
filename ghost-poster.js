@@ -166,12 +166,32 @@ async function main() {
   console.log(`[Ghost] ${slot} | ${new Date().toISOString()}`);
 
   const usedIds = await getUsedIds();
-  const { query, snippets, isMongolia } = await getTrend();
-  console.log(`[Ghost] Topic: ${query}`);
 
-  const gen     = await generateContent(query, snippets, isMongolia);
-  const caption  = gen.caption  || 'Шанхай хот — Монгол аялагчдын мөрөөдлийн газар! 🌆\n\n👉 bileg11.github.io';
-  const hashtags = gen.hashtags || '#Шанхай #Shanghai #LFSShanghai #МонголАялал';
+  // ── Weekly queue шалгана ──────────────────────────────────────
+  const today    = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const queueKey = `${today}-${slot}`;
+  const qSnap    = await db.doc(`users/${USER_UID}/marketing/weeklyQueue`).get();
+  const queued   = qSnap.exists ? qSnap.data()?.[queueKey] : null;
+
+  let caption, hashtags;
+
+  if (queued && !queued.used) {
+    // Queue-с ашиглана — Tavily + GPT алгасна
+    caption  = queued.caption;
+    hashtags = queued.hashtags;
+    console.log(`[Ghost] Queue ашигласан: ${queued.topic.slice(0, 50)}`);
+    // Ашигласан гэж тэмдэглэнэ
+    await db.doc(`users/${USER_UID}/marketing/weeklyQueue`).set(
+      { [queueKey]: { ...queued, used: true } }, { merge: true }
+    );
+  } else {
+    // Fresh generation — Tavily + GPT
+    const { query, snippets, isMongolia } = await getTrend();
+    console.log(`[Ghost] Fresh topic: ${query}`);
+    const gen = await generateContent(query, snippets, isMongolia);
+    caption  = gen.caption  || 'Шанхай хот — Монгол аялагчдын мөрөөдлийн газар! 🌆\n\n👉 bileg11.github.io';
+    hashtags = gen.hashtags || '#Шанхай #Shanghai #LFSShanghai #МонголАялал';
+  }
 
   const img = await fetchImage(usedIds);
   if (!img) { console.error('[Ghost] No image found'); process.exit(1); }

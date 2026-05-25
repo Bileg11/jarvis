@@ -1,0 +1,28 @@
+name: JARVIS Reminders
+
+on:
+  schedule:
+    - cron: '0 4 * * *'    # 12:00 Shanghai — Ус сануулга
+    - cron: '0 13 * * *'   # 21:00 Shanghai — Дасгал сануулга
+    - cron: '0 15 * * *'   # 23:00 Shanghai — Journal сануулга
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix scripts
+      - name: Send reminders
+        env:
+          TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                  ${{ secrets.USER_UID }}
+        run: NODE_PATH=./scripts/node_modules node scripts/reminders.js

@@ -1,0 +1,26 @@
+name: JARVIS Notion Logger
+
+on:
+  schedule:
+    - cron: '0 14 * * *'   # 22:00 Shanghai — Өдрийн summary
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix scripts
+      - name: Log daily summary to Notion
+        env:
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                  ${{ secrets.USER_UID }}
+          NOTION_TOKEN:              ${{ secrets.NOTION_TOKEN }}
+          NOTION_JARVIS_PAGE_ID:     ${{ secrets.NOTION_JARVIS_PAGE_ID }}
+        run: NODE_PATH=./scripts/node_modules node scripts/notion-logger.js
