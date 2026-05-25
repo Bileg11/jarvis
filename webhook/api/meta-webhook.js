@@ -131,9 +131,10 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   if (!text || !mid) return;
 
   const replied = await getReplied();
-  if (replied.has(mid)) return;  // Давхардал хамгаалалт
-
-  await markReplied(mid);
+  if (replied.has(mid)) {
+    console.log('[Meta] Dedup skip — mid already replied:', mid?.slice(0,20));
+    return;
+  }
 
   console.log('[Meta] Generating reply for:', text.slice(0,50));
   const reply = await generateReply(text, platform);
@@ -143,6 +144,9 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   console.log('[Meta] Sending to sender:', senderId);
   const ok = await sendReply(senderId, reply, accessToken);
   console.log('[Meta] sendReply result:', ok);
+
+  // Reply явуулсны дараа л mark хийнэ
+  if (ok) await markReplied(mid);
 
   // Telegram мэдэгдэл
   const icon = platform === 'fb' ? '💬 FB' : '📸 IG';
