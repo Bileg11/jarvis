@@ -323,9 +323,9 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   console.log(`[Meta] reply: ${reply === null ? 'SKIP/null' : reply.slice(0,60)}`);
   await senderAction(senderId, 'typing_off', accessToken);
 
-  // Шинэ хэрэглэгч (history=0) SKIP авбал welcome мессеж явуул
+  // SKIP авбал FB-д welcome товчлуур явуул
   if (!reply) {
-    if (history.length === 0 && platform === 'fb') {
+    if (platform === 'fb') {
       await sendWelcome(senderId, accessToken);
       await markReplied(mid);
     }
