@@ -128,9 +128,12 @@ async function generateReply(userText, history = []) {
 
     if (GEMINI_KEY) {
       // ── Gemini 1.5 Flash (v1) ────────────────────────────────────
+      // v1 system instruction дэмжихгүй тул first-turn-д оруулна
       const contents = [
+        { role: 'user',  parts: [{ text: LFS_SYSTEM }] },
+        { role: 'model', parts: [{ text: 'Ойлголоо, LFS Shanghai-н менежер болж хариулна.' }] },
         ...history.map(m => ({ role: m.role, parts: [{ text: m.text }] })),
-        { role: 'user', parts: [{ text: userText }] },
+        { role: 'user',  parts: [{ text: userText }] },
       ];
 
       const r = await fetch(
@@ -139,7 +142,6 @@ async function generateReply(userText, history = []) {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            systemInstruction: { parts: [{ text: LFS_SYSTEM }] },
             contents,
             generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
           }),
