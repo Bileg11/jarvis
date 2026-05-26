@@ -129,6 +129,86 @@ async function fetchNewImage(query = 'shanghai') {
   return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570';
 }
 
+// ── MORNING BRIEF (telegram.js-с шууд дуудна) ────────────────────
+async function sendBrief() {
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+
+  // Tasks: orderBy index шаардахгүй байхаар get + sort
+  const [analyticsSnap, bilegSnap, tasksRaw] = await Promise.all([
+    db.doc(`users/${UID}/analytics/${yesterday}`).get(),
+    db.doc(`users/${UID}/bileg/profile`).get(),
+    db.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
+  ]);
+
+  const d             = analyticsSnap.exists ? analyticsSnap.data() : {};
+  const bileg         = bilegSnap.exists ? bilegSnap.data() : {};
+  const tasks         = tasksRaw.docs
+    .map(doc => ({ ...doc.data() }))
+    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+    .slice(0, 5)
+    .map(t => t.text);
+
+  const userCount     = (d.users    || []).length;
+  const guideCount    = d.guide     || 0;
+  const medicalCount  = d.medical   || 0;
+  const agentCount    = d.agent     || 0;
+  const escalateCount = d.escalate  || 0;
+
+  const promptParts = [
+    `LFS Shanghai өчигдрийн тоо: ${userCount} хэрэглэгч, ${guideCount} гайд, ${medicalCount} эмнэлэг, ${agentCount} ажилтан.`,
+    bileg.goal  ? `Билэгийн зорилго: "${bileg.goal}".`  : '',
+    bileg.focus ? `Өнөөдрийн focus: "${bileg.focus}".` : '',
+    tasks.length ? `Хийх tasks: ${tasks.slice(0,3).join(', ')}.` : '',
+    'Билэгт 1-2 өгүүлбэр практик урам зоригтой зөвлөгөө өг. Монголоор, дотно.',
+  ].filter(Boolean).join(' ');
+
+  let advice = 'Өнөөдөр нэг жижиг алхам хий.';
+  if (GEMINI_KEY) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: promptParts }] }],
+            generationConfig: { maxOutputTokens: 150, temperature: 0.8 },
+          }),
+        }
+      );
+      const data  = await r.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const part  = parts.find(p => !p.thought && p.text) || parts[0];
+      advice = part?.text?.trim() || advice;
+    } catch {}
+  }
+
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const days    = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
+  const dayName = days[now.getDay()];
+  const dateStr = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+
+  const lines = [
+    '🌅 *Өглөөний мэнд, Билэг.*',
+    `_${dayName}, ${dateStr} | Шанхай 07:30_`,
+    '`────────────────────`',
+    '📊 *Өчигдрийн LFS:*',
+    `• Хандсан: *${userCount}* · Гайд: *${guideCount}* · Эмнэлэг: *${medicalCount}* · Ажилтан: *${agentCount}*`,
+  ];
+  if (escalateCount > 0) lines.push(`• ⚠️ Бухимдсан: *${escalateCount}*`);
+  if (bileg.goal)        lines.push(`\n🎯 _${bileg.goal}_`);
+  if (tasks.length) {
+    lines.push(`\n📋 *Хийх (${tasks.length}):*`);
+    tasks.forEach((t, i) => lines.push(`${i + 1}. ${t}`));
+  }
+  lines.push(`\n💡 ${advice}`);
+  lines.push('\n⚡ _Жарвис ажиллаж байна._');
+
+  await tgSend(lines.join('\n'));
+}
+
 // ── BILEG PERSONAL MEMORY ────────────────────────────────────────
 async function getBilegProfile() {
   try {
@@ -591,8 +671,11 @@ async function handleText(msg) {
   // ── Manual brief trigger (test хийхэд хэрэгтэй) ─────────────────
   if (text === '/brief') {
     await tgSend('⏳ Брифинг бэлдэж байна...');
-    const { sendMorningBrief } = require('./meta-webhook');
-    await sendMorningBrief();
+    try {
+      await sendBrief();
+    } catch (e) {
+      await tgSend('❌ Brief алдаа: ' + e.message);
+    }
     return;
   }
 
