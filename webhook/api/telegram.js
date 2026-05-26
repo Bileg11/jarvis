@@ -6,6 +6,7 @@
 const fetch  = require('node-fetch');
 const { admin, dbPersonal, dbLFS } = require('../firebase');
 const { notionSave } = require('./notion');
+const { isConfigured: calOk, parseEvent, createEvent, listTodayEvents, formatEventTime } = require('./calendar');
 
 // Хувийн өгөгдөл → dbPersonal (routines, logs, tasks, revenue, bileg/profile)
 // LFS өгөгдөл   → dbLFS      (analytics, marketing, bookings)
@@ -139,13 +140,18 @@ async function sendBrief() {
   const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
   // Бүх өгөгдлийг зэрэг уншина
-  const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap, revenueSnap] = await Promise.all([
+  const calEventsPromise = calOk()
+    ? listTodayEvents().catch(() => [])
+    : Promise.resolve([]);
+
+  const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap, revenueSnap, calEvents] = await Promise.all([
     dbLFS.doc(`users/${UID}/analytics/${yesterday}`).get(),       // LFS трафик
     dbPersonal.doc(`users/${UID}/bileg/profile`).get(),           // хувийн
     dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
     dbPersonal.doc(`users/${UID}/routines/${yesterday}`).get(),   // хувийн
     dbPersonal.doc(`users/${UID}/logs/${yesterday}`).get(),       // хувийн
     dbPersonal.doc(`users/${UID}/revenue/${yesterday}`).get(),    // хувийн
+    calEventsPromise,
   ]);
 
   // LFS аналитик
@@ -242,6 +248,14 @@ async function sendBrief() {
 
   // Зорилго
   if (bileg.goal) msg += `\n🎯 ${bileg.goal}\n`;
+
+  // Өнөөдрийн calendar events
+  if (calEvents && calEvents.length) {
+    msg += `\n📅 Өнөөдрийн хуваарь:\n`;
+    calEvents.forEach(e => {
+      msg += `• ${formatEventTime(e)} — ${e.summary}\n`;
+    });
+  }
 
   // Жарвисын зөвлөгөө
   msg += `\n💡 Жарвис:\n${advice}\n`;
@@ -860,6 +874,60 @@ async function handleText(msg) {
     return;
   }
 
+  // ── Google Calendar ───────────────────────────────────────────────
+  if (raw.startsWith('/cal ') || raw.startsWith('/cal\n')) {
+    const calText = raw.slice(5).trim();
+    if (!calText) {
+      await tgSend('📅 Жишээ: `/cal маргааш 3 цагт LFS meeting`');
+      return;
+    }
+    if (!calOk()) {
+      await tgSend('⚠️ Google Calendar тохиргоогүй байна.\nRailway-д `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` нэмнэ үү.');
+      return;
+    }
+    await tgCall('sendMessage', { chat_id: TG_CHAT, text: '📅 Задлаж байна...' });
+    const parsed = await parseEvent(calText);
+    if (!parsed || !parsed.date) {
+      await tgSend('⚠️ Ойлгож чадсангүй. Жишээ:\n`/cal маргааш 3 цагт meeting`\n`/cal өнөөдөр 10 цагт эмч`');
+      return;
+    }
+    const startISO = `${parsed.date}T${parsed.startTime}:00`;
+    const endISO   = `${parsed.date}T${parsed.endTime}:00`;
+    try {
+      await createEvent(parsed.title, startISO, endISO, parsed.description || '');
+      await tgCall('sendMessage', {
+        chat_id: TG_CHAT,
+        text: `✅ Calendar-д нэмэгдлээ!\n\n📌 ${parsed.title}\n📅 ${parsed.date}  ${parsed.startTime} – ${parsed.endTime}${parsed.description ? `\n📝 ${parsed.description}` : ''}`,
+      });
+    } catch (e) {
+      await tgSend(`❌ Calendar алдаа: ${e.message}`);
+    }
+    return;
+  }
+
+  if (text === '/events' || text === '/cal') {
+    if (!calOk()) {
+      await tgSend('⚠️ Google Calendar тохиргоогүй байна.');
+      return;
+    }
+    try {
+      const events = await listTodayEvents();
+      if (!events.length) {
+        await tgSend('📅 Өнөөдөр calendar event байхгүй байна.');
+        return;
+      }
+      let evMsg = '📅 *Өнөөдрийн хуваарь:*\n\n';
+      events.forEach(e => {
+        evMsg += `• ${formatEventTime(e)} — ${e.summary}\n`;
+      });
+      evMsg += `\n_/cal [текст] — шинэ event нэмэх_`;
+      await tgSend(evMsg);
+    } catch (e) {
+      await tgSend(`❌ Calendar алдаа: ${e.message}`);
+    }
+    return;
+  }
+
   // ── Manual brief trigger ──────────────────────────────────────────
   if (raw.replace(/@\w+/, '').trim().toLowerCase() === '/brief') {
     await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⏳ Брифинг бэлдэж байна...' });
@@ -874,6 +942,9 @@ async function handleText(msg) {
   if (text === '/help' || text === 'help') {
     await tgSend(
       `🤖 *JARVIS Commands*\n\n` +
+      `*📅 Calendar*\n` +
+      `/cal [текст] — event нэмэх (жишээ: /cal маргааш 3 цагт meeting)\n` +
+      `/events — өнөөдрийн хуваарь\n\n` +
       `*📋 Task Manager*\n` +
       `/task [зүйл] — шинэ task нэмэх\n` +
       `/tasks — бүх task харах\n` +
