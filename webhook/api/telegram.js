@@ -132,6 +132,95 @@ async function fetchNewImage(query = 'shanghai') {
   return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570';
 }
 
+// ── WEEKLY REPORT — Даваа гарагийн 07:30 ─────────────────────────
+async function sendWeeklyReport() {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+
+  // Өнгөрсөн 7 хоногийн огноонуудыг бэлдэнэ
+  const days = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(now.getTime() - i * 86400000);
+    days.push(d.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' }));
+  }
+  const weekStart = days[days.length - 1];
+  const weekEnd   = days[0];
+
+  // 7 хоногийн analytics + revenue зэрэг уншина
+  const [analyticsSnaps, revenueSnaps, routineSnaps] = await Promise.all([
+    Promise.all(days.map(d => dbLFS.doc(`users/${UID}/analytics/${d}`).get())),
+    Promise.all(days.map(d => dbPersonal.doc(`users/${UID}/revenue/${d}`).get())),
+    Promise.all(days.map(d => dbPersonal.doc(`users/${UID}/routines/${d}`).get())),
+  ]);
+
+  // Analytics нийлбэр
+  let totalUsers = new Set();
+  let totalGuide = 0, totalMedical = 0, totalAgent = 0;
+  let totalEscalate = 0, totalBookingLeads = 0;
+
+  analyticsSnaps.forEach(snap => {
+    if (!snap.exists) return;
+    const d = snap.data();
+    (d.users || []).forEach(u => totalUsers.add(u));
+    totalGuide        += d.guide        || 0;
+    totalMedical      += d.medical      || 0;
+    totalAgent        += d.agent        || 0;
+    totalEscalate     += d.escalate     || 0;
+    totalBookingLeads += d.booking_lead || 0;
+  });
+
+  // Орлого нийлбэр
+  const totalRevenue = revenueSnaps.reduce((sum, snap) => {
+    return sum + (snap.exists ? (snap.data().total || 0) : 0);
+  }, 0);
+
+  // Routine хийгдсэн хувь
+  const routineKeys = ['exercise', 'hanzi', 'read', 'journal'];
+  const routineCount = {};
+  routineKeys.forEach(k => { routineCount[k] = 0; });
+  routineSnaps.forEach(snap => {
+    if (!snap.exists) return;
+    const d = snap.data();
+    routineKeys.forEach(k => { if (d[k]) routineCount[k]++; });
+  });
+
+  const pct = n => `${Math.round(n/7*100)}%`;
+
+  const DAYS_MN = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+  const weekNum  = Math.ceil(now.getDate() / 7);
+
+  let msg = '';
+  msg += `📊 *7 ХОНОГИЙН ТАЙЛАН*\n`;
+  msg += `_${weekStart} → ${weekEnd}_\n`;
+  msg += `\`────────────────────\`\n\n`;
+
+  msg += `👥 *LFS Трафик:*\n`;
+  msg += `• Нийт хэрэглэгч: *${totalUsers.size}* хүн\n`;
+  msg += `• Гайд сонирхсон: *${totalGuide}*\n`;
+  msg += `• Эмнэлэг сонирхсон: *${totalMedical}*\n`;
+  msg += `• Ажилтан дуудсан: *${totalAgent}*\n`;
+  if (totalEscalate)     msg += `• ⚠️ Бухимдсан: *${totalEscalate}*\n`;
+  if (totalBookingLeads) msg += `• 📋 Booking lead: *${totalBookingLeads}*\n`;
+
+  if (totalRevenue) {
+    msg += `\n💰 *7 хоногийн орлого:*\n`;
+    msg += `• Нийт: *${totalRevenue.toLocaleString()}₮*\n`;
+  }
+
+  msg += `\n💪 *Routine (7 хоногоос):*\n`;
+  msg += `• Дасгал: *${routineCount.exercise}/7* (${pct(routineCount.exercise)})\n`;
+  msg += `• 汉字: *${routineCount.hanzi}/7* (${pct(routineCount.hanzi)})\n`;
+  msg += `• Уншилт: *${routineCount.read}/7* (${pct(routineCount.read)})\n`;
+  msg += `• Journal: *${routineCount.journal}/7* (${pct(routineCount.journal)})\n`;
+
+  // Хамгийн сул routine
+  const weakest = routineKeys.reduce((a, b) => routineCount[a] <= routineCount[b] ? a : b);
+  const weakestLabel = { exercise:'Дасгал', hanzi:'汉字', read:'Уншилт', journal:'Journal' }[weakest];
+  msg += `\n📌 Сул тал: *${weakestLabel}* — энэ долоо хоног анхаарна уу.\n`;
+  msg += `\n⚡ _J.A.R.V.I.S — 7 хоногийн тойм._`;
+
+  await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg, parse_mode: 'Markdown' });
+}
+
 // ── MORNING BRIEF (telegram.js-с шууд дуудна) ────────────────────
 async function sendBrief() {
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
@@ -969,6 +1058,17 @@ async function handleText(msg) {
     return;
   }
 
+  // ── Weekly report гараар дуудах ──────────────────────────────────
+  if (text === '/weekly') {
+    await tgCall('sendMessage', { chat_id: TG_CHAT, text: '📊 7 хоногийн тайлан бэлдэж байна...' });
+    try {
+      await sendWeeklyReport();
+    } catch (e) {
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '❌ Weekly report алдаа: ' + e.message });
+    }
+    return;
+  }
+
   // ── Manual brief trigger ──────────────────────────────────────────
   if (raw.replace(/@\w+/, '').trim().toLowerCase() === '/brief') {
     await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⏳ Брифинг бэлдэж байна...' });
@@ -1042,3 +1142,6 @@ module.exports = async (req, res) => {
   }
 
 };
+
+module.exports.sendWeeklyReport = sendWeeklyReport;
+module.exports.sendBrief        = sendBrief;

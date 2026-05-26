@@ -9,6 +9,7 @@
 const express   = require('express');
 const cron      = require('node-cron');
 const tgHandler   = require('./api/telegram');
+const { sendWeeklyReport, sendBrief } = tgHandler;
 const metaHook    = require('./api/meta-webhook');
 const alerts      = require('./api/alerts');
 const bookingHook = require('./api/booking');
@@ -43,6 +44,12 @@ cron.schedule('30 23 * * *', () => {
 cron.schedule('0 14 * * *', () => {
   console.log('[JARVIS] Sending daily report...');
   metaHook.sendDailyReport();
+});
+
+// ── WEEKLY REPORT — Даваа гарагийн 07:30 (UTC+8 = Ням 23:30 UTC) ─
+cron.schedule('30 23 * * 0', () => {
+  console.log('[J.A.R.V.I.S] Sending weekly report...');
+  sendWeeklyReport().catch(e => console.error('[Weekly] Error:', e.message));
 });
 
 // ── PROACTIVE ALERTS ──────────────────────────────────────────────
