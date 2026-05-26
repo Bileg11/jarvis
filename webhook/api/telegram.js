@@ -462,7 +462,7 @@ async function handleVoice(msg) {
           contents: [{
             role:  'user',
             parts: [
-              { inline_data: { mime_type: 'audio/ogg', data: base64 } },
+              { inline_data: { mime_type: 'audio/ogg; codecs=opus', data: base64 } },
               { text: hskPrompt },
             ],
           }],
@@ -542,7 +542,7 @@ async function handleVoice(msg) {
         contents: [{
           role:  'user',
           parts: [
-            { inline_data: { mime_type: 'audio/ogg', data: base64 } },
+            { inline_data: { mime_type: 'audio/ogg; codecs=opus', data: base64 } },
             { text: actionPrompt },
           ],
         }],
@@ -551,6 +551,21 @@ async function handleVoice(msg) {
     });
 
     const actionData = await actionResp.json();
+    // Debug log — Railway-д харагдана
+    console.log('[Voice] Gemini raw:', JSON.stringify(actionData).slice(0, 400));
+
+    // Gemini error шалгах
+    if (actionData.error) {
+      await tgSend(`❌ Gemini алдаа: ${actionData.error.message || 'Unknown'}`);
+      return;
+    }
+    // Хоосон candidates
+    if (!actionData.candidates?.length) {
+      const reason = actionData.promptFeedback?.blockReason || 'candidates хоосон';
+      await tgSend(`⚠️ Gemini хариу ирсэнгүй (${reason}). Дахин илгээнэ үү.`);
+      return;
+    }
+
     const rawText    = actionData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     const jsonMatch  = rawText?.match(/\{[\s\S]*\}/);
 
