@@ -112,6 +112,32 @@ window.DB = {
     return null;
   },
 
+  // ── PROFILE (SaaS: name, telegram_chat_id, system_instruction ...) ─
+  async saveProfile(patch) {
+    const uid = _uid();
+    if (!uid) return;
+    await _db.doc(`users/${uid}/profile`).set(
+      { ...patch, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+    // Telegram chat_id-г reverse lookup-д бас хадгал
+    if (patch.telegram_chat_id) {
+      await _db.doc(`telegram_lookup/${patch.telegram_chat_id}`).set(
+        { uid, updatedAt: new Date().toISOString() },
+        { merge: true }
+      );
+    }
+  },
+
+  async loadProfile() {
+    const uid = _uid();
+    if (!uid) return null;
+    try {
+      const snap = await _db.doc(`users/${uid}/profile`).get();
+      return snap.exists ? snap.data() : null;
+    } catch { return null; }
+  },
+
   // ── SETTINGS (API key-үүд бүх төхөөрөмж дээр sync) ──────────────
   saveSettings(patch) {
     const ref = _uref('meta/settings');

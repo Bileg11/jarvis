@@ -212,6 +212,126 @@
 
     </div>
 
+    <!-- JARVIS SETTINGS (SaaS) ══════════════════════════════════ -->
+    <div class="sec-label" style="margin-top:20px">🤖 JARVIS Тохиргоо</div>
+    <div class="profile-section" id="jarvis-settings-section">
+
+      <!-- Tab buttons -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button id="tab-settings-btn" onclick="switchTab('settings')"
+          style="flex:1;padding:8px;border-radius:10px;border:1.5px solid rgba(124,92,252,0.6);background:rgba(124,92,252,0.15);color:#a78bfa;font-size:13px;font-weight:600;cursor:pointer">
+          ⚙️ Тохиргоо
+        </button>
+        <button id="tab-guide-btn" onclick="switchTab('guide')"
+          style="flex:1;padding:8px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.1);background:transparent;color:#888;font-size:13px;font-weight:600;cursor:pointer">
+          📖 Заавар
+        </button>
+      </div>
+
+      <!-- Tab 1: Settings -->
+      <div id="tab-settings">
+        <div style="font-size:12px;color:#888;margin-bottom:10px">
+          Бүх тохиргоо Firestore-д хадгалагдаж бүх төхөөрөмж дээр sync болно.
+        </div>
+
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">Нэр</div>
+          <input id="js-name" type="text" placeholder="Билэг" class="ps-input" style="width:100%;box-sizing:border-box">
+        </div>
+
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">
+            Telegram Chat ID
+            <span style="color:#f0b429;margin-left:4px">(@userinfobot → /start)</span>
+          </div>
+          <input id="js-tg-chat" type="text" placeholder="123456789" class="ps-input" style="width:100%;box-sizing:border-box">
+        </div>
+
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">
+            GitHub Token (AI Chat-д ашиглана)
+            <span style="color:#4ade80;margin-left:4px">ghp_...</span>
+          </div>
+          <input id="js-api-key" type="password" placeholder="ghp_xxxx..." class="ps-input" style="width:100%;box-sizing:border-box">
+        </div>
+
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">
+            Telegram Bot Token (Хоосон = системийн bot ашиглана)
+          </div>
+          <input id="js-bot-token" type="password" placeholder="Хоосон бол системийн bot" class="ps-input" style="width:100%;box-sizing:border-box">
+        </div>
+
+        <div style="margin-bottom:14px">
+          <div style="font-size:11px;color:#888;margin-bottom:4px">
+            AI System Prompt (JARVIS-ийн тархи — танийх болгох)
+          </div>
+          <textarea id="js-sys-prompt" rows="5" placeholder="Чи миний хувийн AI туслагч. Би 25 настай, Улаанбаатарт амьдардаг..." class="ps-input"
+            style="width:100%;box-sizing:border-box;resize:vertical;font-size:12px;line-height:1.5"></textarea>
+        </div>
+
+        <button onclick="saveJarvisSettings()"
+          style="width:100%;padding:10px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#4f46e5);color:white;font-size:14px;font-weight:700;cursor:pointer">
+          💾 Хадгалах
+        </button>
+
+        <div id="js-save-status" style="font-size:12px;color:#4ade80;margin-top:8px;text-align:center;min-height:18px"></div>
+      </div>
+
+      <!-- Tab 2: Guide -->
+      <div id="tab-guide" style="display:none">
+        <div style="font-size:13px;font-weight:600;color:#f0b429;margin-bottom:12px">📋 Алхам алхмаар заавар</div>
+
+        <div style="background:rgba(240,180,41,0.06);border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid rgba(240,180,41,0.15)">
+          <div style="font-size:12px;font-weight:700;color:#f0b429;margin-bottom:6px">1️⃣ Telegram Chat ID авах</div>
+          <div style="font-size:12px;color:#aaa;line-height:1.7">
+            1. Telegram нээж <b style="color:#fff">@userinfobot</b> хайна<br>
+            2. <b style="color:#fff">/start</b> илгээнэ<br>
+            3. "Your ID: <b style="color:#4ade80">123456789</b>" гэж ирсэн тоог хуулна<br>
+            4. Дээрх "Telegram Chat ID" талбарт оруулна
+          </div>
+        </div>
+
+        <div style="background:rgba(74,222,128,0.06);border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid rgba(74,222,128,0.15)">
+          <div style="font-size:12px;font-weight:700;color:#4ade80;margin-bottom:6px">2️⃣ GitHub Token авах (AI Chat)</div>
+          <div style="font-size:12px;color:#aaa;line-height:1.7">
+            1. <b style="color:#fff">github.com</b> → нэвтэрнэ<br>
+            2. Профайл → <b style="color:#fff">Settings</b><br>
+            3. Зүүн доод → <b style="color:#fff">Developer settings</b><br>
+            4. <b style="color:#fff">Personal access tokens → Tokens (classic)</b><br>
+            5. "Generate new token (classic)" → Ямар ч scope сонгохгүй → Generate<br>
+            6. <b style="color:#4ade80">ghp_xxx...</b> гэсэн token-г хуулна
+          </div>
+        </div>
+
+        <div style="background:rgba(124,92,252,0.06);border-radius:12px;padding:12px;margin-bottom:10px;border:1px solid rgba(124,92,252,0.15)">
+          <div style="font-size:12px;font-weight:700;color:#a78bfa;margin-bottom:6px">3️⃣ Telegram Bot Token авах (өөрийн bot)</div>
+          <div style="font-size:12px;color:#aaa;line-height:1.7">
+            1. Telegram дээр <b style="color:#fff">@BotFather</b> нээнэ<br>
+            2. <b style="color:#fff">/newbot</b> илгээнэ<br>
+            3. Bot-ын нэр оруулна (жишээ: MyJarvisBot)<br>
+            4. Username оруулна (жишээ: myjarvis_bot)<br>
+            5. <b style="color:#a78bfa">123456:ABC-DEF...</b> гэсэн token ирнэ — хуулна<br>
+            <span style="color:#666;font-size:11px">* Хоосон үлдээвэл системийн bot ашиглана</span>
+          </div>
+        </div>
+
+        <div style="background:rgba(251,146,60,0.06);border-radius:12px;padding:12px;border:1px solid rgba(251,146,60,0.15)">
+          <div style="font-size:12px;font-weight:700;color:#fb923c;margin-bottom:6px">4️⃣ System Prompt — AI-гаа өөрийн болгох</div>
+          <div style="font-size:12px;color:#aaa;line-height:1.7">
+            System Prompt нь JARVIS-ийн "тархи" — хэн чам тухай мэдэхийг тодорхойлно.<br><br>
+            <b style="color:#fff">Жишээ:</b><br>
+            <span style="font-family:monospace;font-size:11px;color:#4ade80;background:rgba(0,0,0,0.3);padding:6px 8px;border-radius:6px;display:block;margin-top:4px;line-height:1.6">
+              Чи миний хувийн AI туслагч.<br>
+              Би 25 настай, Улаанбаатарт амьдардаг.<br>
+              Архитектурын компани эрхэлдэг.<br>
+              Монголоор харилц, найрсаг бай.
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- PROXY URL ══════════════════════════════════════════════ -->
     <div class="sec-label" style="margin-top:20px">🔧 Proxy (Санал болгосон)</div>
     <div class="profile-section">
@@ -341,7 +461,10 @@
       document.getElementById('clear-trigger-btn').style.display = triggerKey ? 'block' : 'none';
     }
 
-    _auth.onAuthStateChanged(renderUser);
+    _auth.onAuthStateChanged(user => {
+      renderUser(user);
+      if (user) loadJarvisSettings();
+    });
 
     // Enter → нэвтрэх
     document.addEventListener('keydown', e => {
@@ -451,6 +574,61 @@
     function doSignOut() {
       if (!confirm('Гарах уу?')) return;
       _auth.signOut();
+    }
+
+    // ── JARVIS SETTINGS ───────────────────────────────────────────
+    function switchTab(tab) {
+      const isSettings = tab === 'settings';
+      document.getElementById('tab-settings').style.display = isSettings ? 'block' : 'none';
+      document.getElementById('tab-guide').style.display    = isSettings ? 'none'  : 'block';
+      const sBtn = document.getElementById('tab-settings-btn');
+      const gBtn = document.getElementById('tab-guide-btn');
+      sBtn.style.borderColor = isSettings ? 'rgba(124,92,252,0.6)' : 'rgba(255,255,255,0.1)';
+      sBtn.style.background  = isSettings ? 'rgba(124,92,252,0.15)' : 'transparent';
+      sBtn.style.color       = isSettings ? '#a78bfa' : '#888';
+      gBtn.style.borderColor = !isSettings ? 'rgba(240,180,41,0.5)' : 'rgba(255,255,255,0.1)';
+      gBtn.style.background  = !isSettings ? 'rgba(240,180,41,0.08)' : 'transparent';
+      gBtn.style.color       = !isSettings ? '#f0b429' : '#888';
+    }
+
+    async function loadJarvisSettings() {
+      const profile = await window.DB?.loadProfile?.();
+      if (!profile) return;
+      if (profile.name)               document.getElementById('js-name').value       = profile.name;
+      if (profile.telegram_chat_id)   document.getElementById('js-tg-chat').value    = profile.telegram_chat_id;
+      if (profile.custom_api_key)     document.getElementById('js-api-key').value    = '••••' + profile.custom_api_key.slice(-4);
+      if (profile.telegram_bot_token) document.getElementById('js-bot-token').value  = '••••' + profile.telegram_bot_token.slice(-4);
+      if (profile.system_instruction) document.getElementById('js-sys-prompt').value = profile.system_instruction;
+    }
+
+    async function saveJarvisSettings() {
+      const name      = document.getElementById('js-name').value.trim();
+      const chatId    = document.getElementById('js-tg-chat').value.trim();
+      const apiKeyVal = document.getElementById('js-api-key').value.trim();
+      const botToken  = document.getElementById('js-bot-token').value.trim();
+      const sysPrompt = document.getElementById('js-sys-prompt').value.trim();
+      const statusEl  = document.getElementById('js-save-status');
+
+      const patch = {};
+      if (name)      patch.name               = name;
+      if (chatId)    patch.telegram_chat_id   = chatId;
+      if (sysPrompt) patch.system_instruction = sysPrompt;
+      // Mask-тай биш бол шинэ утга
+      if (apiKeyVal && !apiKeyVal.startsWith('••••')) patch.custom_api_key     = apiKeyVal;
+      if (botToken  && !botToken.startsWith('••••'))  patch.telegram_bot_token = botToken;
+
+      if (!Object.keys(patch).length) { statusEl.textContent = '⚠️ Өөрчлөлт байхгүй'; return; }
+
+      statusEl.textContent = '⏳ Хадгалж байна...';
+      try {
+        await window.DB?.saveProfile(patch);
+        statusEl.textContent = '✅ Хадгалагдлаа!';
+        showToast('✅ JARVIS тохиргоо хадгалагдлаа');
+        setTimeout(() => { statusEl.textContent = ''; }, 3000);
+      } catch (e) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = '❌ ' + e.message;
+      }
     }
 
     // ── CORE MEMORY ───────────────────────────────────────────────

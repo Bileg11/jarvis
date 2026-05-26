@@ -21,8 +21,8 @@ const {
 const { isConfigured: gmailOk, getUnreadEmails } = require('./gmail');
 
 const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
-const TG_CHAT    = process.env.TELEGRAM_ID;
-const UID        = process.env.USER_UID;
+const TG_CHAT    = process.env.TELEGRAM_ID;   // cron job-д ашиглана
+const UID        = process.env.USER_UID;       // cron job-д ашиглана (default)
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_URL = GEMINI_KEY
   ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
@@ -74,6 +74,61 @@ const HSK_BANK = [
   { char: '创业', pinyin: 'chuàngyè',  meaning: 'бизнес эхлүүлэх',               level: 6 },
 ];
 
+// ── MULTI-USER ROUTING ────────────────────────────────────────────
+// Firestore: telegram_lookup/${chatId} → { uid }
+// profile:   users/${uid}/profile → { name, system_instruction, custom_api_key, ... }
+
+async function findUserByChatId(chatId) {
+  try {
+    const snap = await dbPersonal.doc(`telegram_lookup/${chatId}`).get();
+    if (!snap.exists) return null;
+    const { uid } = snap.data();
+    if (!uid) return null;
+    const pSnap = await dbPersonal.doc(`users/${uid}/profile`).get();
+    const profile = pSnap.exists ? pSnap.data() : {};
+    return { uid, chatId: String(chatId), ...profile };
+  } catch (e) {
+    console.error('[Routing] findUserByChatId error:', e.message);
+    return null;
+  }
+}
+
+// Билэгийн анхдагч профайлыг Firestore-д автоматаар үүсгэх
+async function seedBilegProfile() {
+  try {
+    const uid  = UID;
+    const chat = TG_CHAT;
+    if (!uid) return;
+
+    const pRef  = dbPersonal.doc(`users/${uid}/profile`);
+    const pSnap = await pRef.get();
+
+    // Зөвхөн system_instruction байхгүй бол seed хийнэ
+    if (!pSnap.exists || !pSnap.data()?.system_instruction) {
+      await pRef.set({
+        name:               'Билэг',
+        username_slug:      'bileg',
+        telegram_chat_id:   String(chat || ''),
+        system_instruction: BILEG_SYSTEM.parts[0].text,
+        custom_api_key:     '',
+        telegram_bot_token: '',
+        seededAt:           new Date().toISOString(),
+      }, { merge: true });
+      console.log('[Seed] Bileg profile created in Firestore');
+    }
+
+    // Reverse lookup
+    if (chat) {
+      await dbPersonal.doc(`telegram_lookup/${chat}`).set(
+        { uid, seededAt: new Date().toISOString() },
+        { merge: true }
+      );
+    }
+  } catch (e) {
+    console.error('[Seed] seedBilegProfile error:', e.message);
+  }
+}
+
 // ── TELEGRAM HELPERS ──────────────────────────────────────────────
 async function tgCall(method, body) {
   const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/${method}`, {
@@ -89,15 +144,15 @@ const tgAnswer = (id, text = '') =>
   tgCall('answerCallbackQuery', { callback_query_id: id, text });
 
 // ── PERSONAL MEMORY ───────────────────────────────────────────────
-async function getBilegProfile() {
+async function getBilegProfile(uid = UID) {
   try {
-    const snap = await dbPersonal.doc(`users/${UID}/bileg/profile`).get();
+    const snap = await dbPersonal.doc(`users/${uid}/bileg/profile`).get();
     return snap.exists ? snap.data() : {};
   } catch { return {}; }
 }
-async function saveBilegProfile(updates) {
+async function saveBilegProfile(updates, uid = UID) {
   try {
-    await dbPersonal.doc(`users/${UID}/bileg/profile`).set(
+    await dbPersonal.doc(`users/${uid}/bileg/profile`).set(
       { ...updates, updatedAt: new Date().toISOString() },
       { merge: true }
     );
@@ -105,55 +160,52 @@ async function saveBilegProfile(updates) {
 }
 
 // ── CHAT HISTORY — Sliding Window (max 10) ────────────────────────
-// Ганцхан doc: users/${UID}/history/chat  →  { messages: [...] }
-const HIST_REF = () => dbPersonal.doc(`users/${UID}/history/chat`);
-
-async function getChatHistory() {
+// Ганцхан doc: users/${uid}/history/chat  →  { messages: [...] }
+async function getChatHistory(uid = UID) {
   try {
-    const snap = await HIST_REF().get();
+    const snap = await dbPersonal.doc(`users/${uid}/history/chat`).get();
     return snap.exists ? (snap.data().messages || []) : [];
   } catch { return []; }
 }
 
-async function saveChatHistory(msgs) {
+async function saveChatHistory(msgs, uid = UID) {
   try {
-    await HIST_REF().set({
-      messages:  msgs.slice(-10),          // sliding window
+    await dbPersonal.doc(`users/${uid}/history/chat`).set({
+      messages:  msgs.slice(-10),
       updatedAt: new Date().toISOString(),
     });
   } catch {}
 }
 
-// Хэрэглэгч эсвэл JARVIS-ийн нэг мөр нэмэх
-async function appendHistory(role, text) {
-  const hist = await getChatHistory();
+async function appendHistory(role, text, uid = UID) {
+  const hist = await getChatHistory(uid);
   hist.push({ role, parts: [{ text: String(text).slice(0, 600) }] });
-  await saveChatHistory(hist);
+  await saveChatHistory(hist, uid);
 }
 
 // ── TASK MANAGER ──────────────────────────────────────────────────
-async function getTasks() {
+async function getTasks(uid = UID) {
   try {
-    const snap = await dbPersonal.collection(`users/${UID}/tasks`)
+    const snap = await dbPersonal.collection(`users/${uid}/tasks`)
       .where('done', '==', false).get();
     return snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
   } catch { return []; }
 }
-async function addTask(text) {
+async function addTask(text, uid = UID) {
   try {
-    await dbPersonal.collection(`users/${UID}/tasks`).add({
+    await dbPersonal.collection(`users/${uid}/tasks`).add({
       text, done: false, createdAt: new Date().toISOString(),
     });
   } catch {}
 }
-async function doneTask(index) {
+async function doneTask(index, uid = UID) {
   try {
-    const tasks = await getTasks();
+    const tasks = await getTasks(uid);
     const task  = tasks[index - 1];
     if (!task) return null;
-    await dbPersonal.doc(`users/${UID}/tasks/${task.id}`).update({
+    await dbPersonal.doc(`users/${uid}/tasks/${task.id}`).update({
       done: true, doneAt: new Date().toISOString(),
     });
     return task.text;
@@ -163,11 +215,11 @@ async function doneTask(index) {
 // ── ROUTINE HELPERS ───────────────────────────────────────────────
 const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
-async function getScore() {
+async function getScore(uid = UID) {
   const d = todaySH();
   const [r, l] = await Promise.all([
-    dbPersonal.doc(`users/${UID}/routines/${d}`).get(),
-    dbPersonal.doc(`users/${UID}/logs/${d}`).get(),
+    dbPersonal.doc(`users/${uid}/routines/${d}`).get(),
+    dbPersonal.doc(`users/${uid}/logs/${d}`).get(),
   ]);
   const rt    = r.exists ? r.data() : {};
   const water = l.exists ? (l.data().water?.total_ml || 0) : 0;
@@ -178,32 +230,32 @@ async function getScore() {
   return { score, routine: rt, water };
 }
 
-async function getStreak(key) {
+async function getStreak(key, uid = UID) {
   let s = 0;
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   for (let i = 0; i < 30; i++) {
     const d  = new Date(now); d.setDate(d.getDate() - i);
     const ds = d.toLocaleDateString('sv');
-    const snap = await dbPersonal.doc(`users/${UID}/routines/${ds}`).get();
+    const snap = await dbPersonal.doc(`users/${uid}/routines/${ds}`).get();
     if (!snap.exists || !snap.data()[key]) break;
     s++;
   }
   return s;
 }
 
-async function logRoutine(key) {
-  await dbPersonal.doc(`users/${UID}/routines/${todaySH()}`).set(
+async function logRoutine(key, uid = UID) {
+  await dbPersonal.doc(`users/${uid}/routines/${todaySH()}`).set(
     { [key]: true, updatedAt: new Date().toISOString() },
     { merge: true }
   );
 }
 
-async function logWater(ml) {
+async function logWater(ml, uid = UID) {
   const d     = todaySH();
-  const snap  = await dbPersonal.doc(`users/${UID}/logs/${d}`).get();
+  const snap  = await dbPersonal.doc(`users/${uid}/logs/${d}`).get();
   const cur   = snap.exists ? (snap.data().water?.total_ml || 0) : 0;
   const total = cur + ml;
-  await dbPersonal.doc(`users/${UID}/logs/${d}`).set(
+  await dbPersonal.doc(`users/${uid}/logs/${d}`).set(
     { water: { total_ml: total } },
     { merge: true }
   );
@@ -454,7 +506,8 @@ async function sendBrief() {
 }
 
 // ── VOICE-TO-ACTION AGENT (Sprint 2 + Sprint 5 HSK eval) ─────────
-async function handleVoice(msg) {
+async function handleVoice(msg, ctx = {}) {
+  const uid = ctx.uid || UID;
   if (!GEMINI_URL) { await tgSend('⚠️ GEMINI_API_KEY тохиргоогүй.'); return; }
 
   await tgSend('🎙 Аудио ойлгож байна...');
@@ -472,7 +525,7 @@ async function handleVoice(msg) {
     const base64  = buffer.toString('base64');
 
     // ── Sprint 5: HSK Blitz шалгалт байгаа эсэхийг эхлээд шалгах ─
-    const hskSnap = await dbPersonal.doc(`users/${UID}/hsk/today`).get();
+    const hskSnap = await dbPersonal.doc(`users/${uid}/hsk/today`).get();
     const hskData = hskSnap.exists ? hskSnap.data() : null;
     const isHskActive =
       hskData !== null &&
@@ -524,7 +577,7 @@ async function handleVoice(msg) {
           const total  = Math.min(100, Math.max(0, Math.round(eval_.total_score || 0)));
 
           // Оноог Firestore-д хадгалах (вэбсайтын HSK chart)
-          const scoreRef  = dbPersonal.doc(`users/${UID}/hsk/scores`);
+          const scoreRef  = dbPersonal.doc(`users/${uid}/hsk/scores`);
           const scoreSnap = await scoreRef.get();
           const existing  = scoreSnap.exists ? (scoreSnap.data().list || []) : [];
           existing.push({
@@ -538,12 +591,12 @@ async function handleVoice(msg) {
           await scoreRef.set({ list: existing, updatedAt: new Date().toISOString() });
 
           // Өнөөдрийн challenge дуусгасан болгох
-          await dbPersonal.doc(`users/${UID}/hsk/today`).set(
+          await dbPersonal.doc(`users/${uid}/hsk/today`).set(
             { scored: true }, { merge: true }
           );
 
           // Дасгал хийсэн тул hanzi routine тэмдэглэх
-          await logRoutine('hanzi');
+          await logRoutine('hanzi', uid);
 
           let hskMsg =
             `🈶 *HSK Шалгалт — ${total}/100*\n\n` +
@@ -636,7 +689,7 @@ async function handleVoice(msg) {
       try {
         if (action.type === 'revenue' && action.amount > 0) {
           const today    = todaySH();
-          const ref      = dbPersonal.doc(`users/${UID}/revenue/${today}`);
+          const ref      = dbPersonal.doc(`users/${uid}/revenue/${today}`);
           const revSnap  = await ref.get();
           const curTotal = revSnap.exists ? (revSnap.data().total || 0) : 0;
           await ref.set({
@@ -660,11 +713,11 @@ async function handleVoice(msg) {
           }
 
         } else if (action.type === 'task' && action.text) {
-          await addTask(action.text);
+          await addTask(action.text, uid);
           resultLines.push(`✅ Task: *${action.text}*`);
 
         } else if (action.type === 'routine' && action.key) {
-          await logRoutine(action.key);
+          await logRoutine(action.key, uid);
           const labels = {
             exercise: 'Дасгал 💪', hanzi: '汉字 🈶',
             read:     'Уншилт 📚', journal: 'Journal 📝',
@@ -681,10 +734,10 @@ async function handleVoice(msg) {
 
     // History-д хадгалах (Voice-to-Action)
     await saveChatHistory([
-      ...((await getChatHistory())),
+      ...(await getChatHistory(uid)),
       { role: 'user',  parts: [{ text: `[Voice] ${transcript}` }] },
       { role: 'model', parts: [{ text: resultMsg }] },
-    ]);
+    ], uid);
 
   } catch (e) {
     console.error('[Voice] Error:', e.message);
@@ -719,14 +772,19 @@ async function handleCallback(cb) {
 }
 
 // ── TEXT HANDLER ──────────────────────────────────────────────────
-async function handleText(msg) {
+async function handleText(msg, ctx = {}) {
+  const uid  = ctx.uid || UID;
   const raw  = msg.text || '';
   const text = raw.toLowerCase().trim();
+  // System instruction: профайлаас авах, байхгүй бол module-level BILEG_SYSTEM
+  const sysText = ctx.system_instruction || BILEG_SYSTEM.parts[0].text;
+  // API key: профайлаас авах, байхгүй бол env var
+  const apiKey  = ctx.custom_api_key || process.env.SYSTEM_USE_TOKEN;
 
   // ── Routine ──────────────────────────────────────────────────────
   if (text === '/score') {
-    const { score, routine, water } = await getScore();
-    const [exS, hzS] = await Promise.all([getStreak('exercise'), getStreak('hanzi')]);
+    const { score, routine, water } = await getScore(uid);
+    const [exS, hzS] = await Promise.all([getStreak('exercise', uid), getStreak('hanzi', uid)]);
     await tgSend(
       `📊 *Өнөөдрийн Score: ${score}/100*\n\n` +
       `${routine.exercise ? '✅' : '❌'} Дасгал (${exS}🔥)\n` +
@@ -739,24 +797,24 @@ async function handleText(msg) {
   }
 
   if (text === '/dasgal' || text.includes('дасгал') || text.includes('workout')) {
-    await logRoutine('exercise');
-    const { score } = await getScore();
-    const s = await getStreak('exercise');
+    await logRoutine('exercise', uid);
+    const { score } = await getScore(uid);
+    const s = await getStreak('exercise', uid);
     await tgSend(`💪 Дасгал тэмдэглэлээ! ${s} хоног дараалал 🔥\nScore: ${score}/100`);
     return;
   }
 
   if (text === '/hanzi' || text.includes('汉字') || text.includes('hanzi')) {
-    await logRoutine('hanzi');
-    const { score } = await getScore();
-    const s = await getStreak('hanzi');
+    await logRoutine('hanzi', uid);
+    const { score } = await getScore(uid);
+    const s = await getStreak('hanzi', uid);
     await tgSend(`🈶 汉字 тэмдэглэлээ! ${s} хоног дараалал 🔥\nScore: ${score}/100`);
     return;
   }
 
   if (text === '/nom' || text.includes('уншлаа') || text.includes('ном уншсан')) {
-    await logRoutine('read');
-    const { score } = await getScore();
+    await logRoutine('read', uid);
+    const { score } = await getScore(uid);
     await tgSend(`📚 Уншилт тэмдэглэлээ! Score: ${score}/100`);
     return;
   }
@@ -768,8 +826,8 @@ async function handleText(msg) {
 
     if (!journalText) {
       // Текстгүй → хуучин хэлбэрээр log хийнэ
-      await logRoutine('journal');
-      const { score } = await getScore();
+      await logRoutine('journal', uid);
+      const { score } = await getScore(uid);
       await tgSend(
         `📝 Journal тэмдэглэлээ! Score: ${score}/100\n\n` +
         `_Хятад хэлээр тэмдэглэл бичихийн тулд:_\n` +
@@ -815,17 +873,17 @@ async function handleText(msg) {
           const result = JSON.parse(jsonMatch[0]);
 
           // Firestore-д хадгалах
-          await dbPersonal.doc(`users/${UID}/journals/${todaySH()}`).set({
+          await dbPersonal.doc(`users/${uid}/journals/${todaySH()}`).set({
             text:      journalText,
             score:     result.score || 0,
             createdAt: new Date().toISOString(),
           }, { merge: true });
 
           // hanzi + journal streak автоматаар нэмэх
-          await logRoutine('hanzi');
-          await logRoutine('journal');
-          const { score: dayScore } = await getScore();
-          const hzStreak = await getStreak('hanzi');
+          await logRoutine('hanzi', uid);
+          await logRoutine('journal', uid);
+          const { score: dayScore } = await getScore(uid);
+          const hzStreak = await getStreak('hanzi', uid);
 
           let replyMsg = `📝 *HSK Journal — ${result.score || 0}/100*\n\n`;
           replyMsg += `_"${journalText.slice(0, 100)}"_\n\n`;
@@ -856,8 +914,8 @@ async function handleText(msg) {
 
         } else {
           // JSON гарсангүй — энгийнээр log хийнэ
-          await logRoutine('journal');
-          await dbPersonal.doc(`users/${UID}/journals/${todaySH()}`).set({
+          await logRoutine('journal', uid);
+          await dbPersonal.doc(`users/${uid}/journals/${todaySH()}`).set({
             text: journalText, createdAt: new Date().toISOString(),
           }, { merge: true });
           await tgSend(`📝 Journal хадгаллаа.\n_"${journalText.slice(0, 80)}"_`);
@@ -865,7 +923,7 @@ async function handleText(msg) {
 
       } catch (e) {
         console.error('[Journal] Error:', e.message);
-        await logRoutine('journal');
+        await logRoutine('journal', uid);
         await tgSend(
           `📝 Journal хадгаллаа. (HSK шалгаж чадсангүй)\n` +
           `_"${journalText.slice(0, 80)}"_`
@@ -874,11 +932,11 @@ async function handleText(msg) {
 
     } else {
       // Хятад биш → энгийн тэмдэглэл
-      await logRoutine('journal');
-      await dbPersonal.doc(`users/${UID}/journals/${todaySH()}`).set({
+      await logRoutine('journal', uid);
+      await dbPersonal.doc(`users/${uid}/journals/${todaySH()}`).set({
         text: journalText, createdAt: new Date().toISOString(),
       }, { merge: true });
-      const { score } = await getScore();
+      const { score } = await getScore(uid);
       await tgSend(
         `📝 Journal хадгаллаа! Score: ${score}/100\n` +
         `_"${journalText.slice(0, 80)}"_`
@@ -890,7 +948,7 @@ async function handleText(msg) {
   const waterMatch = raw.match(/(\d+)\s*(мл|ml)/i);
   if (text === '/us' || waterMatch) {
     const ml    = waterMatch ? parseInt(waterMatch[1]) : 250;
-    const total = await logWater(ml);
+    const total = await logWater(ml, uid);
     await tgSend(
       `💧 +${ml}мл! Нийт: ${total}мл/2000мл (${Math.round(total / 20)}%) ` +
       `${total >= 2000 ? '🎉' : ''}`
@@ -902,14 +960,14 @@ async function handleText(msg) {
   if (raw.startsWith('/task ') || raw.startsWith('/task\n')) {
     const taskText = raw.slice(6).trim();
     if (!taskText) { await tgSend('⚠️ `/task [тайлбар]`'); return; }
-    await addTask(taskText);
-    const tasks = await getTasks();
+    await addTask(taskText, uid);
+    const tasks = await getTasks(uid);
     await tgSend(`✅ Task нэмэгдлээ. Нийт: *${tasks.length}*`);
     return;
   }
 
   if (text === '/tasks') {
-    const tasks = await getTasks();
+    const tasks = await getTasks(uid);
     if (!tasks.length) { await tgSend('📋 Хийх зүйл байхгүй байна. 🎉'); return; }
     const list = tasks.map((t, i) => `${i + 1}. ${t.text}`).join('\n');
     await tgSend(`📋 *Хийх зүйлүүд:*\n\n${list}\n\n_/done [дугаар]_`);
@@ -919,9 +977,9 @@ async function handleText(msg) {
   const doneMatch = raw.match(/^\/done\s+(\d+)/i);
   if (doneMatch) {
     const n    = parseInt(doneMatch[1]);
-    const done = await doneTask(n);
+    const done = await doneTask(n, uid);
     if (!done) { await tgSend('⚠️ Тийм дугаартай task байхгүй байна.'); return; }
-    const remaining = await getTasks();
+    const remaining = await getTasks(uid);
     await tgSend(`✅ *Дууслаа:* ${done}\n\nҮлдсэн: *${remaining.length}*`);
     return;
   }
@@ -929,13 +987,13 @@ async function handleText(msg) {
   // ── Personal Memory ───────────────────────────────────────────────
   if (raw.startsWith('/goal ') || raw.startsWith('/goal\n')) {
     const goal = raw.slice(6).trim();
-    await saveBilegProfile({ goal });
+    await saveBilegProfile({ goal }, uid);
     await tgSend(`🎯 Зорилго хадгаллаа:\n_"${goal}"_\n\nJ.A.R.V.I.S өглөө бүр сануулна.`);
     return;
   }
 
   if (text === '/goal') {
-    const p = await getBilegProfile();
+    const p = await getBilegProfile(uid);
     if (!p.goal) { await tgSend('🎯 Зорилго тавиагүй байна.\n`/goal [зорилгоо]`'); return; }
     await tgSend(`🎯 *Одоогийн зорилго:*\n_"${p.goal}"_`);
     return;
@@ -943,7 +1001,7 @@ async function handleText(msg) {
 
   if (raw.startsWith('/focus ')) {
     const focus = raw.slice(7).trim();
-    await saveBilegProfile({ focus });
+    await saveBilegProfile({ focus }, uid);
     await tgSend(`🔥 Focus хадгаллаа:\n_"${focus}"_`);
     return;
   }
@@ -1151,14 +1209,13 @@ async function handleText(msg) {
   }
 
   // ── Free Chat — GitHub Models (GPT-4o-mini), quota байхгүй ────────
-  const GH_TOKEN = process.env.SYSTEM_USE_TOKEN;
-  if (!GH_TOKEN) { await tgSend('⚠️ SYSTEM_USE_TOKEN тохиргоогүй.'); return; }
+  if (!apiKey) { await tgSend('⚠️ API key тохиргоогүй. Профайлдаа GitHub Token оруулна уу.'); return; }
   try {
-    const hist = await getChatHistory();
+    const hist = await getChatHistory(uid);
 
     // History-г OpenAI формат руу хөрвүүлэх
     const messages = [
-      { role: 'system', content: BILEG_SYSTEM.parts[0].text },
+      { role: 'system', content: sysText },
       ...hist.map(m => ({
         role:    m.role === 'model' ? 'assistant' : 'user',
         content: m.parts?.[0]?.text || '',
@@ -1168,7 +1225,7 @@ async function handleText(msg) {
 
     const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model:       'gpt-4o-mini',
         messages,
@@ -1185,7 +1242,7 @@ async function handleText(msg) {
       ...hist,
       { role: 'user',  parts: [{ text: raw }] },
       { role: 'model', parts: [{ text: reply }] },
-    ]);
+    ], uid);
 
     await tgSend(reply);
 
@@ -1196,20 +1253,48 @@ async function handleText(msg) {
 }
 
 // ── WEBHOOK HANDLER ───────────────────────────────────────────────
+// Server startup-д Билэгийн профайлыг seed хийнэ
+seedBilegProfile().catch(e => console.error('[Seed] startup error:', e.message));
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(200).send('J.A.R.V.I.S v2.2 OK');
   res.status(200).json({ ok: true });
   try {
     const upd = req.body;
-    if (!upd || !UID) return;
+    if (!upd) return;
+
+    // ── Dynamic user routing ──────────────────────────────────────
+    const rawChatId = String(
+      upd.message?.chat?.id ||
+      upd.callback_query?.message?.chat?.id || ''
+    );
+
+    // 1. Firestore-оос chatId-аар хэрэглэгч хайх
+    let userCtx = await findUserByChatId(rawChatId);
+
+    // 2. Байхгүй бол env-ийн default (Билэг) ашиглах
+    if (!userCtx && rawChatId === String(TG_CHAT)) {
+      userCtx = { uid: UID, chatId: rawChatId };
+    }
+
+    // 3. Танигдаагүй хэрэглэгч — бүртгэлийн зааврыг буцаах
+    if (!userCtx) {
+      await tgCall('sendMessage', {
+        chat_id:    rawChatId,
+        text:       `🤖 Сайн уу!\n\nТа JARVIS-ийг ашиглахын тулд вэб дээрээ Telegram Chat ID-гаа холбоно уу.\n\n` +
+                    `📱 Telegram Chat ID-гаа авах: @userinfobot руу /start илгээнэ үү.\n` +
+                    `🌐 Вэб: profile.html → Telegram Settings хэсэгт оруулна уу.`,
+        parse_mode: 'Markdown',
+      });
+      return;
+    }
+
     if (upd.callback_query) {
       await handleCallback(upd.callback_query);
-    } else if (upd.message && String(upd.message.chat.id) === String(TG_CHAT)) {
-      if (upd.message.voice) {
-        await handleVoice(upd.message);
-      } else if (upd.message.text) {
-        await handleText(upd.message);
-      }
+    } else if (upd.message?.voice) {
+      await handleVoice(upd.message, userCtx);
+    } else if (upd.message?.text) {
+      await handleText(upd.message, userCtx);
     }
   } catch (e) {
     console.error('[JARVIS] Error:', e.message);
