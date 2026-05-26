@@ -129,6 +129,54 @@ async function fetchNewImage(query = 'shanghai') {
   return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570';
 }
 
+// ── BILEG PERSONAL MEMORY ────────────────────────────────────────
+async function getBilegProfile() {
+  try {
+    const snap = await db.doc(`users/${UID}/bileg/profile`).get();
+    return snap.exists ? snap.data() : {};
+  } catch { return {}; }
+}
+
+async function saveBilegProfile(updates) {
+  try {
+    await db.doc(`users/${UID}/bileg/profile`).set(
+      { ...updates, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+  } catch {}
+}
+
+// ── TASK MANAGER ──────────────────────────────────────────────────
+async function getTasks() {
+  try {
+    const snap = await db.collection(`users/${UID}/tasks`)
+      .where('done', '==', false)
+      .orderBy('createdAt', 'asc')
+      .get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch { return []; }
+}
+
+async function addTask(text) {
+  try {
+    await db.collection(`users/${UID}/tasks`).add({
+      text,
+      done: false,
+      createdAt: new Date().toISOString(),
+    });
+  } catch {}
+}
+
+async function doneTask(index) {
+  try {
+    const tasks = await getTasks();
+    const task  = tasks[index - 1];
+    if (!task) return null;
+    await db.doc(`users/${UID}/tasks/${task.id}`).update({ done: true, doneAt: new Date().toISOString() });
+    return task.text;
+  } catch { return null; }
+}
+
 // ── ROUTINE HELPERS ───────────────────────────────────────────────
 const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
@@ -490,9 +538,76 @@ async function handleText(msg) {
     return;
   }
 
+  // ── Task manager ─────────────────────────────────────────────────
+  if (raw.startsWith('/task ') || raw.startsWith('/task\n')) {
+    const taskText = raw.slice(6).trim();
+    if (!taskText) { await tgSend('⚠️ Яг юу хийх вэ? `/task [тайлбар]`'); return; }
+    await addTask(taskText);
+    const tasks = await getTasks();
+    await tgSend(`✅ Task нэмэгдлээ.\n\n📋 Нийт хийх: *${tasks.length}* зүйл`);
+    return;
+  }
+
+  if (text === '/tasks' || text === 'tasks') {
+    const tasks = await getTasks();
+    if (!tasks.length) { await tgSend('📋 Хийх зүйл байхгүй байна. 🎉'); return; }
+    const list = tasks.map((t, i) => `${i + 1}. ${t.text}`).join('\n');
+    await tgSend(`📋 *Хийх зүйлүүд:*\n\n${list}\n\n_/done [дугаар] — дуусгасан гэж тэмдэглэх_`);
+    return;
+  }
+
+  const doneMatch = raw.match(/^\/done\s+(\d+)/i);
+  if (doneMatch) {
+    const n    = parseInt(doneMatch[1]);
+    const text = await doneTask(n);
+    if (!text) { await tgSend('⚠️ Тийм дугаартай task байхгүй байна.'); return; }
+    const remaining = await getTasks();
+    await tgSend(`✅ *Дууслаа:* ${text}\n\n📋 Үлдсэн: *${remaining.length}* зүйл`);
+    return;
+  }
+
+  // ── Bileg personal memory ─────────────────────────────────────────
+  if (raw.startsWith('/goal ') || raw.startsWith('/goal\n')) {
+    const goal = raw.slice(6).trim();
+    await saveBilegProfile({ goal });
+    await tgSend(`🎯 Зорилго хадгаллаа:\n_"${goal}"_\n\nЖарвис өглөө бүр үүнийг чамд сануулна.`);
+    return;
+  }
+
+  if (text === '/goal') {
+    const p = await getBilegProfile();
+    if (!p.goal) { await tgSend('🎯 Зорилго тавиагүй байна.\n`/goal [зорилгоо бичнэ үү]`'); return; }
+    await tgSend(`🎯 *Одоогийн зорилго:*\n_"${p.goal}"_`);
+    return;
+  }
+
+  if (raw.startsWith('/focus ')) {
+    const focus = raw.slice(7).trim();
+    await saveBilegProfile({ focus });
+    await tgSend(`🔥 Өнөөдрийн focus хадгаллаа:\n_"${focus}"_`);
+    return;
+  }
+
+  // ── Manual brief trigger (test хийхэд хэрэгтэй) ─────────────────
+  if (text === '/brief') {
+    await tgSend('⏳ Брифинг бэлдэж байна...');
+    const { sendMorningBrief } = require('./meta-webhook');
+    await sendMorningBrief();
+    return;
+  }
+
   if (text === '/help' || text === 'help') {
     await tgSend(
       `🤖 *JARVIS Commands*\n\n` +
+      `*📋 Task Manager*\n` +
+      `/task [зүйл] — шинэ task нэмэх\n` +
+      `/tasks — бүх task харах\n` +
+      `/done [n] — task дуусгах\n\n` +
+      `*🧠 Санах ой*\n` +
+      `/goal [зорилго] — зорилго хадгалах\n` +
+      `/focus [зүйл] — өнөөдрийн focus\n` +
+      `/brief — өглөөний брифинг одоо авах\n\n` +
+      `*💪 Routine*\n` +
       `/score — Өнөөдрийн score + streak\n` +
       `/dasgal — Дасгал хийлээ ✅\n` +
       `/hanzi — 汉字 судалсан ✅\n` +

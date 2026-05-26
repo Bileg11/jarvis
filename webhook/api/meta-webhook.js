@@ -123,58 +123,74 @@ async function trackDailyUser(senderId) {
 // ── MORNING BRIEF (server.js-с cron дуудна, 07:30 Шанхай) ────────
 async function sendMorningBrief() {
   try {
-    // Өчигдрийн аналитик
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    const snap = await db.doc(`users/${UID}/analytics/${yesterday}`).get();
-    const d = snap.exists ? snap.data() : {};
 
+    const [analyticsSnap, bilegSnap, tasksSnap] = await Promise.all([
+      db.doc(`users/${UID}/analytics/${yesterday}`).get(),
+      db.doc(`users/${UID}/bileg/profile`).get(),
+      db.collection(`users/${UID}/tasks`).where('done', '==', false).orderBy('createdAt', 'asc').limit(5).get(),
+    ]);
+
+    const d             = analyticsSnap.exists ? analyticsSnap.data() : {};
+    const bileg         = bilegSnap.exists ? bilegSnap.data() : {};
+    const tasks         = tasksSnap.docs.map(doc => doc.data().text);
     const userCount     = (d.users    || []).length;
     const guideCount    = d.guide     || 0;
     const medicalCount  = d.medical   || 0;
     const agentCount    = d.agent     || 0;
     const escalateCount = d.escalate  || 0;
 
-    // Gemini-аар өдрийн зөвлөгөө үүсгэнэ
-    const prompt = `LFS Shanghai бизнесийн өчигдрийн тоо: нийт ${userCount} хүн хандсан, ${guideCount} нь гайд, ${medicalCount} нь эмнэлэг сонирхсон, ${agentCount} нь ажилтан дуудсан. Билэгт зориулж өнөөдрийн 1-2 өгүүлбэр практик зөвлөгөө өг. Монголоор, товч, дотно.`;
+    const promptParts = [
+      `LFS Shanghai өчигдрийн тоо: ${userCount} хэрэглэгч, ${guideCount} гайд, ${medicalCount} эмнэлэг, ${agentCount} ажилтан дуудсан.`,
+      bileg.goal  ? `Билэгийн зорилго: "${bileg.goal}".`  : '',
+      bileg.focus ? `Өнөөдрийн focus: "${bileg.focus}".` : '',
+      tasks.length ? `Хийх tasks: ${tasks.slice(0,3).join(', ')}.` : '',
+      'Билэгт зориулж өнөөдрийн 1-2 өгүүлбэр практик урам зоригтой зөвлөгөө өг. Монголоор, дотно, анхаарлын тэмдэггүй.',
+    ].filter(Boolean).join(' ');
 
-    let advice = '';
+    let advice = 'Өнөөдөр нэг жижиг алхам хий — LFS-г өсгөх.';
     if (GEMINI_KEY) {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 150, temperature: 0.8 },
-          }),
-        }
-      );
-      const data = await r.json();
-      const parts = data.candidates?.[0]?.content?.parts || [];
-      const part  = parts.find(p => !p.thought && p.text) || parts[0];
-      advice = part?.text?.trim() || '';
+      try {
+        const r = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: promptParts }] }],
+              generationConfig: { maxOutputTokens: 150, temperature: 0.8 },
+            }),
+          }
+        );
+        const data  = await r.json();
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        const part  = parts.find(p => !p.thought && p.text) || parts[0];
+        advice = part?.text?.trim() || advice;
+      } catch {}
     }
 
-    const now = new Date();
-    const days = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
+    const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+    const days    = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
     const dayName = days[now.getDay()];
-    const dateStr = now.toISOString().slice(0, 10);
+    const dateStr = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
-    const brief =
-`🌅 *Өглөөний мэнд, Билэг.*
-_${dayName}, ${dateStr} | Шанхай 07:30_
-\`────────────────────\`
-📊 *Өчигдрийн LFS тойм:*
-• Нийт хандсан: *${userCount}* хүн
-• Гайд сонирхсон: *${guideCount}* хүн
-• Эмнэлэг сонирхсон: *${medicalCount}* хүн
-• Ажилтан дуудсан: *${agentCount}* удаа${escalateCount > 0 ? `\n• ⚠️ Бухимдсан хэрэглэгч: *${escalateCount}*` : ''}
+    const taskSection = tasks.length
+      ? '\n📋 *Хийх (' + tasks.length + '):*\n' + tasks.slice(0,5).map((t,i) => (i+1) + '. ' + t).join('\n') + '\n'
+      : '';
+    const goalSection = bileg.goal ? '\n🎯 _' + bileg.goal + '_\n' : '';
 
-💡 *Өнөөдрийн зөвлөгөө:*
-${advice || 'Өнөөдөр ч гэсэн LFS-г өсгөхийн тулд нэг жижиг алхам хий.'}
-
-⚡ _Жарвис ажиллаж байна._`;
+    const brief = [
+      '🌅 *Өглөөний мэнд, Билэг.*',
+      '_' + dayName + ', ' + dateStr + ' | Шанхай 07:30_',
+      '`────────────────────`',
+      '📊 *Өчигдрийн LFS:*',
+      '• Хандсан: *' + userCount + '* · Гайд: *' + guideCount + '* · Эмнэлэг: *' + medicalCount + '* · Ажилтан: *' + agentCount + '*' + (escalateCount > 0 ? '\n• ⚠️ Бухимдсан: *' + escalateCount + '*' : ''),
+      goalSection,
+      taskSection,
+      '💡 ' + advice,
+      '',
+      '⚡ _Жарвис ажиллаж байна._',
+    ].join('\n');
 
     await tgNotify(brief);
   } catch (e) {
