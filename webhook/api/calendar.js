@@ -40,17 +40,20 @@ async function parseEvent(text) {
   const tomorrow = new Date(now.getTime() + 86400000).toLocaleDateString('sv');
 
   const prompt =
-    `Өнөөдөр ${todayStr}, одоо ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} (Shanghai цаг).\n` +
-    `Маргааш: ${tomorrow}.\n\n` +
-    `"${text}" гэсэн мэдэгдлийг calendar event болгон задла.\n` +
-    `Зөвхөн JSON хариулна уу (тайлбаргүй):\n` +
-    `{"title":"event гарчиг","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","description":""}\n\n` +
-    `Дүрэм:\n` +
-    `- Цаг хэлэгдээгүй бол 09:00 дефолт\n` +
-    `- Duration хэлэгдээгүй бол 1 цаг нэмэх\n` +
-    `- "3 цагт" = 15:00\n` +
-    `- "12 цагт" = 12:00\n` +
-    `- "оройн 7" = 19:00`;
+    `Today is ${todayStr}, current time ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} (Shanghai UTC+8).\n` +
+    `Tomorrow is ${tomorrow}.\n\n` +
+    `Parse this calendar event request (may be in Mongolian Cyrillic, Mongolian Latin transliteration, or English):\n` +
+    `"${text}"\n\n` +
+    `Mongolian transliteration guide: margaash/marGaash=tomorrow, onoodor/unuudur=today, tsagt=o'clock, uulzalt=meeting, hural=meeting\n\n` +
+    `Reply ONLY with JSON (no explanation):\n` +
+    `{"title":"event title in original language","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","description":""}\n\n` +
+    `Rules:\n` +
+    `- If no time given, default 09:00\n` +
+    `- If no duration given, add 1 hour\n` +
+    `- "3 tsagt" or "3 цагт" = 15:00\n` +
+    `- "12 tsagt" = 12:00\n` +
+    `- "oroin 7" or "оройн 7" = 19:00\n` +
+    `- Keep title in the original language the user used`;
 
   try {
     const r = await fetch(
