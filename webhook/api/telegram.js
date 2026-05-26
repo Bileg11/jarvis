@@ -1,26 +1,17 @@
 'use strict';
-// ── JARVIS TELEGRAM WEBHOOK ───────────────────────────────────────
-// Vercel serverless — instant responses
-// Handles: chat commands, approval callbacks, manual photo posting
+// ── JARVIS PERSONAL TELEGRAM BOT ─────────────────────────────────
+// Зөвхөн Билэгийн хувийн зүйлс:
+//   routine, tasks, goal, calendar, gmail, notion, brief
 
 const fetch  = require('node-fetch');
-const { admin, dbPersonal, dbLFS } = require('../firebase');
-const { notionSave } = require('./notion');
+const { dbPersonal } = require('../firebase');
+const { notionSave }  = require('./notion');
 const { isConfigured: calOk, parseEvent, createEvent, listTodayEvents, listUpcomingEvents, deleteEvent, formatEventTime, formatEventDate } = require('./calendar');
-const { isConfigured: gmailOk, getUnreadEmails, getUnreadCount } = require('./gmail');
+const { isConfigured: gmailOk, getUnreadEmails } = require('./gmail');
 
-// Хувийн өгөгдөл → dbPersonal (routines, logs, tasks, revenue, bileg/profile)
-// LFS өгөгдөл   → dbLFS      (analytics, marketing, bookings)
-
-const TG_TOKEN    = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
-const TG_CHAT     = process.env.TELEGRAM_ID;
-const META_TOKEN  = process.env.ACCESS_TOKEN_META;
-const IG_ID       = process.env.INSTAGRAM_BUSINESS_ID;
-const FB_ID       = process.env.FACEBOOK_PAGE_ID;
-const UID         = process.env.USER_UID;
-const GH_TOKEN    = process.env.SYSTEM_USE_TOKEN;
-const PEXELS_KEY  = process.env.PEXELS_API_KEY;
-const UNSPLASH_KEY = process.env.UNSPLASH_ACCESS_KEY;
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
+const TG_CHAT  = process.env.TELEGRAM_ID;
+const UID      = process.env.USER_UID;
 
 // ── TELEGRAM HELPERS ──────────────────────────────────────────────
 async function tgCall(method, body) {
@@ -35,351 +26,18 @@ const tgSend   = (text, extra = {}) =>
   tgCall('sendMessage', { chat_id: TG_CHAT, text, parse_mode: 'Markdown', ...extra });
 const tgAnswer = (id, text = '') =>
   tgCall('answerCallbackQuery', { callback_query_id: id, text });
-const tgEdit   = (msgId, caption) =>
-  tgCall('editMessageCaption', { chat_id: TG_CHAT, message_id: msgId, caption, parse_mode: 'Markdown' });
 
-// ── FIRESTORE REFS ────────────────────────────────────────────────
-// LFS marketing state
-const pendingRef = () => dbLFS.doc(`users/${UID}/marketing/pendingPost`);
-const manualRef  = () => dbLFS.doc(`users/${UID}/marketing/manualState`);
-
-// ── META PUBLISH ──────────────────────────────────────────────────
-async function publishToMeta(caption, imageUrl) {
-  try {
-    const igRes  = await fetch(
-      `https://graph.facebook.com/v25.0/${IG_ID}/media?image_url=${encodeURIComponent(imageUrl)}&caption=${encodeURIComponent(caption)}&access_token=${META_TOKEN}`,
-      { method: 'POST' }
-    );
-    const igData = await igRes.json();
-
-    if (igData.id) {
-      await fetch(
-        `https://graph.facebook.com/v25.0/${IG_ID}/media_publish?creation_id=${igData.id}&access_token=${META_TOKEN}`,
-        { method: 'POST' }
-      );
-    }
-
-    const fbRes  = await fetch(
-      `https://graph.facebook.com/v25.0/${FB_ID}/photos?url=${encodeURIComponent(imageUrl)}&message=${encodeURIComponent(caption)}&access_token=${META_TOKEN}`,
-      { method: 'POST' }
-    );
-    const fbData = await fbRes.json();
-
-    const igMsg = igData.id    ? '✅ Instagram нийтлэгдлээ!'              : '❌ Instagram алдаа';
-    const fbMsg = !fbData.error ? '✅ Facebook нийтлэгдлээ!'              : `❌ FB: ${fbData.error?.message}`;
-    await tgSend(`${igMsg}\n${fbMsg}`);
-    // Сүүлийн post цагийг хадгална (post frequency alert-д хэрэгтэй)
-    if (igData.id) {
-      dbLFS.doc(`users/${UID}/marketing/lastPost`).set({ postedAt: new Date().toISOString() }).catch(() => {});
-    }
-    return true;
-  } catch (e) {
-    await tgSend(`❌ Meta алдаа: ${e.message}`);
-    return false;
-  }
-}
-
-async function postToIG(imageUrl, caption, hashtags) {
-  const cRes  = await fetch(`https://graph.facebook.com/v25.0/${IG_ID}/media`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image_url: imageUrl, caption, access_token: META_TOKEN }),
-  });
-  const cData = await cRes.json();
-  if (!cData.id) return { ok: false, err: cData.error?.message || 'Container алдаа' };
-
-  await new Promise(r => setTimeout(r, 3000));
-
-  const pRes  = await fetch(`https://graph.facebook.com/v25.0/${IG_ID}/media_publish`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ creation_id: cData.id, access_token: META_TOKEN }),
-  });
-  const pData = await pRes.json();
-  if (pData.error) return { ok: false, err: pData.error.message };
-
-  if (hashtags && pData.id) {
-    await new Promise(r => setTimeout(r, 1500));
-    await fetch(`https://graph.facebook.com/v25.0/${pData.id}/comments`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: hashtags, access_token: META_TOKEN }),
-    });
-  }
-  return { ok: true, postId: pData.id };
-}
-
-// ── IMAGE FETCH ───────────────────────────────────────────────────
-async function fetchNewImage(query = 'shanghai') {
-  try {
-    if (PEXELS_KEY) {
-      const r = await fetch(
-        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&per_page=5`,
-        { headers: { Authorization: PEXELS_KEY } }
-      );
-      const d = await r.json();
-      if (d.photos?.length) return d.photos[Math.floor(Math.random() * d.photos.length)].src.large2x;
-    }
-    if (UNSPLASH_KEY) {
-      const r = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=5`,
-        { headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` } }
-      );
-      const d = await r.json();
-      if (d.results?.length) return d.results[0].urls.regular;
-    }
-  } catch {}
-  return 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570';
-}
-
-// ── WEEKLY REPORT — Даваа гарагийн 07:30 ─────────────────────────
-async function sendWeeklyReport() {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-
-  // Өнгөрсөн 7 хоногийн огноонуудыг бэлдэнэ
-  const days = [];
-  for (let i = 1; i <= 7; i++) {
-    const d = new Date(now.getTime() - i * 86400000);
-    days.push(d.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' }));
-  }
-  const weekStart = days[days.length - 1];
-  const weekEnd   = days[0];
-
-  // 7 хоногийн analytics + revenue зэрэг уншина
-  const [analyticsSnaps, revenueSnaps, routineSnaps] = await Promise.all([
-    Promise.all(days.map(d => dbLFS.doc(`users/${UID}/analytics/${d}`).get())),
-    Promise.all(days.map(d => dbPersonal.doc(`users/${UID}/revenue/${d}`).get())),
-    Promise.all(days.map(d => dbPersonal.doc(`users/${UID}/routines/${d}`).get())),
-  ]);
-
-  // Analytics нийлбэр
-  let totalUsers = new Set();
-  let totalGuide = 0, totalMedical = 0, totalAgent = 0;
-  let totalEscalate = 0, totalBookingLeads = 0;
-
-  analyticsSnaps.forEach(snap => {
-    if (!snap.exists) return;
-    const d = snap.data();
-    (d.users || []).forEach(u => totalUsers.add(u));
-    totalGuide        += d.guide        || 0;
-    totalMedical      += d.medical      || 0;
-    totalAgent        += d.agent        || 0;
-    totalEscalate     += d.escalate     || 0;
-    totalBookingLeads += d.booking_lead || 0;
-  });
-
-  // Орлого нийлбэр
-  const totalRevenue = revenueSnaps.reduce((sum, snap) => {
-    return sum + (snap.exists ? (snap.data().total || 0) : 0);
-  }, 0);
-
-  // Routine хийгдсэн хувь
-  const routineKeys = ['exercise', 'hanzi', 'read', 'journal'];
-  const routineCount = {};
-  routineKeys.forEach(k => { routineCount[k] = 0; });
-  routineSnaps.forEach(snap => {
-    if (!snap.exists) return;
-    const d = snap.data();
-    routineKeys.forEach(k => { if (d[k]) routineCount[k]++; });
-  });
-
-  const pct = n => `${Math.round(n/7*100)}%`;
-
-  const DAYS_MN = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
-  const weekNum  = Math.ceil(now.getDate() / 7);
-
-  let msg = '';
-  msg += `📊 *7 ХОНОГИЙН ТАЙЛАН*\n`;
-  msg += `_${weekStart} → ${weekEnd}_\n`;
-  msg += `\`────────────────────\`\n\n`;
-
-  msg += `👥 *LFS Трафик:*\n`;
-  msg += `• Нийт хэрэглэгч: *${totalUsers.size}* хүн\n`;
-  msg += `• Гайд сонирхсон: *${totalGuide}*\n`;
-  msg += `• Эмнэлэг сонирхсон: *${totalMedical}*\n`;
-  msg += `• Ажилтан дуудсан: *${totalAgent}*\n`;
-  if (totalEscalate)     msg += `• ⚠️ Бухимдсан: *${totalEscalate}*\n`;
-  if (totalBookingLeads) msg += `• 📋 Booking lead: *${totalBookingLeads}*\n`;
-
-  if (totalRevenue) {
-    msg += `\n💰 *7 хоногийн орлого:*\n`;
-    msg += `• Нийт: *${totalRevenue.toLocaleString()}₮*\n`;
-  }
-
-  msg += `\n💪 *Routine (7 хоногоос):*\n`;
-  msg += `• Дасгал: *${routineCount.exercise}/7* (${pct(routineCount.exercise)})\n`;
-  msg += `• 汉字: *${routineCount.hanzi}/7* (${pct(routineCount.hanzi)})\n`;
-  msg += `• Уншилт: *${routineCount.read}/7* (${pct(routineCount.read)})\n`;
-  msg += `• Journal: *${routineCount.journal}/7* (${pct(routineCount.journal)})\n`;
-
-  // Хамгийн сул routine
-  const weakest = routineKeys.reduce((a, b) => routineCount[a] <= routineCount[b] ? a : b);
-  const weakestLabel = { exercise:'Дасгал', hanzi:'汉字', read:'Уншилт', journal:'Journal' }[weakest];
-  msg += `\n📌 Сул тал: *${weakestLabel}* — энэ долоо хоног анхаарна уу.\n`;
-  msg += `\n⚡ _J.A.R.V.I.S — 7 хоногийн тойм._`;
-
-  await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg, parse_mode: 'Markdown' });
-}
-
-// ── MORNING BRIEF (telegram.js-с шууд дуудна) ────────────────────
-async function sendBrief() {
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-
-  const now       = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  const todaySHx  = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
-  const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
-
-  // Бүх өгөгдлийг зэрэг уншина
-  const calEventsPromise = calOk()
-    ? listTodayEvents().catch(() => [])
-    : Promise.resolve([]);
-
-  const gmailPromise = gmailOk()
-    ? getUnreadEmails(3).catch(() => [])
-    : Promise.resolve([]);
-
-  const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap, revenueSnap, calEvents, gmailEmails] = await Promise.all([
-    dbLFS.doc(`users/${UID}/analytics/${yesterday}`).get(),       // LFS трафик
-    dbPersonal.doc(`users/${UID}/bileg/profile`).get(),           // хувийн
-    dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
-    dbPersonal.doc(`users/${UID}/routines/${yesterday}`).get(),   // хувийн
-    dbPersonal.doc(`users/${UID}/logs/${yesterday}`).get(),       // хувийн
-    dbPersonal.doc(`users/${UID}/revenue/${yesterday}`).get(),    // хувийн
-    calEventsPromise,
-    gmailPromise,
-  ]);
-
-  // LFS аналитик
-  const lfs           = analyticsSnap.exists ? analyticsSnap.data() : {};
-  const userCount     = (lfs.users || []).length;
-  const guideCount    = lfs.guide       || 0;
-  const medicalCount  = lfs.medical     || 0;
-  const agentCount    = lfs.agent       || 0;
-  const escalateCount = lfs.escalate    || 0;
-  const bookingLeads  = lfs.booking_lead || 0;
-
-  // Өчигдрийн орлого
-  const revenue = revenueSnap.exists ? (revenueSnap.data().total || 0) : 0;
-
-  // Билэгийн мэдээлэл
-  const bileg = bilegSnap.exists ? bilegSnap.data() : {};
-
-  // Хийх tasks
-  const tasks = tasksRaw.docs
-    .map(doc => doc.data())
-    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
-    .slice(0, 5)
-    .map(t => t.text);
-
-  // Өчигдрийн routine
-  const rt    = routineSnap.exists ? routineSnap.data() : {};
-  const water = logSnap.exists ? (logSnap.data().water?.total_ml || 0) : 0;
-  const routineItems = [
-    { key: 'exercise', label: 'Дасгал',  emoji: '💪' },
-    { key: 'hanzi',    label: '汉字',     emoji: '🈶' },
-    { key: 'read',     label: 'Уншилт',  emoji: '📚' },
-    { key: 'journal',  label: 'Journal', emoji: '📝' },
-  ];
-  const done   = routineItems.filter(r => rt[r.key]);
-  const missed = routineItems.filter(r => !rt[r.key]);
-
-  // Gemini-д бүх контекст өгч proactive зөвлөгөө авна
-  const context = [
-    `Өнөөдөр: ${todaySHx}.`,
-    `LFS өчигдөр: ${userCount} хэрэглэгч, ${guideCount} гайд, ${medicalCount} эмнэлэг, ${agentCount} ажилтан.`,
-    done.length   ? `Хийсэн: ${done.map(r => r.label).join(', ')}.`   : 'Өчигдөр routine хийгээгүй.',
-    missed.length ? `Хийгээгүй: ${missed.map(r => r.label).join(', ')}.` : '',
-    `Ус: ${water}мл.`,
-    bileg.goal    ? `Зорилго: "${bileg.goal}".`  : '',
-    tasks.length  ? `Хийх tasks: ${tasks.slice(0,3).join(', ')}.` : '',
-    `Чи бол Билэгийн хувийн J.A.R.V.I.S. Өчигдрийн үр дүнд тулгуурлан өнөөдрийн 2-3 өгүүлбэр проактив, шууд, дотно зөвлөгөө өг. Хийгээгүй зүйлийг сануул. Монголоор, анхаарлын тэмдэггүй.`,
-  ].filter(Boolean).join(' ');
-
-  let advice = 'Өнөөдөр нэг алхам урагш.';
-  if (GEMINI_KEY) {
-    try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: context }] }],
-            generationConfig: { maxOutputTokens: 200, temperature: 0.85 },
-          }),
-        }
-      );
-      const data  = await r.json();
-      const parts = data.candidates?.[0]?.content?.parts || [];
-      const part  = parts.find(p => !p.thought && p.text) || parts[0];
-      advice = part?.text?.trim() || advice;
-    } catch {}
-  }
-
-  const days    = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
-  const dayName = days[now.getDay()];
-
-  let msg = '';
-  msg += `🌅 Өглөөний мэнд, Билэг.\n`;
-  msg += `${dayName}, ${todaySHx} | Шанхай 07:30\n\n`;
-
-  // Өчигдрийн үр дүн
-  msg += `📊 Өчигдрийн тойм:\n`;
-  msg += `LFS: ${userCount} хандсан · Гайд: ${guideCount} · Эмнэлэг: ${medicalCount}`;
-  if (agentCount)    msg += ` · Ажилтан: ${agentCount}`;
-  if (bookingLeads)  msg += `\n📋 Захиалга: ${bookingLeads} lead`;
-  if (revenue)       msg += ` · 💰 ${revenue.toLocaleString()}₮`;
-  if (escalateCount) msg += `\n⚠️ Бухимдсан: ${escalateCount}`;
-  msg += `\n`;
-  msg += `Routine: `;
-  msg += done.length   ? done.map(r => r.emoji + r.label).join(' ') : 'хийгдээгүй';
-  msg += ` | Ус: ${water}мл\n`;
-
-  // Хийх зүйлс
-  if (tasks.length) {
-    msg += `\n📋 Хийх (${tasks.length}):\n`;
-    tasks.forEach((t, i) => { msg += `${i + 1}. ${t}\n`; });
-  }
-
-  // Зорилго
-  if (bileg.goal) msg += `\n🎯 ${bileg.goal}\n`;
-
-  // Өнөөдрийн calendar events
-  if (calEvents && calEvents.length) {
-    msg += `\n📅 Өнөөдрийн хуваарь:\n`;
-    calEvents.forEach(e => {
-      msg += `• ${formatEventTime(e)} — ${e.summary}\n`;
-    });
-  }
-
-  // Gmail уншаагүй имэйлүүд
-  if (gmailEmails && gmailEmails.length) {
-    msg += `\n📧 Уншаагүй имэйл (${gmailEmails.length}):\n`;
-    gmailEmails.forEach(e => {
-      msg += `• ${e.from.slice(0, 20)} — ${e.subject.slice(0, 40)}\n`;
-    });
-  }
-
-  // J.A.R.V.I.S зөвлөгөө
-  msg += `\n💡 J.A.R.V.I.S:\n${advice}\n`;
-  msg += `\n⚡ J.A.R.V.I.S ажиллаж байна.`;
-
-  await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
-}
-
-// ── BILEG PERSONAL MEMORY ────────────────────────────────────────
+// ── PERSONAL MEMORY ───────────────────────────────────────────────
 async function getBilegProfile() {
   try {
     const snap = await dbPersonal.doc(`users/${UID}/bileg/profile`).get();
     return snap.exists ? snap.data() : {};
   } catch { return {}; }
 }
-
 async function saveBilegProfile(updates) {
   try {
     await dbPersonal.doc(`users/${UID}/bileg/profile`).set(
-      { ...updates, updatedAt: new Date().toISOString() },
-      { merge: true }
+      { ...updates, updatedAt: new Date().toISOString() }, { merge: true }
     );
   } catch {}
 }
@@ -388,24 +46,19 @@ async function saveBilegProfile(updates) {
 async function getTasks() {
   try {
     const snap = await dbPersonal.collection(`users/${UID}/tasks`)
-      .where('done', '==', false)
-      .get();
+      .where('done', '==', false).get();
     return snap.docs
       .map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
   } catch { return []; }
 }
-
 async function addTask(text) {
   try {
     await dbPersonal.collection(`users/${UID}/tasks`).add({
-      text,
-      done: false,
-      createdAt: new Date().toISOString(),
+      text, done: false, createdAt: new Date().toISOString(),
     });
   } catch {}
 }
-
 async function doneTask(index) {
   try {
     const tasks = await getTasks();
@@ -427,11 +80,10 @@ async function getScore() {
   ]);
   const rt    = r.exists ? r.data() : {};
   const water = l.exists ? (l.data().water?.total_ml || 0) : 0;
-  const done  = ['exercise','hanzi','read','journal'].filter(k => rt[k]).length;
   const score = Math.min(100, Math.round(
     (water/2000*25) + (rt.exercise?20:0) + (rt.hanzi?20:0) + (rt.read?15:0) + (rt.journal?10:0)
   ));
-  return { score, done, water, routine: rt };
+  return { score, routine: rt, water };
 }
 
 async function getStreak(key) {
@@ -462,308 +114,187 @@ async function logWater(ml) {
   return total;
 }
 
-// ── GPT CAPTION ───────────────────────────────────────────────────
-async function generateCaption(hint = '') {
-  const prompt = hint
-    ? `LFS Shanghai IG post. "${hint}" тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io" гэж энгийн текстээр нэмж бич (link format хэрэггүй). Дараа нь 10 hashtag зайгаар. Формат: CAPTION: ... HASHTAGS: ...`
-    : `LFS Shanghai Шанхай аялал тухай 2-3 өгүүлбэр Монголоор, emoji, "👉 bileg11.github.io" гэж энгийн текстээр бич (link format хэрэггүй). Дараа нь 10 hashtag. Формат: CAPTION: ... HASHTAGS: ...`;
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25000); // 25s timeout
-    const r = await fetch('https://models.inference.ai.azure.com/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
-      body: JSON.stringify({ model: 'gpt-4o-mini', messages: [{ role: 'user', content: prompt }], max_tokens: 280, temperature: 0.85 }),
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    const d   = await r.json();
-    const raw = d.choices?.[0]?.message?.content || '';
-    return {
-      caption:  raw.match(/CAPTION:\s*([\s\S]*?)(?=HASHTAGS:|$)/i)?.[1]?.trim() || null,
-      hashtags: raw.match(/HASHTAGS:\s*([\s\S]*?)$/i)?.[1]?.trim() || null,
-    };
-  } catch (e) {
-    console.error('[GPT] Error:', e.message);
-    return { caption: null, hashtags: null };
+// ── WEEKLY REPORT ─────────────────────────────────────────────────
+async function sendWeeklyReport() {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const days = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(now.getTime() - i * 86400000);
+    days.push(d.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' }));
   }
+
+  const routineSnaps = await Promise.all(
+    days.map(d => dbPersonal.doc(`users/${UID}/routines/${d}`).get())
+  );
+
+  const routineKeys = ['exercise', 'hanzi', 'read', 'journal'];
+  const cnt = {};
+  routineKeys.forEach(k => { cnt[k] = 0; });
+  routineSnaps.forEach(snap => {
+    if (!snap.exists) return;
+    const d = snap.data();
+    routineKeys.forEach(k => { if (d[k]) cnt[k]++; });
+  });
+
+  const pct     = n => `${Math.round(n/7*100)}%`;
+  const weakest = routineKeys.reduce((a, b) => cnt[a] <= cnt[b] ? a : b);
+  const labels  = { exercise:'Дасгал 💪', hanzi:'汉字 🈶', read:'Уншилт 📚', journal:'Journal 📝' };
+
+  const tasks = await getTasks();
+
+  let msg = `📊 *7 ХОНОГИЙН ТАЙЛАН*\n`;
+  msg += `_${days[6]} → ${days[0]}_\n`;
+  msg += `\`────────────────────\`\n\n`;
+  msg += `💪 *Routine:*\n`;
+  msg += `• Дасгал: *${cnt.exercise}/7* (${pct(cnt.exercise)})\n`;
+  msg += `• 汉字: *${cnt.hanzi}/7* (${pct(cnt.hanzi)})\n`;
+  msg += `• Уншилт: *${cnt.read}/7* (${pct(cnt.read)})\n`;
+  msg += `• Journal: *${cnt.journal}/7* (${pct(cnt.journal)})\n`;
+  msg += `\n📌 Сул тал: *${labels[weakest]}* — энэ долоо хоног анхаарна уу.\n`;
+
+  if (tasks.length) {
+    msg += `\n📋 Хийгдэхгүй үлдсэн tasks: *${tasks.length}*\n`;
+    tasks.slice(0, 3).forEach(t => { msg += `• ${t.text}\n`; });
+  }
+
+  msg += `\n⚡ _J.A.R.V.I.S_`;
+  await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg, parse_mode: 'Markdown' });
 }
 
-// ══════════════════════════════════════════════════════════════════
-// CALLBACK QUERY HANDLER
-// ══════════════════════════════════════════════════════════════════
+// ── MORNING BRIEF ─────────────────────────────────────────────────
+async function sendBrief() {
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+  const now        = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const todaySHx   = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const yesterday  = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+
+  const calEventsPromise = calOk() ? listTodayEvents().catch(() => []) : Promise.resolve([]);
+  const gmailPromise     = gmailOk() ? getUnreadEmails(3).catch(() => []) : Promise.resolve([]);
+
+  const [bilegSnap, tasksRaw, routineSnap, logSnap, calEvents, gmailEmails] = await Promise.all([
+    dbPersonal.doc(`users/${UID}/bileg/profile`).get(),
+    dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
+    dbPersonal.doc(`users/${UID}/routines/${yesterday}`).get(),
+    dbPersonal.doc(`users/${UID}/logs/${yesterday}`).get(),
+    calEventsPromise,
+    gmailPromise,
+  ]);
+
+  const bileg = bilegSnap.exists ? bilegSnap.data() : {};
+  const tasks = tasksRaw.docs
+    .map(d => d.data())
+    .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+    .slice(0, 5).map(t => t.text);
+
+  const rt    = routineSnap.exists ? routineSnap.data() : {};
+  const water = logSnap.exists ? (logSnap.data().water?.total_ml || 0) : 0;
+  const routineItems = [
+    { key: 'exercise', label: 'Дасгал', emoji: '💪' },
+    { key: 'hanzi',    label: '汉字',   emoji: '🈶' },
+    { key: 'read',     label: 'Уншилт', emoji: '📚' },
+    { key: 'journal',  label: 'Journal',emoji: '📝' },
+  ];
+  const done   = routineItems.filter(r => rt[r.key]);
+  const missed = routineItems.filter(r => !rt[r.key]);
+
+  // Gemini зөвлөгөө
+  const context = [
+    `Өнөөдөр: ${todaySHx}.`,
+    done.length   ? `Хийсэн: ${done.map(r => r.label).join(', ')}.`   : 'Өчигдөр routine хийгдэхгүй.',
+    missed.length ? `Хийгдэхгүй: ${missed.map(r => r.label).join(', ')}.` : '',
+    `Ус: ${water}мл.`,
+    bileg.goal    ? `Зорилго: "${bileg.goal}".` : '',
+    tasks.length  ? `Хийх tasks: ${tasks.slice(0,3).join(', ')}.` : '',
+    `Билэгийн хувийн J.A.R.V.I.S. Өчигдрийн үр дүнд тулгуурлан 2-3 өгүүлбэр проактив, шууд зөвлөгөө өг. Монголоор, анхаарлын тэмдэггүй.`,
+  ].filter(Boolean).join(' ');
+
+  let advice = 'Өнөөдөр нэг алхам урагш.';
+  if (GEMINI_KEY) {
+    try {
+      const r = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: context }] }],
+            generationConfig: { maxOutputTokens: 200, temperature: 0.85 },
+          }),
+        }
+      );
+      const data  = await r.json();
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const part  = parts.find(p => !p.thought && p.text) || parts[0];
+      advice = part?.text?.trim() || advice;
+    } catch {}
+  }
+
+  const days    = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+  const dayName = days[now.getDay()];
+
+  let msg = `🌅 Өглөөний мэнд, Билэг.\n`;
+  msg += `${dayName}, ${todaySHx} | Шанхай 07:30\n\n`;
+
+  msg += `Routine: `;
+  msg += done.length ? done.map(r => r.emoji + r.label).join(' ') : 'хийгдэхгүй';
+  msg += ` | Ус: ${water}мл\n`;
+
+  if (tasks.length) {
+    msg += `\n📋 Хийх (${tasks.length}):\n`;
+    tasks.forEach((t, i) => { msg += `${i+1}. ${t}\n`; });
+  }
+
+  if (bileg.goal) msg += `\n🎯 ${bileg.goal}\n`;
+
+  if (calEvents && calEvents.length) {
+    msg += `\n📅 Өнөөдрийн хуваарь:\n`;
+    calEvents.forEach(e => { msg += `• ${formatEventTime(e)} — ${e.summary}\n`; });
+  }
+
+  if (gmailEmails && gmailEmails.length) {
+    msg += `\n📧 Уншаагүй имэйл (${gmailEmails.length}):\n`;
+    gmailEmails.forEach(e => { msg += `• ${e.from.slice(0,20)} — ${e.subject.slice(0,40)}\n`; });
+  }
+
+  msg += `\n💡 J.A.R.V.I.S:\n${advice}\n`;
+  msg += `\n⚡ J.A.R.V.I.S ажиллаж байна.`;
+
+  await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
+}
+
+// ── CALLBACK HANDLER ──────────────────────────────────────────────
 async function handleCallback(cb) {
   const { data: cmd, message, id: cbId } = cb;
   const msgId = message.message_id;
   await tgAnswer(cbId);
 
-  // ── Booking confirm / cancel ──────────────────────────────────
-  if (cmd.startsWith('bkc_') || cmd.startsWith('bkx_')) {
-    const isConfirm = cmd.startsWith('bkc_');
-    const bookingId = cmd.slice(4);
-    const bkRef     = dbLFS.collection(`users/${UID}/bookings`).doc(bookingId);
-    const bkSnap    = await bkRef.get();
-
-    if (!bkSnap.exists) {
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⚠️ Захиалга олдсонгүй (ID устсан байж магадгүй).' });
-      return;
-    }
-
-    const bk = bkSnap.data();
-    const now = new Date().toISOString();
-
-    if (isConfirm) {
-      await bkRef.update({ status: 'confirmed', confirmedAt: now });
-      // Товчлуурыг устгах
-      await tgCall('editMessageReplyMarkup', {
-        chat_id: TG_CHAT, message_id: msgId,
-        reply_markup: { inline_keyboard: [] },
-      });
-      await tgCall('sendMessage', {
-        chat_id: TG_CHAT,
-        text: `✅ Баталгаажлаа.\n\nНэр: ${bk.name}\nУтас: ${bk.phone}\nҮйлчилгээ: ${bk.service || '—'}\nОгноо: ${bk.start || '—'}`,
-      });
-    } else {
-      await bkRef.update({ status: 'cancelled', cancelledAt: now });
-      await tgCall('editMessageReplyMarkup', {
-        chat_id: TG_CHAT, message_id: msgId,
-        reply_markup: { inline_keyboard: [] },
-      });
-      await tgCall('sendMessage', {
-        chat_id: TG_CHAT,
-        text: `❌ Цуцлагдлаа.\n\nНэр: ${bk.name} · ${bk.phone}`,
-      });
-    }
-    return;
-  }
-
-  // ── Calendar event устгах ─────────────────────────────────────
+  // Calendar event устгах
   if (cmd.startsWith('caldel_')) {
     const eventId = cmd.slice(7);
     try {
       await deleteEvent(eventId);
       await tgCall('editMessageReplyMarkup', {
-        chat_id: TG_CHAT, message_id: msgId,
-        reply_markup: { inline_keyboard: [] },
+        chat_id: TG_CHAT, message_id: msgId, reply_markup: { inline_keyboard: [] },
       });
       await tgCall('editMessageText', {
         chat_id: TG_CHAT, message_id: msgId,
-        text: `🗑 ~~${(cb.message?.text || 'Event').split('\n')[0].replace('📌 ','')}~~ устгагдлаа.`,
+        text: `🗑 Устгагдлаа.`,
       });
     } catch (e) {
       await tgCall('sendMessage', { chat_id: TG_CHAT, text: `❌ Устгаж чадсангүй: ${e.message}` });
     }
     return;
   }
-
-  // ── Ghost post approval ───────────────────────────────────────
-  const pSnap = await pendingRef().get();
-  if (pSnap.exists) {
-    const post = pSnap.data();
-    if (msgId == post.telegramMsgId) {
-
-      if (cmd === 'approve') {
-        await tgSend('⏳ Нийтэлж байна...');
-        const ok = await publishToMeta(post.caption, post.imageUrl);
-        if (ok) {
-          await tgEdit(msgId, `✅ *Нийтлэгдлээ!*\n\n${post.caption}`);
-          await pendingRef().delete();
-        }
-        return;
-      }
-
-      if (cmd === 'reject') {
-        await tgEdit(msgId, '❌ *Цуцлагдлаа.*');
-        await pendingRef().delete();
-        return;
-      }
-
-      if (cmd === 'new_image') {
-        const newImg = await fetchNewImage(post.topic || 'shanghai');
-        const r = await tgCall('sendPhoto', {
-          chat_id: TG_CHAT, photo: newImg,
-          caption: `🤖 *Шинэ зураг:*\n\n${post.caption}`, parse_mode: 'Markdown',
-          reply_markup: { inline_keyboard: [
-            [{ text: '✅ Approve', callback_data: 'approve' },  { text: '❌ Reject',    callback_data: 'reject' }],
-            [{ text: '🖼 New Image', callback_data: 'new_image' }, { text: '✏️ Edit Text', callback_data: 'edit_text' }],
-          ]},
-        });
-        await pendingRef().update({ imageUrl: newImg, telegramMsgId: r.result?.message_id, createdAt: new Date().toISOString() });
-        return;
-      }
-
-      if (cmd === 'edit_text') {
-        await tgSend('✏️ Шинэ текстаа бичнэ үү:');
-        await pendingRef().update({ waitingForText: true });
-        return;
-      }
-    }
-  }
-
-  // ── Manual poster callbacks ───────────────────────────────────
-  const mSnap = await manualRef().get();
-  if (!mSnap.exists) return;
-  const ms = mSnap.data();
-
-  // Caption сонголт
-  if (ms.status === 'waiting_choice') {
-    if (cmd === 'ai_caption') {
-      await tgSend('🤖 Caption үүсгэж байна...');
-      const gen      = await generateCaption();
-      const caption  = gen.caption  || 'LFS Shanghai 🌆\n👉 bileg11.github.io';
-      const hashtags = gen.hashtags || '#LFSShanghai #Shanghai';
-      const draft    = await tgCall('sendPhoto', {
-        chat_id: TG_CHAT, photo: ms.fileId || ms.photoUrl,
-        caption: `📋 *Draft:*\n\n${caption}`, parse_mode: 'Markdown',
-        reply_markup: { inline_keyboard: [[
-          { text: '✅ Post хийх', callback_data: 'manual_post' },
-          { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
-        ]]},
-      });
-      await manualRef().set({ status: 'waiting_final', photoUrl: ms.photoUrl, fileId: ms.fileId, caption, hashtags, draftMsgId: draft.result?.message_id || null });
-      return;
-    }
-    if (cmd === 'manual_cap') {
-      await tgSend('✏️ Caption бичнэ үү:');
-      await manualRef().update({ status: 'waiting_text' });
-      return;
-    }
-    if (cmd === 'cancel') {
-      await tgSend('❌ Цуцлагдлаа.'); await manualRef().delete(); return;
-    }
-  }
-
-  // Final approve
-  if (ms.status === 'waiting_final') {
-    if (cmd === 'manual_post') {
-      await tgSend('⏳ IG + FB-д нийтэлж байна...');
-      const igResult = await postToIG(ms.photoUrl, ms.caption, ms.hashtags);
-
-      // FB post — 15s timeout
-      let fbMsg = '';
-      try {
-        const fbCtrl = new AbortController();
-        const fbTimeout = setTimeout(() => fbCtrl.abort(), 15000);
-        // Page Access Token авна
-        const ptRes  = await fetch(`https://graph.facebook.com/v25.0/${FB_ID}?fields=access_token&access_token=${META_TOKEN}`);
-        const ptData = await ptRes.json();
-        const pageToken = ptData.access_token || META_TOKEN;
-
-        const fbRes  = await fetch(
-          `https://graph.facebook.com/v25.0/${FB_ID}/photos`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: ms.photoUrl, message: ms.caption, access_token: pageToken }),
-            signal: fbCtrl.signal,
-          }
-        );
-        clearTimeout(fbTimeout);
-        const fbData = await fbRes.json();
-        fbMsg = !fbData.error ? '✅ FB нийтлэгдлээ!' : `❌ FB: ${fbData.error?.message}`;
-      } catch (e) {
-        fbMsg = `❌ FB алдаа: ${e.message}`;
-      }
-
-      // Telegram-д үр дүн явуулна
-      if (igResult.ok) {
-        await tgSend(`✅ *IG нийтлэгдлээ!*\n${fbMsg}`);
-      } else {
-        await tgSend(`❌ IG алдаа: ${igResult.err}\n${fbMsg}`);
-      }
-      await manualRef().delete();
-      return;
-    }
-    if (cmd === 'manual_cancel') {
-      await tgSend('❌ Цуцлагдлаа.'); await manualRef().delete(); return;
-    }
-  }
 }
 
-// ══════════════════════════════════════════════════════════════════
-// PHOTO HANDLER
-// ══════════════════════════════════════════════════════════════════
-async function handlePhoto(msg) {
-  const fileId = msg.photo[msg.photo.length - 1].file_id;
-  const fRes   = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/getFile?file_id=${fileId}`);
-  const fData  = await fRes.json();
-  const photoUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${fData.result?.file_path}`;
-
-  const userCaption = msg.caption || '';
-
-  if (userCaption) {
-    await tgSend('🤖 Caption бэлдэж байна...');
-    const gen      = await generateCaption(userCaption);
-    const caption  = gen.caption  || userCaption;
-    const hashtags = gen.hashtags || '#LFSShanghai #Shanghai';
-    const draft    = await tgCall('sendPhoto', {
-      chat_id: TG_CHAT, photo: fileId,  // file_id ашиглана
-      caption: `📋 *Draft:*\n\n${caption}`, parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[
-        { text: '✅ Post хийх', callback_data: 'manual_post' },
-        { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
-      ]]},
-    });
-    await manualRef().set({ status: 'waiting_final', photoUrl, fileId, caption, hashtags, draftMsgId: draft.result?.message_id || null });
-  } else {
-    const choice = await tgCall('sendMessage', {
-      chat_id: TG_CHAT,
-      text: '📸 Зураг хүлээн авлаа! Caption яаж хийх вэ?',
-      reply_markup: { inline_keyboard: [[
-        { text: '🤖 AI үүсгэх',   callback_data: 'ai_caption' },
-        { text: '✏️ Өөрөө бичих', callback_data: 'manual_cap' },
-        { text: '❌ Цуцлах',       callback_data: 'cancel'     },
-      ]]},
-    });
-    await manualRef().set({ status: 'waiting_choice', photoUrl, fileId, choiceMsgId: choice.result?.message_id });
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════
-// TEXT HANDLER
-// ══════════════════════════════════════════════════════════════════
+// ── TEXT HANDLER ──────────────────────────────────────────────────
 async function handleText(msg) {
   const raw  = msg.text || '';
   const text = raw.toLowerCase().trim();
 
-  // Pending post: edit_text state
-  const pSnap = await pendingRef().get();
-  if (pSnap.exists && pSnap.data().waitingForText && !raw.startsWith('/')) {
-    const post    = pSnap.data();
-    const r       = await tgCall('sendPhoto', {
-      chat_id: TG_CHAT, photo: post.imageUrl,
-      caption: `🤖 *JARVIS Draft:*\n\n${raw}`, parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [
-        [{ text: '✅ Approve', callback_data: 'approve' }, { text: '❌ Reject',    callback_data: 'reject' }],
-        [{ text: '🖼 New Image', callback_data: 'new_image' }, { text: '✏️ Edit Text', callback_data: 'edit_text' }],
-      ]},
-    });
-    await pendingRef().update({ caption: raw, telegramMsgId: r.result?.message_id, waitingForText: false, createdAt: new Date().toISOString() });
-    return;
-  }
-
-  // Manual poster: waiting_text state
-  const mSnap = await manualRef().get();
-  if (mSnap.exists && mSnap.data().status === 'waiting_text' && !raw.startsWith('/')) {
-    const ms       = mSnap.data();
-    const gen      = await generateCaption(raw);
-    const caption  = gen.caption  || raw;
-    const hashtags = gen.hashtags || '#LFSShanghai #Shanghai';
-    const draft    = await tgCall('sendPhoto', {
-      chat_id: TG_CHAT, photo: ms.photoUrl,
-      caption: `📋 *Draft:*\n\n${caption}`, parse_mode: 'Markdown',
-      reply_markup: { inline_keyboard: [[
-        { text: '✅ Post хийх', callback_data: 'manual_post' },
-        { text: '❌ Цуцлах',   callback_data: 'manual_cancel' },
-      ]]},
-    });
-    await manualRef().set({ status: 'waiting_final', photoUrl: ms.photoUrl, caption, hashtags, draftMsgId: draft.result?.message_id });
-    return;
-  }
-
-  // ── Commands ──────────────────────────────────────────────────
-  if (text === '/score' || text === 'score') {
-    const { score, done, water, routine } = await getScore();
+  // ── Routine ──────────────────────────────────────────────────────
+  if (text === '/score') {
+    const { score, routine, water } = await getScore();
     const [exS, hzS] = await Promise.all([getStreak('exercise'), getStreak('hanzi')]);
     await tgSend(
       `📊 *Өнөөдрийн Score: ${score}/100*\n\n` +
@@ -814,67 +345,45 @@ async function handleText(msg) {
     return;
   }
 
-  if (text === '/week' || text === 'week') {
-    const qSnap = await dbLFS.doc(`users/${UID}/marketing/weeklyQueue`).get();
-    if (!qSnap.exists) { await tgSend('📅 Долоо хоногийн план байхгүй байна.'); return; }
-    const q   = qSnap.data();
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-    const DAYS = ['Ня','Да','Мя','Лх','Пү','Ба','Бя'];
-    let msg = '📅 *Долоо хоногийн Post Хуваарь*\n\n';
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(now); d.setDate(d.getDate() + i);
-      const ds = d.toLocaleDateString('sv');
-      const m  = q[`${ds}-morning`];
-      const e  = q[`${ds}-evening`];
-      if (m || e) {
-        msg += `*${DAYS[d.getDay()]}* ${ds}\n`;
-        if (m) msg += `  🌅 ${(m.topic||'').slice(0,45)}\n`;
-        if (e) msg += `  🌆 ${(e.topic||'').slice(0,45)}\n`;
-      }
-    }
-    await tgSend(msg);
-    return;
-  }
-
-  // ── Task manager ─────────────────────────────────────────────────
+  // ── Task Manager ─────────────────────────────────────────────────
   if (raw.startsWith('/task ') || raw.startsWith('/task\n')) {
     const taskText = raw.slice(6).trim();
-    if (!taskText) { await tgSend('⚠️ Яг юу хийх вэ? `/task [тайлбар]`'); return; }
+    if (!taskText) { await tgSend('⚠️ `/task [тайлбар]`'); return; }
     await addTask(taskText);
     const tasks = await getTasks();
-    await tgSend(`✅ Task нэмэгдлээ.\n\n📋 Нийт хийх: *${tasks.length}* зүйл`);
+    await tgSend(`✅ Task нэмэгдлээ. Нийт: *${tasks.length}*`);
     return;
   }
 
-  if (text === '/tasks' || text === 'tasks') {
+  if (text === '/tasks') {
     const tasks = await getTasks();
     if (!tasks.length) { await tgSend('📋 Хийх зүйл байхгүй байна. 🎉'); return; }
-    const list = tasks.map((t, i) => `${i + 1}. ${t.text}`).join('\n');
-    await tgSend(`📋 *Хийх зүйлүүд:*\n\n${list}\n\n_/done [дугаар] — дуусгасан гэж тэмдэглэх_`);
+    const list = tasks.map((t, i) => `${i+1}. ${t.text}`).join('\n');
+    await tgSend(`📋 *Хийх зүйлүүд:*\n\n${list}\n\n_/done [дугаар]_`);
     return;
   }
 
   const doneMatch = raw.match(/^\/done\s+(\d+)/i);
   if (doneMatch) {
     const n    = parseInt(doneMatch[1]);
-    const text = await doneTask(n);
-    if (!text) { await tgSend('⚠️ Тийм дугаартай task байхгүй байна.'); return; }
+    const done = await doneTask(n);
+    if (!done) { await tgSend('⚠️ Тийм дугаартай task байхгүй байна.'); return; }
     const remaining = await getTasks();
-    await tgSend(`✅ *Дууслаа:* ${text}\n\n📋 Үлдсэн: *${remaining.length}* зүйл`);
+    await tgSend(`✅ *Дууслаа:* ${done}\n\nҮлдсэн: *${remaining.length}*`);
     return;
   }
 
-  // ── Bileg personal memory ─────────────────────────────────────────
+  // ── Personal Memory ───────────────────────────────────────────────
   if (raw.startsWith('/goal ') || raw.startsWith('/goal\n')) {
     const goal = raw.slice(6).trim();
     await saveBilegProfile({ goal });
-    await tgSend(`🎯 Зорилго хадгаллаа:\n_"${goal}"_\n\nJ.A.R.V.I.S өглөө бүр үүнийг чамд сануулна.`);
+    await tgSend(`🎯 Зорилго хадгаллаа:\n_"${goal}"_\n\nJ.A.R.V.I.S өглөө бүр сануулна.`);
     return;
   }
 
   if (text === '/goal') {
     const p = await getBilegProfile();
-    if (!p.goal) { await tgSend('🎯 Зорилго тавиагүй байна.\n`/goal [зорилгоо бичнэ үү]`'); return; }
+    if (!p.goal) { await tgSend('🎯 Зорилго тавиагүй байна.\n`/goal [зорилгоо]`'); return; }
     await tgSend(`🎯 *Одоогийн зорилго:*\n_"${p.goal}"_`);
     return;
   }
@@ -882,143 +391,35 @@ async function handleText(msg) {
   if (raw.startsWith('/focus ')) {
     const focus = raw.slice(7).trim();
     await saveBilegProfile({ focus });
-    await tgSend(`🔥 Өнөөдрийн focus хадгаллаа:\n_"${focus}"_`);
+    await tgSend(`🔥 Focus хадгаллаа:\n_"${focus}"_`);
     return;
   }
 
-  // ── Notion тэмдэглэл ──────────────────────────────────────────────
+  // ── Notion ────────────────────────────────────────────────────────
   if (raw.startsWith('/notion ') || raw.startsWith('/notion\n')) {
     const noteText = raw.slice(8).trim();
-    if (!noteText) {
-      await tgSend('📝 Яг юу тэмдэглэх вэ?\n`/notion [текст]`');
-      return;
-    }
-    const url = await notionSave(noteText, `Telegram-аас: ${todaySH()}`, '📝');
+    if (!noteText) { await tgSend('📝 `/notion [текст]`'); return; }
+    const url = await notionSave(noteText, `Telegram: ${todaySH()}`, '📝');
     if (url) {
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: `📝 Notion-д хадгаллаа.\n\n"${noteText.slice(0, 80)}${noteText.length > 80 ? '...' : ''}"` });
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: `📝 Notion-д хадгаллаа.\n\n"${noteText.slice(0,80)}${noteText.length>80?'...':''}"` });
     } else {
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⚠️ Notion-д хадгалж чадсангүй. NOTION_TOKEN болон NOTION_DB_ID шалгана уу.' });
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⚠️ Notion-д хадгалж чадсангүй.' });
     }
-    return;
-  }
-
-  // ── Booking management ────────────────────────────────────────────
-  if (text === '/bookings' || text === 'bookings') {
-    const snap = await dbLFS.collection(`users/${UID}/bookings`)
-      .where('status', '==', 'pending')
-      .get()
-      .catch(() => ({ docs: [] }));
-
-    const bookings = snap.docs
-      .map(d => d.data())
-      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
-      .slice(0, 8);
-
-    if (!bookings.length) {
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '📋 Хүлээгдэж буй захиалга байхгүй байна.' });
-      return;
-    }
-
-    for (const bk of bookings) {
-      const lines = [
-        `📋 Захиалга — ${bk.name}`,
-        `Утас: ${bk.phone}`,
-        bk.service ? `Үйлчилгээ: ${bk.service}` : null,
-        bk.start   ? `Огноо: ${bk.start} · ${bk.days || '—'}` : null,
-        bk.people  ? `Хүн: ${bk.people}` : null,
-        bk.email   ? `И-мэйл: ${bk.email}` : null,
-        bk.note    ? `Тэмдэглэл: ${bk.note}` : null,
-        `\n${new Date(bk.createdAt).toLocaleDateString('mn-MN', { timeZone: 'Asia/Shanghai' })}`,
-      ].filter(Boolean).join('\n');
-
-      await tgCall('sendMessage', {
-        chat_id: TG_CHAT,
-        text:    lines,
-        reply_markup: {
-          inline_keyboard: [[
-            { text: '✅ Баталгаажуулах', callback_data: `bkc_${bk.id}` },
-            { text: '❌ Цуцлах',         callback_data: `bkx_${bk.id}` },
-          ]],
-        },
-      });
-    }
-    return;
-  }
-
-  // ── Revenue tracking ──────────────────────────────────────────────
-  const incomeMatch = raw.match(/^\/income\s+(\d+)\s*(.*)?$/i);
-  if (incomeMatch) {
-    const amount = parseInt(incomeMatch[1]);
-    const note   = (incomeMatch[2] || '').trim() || 'Тодорхойгүй';
-    const d      = todaySH();
-    const ref    = dbPersonal.doc(`users/${UID}/revenue/${d}`);
-    const snap   = await ref.get();
-    const cur    = snap.exists ? snap.data() : { total: 0, entries: [] };
-    const entries = [...(cur.entries || []), { amount, note, time: new Date().toISOString() }];
-    const total   = (cur.total || 0) + amount;
-    await ref.set({ total, entries, updatedAt: new Date().toISOString() }, { merge: true });
-    await tgCall('sendMessage', {
-      chat_id: TG_CHAT,
-      text: `💰 Орлого бүртгэгдлээ.\n\n+${amount.toLocaleString()}₮ — ${note}\nӨнөөдрийн нийт: ${total.toLocaleString()}₮`,
-    });
-    return;
-  }
-
-  if (text === '/revenue') {
-    const d         = todaySH();
-    const todaySnap = await dbPersonal.doc(`users/${UID}/revenue/${d}`).get();
-    const todayData = todaySnap.exists ? todaySnap.data() : { total: 0, entries: [] };
-
-    // Энэ сарын нийт
-    const monthPrefix = d.slice(0, 7);
-    const allRevSnap  = await dbPersonal.collection(`users/${UID}/revenue`).get().catch(() => ({ docs: [] }));
-    const monthTotal  = allRevSnap.docs
-      .filter(doc => doc.id.startsWith(monthPrefix))
-      .reduce((sum, doc) => sum + (doc.data().total || 0), 0);
-
-    // Booking lead count (LFS)
-    const analyticsSnap = await dbLFS.doc(`users/${UID}/analytics/${d}`).get();
-    const leads = analyticsSnap.exists ? (analyticsSnap.data().booking_lead || 0) : 0;
-
-    const entries = (todayData.entries || []).slice(-5).reverse();
-    let msg = `💰 Орлогын тайлан\n\n`;
-    msg += `Өнөөдөр: ${(todayData.total || 0).toLocaleString()}₮\n`;
-    msg += `${d.slice(0, 7)}-р сар: ${monthTotal.toLocaleString()}₮\n`;
-    msg += `Өнөөдөр захиалга: ${leads} lead\n`;
-    if (entries.length) {
-      msg += `\nСүүлийн орлогууд:\n`;
-      entries.forEach(e => { msg += `• +${Number(e.amount).toLocaleString()}₮ — ${e.note}\n`; });
-    } else {
-      msg += `\nОрлого бүртгэгдээгүй байна.\n`;
-    }
-    msg += `\n/income [дүн] [тэмдэглэл] — бүртгэх`;
-    await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
     return;
   }
 
   // ── Google Calendar ───────────────────────────────────────────────
   if (raw.startsWith('/cal ') || raw.startsWith('/cal\n')) {
     const calText = raw.slice(5).trim();
-    if (!calText) {
-      await tgSend('📅 Жишээ: `/cal маргааш 3 цагт LFS meeting`');
-      return;
-    }
-    if (!calOk()) {
-      await tgSend('⚠️ Google Calendar тохиргоогүй байна.\nRailway-д `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` нэмнэ үү.');
-      return;
-    }
+    if (!calText) { await tgSend('📅 `/cal маргааш 3 цагт meeting`'); return; }
+    if (!calOk()) { await tgSend('⚠️ Google Calendar тохиргоогүй байна.'); return; }
     const parsed = parseEvent(calText);
-    if (!parsed || !parsed.date) {
-      await tgSend('⚠️ Ойлгож чадсангүй. Жишээ:\n`/cal маргааш 3 цагт meeting`\n`/cal өнөөдөр 10 цагт эмч`');
-      return;
-    }
-    const startISO = `${parsed.date}T${parsed.startTime}:00`;
-    const endISO   = `${parsed.date}T${parsed.endTime}:00`;
+    if (!parsed?.date) { await tgSend('⚠️ Ойлгож чадсангүй.\nЖишээ: `/cal маргааш 3 цагт meeting`'); return; }
     try {
-      await createEvent(parsed.title, startISO, endISO, parsed.description || '');
+      await createEvent(parsed.title, `${parsed.date}T${parsed.startTime}:00`, `${parsed.date}T${parsed.endTime}:00`, parsed.description || '');
       await tgCall('sendMessage', {
         chat_id: TG_CHAT,
-        text: `✅ Calendar-д нэмэгдлээ!\n\n📌 ${parsed.title}\n📅 ${parsed.date}  ${parsed.startTime} – ${parsed.endTime}${parsed.description ? `\n📝 ${parsed.description}` : ''}`,
+        text: `✅ Calendar-д нэмэгдлээ!\n\n📌 ${parsed.title}\n📅 ${parsed.date}  ${parsed.startTime} – ${parsed.endTime}`,
       });
     } catch (e) {
       await tgSend(`❌ Calendar алдаа: ${e.message}`);
@@ -1026,30 +427,17 @@ async function handleText(msg) {
     return;
   }
 
-  if (text === '/events' || text === '/cal') {
-    if (!calOk()) {
-      await tgSend('⚠️ Google Calendar тохиргоогүй байна.');
-      return;
-    }
+  if (text === '/events') {
+    if (!calOk()) { await tgSend('⚠️ Google Calendar тохиргоогүй байна.'); return; }
     try {
       const events = await listUpcomingEvents(7);
-      if (!events.length) {
-        await tgSend('📅 Ойрын 7 хоногт calendar event байхгүй байна.\n\n_/cal [текст] — шинэ event нэмэх_');
-        return;
-      }
-      // Event бүрийг тусдаа мессеж + ❌ товчтой явуулна
+      if (!events.length) { await tgSend('📅 Ойрын 7 хоногт event байхгүй байна.'); return; }
       await tgCall('sendMessage', { chat_id: TG_CHAT, text: `📅 *Ойрын ${events.length} event:*`, parse_mode: 'Markdown' });
       for (const e of events) {
-        const time = formatEventTime(e);
-        const date = formatEventDate(e);
         await tgCall('sendMessage', {
           chat_id: TG_CHAT,
-          text: `📌 ${e.summary}\n🕐 ${date}  ${time}`,
-          reply_markup: {
-            inline_keyboard: [[
-              { text: '🗑 Устгах', callback_data: `caldel_${e.id}` },
-            ]],
-          },
+          text: `📌 ${e.summary}\n🕐 ${formatEventDate(e)}  ${formatEventTime(e)}`,
+          reply_markup: { inline_keyboard: [[{ text: '🗑 Устгах', callback_data: `caldel_${e.id}` }]] },
         });
       }
     } catch (e) {
@@ -1058,89 +446,65 @@ async function handleText(msg) {
     return;
   }
 
-  // ── Weekly report гараар дуудах ──────────────────────────────────
-  if (text === '/weekly') {
-    await tgCall('sendMessage', { chat_id: TG_CHAT, text: '📊 7 хоногийн тайлан бэлдэж байна...' });
-    try {
-      await sendWeeklyReport();
-    } catch (e) {
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '❌ Weekly report алдаа: ' + e.message });
-    }
-    return;
-  }
-
-  // ── Manual brief trigger ──────────────────────────────────────────
+  // ── Brief / Weekly ────────────────────────────────────────────────
   if (raw.replace(/@\w+/, '').trim().toLowerCase() === '/brief') {
     await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⏳ Брифинг бэлдэж байна...' });
-    try {
-      await sendBrief();
-    } catch (e) {
+    try { await sendBrief(); } catch (e) {
       await tgCall('sendMessage', { chat_id: TG_CHAT, text: '❌ Brief алдаа: ' + e.message });
     }
     return;
   }
 
-  if (text === '/help' || text === 'help') {
+  if (text === '/weekly') {
+    await tgCall('sendMessage', { chat_id: TG_CHAT, text: '📊 7 хоногийн тайлан бэлдэж байна...' });
+    try { await sendWeeklyReport(); } catch (e) {
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '❌ Weekly алдаа: ' + e.message });
+    }
+    return;
+  }
+
+  // ── Help ──────────────────────────────────────────────────────────
+  if (text === '/help') {
     await tgSend(
-      `🤖 *JARVIS — Бүх командууд*\n\n` +
-      `📅 *Google Calendar*\n` +
-      `/cal маргааш 3 цагт meeting — event нэмэх\n` +
-      `/cal margaash 3 tsagt meeting — (латинаар ч болно)\n` +
-      `/events — ойрын 7 хоногийн хуваарь + устгах\n\n` +
-      `📋 *Task Manager*\n` +
-      `/task [зүйл] — шинэ task нэмэх\n` +
-      `/tasks — бүх task жагсаах\n` +
-      `/done [n] — task дуусгах\n\n` +
+      `🤖 *J.A.R.V.I.S — Хувийн Bot*\n\n` +
+      `📅 *Calendar*\n` +
+      `/cal [текст] — event нэмэх\n` +
+      `/events — ойрын 7 хоногийн хуваарь\n\n` +
+      `📋 *Tasks*\n` +
+      `/task [зүйл] — нэмэх\n` +
+      `/tasks — жагсаах\n` +
+      `/done [n] — дуусгах\n\n` +
       `🧠 *Санах ой*\n` +
-      `/goal [зорилго] — зорилго хадгалах\n` +
-      `/goal — одоогийн зорилго харах\n` +
-      `/focus [зүйл] — өнөөдрийн focus тэмдэглэх\n` +
-      `/notion [текст] — Notion JARVIS page-д тэмдэглэх\n\n` +
-      `📊 *Өглөөний брифинг*\n` +
-      `/brief — өглөөний тойм одоо авах\n\n` +
-      `🏢 *LFS Бизнес*\n` +
-      `/bookings — хүлээгдэж буй захиалгууд\n` +
-      `/income [дүн] [тэмдэглэл] — орлого бүртгэх\n` +
-      `/revenue — өнөөдөр + сарын орлогын тайлан\n\n` +
+      `/goal [текст] — зорилго\n` +
+      `/focus [текст] — өнөөдрийн focus\n` +
+      `/notion [текст] — Notion-д тэмдэглэх\n\n` +
+      `📊 *Тайлан*\n` +
+      `/brief — өглөөний брифинг\n` +
+      `/weekly — 7 хоногийн тойм\n\n` +
       `💪 *Routine*\n` +
-      `/score — өнөөдрийн score + streak\n` +
-      `/dasgal — дасгал хийлээ ✅\n` +
-      `/hanzi — 汉字 судалсан ✅\n` +
-      `/nom — ном уншсан ✅\n` +
-      `/journal — journal бичсэн ✅\n` +
-      `/us [мл] — ус уусан бүртгэх 💧\n\n` +
-      `📸 *IG/FB Post*\n` +
-      `/week — долоо хоногийн post хуваарь\n` +
-      `_Зураг явуулахад → caption + IG/FB post_`
+      `/score — score + streak\n` +
+      `/dasgal · /hanzi · /nom · /journal\n` +
+      `/us [мл] — ус 💧`
     );
     return;
   }
 }
 
-// ══════════════════════════════════════════════════════════════════
-// VERCEL HANDLER
-// ══════════════════════════════════════════════════════════════════
+// ── WEBHOOK HANDLER ───────────────────────────────────────────────
 module.exports = async (req, res) => {
-  if (req.method !== 'POST') return res.status(200).send('JARVIS webhook OK');
-
-  // Telegram-д ШУУД хариулна — retry хийхгүй
+  if (req.method !== 'POST') return res.status(200).send('J.A.R.V.I.S OK');
   res.status(200).json({ ok: true });
-
   try {
     const upd = req.body;
     if (!upd || !UID) return;
-
     if (upd.callback_query) {
       await handleCallback(upd.callback_query);
-    } else if (upd.message?.photo && String(upd.message.chat.id) === String(TG_CHAT)) {
-      await handlePhoto(upd.message);
     } else if (upd.message?.text && String(upd.message.chat.id) === String(TG_CHAT)) {
       await handleText(upd.message);
     }
   } catch (e) {
-    console.error('[Webhook] Error:', e.message);
+    console.error('[JARVIS] Error:', e.message);
   }
-
 };
 
 module.exports.sendWeeklyReport = sendWeeklyReport;
