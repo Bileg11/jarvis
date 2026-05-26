@@ -6,7 +6,7 @@
 const fetch  = require('node-fetch');
 const { admin, dbPersonal, dbLFS } = require('../firebase');
 const { notionSave } = require('./notion');
-const { isConfigured: calOk, parseEvent, createEvent, listTodayEvents, formatEventTime } = require('./calendar');
+const { isConfigured: calOk, parseEvent, createEvent, listTodayEvents, listUpcomingEvents, deleteEvent, formatEventTime, formatEventDate } = require('./calendar');
 
 // Хувийн өгөгдөл → dbPersonal (routines, logs, tasks, revenue, bileg/profile)
 // LFS өгөгдөл   → dbLFS      (analytics, marketing, bookings)
@@ -430,6 +430,25 @@ async function handleCallback(cb) {
         chat_id: TG_CHAT,
         text: `❌ Цуцлагдлаа.\n\nНэр: ${bk.name} · ${bk.phone}`,
       });
+    }
+    return;
+  }
+
+  // ── Calendar event устгах ─────────────────────────────────────
+  if (cmd.startsWith('caldel_')) {
+    const eventId = cmd.slice(7);
+    try {
+      await deleteEvent(eventId);
+      await tgCall('editMessageReplyMarkup', {
+        chat_id: TG_CHAT, message_id: msgId,
+        reply_markup: { inline_keyboard: [] },
+      });
+      await tgCall('editMessageText', {
+        chat_id: TG_CHAT, message_id: msgId,
+        text: `🗑 ~~${(cb.message?.text || 'Event').split('\n')[0].replace('📌 ','')}~~ устгагдлаа.`,
+      });
+    } catch (e) {
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: `❌ Устгаж чадсангүй: ${e.message}` });
     }
     return;
   }
@@ -910,17 +929,26 @@ async function handleText(msg) {
       return;
     }
     try {
-      const events = await listTodayEvents();
+      const events = await listUpcomingEvents(7);
       if (!events.length) {
-        await tgSend('📅 Өнөөдөр calendar event байхгүй байна.');
+        await tgSend('📅 Ойрын 7 хоногт calendar event байхгүй байна.\n\n_/cal [текст] — шинэ event нэмэх_');
         return;
       }
-      let evMsg = '📅 *Өнөөдрийн хуваарь:*\n\n';
-      events.forEach(e => {
-        evMsg += `• ${formatEventTime(e)} — ${e.summary}\n`;
-      });
-      evMsg += `\n_/cal [текст] — шинэ event нэмэх_`;
-      await tgSend(evMsg);
+      // Event бүрийг тусдаа мессеж + ❌ товчтой явуулна
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: `📅 *Ойрын ${events.length} event:*`, parse_mode: 'Markdown' });
+      for (const e of events) {
+        const time = formatEventTime(e);
+        const date = formatEventDate(e);
+        await tgCall('sendMessage', {
+          chat_id: TG_CHAT,
+          text: `📌 ${e.summary}\n🕐 ${date}  ${time}`,
+          reply_markup: {
+            inline_keyboard: [[
+              { text: '🗑 Устгах', callback_data: `caldel_${e.id}` },
+            ]],
+          },
+        });
+      }
     } catch (e) {
       await tgSend(`❌ Calendar алдаа: ${e.message}`);
     }

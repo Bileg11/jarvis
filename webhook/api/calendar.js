@@ -156,6 +156,46 @@ async function listTodayEvents() {
   return d.items || [];
 }
 
+// ── Ирэх N хоногийн event-уудыг жагсаах ─────────────────────────
+async function listUpcomingEvents(days = 7) {
+  const token = await getAccessToken();
+
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const startOfDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), -8, 0, 0));
+  const endDay     = new Date(startOfDay.getTime() + days * 86400000);
+
+  const params = new URLSearchParams({
+    timeMin:      startOfDay.toISOString(),
+    timeMax:      endDay.toISOString(),
+    singleEvents: 'true',
+    orderBy:      'startTime',
+    maxResults:   '20',
+  });
+
+  const r = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d.items || [];
+}
+
+// ── Event устгах ──────────────────────────────────────────────────
+async function deleteEvent(eventId) {
+  const token = await getAccessToken();
+
+  const r = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
+    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+  );
+  // 204 No Content = амжилттай
+  if (r.status !== 204 && r.status !== 200) {
+    const d = await r.json().catch(() => ({}));
+    throw new Error(d.error?.message || `HTTP ${r.status}`);
+  }
+}
+
 // ── Event цагийг Монгол хэлбэрт хөрвүүлэх ────────────────────────
 function formatEventTime(event) {
   if (event.start.date) return 'Бүх өдөр';
@@ -166,4 +206,12 @@ function formatEventTime(event) {
   });
 }
 
-module.exports = { isConfigured, parseEvent, createEvent, listTodayEvents, formatEventTime };
+// ── Event огноог хэлбэрлэх ────────────────────────────────────────
+function formatEventDate(event) {
+  const dateStr = event.start.date || event.start.dateTime?.slice(0, 10);
+  if (!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('mn-MN', { month: 'short', day: 'numeric', weekday: 'short' });
+}
+
+module.exports = { isConfigured, parseEvent, createEvent, listTodayEvents, listUpcomingEvents, deleteEvent, formatEventTime, formatEventDate };
