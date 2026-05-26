@@ -1150,33 +1150,37 @@ async function handleText(msg) {
     return;
   }
 
-  // ── Free Chat — команд биш бүх мессеж ────────────────────────────
-  if (!GEMINI_URL) { await tgSend('⚠️ GEMINI_API_KEY тохиргоогүй.'); return; }
+  // ── Free Chat — GitHub Models (GPT-4o-mini), quota байхгүй ────────
+  const GH_TOKEN = process.env.SYSTEM_USE_TOKEN;
+  if (!GH_TOKEN) { await tgSend('⚠️ SYSTEM_USE_TOKEN тохиргоогүй.'); return; }
   try {
     const hist = await getChatHistory();
 
-    // Хэрэглэгчийн шинэ мессеж нэмж Gemini-д дамжуулах
-    const contents = [...hist, { role: 'user', parts: [{ text: raw }] }];
+    // History-г OpenAI формат руу хөрвүүлэх
+    const messages = [
+      { role: 'system', content: BILEG_SYSTEM.parts[0].text },
+      ...hist.map(m => ({
+        role:    m.role === 'model' ? 'assistant' : 'user',
+        content: m.parts?.[0]?.text || '',
+      })),
+      { role: 'user', content: raw },
+    ];
 
-    const resp = await fetch(GEMINI_URL, {
+    const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
       body: JSON.stringify({
-        system_instruction: BILEG_SYSTEM,
-        contents,
-        generationConfig: { maxOutputTokens: 800, temperature: 0.8 },
+        model:       'gpt-4o-mini',
+        messages,
+        max_tokens:  800,
+        temperature: 0.8,
       }),
     });
-    const data = await resp.json();
-
-    if (data.error) {
-      await tgSend(`⚠️ Gemini: ${data.error.message?.slice(0, 100)}`);
-      return;
-    }
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const data  = await resp.json();
+    const reply = data.choices?.[0]?.message?.content?.trim();
     if (!reply) { await tgSend('🤖 Хариу ирсэнгүй. Дахин оролд.'); return; }
 
-    // Хоёуланг history-д хадгалах (sliding window)
+    // Sliding window history хадгалах
     await saveChatHistory([
       ...hist,
       { role: 'user',  parts: [{ text: raw }] },
