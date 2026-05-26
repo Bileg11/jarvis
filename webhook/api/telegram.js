@@ -28,6 +28,23 @@ const GEMINI_URL = GEMINI_KEY
   ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
   : null;
 
+// ── BILEG SYSTEM INSTRUCTION — хэзээ ч мартахгүй core ────────────
+const BILEG_SYSTEM = { parts: [{ text:
+  `Чи J.A.R.V.I.S — Билэгийн хувийн AI туслагч.\n\n` +
+  `Билэгийн профайл:\n` +
+  `• 18 настай, Шанхайд ганцаараа амьдарч буй Монгол залуу\n` +
+  `• LFS Shanghai эрхэлдэг (bileg11.github.io) — Монгол аялагчдад VIP туслалцаа\n` +
+  `• 2026/06/28-нд HSK 4 шалгалт өгнө — ханзаар идэвхтэй бэлдэж байна\n` +
+  `• Улаанбаатарын Beauty Town-д өссөн, одоо Шанхайд\n` +
+  `• Tech: React, Firebase, Node.js, Railway\n` +
+  `• Зорилго: AI-г амьдралдаа бүрэн ашиглах, LFS-г бодит бизнес болгох\n\n` +
+  `Харилцах дүрэм:\n` +
+  `• Үргэлж Монголоор хариул\n` +
+  `• Найрсаг, шууд, товч — найз + mentor хослол\n` +
+  `• Дараагийн алхмыг санал бол\n` +
+  `• Telegram Markdown ашигла (*bold*, _italic_, \`code\`)`,
+}]};
+
 // ── HSK WORD BANK (HSK 4-6 хэцүү ханзууд) ───────────────────────
 const HSK_BANK = [
   { char: '焦虑', pinyin: 'jiāolǜ',    meaning: 'санаа зоволт, түгшүүр',         level: 5 },
@@ -85,6 +102,33 @@ async function saveBilegProfile(updates) {
       { merge: true }
     );
   } catch {}
+}
+
+// ── CHAT HISTORY — Sliding Window (max 10) ────────────────────────
+// Ганцхан doc: users/${UID}/history/chat  →  { messages: [...] }
+const HIST_REF = () => dbPersonal.doc(`users/${UID}/history/chat`);
+
+async function getChatHistory() {
+  try {
+    const snap = await HIST_REF().get();
+    return snap.exists ? (snap.data().messages || []) : [];
+  } catch { return []; }
+}
+
+async function saveChatHistory(msgs) {
+  try {
+    await HIST_REF().set({
+      messages:  msgs.slice(-10),          // sliding window
+      updatedAt: new Date().toISOString(),
+    });
+  } catch {}
+}
+
+// Хэрэглэгч эсвэл JARVIS-ийн нэг мөр нэмэх
+async function appendHistory(role, text) {
+  const hist = await getChatHistory();
+  hist.push({ role, parts: [{ text: String(text).slice(0, 600) }] });
+  await saveChatHistory(hist);
 }
 
 // ── TASK MANAGER ──────────────────────────────────────────────────
@@ -635,6 +679,13 @@ async function handleVoice(msg) {
     resultMsg += resultLines.join('\n');
     await tgSend(resultMsg);
 
+    // History-д хадгалах (Voice-to-Action)
+    await saveChatHistory([
+      ...((await getChatHistory())),
+      { role: 'user',  parts: [{ text: `[Voice] ${transcript}` }] },
+      { role: 'model', parts: [{ text: resultMsg }] },
+    ]);
+
   } catch (e) {
     console.error('[Voice] Error:', e.message);
     await tgSend(`❌ Voice алдаа: ${e.message}`);
@@ -1067,6 +1118,9 @@ async function handleText(msg) {
   if (text === '/help') {
     await tgSend(
       `🤖 *J.A.R.V.I.S v2.2 — Хувийн Bot*\n\n` +
+      `💬 *Чөлөөт яриа* 🆕\n` +
+      `Ямар ч команд биш текст → JARVIS чамтай ярина\n` +
+      `Сүүлийн 10 мессежийг санадаг (Memory)\n\n` +
       `📅 *Calendar*\n` +
       `/cal [текст] — event нэмэх\n` +
       `/events — ойрын 7 хоногийн хуваарь\n\n` +
@@ -1094,6 +1148,46 @@ async function handleText(msg) {
       `HSK ханзаар өгүүлбэр → оноо авах 🎯`
     );
     return;
+  }
+
+  // ── Free Chat — команд биш бүх мессеж ────────────────────────────
+  if (!GEMINI_URL) { await tgSend('⚠️ GEMINI_API_KEY тохиргоогүй.'); return; }
+  try {
+    const hist = await getChatHistory();
+
+    // Хэрэглэгчийн шинэ мессеж нэмж Gemini-д дамжуулах
+    const contents = [...hist, { role: 'user', parts: [{ text: raw }] }];
+
+    const resp = await fetch(GEMINI_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: BILEG_SYSTEM,
+        contents,
+        generationConfig: { maxOutputTokens: 800, temperature: 0.8 },
+      }),
+    });
+    const data = await resp.json();
+
+    if (data.error) {
+      await tgSend(`⚠️ Gemini: ${data.error.message?.slice(0, 100)}`);
+      return;
+    }
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!reply) { await tgSend('🤖 Хариу ирсэнгүй. Дахин оролд.'); return; }
+
+    // Хоёуланг history-д хадгалах (sliding window)
+    await saveChatHistory([
+      ...hist,
+      { role: 'user',  parts: [{ text: raw }] },
+      { role: 'model', parts: [{ text: reply }] },
+    ]);
+
+    await tgSend(reply);
+
+  } catch (e) {
+    console.error('[FreeChat] Error:', e.message);
+    await tgSend(`❌ Алдаа: ${e.message.slice(0, 80)}`);
   }
 }
 
