@@ -3,16 +3,11 @@
 // Vercel serverless — instant responses
 // Handles: chat commands, approval callbacks, manual photo posting
 
-const admin = require('firebase-admin');
 const fetch  = require('node-fetch');
+const { admin, dbPersonal, dbLFS } = require('../firebase');
 
-// Firebase singleton
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
-  });
-}
-const db = admin.firestore();
+// Хувийн өгөгдөл → dbPersonal (routines, logs, tasks, revenue, bileg/profile)
+// LFS өгөгдөл   → dbLFS      (analytics, marketing, bookings)
 
 const TG_TOKEN    = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT     = process.env.TELEGRAM_ID;
@@ -41,8 +36,9 @@ const tgEdit   = (msgId, caption) =>
   tgCall('editMessageCaption', { chat_id: TG_CHAT, message_id: msgId, caption, parse_mode: 'Markdown' });
 
 // ── FIRESTORE REFS ────────────────────────────────────────────────
-const pendingRef = () => db.doc(`users/${UID}/marketing/pendingPost`);
-const manualRef  = () => db.doc(`users/${UID}/marketing/manualState`);
+// LFS marketing state
+const pendingRef = () => dbLFS.doc(`users/${UID}/marketing/pendingPost`);
+const manualRef  = () => dbLFS.doc(`users/${UID}/marketing/manualState`);
 
 // ── META PUBLISH ──────────────────────────────────────────────────
 async function publishToMeta(caption, imageUrl) {
@@ -71,7 +67,7 @@ async function publishToMeta(caption, imageUrl) {
     await tgSend(`${igMsg}\n${fbMsg}`);
     // Сүүлийн post цагийг хадгална (post frequency alert-д хэрэгтэй)
     if (igData.id) {
-      db.doc(`users/${UID}/marketing/lastPost`).set({ postedAt: new Date().toISOString() }).catch(() => {});
+      dbLFS.doc(`users/${UID}/marketing/lastPost`).set({ postedAt: new Date().toISOString() }).catch(() => {});
     }
     return true;
   } catch (e) {
@@ -143,12 +139,12 @@ async function sendBrief() {
 
   // Бүх өгөгдлийг зэрэг уншина
   const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap, revenueSnap] = await Promise.all([
-    db.doc(`users/${UID}/analytics/${yesterday}`).get(),
-    db.doc(`users/${UID}/bileg/profile`).get(),
-    db.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
-    db.doc(`users/${UID}/routines/${yesterday}`).get(),
-    db.doc(`users/${UID}/logs/${yesterday}`).get(),
-    db.doc(`users/${UID}/revenue/${yesterday}`).get(),
+    dbLFS.doc(`users/${UID}/analytics/${yesterday}`).get(),       // LFS трафик
+    dbPersonal.doc(`users/${UID}/bileg/profile`).get(),           // хувийн
+    dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
+    dbPersonal.doc(`users/${UID}/routines/${yesterday}`).get(),   // хувийн
+    dbPersonal.doc(`users/${UID}/logs/${yesterday}`).get(),       // хувийн
+    dbPersonal.doc(`users/${UID}/revenue/${yesterday}`).get(),    // хувийн
   ]);
 
   // LFS аналитик
@@ -201,7 +197,7 @@ async function sendBrief() {
   if (GEMINI_KEY) {
     try {
       const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -256,14 +252,14 @@ async function sendBrief() {
 // ── BILEG PERSONAL MEMORY ────────────────────────────────────────
 async function getBilegProfile() {
   try {
-    const snap = await db.doc(`users/${UID}/bileg/profile`).get();
+    const snap = await dbPersonal.doc(`users/${UID}/bileg/profile`).get();
     return snap.exists ? snap.data() : {};
   } catch { return {}; }
 }
 
 async function saveBilegProfile(updates) {
   try {
-    await db.doc(`users/${UID}/bileg/profile`).set(
+    await dbPersonal.doc(`users/${UID}/bileg/profile`).set(
       { ...updates, updatedAt: new Date().toISOString() },
       { merge: true }
     );
@@ -273,17 +269,18 @@ async function saveBilegProfile(updates) {
 // ── TASK MANAGER ──────────────────────────────────────────────────
 async function getTasks() {
   try {
-    const snap = await db.collection(`users/${UID}/tasks`)
+    const snap = await dbPersonal.collection(`users/${UID}/tasks`)
       .where('done', '==', false)
-      .orderBy('createdAt', 'asc')
       .get();
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    return snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''));
   } catch { return []; }
 }
 
 async function addTask(text) {
   try {
-    await db.collection(`users/${UID}/tasks`).add({
+    await dbPersonal.collection(`users/${UID}/tasks`).add({
       text,
       done: false,
       createdAt: new Date().toISOString(),
@@ -296,7 +293,7 @@ async function doneTask(index) {
     const tasks = await getTasks();
     const task  = tasks[index - 1];
     if (!task) return null;
-    await db.doc(`users/${UID}/tasks/${task.id}`).update({ done: true, doneAt: new Date().toISOString() });
+    await dbPersonal.doc(`users/${UID}/tasks/${task.id}`).update({ done: true, doneAt: new Date().toISOString() });
     return task.text;
   } catch { return null; }
 }
@@ -307,8 +304,8 @@ const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shan
 async function getScore() {
   const d = todaySH();
   const [r, l] = await Promise.all([
-    db.doc(`users/${UID}/routines/${d}`).get(),
-    db.doc(`users/${UID}/logs/${d}`).get(),
+    dbPersonal.doc(`users/${UID}/routines/${d}`).get(),
+    dbPersonal.doc(`users/${UID}/logs/${d}`).get(),
   ]);
   const rt    = r.exists ? r.data() : {};
   const water = l.exists ? (l.data().water?.total_ml || 0) : 0;
@@ -325,7 +322,7 @@ async function getStreak(key) {
   for (let i = 0; i < 30; i++) {
     const d = new Date(now); d.setDate(d.getDate() - i);
     const ds = d.toLocaleDateString('sv');
-    const snap = await db.doc(`users/${UID}/routines/${ds}`).get();
+    const snap = await dbPersonal.doc(`users/${UID}/routines/${ds}`).get();
     if (!snap.exists || !snap.data()[key]) break;
     s++;
   }
@@ -333,17 +330,17 @@ async function getStreak(key) {
 }
 
 async function logRoutine(key) {
-  await db.doc(`users/${UID}/routines/${todaySH()}`).set(
+  await dbPersonal.doc(`users/${UID}/routines/${todaySH()}`).set(
     { [key]: true, updatedAt: new Date().toISOString() }, { merge: true }
   );
 }
 
 async function logWater(ml) {
   const d    = todaySH();
-  const snap = await db.doc(`users/${UID}/logs/${d}`).get();
+  const snap = await dbPersonal.doc(`users/${UID}/logs/${d}`).get();
   const cur  = snap.exists ? (snap.data().water?.total_ml || 0) : 0;
   const total = cur + ml;
-  await db.doc(`users/${UID}/logs/${d}`).set({ water: { total_ml: total } }, { merge: true });
+  await dbPersonal.doc(`users/${UID}/logs/${d}`).set({ water: { total_ml: total } }, { merge: true });
   return total;
 }
 
@@ -386,7 +383,7 @@ async function handleCallback(cb) {
   if (cmd.startsWith('bkc_') || cmd.startsWith('bkx_')) {
     const isConfirm = cmd.startsWith('bkc_');
     const bookingId = cmd.slice(4);
-    const bkRef     = db.collection(`users/${UID}/bookings`).doc(bookingId);
+    const bkRef     = dbLFS.collection(`users/${UID}/bookings`).doc(bookingId);
     const bkSnap    = await bkRef.get();
 
     if (!bkSnap.exists) {
@@ -681,7 +678,7 @@ async function handleText(msg) {
   }
 
   if (text === '/week' || text === 'week') {
-    const qSnap = await db.doc(`users/${UID}/marketing/weeklyQueue`).get();
+    const qSnap = await dbLFS.doc(`users/${UID}/marketing/weeklyQueue`).get();
     if (!qSnap.exists) { await tgSend('📅 Долоо хоногийн план байхгүй байна.'); return; }
     const q   = qSnap.data();
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
@@ -754,7 +751,7 @@ async function handleText(msg) {
 
   // ── Booking management ────────────────────────────────────────────
   if (text === '/bookings' || text === 'bookings') {
-    const snap = await db.collection(`users/${UID}/bookings`)
+    const snap = await dbLFS.collection(`users/${UID}/bookings`)
       .where('status', '==', 'pending')
       .get()
       .catch(() => ({ docs: [] }));
@@ -801,7 +798,7 @@ async function handleText(msg) {
     const amount = parseInt(incomeMatch[1]);
     const note   = (incomeMatch[2] || '').trim() || 'Тодорхойгүй';
     const d      = todaySH();
-    const ref    = db.doc(`users/${UID}/revenue/${d}`);
+    const ref    = dbPersonal.doc(`users/${UID}/revenue/${d}`);
     const snap   = await ref.get();
     const cur    = snap.exists ? snap.data() : { total: 0, entries: [] };
     const entries = [...(cur.entries || []), { amount, note, time: new Date().toISOString() }];
@@ -816,18 +813,18 @@ async function handleText(msg) {
 
   if (text === '/revenue') {
     const d         = todaySH();
-    const todaySnap = await db.doc(`users/${UID}/revenue/${d}`).get();
+    const todaySnap = await dbPersonal.doc(`users/${UID}/revenue/${d}`).get();
     const todayData = todaySnap.exists ? todaySnap.data() : { total: 0, entries: [] };
 
     // Энэ сарын нийт
-    const monthPrefix = d.slice(0, 7); // "2026-05"
-    const allRevSnap  = await db.collection(`users/${UID}/revenue`).get().catch(() => ({ docs: [] }));
+    const monthPrefix = d.slice(0, 7);
+    const allRevSnap  = await dbPersonal.collection(`users/${UID}/revenue`).get().catch(() => ({ docs: [] }));
     const monthTotal  = allRevSnap.docs
       .filter(doc => doc.id.startsWith(monthPrefix))
       .reduce((sum, doc) => sum + (doc.data().total || 0), 0);
 
-    // Booking lead count
-    const analyticsSnap = await db.doc(`users/${UID}/analytics/${d}`).get();
+    // Booking lead count (LFS)
+    const analyticsSnap = await dbLFS.doc(`users/${UID}/analytics/${d}`).get();
     const leads = analyticsSnap.exists ? (analyticsSnap.data().booking_lead || 0) : 0;
 
     const entries = (todayData.entries || []).slice(-5).reverse();

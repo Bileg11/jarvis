@@ -2,10 +2,8 @@
 // ── JARVIS PROACTIVE ALERTS ───────────────────────────────────────
 // Цаг тутамд шалгаж, Билэгт автоматаар мэдэгдэл явуулна
 
-const admin = require('firebase-admin');
 const fetch  = require('node-fetch');
-
-const db       = admin.firestore();
+const { dbPersonal, dbLFS } = require('../firebase');
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT  = process.env.TELEGRAM_ID;
 const UID      = process.env.USER_UID;
@@ -28,7 +26,7 @@ function todaySH() {
 // Хэрэв 12 цаг болтол хэн ч LFS-д хандаагүй бол → сануулга
 async function checkLFSActivity() {
   try {
-    const snap = await db.doc(`users/${UID}/analytics/${todaySH()}`).get();
+    const snap = await dbLFS.doc(`users/${UID}/analytics/${todaySH()}`).get();
     const users = snap.exists ? (snap.data().users || []) : [];
     if (users.length === 0) {
       await tg(
@@ -45,7 +43,7 @@ async function checkLFSActivity() {
 // Хийгдээгүй routine-уудыг жагсааж сануулна
 async function checkEveningRoutine() {
   try {
-    const snap  = await db.doc(`users/${UID}/routines/${todaySH()}`).get();
+    const snap  = await dbPersonal.doc(`users/${UID}/routines/${todaySH()}`).get();
     const rt    = snap.exists ? snap.data() : {};
 
     const items = [
@@ -72,7 +70,7 @@ async function checkEveningRoutine() {
 // Хэрэв 2+ хоног post хийгдээгүй бол → сануулга
 async function checkPostFrequency() {
   try {
-    const snap = await db.doc(`users/${UID}/marketing/lastPost`).get();
+    const snap = await dbLFS.doc(`users/${UID}/marketing/lastPost`).get();
     if (!snap.exists) return;
 
     const lastPostAt = snap.data().postedAt;

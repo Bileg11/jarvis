@@ -4,16 +4,11 @@
 // GET  /api/meta-webhook  — Meta webhook verification
 // POST /api/meta-webhook  — Incoming messages
 
-const admin = require('firebase-admin');
 const fetch  = require('node-fetch');
+const { admin, dbPersonal, dbLFS } = require('../firebase');
 
-// Firebase singleton (telegram.js-тэй хуваалцана)
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
-  });
-}
-const db = admin.firestore();
+// LFS чатбот өгөгдөл → dbLFS
+// Morning brief-д хувийн өгөгдөл → dbPersonal
 
 const META_TOKEN   = process.env.ACCESS_TOKEN_META;
 const IG_ID        = process.env.INSTAGRAM_BUSINESS_ID;
@@ -39,12 +34,12 @@ async function tgNotify(text) {
 }
 
 async function getReplied() {
-  const snap = await db.doc(`users/${UID}/marketing/repliedDMs`).get();
+  const snap = await dbLFS.doc(`users/${UID}/marketing/repliedDMs`).get();
   return new Set(snap.exists ? (snap.data().ids || []) : []);
 }
 
 async function markReplied(id) {
-  const ref  = db.doc(`users/${UID}/marketing/repliedDMs`);
+  const ref  = dbLFS.doc(`users/${UID}/marketing/repliedDMs`);
   const snap = await ref.get();
   const ids  = snap.exists ? (snap.data().ids || []) : [];
   if (!ids.includes(id)) {
@@ -60,7 +55,7 @@ const HISTORY_TTL   = 14 * 24 * 60 * 60 * 1000;
 
 async function getChatHistory(senderId) {
   try {
-    const snap = await db.doc(`users/${UID}/chatHistory/${senderId}`).get();
+    const snap = await dbLFS.doc(`users/${UID}/chatHistory/${senderId}`).get();
     if (!snap.exists) return [];
     const data = snap.data();
     if (data.updatedAt && Date.now() - new Date(data.updatedAt).getTime() > HISTORY_TTL) return [];
@@ -70,7 +65,7 @@ async function getChatHistory(senderId) {
 
 async function saveChatHistory(senderId, userText, botReply) {
   try {
-    const ref  = db.doc(`users/${UID}/chatHistory/${senderId}`);
+    const ref  = dbLFS.doc(`users/${UID}/chatHistory/${senderId}`);
     const snap = await ref.get();
     const msgs = snap.exists ? (snap.data().messages || []) : [];
     msgs.push({ role: 'user',  text: userText });
@@ -83,14 +78,14 @@ async function saveChatHistory(senderId, userText, botReply) {
 // ── USER PROFILE (Firestore урт хугацааны санах ой) ───────────────
 async function getProfile(senderId) {
   try {
-    const snap = await db.doc(`users/${UID}/profiles/${senderId}`).get();
+    const snap = await dbLFS.doc(`users/${UID}/profiles/${senderId}`).get();
     return snap.exists ? snap.data() : null;
   } catch { return null; }
 }
 
 async function saveProfile(senderId, updates) {
   try {
-    await db.doc(`users/${UID}/profiles/${senderId}`).set(
+    await dbLFS.doc(`users/${UID}/profiles/${senderId}`).set(
       { ...updates, updatedAt: new Date().toISOString() },
       { merge: true }
     );
@@ -104,7 +99,7 @@ function todayKey() {
 
 async function trackDaily(field) {
   try {
-    await db.doc(`users/${UID}/analytics/${todayKey()}`).set(
+    await dbLFS.doc(`users/${UID}/analytics/${todayKey()}`).set(
       { [field]: admin.firestore.FieldValue.increment(1) },
       { merge: true }
     );
@@ -113,7 +108,7 @@ async function trackDaily(field) {
 
 async function trackDailyUser(senderId) {
   try {
-    await db.doc(`users/${UID}/analytics/${todayKey()}`).set(
+    await dbLFS.doc(`users/${UID}/analytics/${todayKey()}`).set(
       { users: admin.firestore.FieldValue.arrayUnion(senderId) },
       { merge: true }
     );
@@ -126,14 +121,18 @@ async function sendMorningBrief() {
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
     const [analyticsSnap, bilegSnap, tasksSnap] = await Promise.all([
-      db.doc(`users/${UID}/analytics/${yesterday}`).get(),
-      db.doc(`users/${UID}/bileg/profile`).get(),
-      db.collection(`users/${UID}/tasks`).where('done', '==', false).orderBy('createdAt', 'asc').limit(5).get(),
+      dbLFS.doc(`users/${UID}/analytics/${yesterday}`).get(),
+      dbPersonal.doc(`users/${UID}/bileg/profile`).get(),
+      dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
     ]);
 
     const d             = analyticsSnap.exists ? analyticsSnap.data() : {};
     const bileg         = bilegSnap.exists ? bilegSnap.data() : {};
-    const tasks         = tasksSnap.docs.map(doc => doc.data().text);
+    const tasks         = tasksSnap.docs
+      .map(doc => doc.data())
+      .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
+      .slice(0, 5)
+      .map(d => d.text);
     const userCount     = (d.users    || []).length;
     const guideCount    = d.guide     || 0;
     const medicalCount  = d.medical   || 0;
@@ -152,7 +151,7 @@ async function sendMorningBrief() {
     if (GEMINI_KEY) {
       try {
         const r = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -203,8 +202,8 @@ async function sendDailyReport() {
   try {
     const today = todayKey();
     const [analyticsSnap, revenueSnap] = await Promise.all([
-      db.doc(`users/${UID}/analytics/${today}`).get(),
-      db.doc(`users/${UID}/revenue/${today}`).get(),
+      dbLFS.doc(`users/${UID}/analytics/${today}`).get(),
+      dbPersonal.doc(`users/${UID}/revenue/${today}`).get(),
     ]);
     const d = analyticsSnap.exists ? analyticsSnap.data() : {};
 
@@ -354,7 +353,7 @@ async function generateReply(userText, history = [], profile = null) {
       ];
 
       const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
         {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },

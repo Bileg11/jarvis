@@ -6,17 +6,17 @@
 //   2. Telegram-д confirm/cancel товчтой мэдэгдэл явуулах
 //   3. Өдрийн аналитик бүртгэх
 
-const admin = require('firebase-admin');
 const fetch  = require('node-fetch');
-
-const db       = admin.firestore();
+const { admin, dbLFS } = require('../firebase');
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT  = process.env.TELEGRAM_ID;
 const UID      = process.env.USER_UID;
 
 module.exports = async (req, res) => {
   // CORS — GitHub Pages-аас дуудахад шаардлагатай
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = req.headers.origin || '';
+  const allowed = ['https://bileg11.github.io', 'http://localhost'];
+  res.setHeader('Access-Control-Allow-Origin', allowed.some(o => origin.startsWith(o)) ? origin : 'https://bileg11.github.io');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -45,11 +45,11 @@ module.exports = async (req, res) => {
       createdAt: new Date().toISOString(),
     };
 
-    await db.collection(`users/${UID}/bookings`).doc(bookingId).set(booking);
+    await dbLFS.collection(`users/${UID}/bookings`).doc(bookingId).set(booking);
 
     // Аналитик — booking_lead тоолуур
     const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
-    db.doc(`users/${UID}/analytics/${today}`).set(
+    dbLFS.doc(`users/${UID}/analytics/${today}`).set(
       { booking_lead: admin.firestore.FieldValue.increment(1) },
       { merge: true }
     ).catch(() => {});
