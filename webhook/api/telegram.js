@@ -133,38 +133,62 @@ async function fetchNewImage(query = 'shanghai') {
 async function sendBrief() {
   const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const now       = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const todaySHx  = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
-  // Tasks: orderBy index шаардахгүй байхаар get + sort
-  const [analyticsSnap, bilegSnap, tasksRaw] = await Promise.all([
+  // Бүх өгөгдлийг зэрэг уншина
+  const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap] = await Promise.all([
     db.doc(`users/${UID}/analytics/${yesterday}`).get(),
     db.doc(`users/${UID}/bileg/profile`).get(),
     db.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
+    db.doc(`users/${UID}/routines/${yesterday}`).get(),
+    db.doc(`users/${UID}/logs/${yesterday}`).get(),
   ]);
 
-  const d             = analyticsSnap.exists ? analyticsSnap.data() : {};
-  const bileg         = bilegSnap.exists ? bilegSnap.data() : {};
-  const tasks         = tasksRaw.docs
-    .map(doc => ({ ...doc.data() }))
+  // LFS аналитик
+  const lfs           = analyticsSnap.exists ? analyticsSnap.data() : {};
+  const userCount     = (lfs.users || []).length;
+  const guideCount    = lfs.guide    || 0;
+  const medicalCount  = lfs.medical  || 0;
+  const agentCount    = lfs.agent    || 0;
+  const escalateCount = lfs.escalate || 0;
+
+  // Билэгийн мэдээлэл
+  const bileg = bilegSnap.exists ? bilegSnap.data() : {};
+
+  // Хийх tasks
+  const tasks = tasksRaw.docs
+    .map(doc => doc.data())
     .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
     .slice(0, 5)
     .map(t => t.text);
 
-  const userCount     = (d.users    || []).length;
-  const guideCount    = d.guide     || 0;
-  const medicalCount  = d.medical   || 0;
-  const agentCount    = d.agent     || 0;
-  const escalateCount = d.escalate  || 0;
+  // Өчигдрийн routine
+  const rt    = routineSnap.exists ? routineSnap.data() : {};
+  const water = logSnap.exists ? (logSnap.data().water?.total_ml || 0) : 0;
+  const routineItems = [
+    { key: 'exercise', label: 'Дасгал',  emoji: '💪' },
+    { key: 'hanzi',    label: '汉字',     emoji: '🈶' },
+    { key: 'read',     label: 'Уншилт',  emoji: '📚' },
+    { key: 'journal',  label: 'Journal', emoji: '📝' },
+  ];
+  const done   = routineItems.filter(r => rt[r.key]);
+  const missed = routineItems.filter(r => !rt[r.key]);
 
-  const promptParts = [
-    `LFS Shanghai өчигдрийн тоо: ${userCount} хэрэглэгч, ${guideCount} гайд, ${medicalCount} эмнэлэг, ${agentCount} ажилтан.`,
-    bileg.goal  ? `Билэгийн зорилго: "${bileg.goal}".`  : '',
-    bileg.focus ? `Өнөөдрийн focus: "${bileg.focus}".` : '',
-    tasks.length ? `Хийх tasks: ${tasks.slice(0,3).join(', ')}.` : '',
-    'Билэгт 1-2 өгүүлбэр практик урам зоригтой зөвлөгөө өг. Монголоор, дотно.',
+  // Gemini-д бүх контекст өгч proactive зөвлөгөө авна
+  const context = [
+    `Өнөөдөр: ${todaySHx}.`,
+    `LFS өчигдөр: ${userCount} хэрэглэгч, ${guideCount} гайд, ${medicalCount} эмнэлэг, ${agentCount} ажилтан.`,
+    done.length   ? `Хийсэн: ${done.map(r => r.label).join(', ')}.`   : 'Өчигдөр routine хийгээгүй.',
+    missed.length ? `Хийгээгүй: ${missed.map(r => r.label).join(', ')}.` : '',
+    `Ус: ${water}мл.`,
+    bileg.goal    ? `Зорилго: "${bileg.goal}".`  : '',
+    tasks.length  ? `Хийх tasks: ${tasks.slice(0,3).join(', ')}.` : '',
+    `Чи бол Билэгийн хувийн ЖАРВИС. Өчигдрийн үр дүнд тулгуурлан өнөөдрийн 2-3 өгүүлбэр проактив, шууд, дотно зөвлөгөө өг. Хийгээгүй зүйлийг сануул. Монголоор, анхаарлын тэмдэггүй.`,
   ].filter(Boolean).join(' ');
 
-  let advice = 'Өнөөдөр нэг жижиг алхам хий.';
+  let advice = 'Өнөөдөр нэг алхам урагш.';
   if (GEMINI_KEY) {
     try {
       const r = await fetch(
@@ -173,8 +197,8 @@ async function sendBrief() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: promptParts }] }],
-            generationConfig: { maxOutputTokens: 150, temperature: 0.8 },
+            contents: [{ role: 'user', parts: [{ text: context }] }],
+            generationConfig: { maxOutputTokens: 200, temperature: 0.85 },
           }),
         }
       );
@@ -185,25 +209,34 @@ async function sendBrief() {
     } catch {}
   }
 
-  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   const days    = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
   const dayName = days[now.getDay()];
-  const dateStr = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
-  // Plain text — Markdown parse error-оос зайлсхийх
   let msg = '';
   msg += `🌅 Өглөөний мэнд, Билэг.\n`;
-  msg += `${dayName}, ${dateStr} | Шанхай 07:30\n`;
-  msg += `────────────────────\n`;
-  msg += `📊 Өчигдрийн LFS:\n`;
-  msg += `Хандсан: ${userCount} · Гайд: ${guideCount} · Эмнэлэг: ${medicalCount} · Ажилтан: ${agentCount}\n`;
-  if (escalateCount > 0) msg += `⚠️ Бухимдсан: ${escalateCount}\n`;
-  if (bileg.goal)  msg += `\n🎯 ${bileg.goal}\n`;
+  msg += `${dayName}, ${todaySHx} | Шанхай 07:30\n\n`;
+
+  // Өчигдрийн үр дүн
+  msg += `📊 Өчигдрийн тойм:\n`;
+  msg += `LFS: ${userCount} хандсан · Гайд: ${guideCount} · Эмнэлэг: ${medicalCount}`;
+  if (agentCount)    msg += ` · Ажилтан: ${agentCount}`;
+  if (escalateCount) msg += `\n⚠️ Бухимдсан: ${escalateCount}`;
+  msg += `\n`;
+  msg += `Routine: `;
+  msg += done.length   ? done.map(r => r.emoji + r.label).join(' ') : 'хийгдээгүй';
+  msg += ` | Ус: ${water}мл\n`;
+
+  // Хийх зүйлс
   if (tasks.length) {
     msg += `\n📋 Хийх (${tasks.length}):\n`;
     tasks.forEach((t, i) => { msg += `${i + 1}. ${t}\n`; });
   }
-  msg += `\n💡 ${advice}\n`;
+
+  // Зорилго
+  if (bileg.goal) msg += `\n🎯 ${bileg.goal}\n`;
+
+  // Жарвисын зөвлөгөө
+  msg += `\n💡 Жарвис:\n${advice}\n`;
   msg += `\n⚡ Жарвис ажиллаж байна.`;
 
   await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
