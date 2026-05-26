@@ -733,7 +733,6 @@ async function handleText(msg) {
     const goal = raw.slice(6).trim();
     await saveBilegProfile({ goal });
     await tgSend(`🎯 Зорилго хадгаллаа:\n_"${goal}"_\n\nЖарвис өглөө бүр үүнийг чамд сануулна.`);
-    notionSave(`🎯 Зорилго: ${goal}`, `Тавьсан огноо: ${todaySH()}`, '🎯').catch(() => {});
     return;
   }
 
@@ -826,8 +825,6 @@ async function handleText(msg) {
       chat_id: TG_CHAT,
       text: `💰 Орлого бүртгэгдлээ.\n\n+${amount.toLocaleString()}₮ — ${note}\nӨнөөдрийн нийт: ${total.toLocaleString()}₮`,
     });
-    // Notion-д auto-save
-    notionSave(`💰 +${amount.toLocaleString()}₮ — ${note}`, `Огноо: ${d}\nНийт өдрийн: ${total.toLocaleString()}₮`, '💰').catch(() => {});
     return;
   }
 

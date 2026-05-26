@@ -6,7 +6,6 @@
 
 const fetch  = require('node-fetch');
 const { admin, dbPersonal, dbLFS } = require('../firebase');
-const { notionSave } = require('./notion');
 
 // LFS чатбот өгөгдөл → dbLFS
 // Morning brief-д хувийн өгөгдөл → dbPersonal
@@ -574,12 +573,6 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
       `⚠️ *СЭРЭМЖЛҮҮЛЭГ:* Хэрэглэгч *${displayName}* чат дээр бухимдалтай эсвэл яаруу байна. Чатыг шалгана уу.`
     ).catch(() => {});
     trackDaily('escalate');
-    // Notion-д автоматаар тэмдэглэнэ
-    notionSave(
-      `⚠️ Эскалаци — ${displayName}`,
-      `Мессеж: "${text.slice(0, 500)}"\nОгноо: ${new Date().toLocaleString('mn-MN', { timeZone: 'Asia/Shanghai' })}`,
-      '⚠️'
-    ).catch(() => {});
   }
 
   const ok = await sendWithButtons(senderId, cleanReply, platform, accessToken);
