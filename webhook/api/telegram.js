@@ -190,23 +190,23 @@ async function sendBrief() {
   const dayName = days[now.getDay()];
   const dateStr = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
-  const lines = [
-    '🌅 *Өглөөний мэнд, Билэг.*',
-    `_${dayName}, ${dateStr} | Шанхай 07:30_`,
-    '`────────────────────`',
-    '📊 *Өчигдрийн LFS:*',
-    `• Хандсан: *${userCount}* · Гайд: *${guideCount}* · Эмнэлэг: *${medicalCount}* · Ажилтан: *${agentCount}*`,
-  ];
-  if (escalateCount > 0) lines.push(`• ⚠️ Бухимдсан: *${escalateCount}*`);
-  if (bileg.goal)        lines.push(`\n🎯 _${bileg.goal}_`);
+  // Plain text — Markdown parse error-оос зайлсхийх
+  let msg = '';
+  msg += `🌅 Өглөөний мэнд, Билэг.\n`;
+  msg += `${dayName}, ${dateStr} | Шанхай 07:30\n`;
+  msg += `────────────────────\n`;
+  msg += `📊 Өчигдрийн LFS:\n`;
+  msg += `Хандсан: ${userCount} · Гайд: ${guideCount} · Эмнэлэг: ${medicalCount} · Ажилтан: ${agentCount}\n`;
+  if (escalateCount > 0) msg += `⚠️ Бухимдсан: ${escalateCount}\n`;
+  if (bileg.goal)  msg += `\n🎯 ${bileg.goal}\n`;
   if (tasks.length) {
-    lines.push(`\n📋 *Хийх (${tasks.length}):*`);
-    tasks.forEach((t, i) => lines.push(`${i + 1}. ${t}`));
+    msg += `\n📋 Хийх (${tasks.length}):\n`;
+    tasks.forEach((t, i) => { msg += `${i + 1}. ${t}\n`; });
   }
-  lines.push(`\n💡 ${advice}`);
-  lines.push('\n⚡ _Жарвис ажиллаж байна._');
+  msg += `\n💡 ${advice}\n`;
+  msg += `\n⚡ Жарвис ажиллаж байна.`;
 
-  await tgSend(lines.join('\n'));
+  await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
 }
 
 // ── BILEG PERSONAL MEMORY ────────────────────────────────────────
@@ -668,13 +668,13 @@ async function handleText(msg) {
     return;
   }
 
-  // ── Manual brief trigger (test хийхэд хэрэгтэй) ─────────────────
-  if (text === '/brief') {
-    await tgSend('⏳ Брифинг бэлдэж байна...');
+  // ── Manual brief trigger ──────────────────────────────────────────
+  if (raw.replace(/@\w+/, '').trim().toLowerCase() === '/brief') {
+    await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⏳ Брифинг бэлдэж байна...' });
     try {
       await sendBrief();
     } catch (e) {
-      await tgSend('❌ Brief алдаа: ' + e.message);
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '❌ Brief алдаа: ' + e.message });
     }
     return;
   }
