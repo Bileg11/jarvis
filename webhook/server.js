@@ -10,6 +10,7 @@ const express   = require('express');
 const cron      = require('node-cron');
 const tgHandler = require('./api/telegram');
 const metaHook  = require('./api/meta-webhook');
+const alerts    = require('./api/alerts');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -35,8 +36,26 @@ cron.schedule('30 23 * * *', () => {
 });
 
 // ── DAILY EXECUTIVE REPORT — өдөр бүр 22:00 (UTC+8 = 14:00 UTC) ──
-// Railway UTC цаг дээр ажилладаг тул 14:00 UTC = Шанхайн 22:00
 cron.schedule('0 14 * * *', () => {
   console.log('[JARVIS] Sending daily report...');
   metaHook.sendDailyReport();
+});
+
+// ── PROACTIVE ALERTS ──────────────────────────────────────────────
+// 12:00 Шанхай (04:00 UTC) — LFS идэвхгүй байдал шалгана
+cron.schedule('0 4 * * *', () => {
+  console.log('[JARVIS] Checking LFS activity...');
+  alerts.checkLFSActivity();
+});
+
+// 20:00 Шанхай (12:00 UTC) — Routine хийгдсэн эсэх шалгана
+cron.schedule('0 12 * * *', () => {
+  console.log('[JARVIS] Checking evening routine...');
+  alerts.checkEveningRoutine();
+});
+
+// 10:00 Шанхай (02:00 UTC) — Instagram post давтамж шалгана
+cron.schedule('0 2 * * *', () => {
+  console.log('[JARVIS] Checking post frequency...');
+  alerts.checkPostFrequency();
 });

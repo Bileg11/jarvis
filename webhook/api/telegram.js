@@ -69,6 +69,10 @@ async function publishToMeta(caption, imageUrl) {
     const igMsg = igData.id    ? '✅ Instagram нийтлэгдлээ!'              : '❌ Instagram алдаа';
     const fbMsg = !fbData.error ? '✅ Facebook нийтлэгдлээ!'              : `❌ FB: ${fbData.error?.message}`;
     await tgSend(`${igMsg}\n${fbMsg}`);
+    // Сүүлийн post цагийг хадгална (post frequency alert-д хэрэгтэй)
+    if (igData.id) {
+      db.doc(`users/${UID}/marketing/lastPost`).set({ postedAt: new Date().toISOString() }).catch(() => {});
+    }
     return true;
   } catch (e) {
     await tgSend(`❌ Meta алдаа: ${e.message}`);
