@@ -968,32 +968,36 @@ async function handleText(msg) {
 
   if (text === '/help' || text === 'help') {
     await tgSend(
-      `🤖 *JARVIS Commands*\n\n` +
-      `*📅 Calendar*\n` +
-      `/cal [текст] — event нэмэх (жишээ: /cal маргааш 3 цагт meeting)\n` +
-      `/events — өнөөдрийн хуваарь\n\n` +
-      `*📋 Task Manager*\n` +
+      `🤖 *JARVIS — Бүх командууд*\n\n` +
+      `📅 *Google Calendar*\n` +
+      `/cal маргааш 3 цагт meeting — event нэмэх\n` +
+      `/cal margaash 3 tsagt meeting — (латинаар ч болно)\n` +
+      `/events — ойрын 7 хоногийн хуваарь + устгах\n\n` +
+      `📋 *Task Manager*\n` +
       `/task [зүйл] — шинэ task нэмэх\n` +
-      `/tasks — бүх task харах\n` +
+      `/tasks — бүх task жагсаах\n` +
       `/done [n] — task дуусгах\n\n` +
-      `*🧠 Санах ой*\n` +
+      `🧠 *Санах ой*\n` +
       `/goal [зорилго] — зорилго хадгалах\n` +
-      `/focus [зүйл] — өнөөдрийн focus\n` +
-      `/notion [текст] — Notion-д тэмдэглэх\n` +
-      `/brief — өглөөний брифинг одоо авах\n\n` +
-      `*🏢 LFS Бизнес*\n` +
+      `/goal — одоогийн зорилго харах\n` +
+      `/focus [зүйл] — өнөөдрийн focus тэмдэглэх\n` +
+      `/notion [текст] — Notion JARVIS page-д тэмдэглэх\n\n` +
+      `📊 *Өглөөний брифинг*\n` +
+      `/brief — өглөөний тойм одоо авах\n\n` +
+      `🏢 *LFS Бизнес*\n` +
       `/bookings — хүлээгдэж буй захиалгууд\n` +
       `/income [дүн] [тэмдэглэл] — орлого бүртгэх\n` +
-      `/revenue — орлогын тайлан\n\n` +
-      `*💪 Routine*\n` +
-      `/score — Өнөөдрийн score + streak\n` +
-      `/dasgal — Дасгал хийлээ ✅\n` +
+      `/revenue — өнөөдөр + сарын орлогын тайлан\n\n` +
+      `💪 *Routine*\n` +
+      `/score — өнөөдрийн score + streak\n` +
+      `/dasgal — дасгал хийлээ ✅\n` +
       `/hanzi — 汉字 судалсан ✅\n` +
-      `/nom — Ном уншсан ✅\n` +
-      `/journal — Journal бичсэн ✅\n` +
-      `/us 500 — 500мл ус 💧\n` +
-      `/week — Долоо хоногийн post план\n\n` +
-      `_Зураг явуулахад → IG post_`
+      `/nom — ном уншсан ✅\n` +
+      `/journal — journal бичсэн ✅\n` +
+      `/us [мл] — ус уусан бүртгэх 💧\n\n` +
+      `📸 *IG/FB Post*\n` +
+      `/week — долоо хоногийн post хуваарь\n` +
+      `_Зураг явуулахад → caption + IG/FB post_`
     );
     return;
   }
