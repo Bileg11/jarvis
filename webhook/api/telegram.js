@@ -1,24 +1,68 @@
 'use strict';
-// ── JARVIS PERSONAL TELEGRAM BOT ─────────────────────────────────
-// Зөвхөн Билэгийн хувийн зүйлс:
-//   routine, tasks, goal, calendar, gmail, notion, brief
+// ── JARVIS PERSONAL TELEGRAM BOT — v2.2 ──────────────────────────
+// Sprint 2: Voice-to-Action Agent      (handleVoice)
+// Sprint 3: HSK & Chinese Journal Coach (/journal upgrade)
+// Sprint 5: HSK Blitz Mode             (sendBrief + voice eval)
+// Sprint 6: Hook & Script Machine      (/hook + notionSaveScript)
 
 const fetch  = require('node-fetch');
-const { dbPersonal } = require('../firebase');
+const { dbPersonal }  = require('../firebase');
 const { notionSave }  = require('./notion');
-const { isConfigured: calOk, parseEvent, createEvent, listTodayEvents, listUpcomingEvents, deleteEvent, formatEventTime, formatEventDate } = require('./calendar');
+const {
+  isConfigured: calOk,
+  parseEvent,
+  createEvent,
+  listTodayEvents,
+  listUpcomingEvents,
+  deleteEvent,
+  formatEventTime,
+  formatEventDate,
+} = require('./calendar');
 const { isConfigured: gmailOk, getUnreadEmails } = require('./gmail');
 
-const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
-const TG_CHAT  = process.env.TELEGRAM_ID;
-const UID      = process.env.USER_UID;
+const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
+const TG_CHAT    = process.env.TELEGRAM_ID;
+const UID        = process.env.USER_UID;
+const GEMINI_KEY = process.env.GEMINI_API_KEY;
+const GEMINI_URL = GEMINI_KEY
+  ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
+  : null;
+
+// ── HSK WORD BANK (HSK 4-6 хэцүү ханзууд) ───────────────────────
+const HSK_BANK = [
+  { char: '焦虑', pinyin: 'jiāolǜ',    meaning: 'санаа зоволт, түгшүүр',         level: 5 },
+  { char: '尴尬', pinyin: 'gāngà',     meaning: 'эвгүй байдал',                  level: 6 },
+  { char: '逐渐', pinyin: 'zhújiàn',   meaning: 'аажмаар',                        level: 4 },
+  { char: '坚持', pinyin: 'jiānchí',   meaning: 'тэвчих, үргэлжлүүлэх',          level: 4 },
+  { char: '影响', pinyin: 'yǐngxiǎng', meaning: 'нөлөөлөх, нөлөө',               level: 4 },
+  { char: '提高', pinyin: 'tígāo',     meaning: 'дээшлүүлэх, нэмэгдүүлэх',       level: 4 },
+  { char: '复杂', pinyin: 'fùzá',      meaning: 'төвөгтэй, нарийн',               level: 5 },
+  { char: '环境', pinyin: 'huánjìng',  meaning: 'орчин, тойрон',                  level: 4 },
+  { char: '机会', pinyin: 'jīhuì',     meaning: 'боломж, тохиолдол',              level: 4 },
+  { char: '努力', pinyin: 'nǔlì',      meaning: 'хичээх, хөдөлмөрлөх',           level: 4 },
+  { char: '压力', pinyin: 'yālì',      meaning: 'дарамт, стресс',                 level: 5 },
+  { char: '成功', pinyin: 'chénggōng', meaning: 'амжилт, амжилтанд хүрэх',       level: 4 },
+  { char: '习惯', pinyin: 'xíguàn',    meaning: 'зуршил, дадал',                  level: 4 },
+  { char: '挑战', pinyin: 'tiǎozhàn',  meaning: 'сорилт, сорин тулгарах',         level: 5 },
+  { char: '突破', pinyin: 'tūpò',      meaning: 'нэвтэрч гарах, шинэ ололт',      level: 5 },
+  { char: '目标', pinyin: 'mùbiāo',    meaning: 'зорилт, зорилго',               level: 4 },
+  { char: '规律', pinyin: 'guīlǜ',     meaning: 'дэг журам, тогтмол хэв',         level: 5 },
+  { char: '专注', pinyin: 'zhuānzhù',  meaning: 'төвлөрөх, анхаарлаа хандуулах', level: 5 },
+  { char: '积累', pinyin: 'jīlěi',     meaning: 'хуримтлуулах, цуглуулах',        level: 5 },
+  { char: '执行', pinyin: 'zhíxíng',   meaning: 'биелүүлэх, гүйцэтгэх',          level: 5 },
+  { char: '效率', pinyin: 'xiàolǜ',    meaning: 'үр ашиг, хурд',                  level: 5 },
+  { char: '竞争', pinyin: 'jìngzhēng', meaning: 'өрсөлдөх, өрсөлдөөн',           level: 5 },
+  { char: '发展', pinyin: 'fāzhǎn',    meaning: 'хөгжих, хөгжүүлэх',              level: 4 },
+  { char: '解决', pinyin: 'jiějué',    meaning: 'шийдвэрлэх, шийдэх',             level: 4 },
+  { char: '创业', pinyin: 'chuàngyè',  meaning: 'бизнес эхлүүлэх',               level: 6 },
+];
 
 // ── TELEGRAM HELPERS ──────────────────────────────────────────────
 async function tgCall(method, body) {
   const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/${method}`, {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body:    JSON.stringify(body),
   });
   return r.json();
 }
@@ -37,7 +81,8 @@ async function getBilegProfile() {
 async function saveBilegProfile(updates) {
   try {
     await dbPersonal.doc(`users/${UID}/bileg/profile`).set(
-      { ...updates, updatedAt: new Date().toISOString() }, { merge: true }
+      { ...updates, updatedAt: new Date().toISOString() },
+      { merge: true }
     );
   } catch {}
 }
@@ -64,7 +109,9 @@ async function doneTask(index) {
     const tasks = await getTasks();
     const task  = tasks[index - 1];
     if (!task) return null;
-    await dbPersonal.doc(`users/${UID}/tasks/${task.id}`).update({ done: true, doneAt: new Date().toISOString() });
+    await dbPersonal.doc(`users/${UID}/tasks/${task.id}`).update({
+      done: true, doneAt: new Date().toISOString(),
+    });
     return task.text;
   } catch { return null; }
 }
@@ -81,7 +128,8 @@ async function getScore() {
   const rt    = r.exists ? r.data() : {};
   const water = l.exists ? (l.data().water?.total_ml || 0) : 0;
   const score = Math.min(100, Math.round(
-    (water/2000*25) + (rt.exercise?20:0) + (rt.hanzi?20:0) + (rt.read?15:0) + (rt.journal?10:0)
+    (water / 2000 * 25) + (rt.exercise ? 20 : 0) + (rt.hanzi ? 20 : 0) +
+    (rt.read ? 15 : 0) + (rt.journal ? 10 : 0)
   ));
   return { score, routine: rt, water };
 }
@@ -90,7 +138,7 @@ async function getStreak(key) {
   let s = 0;
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   for (let i = 0; i < 30; i++) {
-    const d = new Date(now); d.setDate(d.getDate() - i);
+    const d  = new Date(now); d.setDate(d.getDate() - i);
     const ds = d.toLocaleDateString('sv');
     const snap = await dbPersonal.doc(`users/${UID}/routines/${ds}`).get();
     if (!snap.exists || !snap.data()[key]) break;
@@ -101,22 +149,99 @@ async function getStreak(key) {
 
 async function logRoutine(key) {
   await dbPersonal.doc(`users/${UID}/routines/${todaySH()}`).set(
-    { [key]: true, updatedAt: new Date().toISOString() }, { merge: true }
+    { [key]: true, updatedAt: new Date().toISOString() },
+    { merge: true }
   );
 }
 
 async function logWater(ml) {
-  const d    = todaySH();
-  const snap = await dbPersonal.doc(`users/${UID}/logs/${d}`).get();
-  const cur  = snap.exists ? (snap.data().water?.total_ml || 0) : 0;
+  const d     = todaySH();
+  const snap  = await dbPersonal.doc(`users/${UID}/logs/${d}`).get();
+  const cur   = snap.exists ? (snap.data().water?.total_ml || 0) : 0;
   const total = cur + ml;
-  await dbPersonal.doc(`users/${UID}/logs/${d}`).set({ water: { total_ml: total } }, { merge: true });
+  await dbPersonal.doc(`users/${UID}/logs/${d}`).set(
+    { water: { total_ml: total } },
+    { merge: true }
+  );
   return total;
+}
+
+// ── NOTION CONTENT DB — шинэ хуудас нээж хадгалах (Sprint 6) ─────
+// NOTION_CONTENT_DB_ID: Notion-д тусдаа Content database-ийн ID
+// notion.js-ийн notionSave() нь JARVIS page-д append хийдэг;
+// notionSaveScript() нь Content DB-д шинэ PAGE үүсгэдэг.
+async function notionSaveScript(title, content) {
+  const token = process.env.NOTION_TOKEN;
+  const dbId  = process.env.NOTION_CONTENT_DB_ID || process.env.NOTION_DB_ID;
+  if (!token || !dbId) return null;
+
+  const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+
+  // Content-г 1900 тэмдэгтийн блок болгон хуваах (Notion 2000 хязгаар)
+  const chunkSize = 1900;
+  const chunks    = [];
+  for (let i = 0; i < content.length; i += chunkSize) {
+    chunks.push(content.slice(i, i + chunkSize));
+  }
+
+  const children = [
+    {
+      object: 'block',
+      type:   'callout',
+      callout: {
+        rich_text: [{ type: 'text', text: {
+          content: `J.A.R.V.I.S автоматаар үүсгэв — ${today}`,
+        }}],
+        icon:  { emoji: '🎬' },
+        color: 'gray_background',
+      },
+    },
+    ...chunks.map(chunk => ({
+      object: 'block',
+      type:   'paragraph',
+      paragraph: {
+        rich_text: [{ type: 'text', text: { content: chunk } }],
+      },
+    })),
+  ];
+
+  try {
+    // NOTION_CONTENT_DB_ID database-д шинэ хуудас үүсгэх
+    const r = await fetch('https://api.notion.com/v1/pages', {
+      method:  'POST',
+      headers: {
+        Authorization:    `Bearer ${token}`,
+        'Content-Type':   'application/json',
+        'Notion-Version': '2022-06-28',
+      },
+      body: JSON.stringify({
+        parent:     { database_id: dbId },
+        properties: {
+          Name: {
+            title: [{ type: 'text', text: { content: title.slice(0, 100) } }],
+          },
+        },
+        children,
+      }),
+    });
+
+    const d = await r.json();
+    if (d.object === 'error') {
+      console.error('[Notion Content] API error:', d.message);
+      // Fallback: JARVIS page-д append
+      return notionSave(title, content.slice(0, 1000), '🎬');
+    }
+    return d.url || `https://notion.so/${(d.id || '').replace(/-/g, '')}`;
+
+  } catch (e) {
+    console.error('[Notion Content] Error:', e.message);
+    return null;
+  }
 }
 
 // ── WEEKLY REPORT ─────────────────────────────────────────────────
 async function sendWeeklyReport() {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   const days = [];
   for (let i = 1; i <= 7; i++) {
     const d = new Date(now.getTime() - i * 86400000);
@@ -136,9 +261,12 @@ async function sendWeeklyReport() {
     routineKeys.forEach(k => { if (d[k]) cnt[k]++; });
   });
 
-  const pct     = n => `${Math.round(n/7*100)}%`;
+  const pct     = n => `${Math.round(n / 7 * 100)}%`;
   const weakest = routineKeys.reduce((a, b) => cnt[a] <= cnt[b] ? a : b);
-  const labels  = { exercise:'Дасгал 💪', hanzi:'汉字 🈶', read:'Уншилт 📚', journal:'Journal 📝' };
+  const labels  = {
+    exercise: 'Дасгал 💪', hanzi: '汉字 🈶',
+    read: 'Уншилт 📚',    journal: 'Journal 📝',
+  };
 
   const tasks = await getTasks();
 
@@ -161,19 +289,20 @@ async function sendWeeklyReport() {
   await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg, parse_mode: 'Markdown' });
 }
 
-// ── MORNING BRIEF ─────────────────────────────────────────────────
+// ── MORNING BRIEF (Sprint 5: HSK Blitz нэмэгдсэн) ─────────────────
 async function sendBrief() {
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-  const now        = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  const todaySHx   = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
-  const yesterday  = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const now       = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const todaySHx  = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const yesterday = new Date(Date.now() - 86400000)
+    .toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
-  const calEventsPromise = calOk() ? listTodayEvents().catch(() => []) : Promise.resolve([]);
+  const calEventsPromise = calOk()   ? listTodayEvents().catch(() => [])  : Promise.resolve([]);
   const gmailPromise     = gmailOk() ? getUnreadEmails(3).catch(() => []) : Promise.resolve([]);
 
   const [bilegSnap, tasksRaw, routineSnap, logSnap, calEvents, gmailEmails] = await Promise.all([
     dbPersonal.doc(`users/${UID}/bileg/profile`).get(),
-    dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
+    dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get()
+      .catch(() => ({ docs: [] })),
     dbPersonal.doc(`users/${UID}/routines/${yesterday}`).get(),
     dbPersonal.doc(`users/${UID}/logs/${yesterday}`).get(),
     calEventsPromise,
@@ -188,6 +317,7 @@ async function sendBrief() {
 
   const rt    = routineSnap.exists ? routineSnap.data() : {};
   const water = logSnap.exists ? (logSnap.data().water?.total_ml || 0) : 0;
+
   const routineItems = [
     { key: 'exercise', label: 'Дасгал', emoji: '💪' },
     { key: 'hanzi',    label: '汉字',   emoji: '🈶' },
@@ -197,31 +327,28 @@ async function sendBrief() {
   const done   = routineItems.filter(r => rt[r.key]);
   const missed = routineItems.filter(r => !rt[r.key]);
 
-  // Gemini зөвлөгөө
+  // Gemini өглөөний зөвлөгөө
   const context = [
     `Өнөөдөр: ${todaySHx}.`,
     done.length   ? `Хийсэн: ${done.map(r => r.label).join(', ')}.`   : 'Өчигдөр routine хийгдэхгүй.',
     missed.length ? `Хийгдэхгүй: ${missed.map(r => r.label).join(', ')}.` : '',
     `Ус: ${water}мл.`,
-    bileg.goal    ? `Зорилго: "${bileg.goal}".` : '',
-    tasks.length  ? `Хийх tasks: ${tasks.slice(0,3).join(', ')}.` : '',
+    bileg.goal   ? `Зорилго: "${bileg.goal}".` : '',
+    tasks.length ? `Хийх tasks: ${tasks.slice(0, 3).join(', ')}.` : '',
     `Билэгийн хувийн J.A.R.V.I.S. Өчигдрийн үр дүнд тулгуурлан 2-3 өгүүлбэр проактив, шууд зөвлөгөө өг. Монголоор, анхаарлын тэмдэггүй.`,
   ].filter(Boolean).join(' ');
 
   let advice = 'Өнөөдөр нэг алхам урагш.';
-  if (GEMINI_KEY) {
+  if (GEMINI_URL) {
     try {
-      const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: context }] }],
-            generationConfig: { maxOutputTokens: 200, temperature: 0.85 },
-          }),
-        }
-      );
+      const r = await fetch(GEMINI_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: context }] }],
+          generationConfig: { maxOutputTokens: 200, temperature: 0.85 },
+        }),
+      });
       const data  = await r.json();
       const parts = data.candidates?.[0]?.content?.parts || [];
       const part  = parts.find(p => !p.thought && p.text) || parts[0];
@@ -229,8 +356,19 @@ async function sendBrief() {
     } catch {}
   }
 
-  const days    = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
-  const dayName = days[now.getDay()];
+  // ── HSK Blitz: өнөөдрийн 5 ханз сонгох (Sprint 5) ───────────────
+  const todayWords = [...HSK_BANK].sort(() => Math.random() - 0.5).slice(0, 5);
+
+  // Firestore-д хадгалах — handleVoice-д ашиглана
+  dbPersonal.doc(`users/${UID}/hsk/today`).set({
+    words:     todayWords,
+    date:      todaySHx,
+    scored:    false,
+    updatedAt: new Date().toISOString(),
+  }).catch(() => {});
+
+  const dayNames = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
+  const dayName  = dayNames[now.getDay()];
 
   let msg = `🌅 Өглөөний мэнд, Билэг.\n`;
   msg += `${dayName}, ${todaySHx} | Шанхай 07:30\n\n`;
@@ -241,7 +379,7 @@ async function sendBrief() {
 
   if (tasks.length) {
     msg += `\n📋 Хийх (${tasks.length}):\n`;
-    tasks.forEach((t, i) => { msg += `${i+1}. ${t}\n`; });
+    tasks.forEach((t, i) => { msg += `${i + 1}. ${t}\n`; });
   }
 
   if (bileg.goal) msg += `\n🎯 ${bileg.goal}\n`;
@@ -253,13 +391,240 @@ async function sendBrief() {
 
   if (gmailEmails && gmailEmails.length) {
     msg += `\n📧 Уншаагүй имэйл (${gmailEmails.length}):\n`;
-    gmailEmails.forEach(e => { msg += `• ${e.from.slice(0,20)} — ${e.subject.slice(0,40)}\n`; });
+    gmailEmails.forEach(e => {
+      msg += `• ${e.from.slice(0, 20)} — ${e.subject.slice(0, 40)}\n`;
+    });
   }
 
   msg += `\n💡 J.A.R.V.I.S:\n${advice}\n`;
-  msg += `\n⚡ J.A.R.V.I.S ажиллаж байна.`;
+
+  // HSK Blitz хэсэг
+  msg += `\n\n🈶 *Өнөөдрийн 5 ханз (HSK Blitz):*\n`;
+  todayWords.forEach(w => {
+    msg += `• *${w.char}* (${w.pinyin}) — ${w.meaning} [HSK${w.level}]\n`;
+  });
+  msg += `\n_Дуут зурвасаар өгүүлбэр зохио — J.A.R.V.I.S оноо өгнө 🎯_`;
+
+  msg += `\n\n⚡ J.A.R.V.I.S ажиллаж байна.`;
 
   await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
+}
+
+// ── VOICE-TO-ACTION AGENT (Sprint 2 + Sprint 5 HSK eval) ─────────
+async function handleVoice(msg) {
+  if (!GEMINI_URL) { await tgSend('⚠️ GEMINI_API_KEY тохиргоогүй.'); return; }
+
+  await tgSend('🎙 Аудио ойлгож байна...');
+
+  try {
+    // 1. Telegram-аас file_path авах
+    const fileInfo = await tgCall('getFile', { file_id: msg.voice.file_id });
+    const filePath = fileInfo.result?.file_path;
+    if (!filePath) { await tgSend('❌ Аудио файл авч чадсангүй.'); return; }
+
+    // 2. Файл татаж авах → base64
+    const fileUrl = `https://api.telegram.org/file/bot${TG_TOKEN}/${filePath}`;
+    const resp    = await fetch(fileUrl);
+    const buffer  = await resp.buffer();
+    const base64  = buffer.toString('base64');
+
+    // ── Sprint 5: HSK Blitz шалгалт байгаа эсэхийг эхлээд шалгах ─
+    const hskSnap = await dbPersonal.doc(`users/${UID}/hsk/today`).get();
+    const hskData = hskSnap.exists ? hskSnap.data() : null;
+    const isHskActive =
+      hskData !== null &&
+      hskData.date === todaySH() &&
+      hskData.scored === false &&
+      Array.isArray(hskData.words) &&
+      hskData.words.length > 0;
+
+    if (isHskActive) {
+      const wordList = hskData.words.map(w => w.char).join(', ');
+
+      const hskPrompt =
+        `Хэрэглэгч өнөөдрийн ханзуудыг ашиглан өгүүлбэр зохиосон байх ёстой.\n` +
+        `Шалгах ханзууд: ${wordList}\n\n` +
+        `Аудиог сонсоод дараах JSON-г буцаа (өөр тайлбар текст хэрэггүй):\n` +
+        `{\n` +
+        `  "transcript": "аудионы текст",\n` +
+        `  "used_words": ["ашигласан ханзуудын жагсаалт"],\n` +
+        `  "pronunciation_score": 80,\n` +
+        `  "grammar_score": 85,\n` +
+        `  "usage_score": 90,\n` +
+        `  "total_score": 85,\n` +
+        `  "feedback": "Монголоор 1-2 өгүүлбэр урам өгөх санал. Анхаарлын тэмдэггүй."\n` +
+        `}\n\n` +
+        `total_score = (pronunciation_score + grammar_score + usage_score) / 3`;
+
+      const hskResp = await fetch(GEMINI_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            role:  'user',
+            parts: [
+              { inline_data: { mime_type: 'audio/ogg', data: base64 } },
+              { text: hskPrompt },
+            ],
+          }],
+          generationConfig: { maxOutputTokens: 500, temperature: 0.2 },
+        }),
+      });
+
+      const hskResult = await hskResp.json();
+      const hskRaw    = hskResult.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      const hskMatch  = hskRaw?.match(/\{[\s\S]*\}/);
+
+      if (hskMatch) {
+        try {
+          const eval_  = JSON.parse(hskMatch[0]);
+          const total  = Math.min(100, Math.max(0, Math.round(eval_.total_score || 0)));
+
+          // Оноог Firestore-д хадгалах (вэбсайтын HSK chart)
+          const scoreRef  = dbPersonal.doc(`users/${UID}/hsk/scores`);
+          const scoreSnap = await scoreRef.get();
+          const existing  = scoreSnap.exists ? (scoreSnap.data().list || []) : [];
+          existing.push({
+            score:   total,
+            date:    todaySH(),
+            words:   eval_.used_words || [],
+            savedAt: new Date().toISOString(),
+          });
+          // Хамгийн сүүлийн 30 оноог л хадгална
+          if (existing.length > 30) existing.splice(0, existing.length - 30);
+          await scoreRef.set({ list: existing, updatedAt: new Date().toISOString() });
+
+          // Өнөөдрийн challenge дуусгасан болгох
+          await dbPersonal.doc(`users/${UID}/hsk/today`).set(
+            { scored: true }, { merge: true }
+          );
+
+          // Дасгал хийсэн тул hanzi routine тэмдэглэх
+          await logRoutine('hanzi');
+
+          let hskMsg =
+            `🈶 *HSK Шалгалт — ${total}/100*\n\n` +
+            `🎙 _"${(eval_.transcript || '').slice(0, 120)}"_\n\n` +
+            `📊 Дуудлага: ${eval_.pronunciation_score || 0}/100\n` +
+            `📝 Дүрэм: ${eval_.grammar_score || 0}/100\n` +
+            `✍️ Ашиглалт: ${eval_.usage_score || 0}/100\n\n` +
+            `✅ Ашигласан ханзууд: ${(eval_.used_words || []).join(', ') || '—'}\n\n` +
+            `💬 ${eval_.feedback || ''}`;
+
+          if (total >= 90)      hskMsg += '\n\n🔥 Гайхалтай! Тэргүүний үр дүн.';
+          else if (total >= 75) hskMsg += '\n\n👍 Сайн байна. Үргэлжлүүл.';
+          else                  hskMsg += '\n\n💪 Дахин дасгалла — чадна.';
+
+          await tgSend(hskMsg);
+          return; // HSK eval дууссан — Voice-to-Action руу явахгүй
+        } catch (parseErr) {
+          console.error('[HSK Voice] JSON parse error:', parseErr.message);
+          // JSON алдаатай → доорх Voice-to-Action-д үргэлжлүүлнэ
+        }
+      }
+    }
+
+    // ── Sprint 2: Voice-to-Action ────────────────────────────────
+    const actionPrompt =
+      `Дараах аудиог транскрипц хийж, хийх action-уудыг задал.\n\n` +
+      `Боломжит action төрлүүд:\n` +
+      `- revenue: орлого бүртгэх → { type: "revenue", amount: тоо (₮-гүй) }\n` +
+      `- calendar: event нэмэх → { type: "calendar", text: "цагийн мэдээлэлтэй текст" }\n` +
+      `- task: даалгавар нэмэх → { type: "task", text: "даалгаврын текст" }\n` +
+      `- routine: routine тэмдэглэх → { type: "routine", key: "exercise"|"hanzi"|"read"|"journal" }\n\n` +
+      `Хариу формат (JSON ONLY, өөр текст, тайлбар хэрэггүй):\n` +
+      `{ "transcript": "аудионы монгол текст", "actions": [] }\n\n` +
+      `Хэрэв action байхгүй бол actions массив хоосон байна.`;
+
+    const actionResp = await fetch(GEMINI_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role:  'user',
+          parts: [
+            { inline_data: { mime_type: 'audio/ogg', data: base64 } },
+            { text: actionPrompt },
+          ],
+        }],
+        generationConfig: { maxOutputTokens: 600, temperature: 0.2 },
+      }),
+    });
+
+    const actionData = await actionResp.json();
+    const rawText    = actionData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const jsonMatch  = rawText?.match(/\{[\s\S]*\}/);
+
+    if (!jsonMatch) {
+      await tgSend(`🎙 Транскрипц:\n_"${rawText || 'Ойлгож чадсангүй'}"_`);
+      return;
+    }
+
+    const parsed     = JSON.parse(jsonMatch[0]);
+    const transcript = parsed.transcript || '';
+    const actions    = Array.isArray(parsed.actions) ? parsed.actions : [];
+
+    let resultMsg = `🎙 *Ойлголоо:*\n_"${transcript}"_\n\n`;
+
+    if (!actions.length) {
+      resultMsg += '⚡ Хийх action илрэхгүй байна.';
+      await tgSend(resultMsg);
+      return;
+    }
+
+    // Action-уудыг дараалан гүйцэтгэх
+    const resultLines = [];
+    for (const action of actions) {
+      try {
+        if (action.type === 'revenue' && action.amount > 0) {
+          const today    = todaySH();
+          const ref      = dbPersonal.doc(`users/${UID}/revenue/${today}`);
+          const revSnap  = await ref.get();
+          const curTotal = revSnap.exists ? (revSnap.data().total || 0) : 0;
+          await ref.set({
+            total:     curTotal + Number(action.amount),
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+          resultLines.push(`💰 Орлого: *${Number(action.amount).toLocaleString()}₮* бүртгэлээ`);
+
+        } else if (action.type === 'calendar' && action.text && calOk()) {
+          const ev = parseEvent(action.text);
+          if (ev?.date) {
+            await createEvent(
+              ev.title,
+              `${ev.date}T${ev.startTime}:00`,
+              `${ev.date}T${ev.endTime}:00`,
+              ''
+            );
+            resultLines.push(`📅 Calendar: *${ev.title}* — ${ev.date} ${ev.startTime}`);
+          } else {
+            resultLines.push(`📅 Calendar: огноо ойлгогдсонгүй ("${action.text.slice(0, 40)}")`);
+          }
+
+        } else if (action.type === 'task' && action.text) {
+          await addTask(action.text);
+          resultLines.push(`✅ Task: *${action.text}*`);
+
+        } else if (action.type === 'routine' && action.key) {
+          await logRoutine(action.key);
+          const labels = {
+            exercise: 'Дасгал 💪', hanzi: '汉字 🈶',
+            read:     'Уншилт 📚', journal: 'Journal 📝',
+          };
+          resultLines.push(`📌 ${labels[action.key] || action.key} тэмдэглэлээ`);
+        }
+      } catch (e) {
+        resultLines.push(`⚠️ ${action.type} алдаа: ${e.message}`);
+      }
+    }
+
+    resultMsg += resultLines.join('\n');
+    await tgSend(resultMsg);
+
+  } catch (e) {
+    console.error('[Voice] Error:', e.message);
+    await tgSend(`❌ Voice алдаа: ${e.message}`);
+  }
 }
 
 // ── CALLBACK HANDLER ──────────────────────────────────────────────
@@ -277,11 +642,12 @@ async function handleCallback(cb) {
         chat_id: TG_CHAT, message_id: msgId, reply_markup: { inline_keyboard: [] },
       });
       await tgCall('editMessageText', {
-        chat_id: TG_CHAT, message_id: msgId,
-        text: `🗑 Устгагдлаа.`,
+        chat_id: TG_CHAT, message_id: msgId, text: '🗑 Устгагдлаа.',
       });
     } catch (e) {
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: `❌ Устгаж чадсангүй: ${e.message}` });
+      await tgCall('sendMessage', {
+        chat_id: TG_CHAT, text: `❌ Устгаж чадсангүй: ${e.message}`,
+      });
     }
     return;
   }
@@ -298,10 +664,10 @@ async function handleText(msg) {
     const [exS, hzS] = await Promise.all([getStreak('exercise'), getStreak('hanzi')]);
     await tgSend(
       `📊 *Өнөөдрийн Score: ${score}/100*\n\n` +
-      `${routine.exercise?'✅':'❌'} Дасгал (${exS}🔥)\n` +
-      `${routine.hanzi   ?'✅':'❌'} 汉字 (${hzS}🔥)\n` +
-      `${routine.read    ?'✅':'❌'} Унших\n` +
-      `${routine.journal ?'✅':'❌'} Journal\n` +
+      `${routine.exercise ? '✅' : '❌'} Дасгал (${exS}🔥)\n` +
+      `${routine.hanzi    ? '✅' : '❌'} 汉字 (${hzS}🔥)\n` +
+      `${routine.read     ? '✅' : '❌'} Унших\n` +
+      `${routine.journal  ? '✅' : '❌'} Journal\n` +
       `💧 Ус: ${water}мл/2000мл`
     );
     return;
@@ -330,10 +696,129 @@ async function handleText(msg) {
     return;
   }
 
-  if (text === '/journal' || text.includes('journal')) {
-    await logRoutine('journal');
-    const { score } = await getScore();
-    await tgSend(`📝 Journal тэмдэглэлээ! Score: ${score}/100`);
+  // ── /journal — Sprint 3: HSK Journal Coach ───────────────────────
+  if (text === '/journal' || raw.startsWith('/journal ') || raw.startsWith('/journal\n')) {
+    const journalText = (raw.startsWith('/journal ') || raw.startsWith('/journal\n'))
+      ? raw.slice(9).trim() : '';
+
+    if (!journalText) {
+      // Текстгүй → хуучин хэлбэрээр log хийнэ
+      await logRoutine('journal');
+      const { score } = await getScore();
+      await tgSend(
+        `📝 Journal тэмдэглэлээ! Score: ${score}/100\n\n` +
+        `_Хятад хэлээр тэмдэглэл бичихийн тулд:_\n` +
+        `\`/journal 我今天去了上海...\``
+      );
+      return;
+    }
+
+    const hasChineseChars = /[一-鿿]/.test(journalText);
+
+    if (hasChineseChars && GEMINI_URL) {
+      await tgSend('🔍 HSK шалгаж байна...');
+      try {
+        const checkPrompt =
+          `Дараах хятад хэлний текстийг шалгаж, JSON хэлбэрт хариул (өөр текст хэрэггүй):\n` +
+          `"${journalText}"\n\n` +
+          `{\n` +
+          `  "score": 85,\n` +
+          `  "errors": [\n` +
+          `    { "wrong": "буруу үг/бүтэц", "correct": "зөв хэлбэр", "explanation": "Монголоор товч тайлбар" }\n` +
+          `  ],\n` +
+          `  "hsk_words": [\n` +
+          `    { "word": "ханз", "pinyin": "дуудлага", "hsk_level": 4, "meaning": "Монголоор утга" }\n` +
+          `  ],\n` +
+          `  "coach_message": "Монголоор 1-2 өгүүлбэр урам өгөх мессеж. Анхаарлын тэмдэггүй."\n` +
+          `}\n\n` +
+          `Дүрэм: errors массив хоосон байж болно (алдаа байхгүй бол хоосон). ` +
+          `hsk_words: текстэд байгаа HSK 3+ үгсийг л жагсаа, хамгийн ихдээ 6.`;
+
+        const r = await fetch(GEMINI_URL, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text: checkPrompt }] }],
+            generationConfig: { maxOutputTokens: 700, temperature: 0.3 },
+          }),
+        });
+        const d         = await r.json();
+        const rawResp   = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        const jsonMatch = rawResp?.match(/\{[\s\S]*\}/);
+
+        if (jsonMatch) {
+          const result = JSON.parse(jsonMatch[0]);
+
+          // Firestore-д хадгалах
+          await dbPersonal.doc(`users/${UID}/journals/${todaySH()}`).set({
+            text:      journalText,
+            score:     result.score || 0,
+            createdAt: new Date().toISOString(),
+          }, { merge: true });
+
+          // hanzi + journal streak автоматаар нэмэх
+          await logRoutine('hanzi');
+          await logRoutine('journal');
+          const { score: dayScore } = await getScore();
+          const hzStreak = await getStreak('hanzi');
+
+          let replyMsg = `📝 *HSK Journal — ${result.score || 0}/100*\n\n`;
+          replyMsg += `_"${journalText.slice(0, 100)}"_\n\n`;
+
+          if (result.errors && result.errors.length > 0) {
+            replyMsg += `❌ *Алдаа (${result.errors.length}):*\n`;
+            result.errors.slice(0, 3).forEach(e => {
+              replyMsg += `• ~~${e.wrong}~~ → *${e.correct}*\n  _${e.explanation}_\n`;
+            });
+            replyMsg += '\n';
+          } else {
+            replyMsg += `✅ Дүрмийн алдаа илрэхгүй\n\n`;
+          }
+
+          if (result.hsk_words && result.hsk_words.length > 0) {
+            replyMsg += `📚 *HSK үгс:*\n`;
+            result.hsk_words.slice(0, 6).forEach(w => {
+              replyMsg += `• *${w.word}* (${w.pinyin}) — ${w.meaning} [HSK${w.hsk_level}]\n`;
+            });
+            replyMsg += '\n';
+          }
+
+          replyMsg += `💡 ${result.coach_message || 'Сайн хичээж байна.'}\n\n`;
+          replyMsg +=
+            `✅ *Journal + 汉字* тэмдэглэлээ ${hzStreak}🔥  |  Score: ${dayScore}/100`;
+
+          await tgSend(replyMsg);
+
+        } else {
+          // JSON гарсангүй — энгийнээр log хийнэ
+          await logRoutine('journal');
+          await dbPersonal.doc(`users/${UID}/journals/${todaySH()}`).set({
+            text: journalText, createdAt: new Date().toISOString(),
+          }, { merge: true });
+          await tgSend(`📝 Journal хадгаллаа.\n_"${journalText.slice(0, 80)}"_`);
+        }
+
+      } catch (e) {
+        console.error('[Journal] Error:', e.message);
+        await logRoutine('journal');
+        await tgSend(
+          `📝 Journal хадгаллаа. (HSK шалгаж чадсангүй)\n` +
+          `_"${journalText.slice(0, 80)}"_`
+        );
+      }
+
+    } else {
+      // Хятад биш → энгийн тэмдэглэл
+      await logRoutine('journal');
+      await dbPersonal.doc(`users/${UID}/journals/${todaySH()}`).set({
+        text: journalText, createdAt: new Date().toISOString(),
+      }, { merge: true });
+      const { score } = await getScore();
+      await tgSend(
+        `📝 Journal хадгаллаа! Score: ${score}/100\n` +
+        `_"${journalText.slice(0, 80)}"_`
+      );
+    }
     return;
   }
 
@@ -341,7 +826,10 @@ async function handleText(msg) {
   if (text === '/us' || waterMatch) {
     const ml    = waterMatch ? parseInt(waterMatch[1]) : 250;
     const total = await logWater(ml);
-    await tgSend(`💧 +${ml}мл! Нийт: ${total}мл/2000мл (${Math.round(total/20)}%) ${total >= 2000 ? '🎉' : ''}`);
+    await tgSend(
+      `💧 +${ml}мл! Нийт: ${total}мл/2000мл (${Math.round(total / 20)}%) ` +
+      `${total >= 2000 ? '🎉' : ''}`
+    );
     return;
   }
 
@@ -358,7 +846,7 @@ async function handleText(msg) {
   if (text === '/tasks') {
     const tasks = await getTasks();
     if (!tasks.length) { await tgSend('📋 Хийх зүйл байхгүй байна. 🎉'); return; }
-    const list = tasks.map((t, i) => `${i+1}. ${t.text}`).join('\n');
+    const list = tasks.map((t, i) => `${i + 1}. ${t.text}`).join('\n');
     await tgSend(`📋 *Хийх зүйлүүд:*\n\n${list}\n\n_/done [дугаар]_`);
     return;
   }
@@ -395,15 +883,20 @@ async function handleText(msg) {
     return;
   }
 
-  // ── Notion ────────────────────────────────────────────────────────
+  // ── Notion (JARVIS page-д append) ────────────────────────────────
   if (raw.startsWith('/notion ') || raw.startsWith('/notion\n')) {
     const noteText = raw.slice(8).trim();
     if (!noteText) { await tgSend('📝 `/notion [текст]`'); return; }
     const url = await notionSave(noteText, `Telegram: ${todaySH()}`, '📝');
     if (url) {
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: `📝 Notion-д хадгаллаа.\n\n"${noteText.slice(0,80)}${noteText.length>80?'...':''}"` });
+      await tgCall('sendMessage', {
+        chat_id: TG_CHAT,
+        text:    `📝 Notion-д хадгаллаа.\n\n"${noteText.slice(0, 80)}${noteText.length > 80 ? '...' : ''}"`,
+      });
     } else {
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⚠️ Notion-д хадгалж чадсангүй.' });
+      await tgCall('sendMessage', {
+        chat_id: TG_CHAT, text: '⚠️ Notion-д хадгалж чадсангүй.',
+      });
     }
     return;
   }
@@ -414,12 +907,20 @@ async function handleText(msg) {
     if (!calText) { await tgSend('📅 `/cal маргааш 3 цагт meeting`'); return; }
     if (!calOk()) { await tgSend('⚠️ Google Calendar тохиргоогүй байна.'); return; }
     const parsed = parseEvent(calText);
-    if (!parsed?.date) { await tgSend('⚠️ Ойлгож чадсангүй.\nЖишээ: `/cal маргааш 3 цагт meeting`'); return; }
+    if (!parsed?.date) {
+      await tgSend('⚠️ Ойлгож чадсангүй.\nЖишээ: `/cal маргааш 3 цагт meeting`');
+      return;
+    }
     try {
-      await createEvent(parsed.title, `${parsed.date}T${parsed.startTime}:00`, `${parsed.date}T${parsed.endTime}:00`, parsed.description || '');
+      await createEvent(
+        parsed.title,
+        `${parsed.date}T${parsed.startTime}:00`,
+        `${parsed.date}T${parsed.endTime}:00`,
+        parsed.description || ''
+      );
       await tgCall('sendMessage', {
         chat_id: TG_CHAT,
-        text: `✅ Calendar-д нэмэгдлээ!\n\n📌 ${parsed.title}\n📅 ${parsed.date}  ${parsed.startTime} – ${parsed.endTime}`,
+        text:    `✅ Calendar-д нэмэгдлээ!\n\n📌 ${parsed.title}\n📅 ${parsed.date}  ${parsed.startTime} – ${parsed.endTime}`,
       });
     } catch (e) {
       await tgSend(`❌ Calendar алдаа: ${e.message}`);
@@ -432,12 +933,18 @@ async function handleText(msg) {
     try {
       const events = await listUpcomingEvents(7);
       if (!events.length) { await tgSend('📅 Ойрын 7 хоногт event байхгүй байна.'); return; }
-      await tgCall('sendMessage', { chat_id: TG_CHAT, text: `📅 *Ойрын ${events.length} event:*`, parse_mode: 'Markdown' });
+      await tgCall('sendMessage', {
+        chat_id: TG_CHAT,
+        text:    `📅 *Ойрын ${events.length} event:*`,
+        parse_mode: 'Markdown',
+      });
       for (const e of events) {
         await tgCall('sendMessage', {
           chat_id: TG_CHAT,
-          text: `📌 ${e.summary}\n🕐 ${formatEventDate(e)}  ${formatEventTime(e)}`,
-          reply_markup: { inline_keyboard: [[{ text: '🗑 Устгах', callback_data: `caldel_${e.id}` }]] },
+          text:    `📌 ${e.summary}\n🕐 ${formatEventDate(e)}  ${formatEventTime(e)}`,
+          reply_markup: {
+            inline_keyboard: [[{ text: '🗑 Устгах', callback_data: `caldel_${e.id}` }]],
+          },
         });
       }
     } catch (e) {
@@ -456,9 +963,88 @@ async function handleText(msg) {
   }
 
   if (text === '/weekly') {
-    await tgCall('sendMessage', { chat_id: TG_CHAT, text: '📊 7 хоногийн тайлан бэлдэж байна...' });
+    await tgCall('sendMessage', {
+      chat_id: TG_CHAT, text: '📊 7 хоногийн тайлан бэлдэж байна...',
+    });
     try { await sendWeeklyReport(); } catch (e) {
       await tgCall('sendMessage', { chat_id: TG_CHAT, text: '❌ Weekly алдаа: ' + e.message });
+    }
+    return;
+  }
+
+  // ── Sprint 6: /hook — Shorts/Reels скрипт үүсгэгч ───────────────
+  if (raw.toLowerCase().startsWith('/hook')) {
+    const topic = raw.slice(5).trim();
+    if (!topic) {
+      await tgSend(
+        `🎬 *Hook & Скрипт Машин*\n\n` +
+        `\`/hook [сэдэв]\`\n\n` +
+        `Жишээ:\n` +
+        `• \`/hook Шанхайд анх удаа аялж байгаа хүнд 5 зөвлөгөө\`\n` +
+        `• \`/hook LFS эмнэлгийн багц яагаад үнэ цэнтэй вэ\`\n` +
+        `• \`/hook Шанхайн хамгийн сайн хоолны газрууд\``
+      );
+      return;
+    }
+    if (!GEMINI_URL) { await tgSend('⚠️ GEMINI_API_KEY тохиргоогүй.'); return; }
+
+    await tgSend('🎬 Скрипт бэлдэж байна...');
+
+    try {
+      const hookPrompt =
+        `"${topic}" сэдвээр Instagram Reels / TikTok-д зориулсан контент бэлд.\n` +
+        `Зорилтот үзэгч: Шанхайд сонирхолтой Монголчууд. LFS Shanghai брэнд.\n\n` +
+        `Дараах бүтцээр ЯГЛАА гарга:\n\n` +
+        `───────────────────────\n` +
+        `🪝 HOOK 1 (Асуулт өнцөг):\n` +
+        `[Анхны 3 секундын текст]\n\n` +
+        `🪝 HOOK 2 (Мэдэгдэл өнцөг):\n` +
+        `[Анхны 3 секундын текст]\n\n` +
+        `🪝 HOOK 3 (Тоон өгөгдлийн өнцөг):\n` +
+        `[Анхны 3 секундын текст]\n\n` +
+        `───────────────────────\n` +
+        `🎬 БҮТЭН СКРИПТ (30 секунд):\n\n` +
+        `[0-3сек] (HOOK дуудна)\n` +
+        `[3-10сек] (Асуудал / контекст)\n` +
+        `[10-22сек] (Шийдэл / LFS-ийн үнэ цэн)\n` +
+        `[22-28сек] (CTA: захиалга эсвэл DM)\n` +
+        `[28-30сек] (Хурдан дуусгах — брэнд)\n\n` +
+        `───────────────────────\n` +
+        `📌 CAPTION САНАЛ:\n` +
+        `[50-80 тэмдэгт, Монголоор, hashtag-тай]`;
+
+      const r = await fetch(GEMINI_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: hookPrompt }] }],
+          generationConfig: { maxOutputTokens: 1200, temperature: 0.85 },
+        }),
+      });
+      const d      = await r.json();
+      const script = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+      if (!script) { await tgSend('❌ Скрипт гарсангүй. Дахин оролд.'); return; }
+
+      // Notion Content DB-д шинэ хуудас нээж хадгалах
+      const notionUrl = await notionSaveScript(`🎬 ${topic}`, script);
+
+      // Telegram-д харуулах (Markdown 4096 тэмдэгтийн хязгаар)
+      const MAX_LEN  = 3800;
+      const header   = `🎬 *Hook & Скрипт готов!*\n_Сэдэв: ${topic}_\n\n`;
+      const bodyRoom = MAX_LEN - header.length;
+      const body     = script.length > bodyRoom
+        ? script.slice(0, bodyRoom) + `\n\n_...${script.length - bodyRoom} тэмдэгт үлдсэн_`
+        : script;
+
+      let replyMsg = header + body;
+      if (notionUrl) replyMsg += `\n\n📝 _Notion Content DB-д хадгаллаа_`;
+
+      await tgSend(replyMsg);
+
+    } catch (e) {
+      console.error('[Hook] Error:', e.message);
+      await tgSend(`❌ Скрипт алдаа: ${e.message}`);
     }
     return;
   }
@@ -466,7 +1052,7 @@ async function handleText(msg) {
   // ── Help ──────────────────────────────────────────────────────────
   if (text === '/help') {
     await tgSend(
-      `🤖 *J.A.R.V.I.S — Хувийн Bot*\n\n` +
+      `🤖 *J.A.R.V.I.S v2.2 — Хувийн Bot*\n\n` +
       `📅 *Calendar*\n` +
       `/cal [текст] — event нэмэх\n` +
       `/events — ойрын 7 хоногийн хуваарь\n\n` +
@@ -477,14 +1063,21 @@ async function handleText(msg) {
       `🧠 *Санах ой*\n` +
       `/goal [текст] — зорилго\n` +
       `/focus [текст] — өнөөдрийн focus\n` +
-      `/notion [текст] — Notion-д тэмдэглэх\n\n` +
+      `/notion [текст] — Notion JARVIS хуудасд тэмдэглэх\n\n` +
       `📊 *Тайлан*\n` +
-      `/brief — өглөөний брифинг\n` +
+      `/brief — өглөөний брифинг + HSK Blitz\n` +
       `/weekly — 7 хоногийн тойм\n\n` +
       `💪 *Routine*\n` +
       `/score — score + streak\n` +
-      `/dasgal · /hanzi · /nom · /journal\n` +
-      `/us [мл] — ус 💧`
+      `/dasgal · /hanzi · /nom\n` +
+      `/journal — тэмдэглэл log\n` +
+      `/journal [текст] — хятадаар → HSK шалгана\n` +
+      `/us [мл] — ус 💧\n\n` +
+      `🎬 *Контент*\n` +
+      `/hook [сэдэв] — Reels 3 hook + 30с скрипт\n\n` +
+      `🎙 *Voice*\n` +
+      `Дуут зурвас → орлого/calendar/task автоматаар\n` +
+      `HSK ханзаар өгүүлбэр → оноо авах 🎯`
     );
     return;
   }
@@ -492,15 +1085,19 @@ async function handleText(msg) {
 
 // ── WEBHOOK HANDLER ───────────────────────────────────────────────
 module.exports = async (req, res) => {
-  if (req.method !== 'POST') return res.status(200).send('J.A.R.V.I.S OK');
+  if (req.method !== 'POST') return res.status(200).send('J.A.R.V.I.S v2.2 OK');
   res.status(200).json({ ok: true });
   try {
     const upd = req.body;
     if (!upd || !UID) return;
     if (upd.callback_query) {
       await handleCallback(upd.callback_query);
-    } else if (upd.message?.text && String(upd.message.chat.id) === String(TG_CHAT)) {
-      await handleText(upd.message);
+    } else if (upd.message && String(upd.message.chat.id) === String(TG_CHAT)) {
+      if (upd.message.voice) {
+        await handleVoice(upd.message);
+      } else if (upd.message.text) {
+        await handleText(upd.message);
+      }
     }
   } catch (e) {
     console.error('[JARVIS] Error:', e.message);
