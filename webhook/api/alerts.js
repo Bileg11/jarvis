@@ -4,11 +4,13 @@
 
 const fetch  = require('node-fetch');
 const { dbPersonal, dbLFS } = require('../firebase');
-const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
+const TG_TOKEN_LFS      = process.env.TELEGRAM_BOT_TOKEN_LFS;
+const TG_TOKEN_PERSONAL = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT  = process.env.TELEGRAM_ID;
 const UID      = process.env.USER_UID;
 
-async function tg(text) {
+// LFS alert → LFS bot, Personal alert → JARVIS bot
+async function tg(text, token = TG_TOKEN_LFS) {
   try {
     await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
       method: 'POST',
@@ -59,7 +61,8 @@ async function checkEveningRoutine() {
     const list = missed.map(r => '• ' + r.label).join('\n');
     await tg(
       `⏰ J.A.R.V.I.S: 20:00 боллоо. Өнөөдөр хийгдээгүй зүйлс:\n\n${list}\n\n` +
-      `Унтахаасаа өмнө нэгийг нь хийж амж.`
+      `Унтахаасаа өмнө нэгийг нь хийж амж.`,
+      TG_TOKEN_PERSONAL
     );
   } catch (e) {
     console.error('[Alert] Evening routine check error:', e.message);

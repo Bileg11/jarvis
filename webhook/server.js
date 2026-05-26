@@ -10,6 +10,7 @@ const express   = require('express');
 const cron      = require('node-cron');
 const tgHandler   = require('./api/telegram');
 const { sendWeeklyReport, sendBrief } = tgHandler;
+const lfsBot      = require('./api/lfs-telegram');
 const metaHook    = require('./api/meta-webhook');
 const alerts      = require('./api/alerts');
 const bookingHook = require('./api/booking');
@@ -21,8 +22,11 @@ app.use(express.json());
 
 app.get('/', (req, res) => res.send('JARVIS webhook running ✅'));
 
-// Telegram
+// Telegram — хувийн JARVIS
 app.post('/api/telegram', tgHandler);
+
+// LFS Shanghai Bot
+app.post('/api/lfs-telegram', lfsBot);
 
 // Meta (IG DM + FB Messenger)
 app.get ('/api/meta-webhook', metaHook.verify);
