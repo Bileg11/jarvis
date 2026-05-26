@@ -201,19 +201,25 @@ async function sendMorningBrief() {
 // ── DAILY EXECUTIVE REPORT (server.js-с cron дуудна) ─────────────
 async function sendDailyReport() {
   try {
-    const snap = await db.doc(`users/${UID}/analytics/${todayKey()}`).get();
-    const d = snap.exists ? snap.data() : {};
+    const today = todayKey();
+    const [analyticsSnap, revenueSnap] = await Promise.all([
+      db.doc(`users/${UID}/analytics/${today}`).get(),
+      db.doc(`users/${UID}/revenue/${today}`).get(),
+    ]);
+    const d = analyticsSnap.exists ? analyticsSnap.data() : {};
 
     const userCount     = (d.users || []).length;
-    const guideCount    = d.guide     || 0;
-    const medicalCount  = d.medical   || 0;
-    const bookingCount  = d.booking   || 0;
-    const agentCount    = d.agent     || 0;
-    const escalateCount = d.escalate  || 0;
+    const guideCount    = d.guide        || 0;
+    const medicalCount  = d.medical      || 0;
+    const bookingCount  = d.booking      || 0;
+    const bookingLeads  = d.booking_lead || 0;
+    const agentCount    = d.agent        || 0;
+    const escalateCount = d.escalate     || 0;
+    const revenue       = revenueSnap.exists ? (revenueSnap.data().total || 0) : 0;
 
     const report =
 `📊 *ЖАРВИСЫН ӨДРИЙН ТАЙЛАН*
-_${todayKey()}_
+_${today}_
 \`------------------------\`
 Сайхан амарч байна уу, Билэг менежер.
 
@@ -221,9 +227,10 @@ _${todayKey()}_
 • Нийт хандсан хэрэглэгч: *${userCount}* хүн
 • Шанхай гайд сонирхсон: *${guideCount}* хүн
 • Эмнэлгийн багц сонирхсон: *${medicalCount}* хүн
+• Захиалгын form дуусгасан: *${bookingLeads}* захиалга
 • Захиалгын линк харуулсан: *${bookingCount}* удаа
 • Ажилтантай холбогдсон: *${agentCount}* удаа
-• Автомат сэрэмжлүүлэг: *${escalateCount}* удаа
+• Автомат сэрэмжлүүлэг: *${escalateCount}* удаа${revenue ? `\n• Бүртгэгдсэн орлого: *${revenue.toLocaleString()}₮*` : ''}
 
 Маргаашийн ажилд чинь амжилт хүсье. 🚀`;
 

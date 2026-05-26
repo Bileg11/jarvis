@@ -142,21 +142,26 @@ async function sendBrief() {
   const yesterday = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
   // Бүх өгөгдлийг зэрэг уншина
-  const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap] = await Promise.all([
+  const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap, revenueSnap] = await Promise.all([
     db.doc(`users/${UID}/analytics/${yesterday}`).get(),
     db.doc(`users/${UID}/bileg/profile`).get(),
     db.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
     db.doc(`users/${UID}/routines/${yesterday}`).get(),
     db.doc(`users/${UID}/logs/${yesterday}`).get(),
+    db.doc(`users/${UID}/revenue/${yesterday}`).get(),
   ]);
 
   // LFS аналитик
   const lfs           = analyticsSnap.exists ? analyticsSnap.data() : {};
   const userCount     = (lfs.users || []).length;
-  const guideCount    = lfs.guide    || 0;
-  const medicalCount  = lfs.medical  || 0;
-  const agentCount    = lfs.agent    || 0;
-  const escalateCount = lfs.escalate || 0;
+  const guideCount    = lfs.guide       || 0;
+  const medicalCount  = lfs.medical     || 0;
+  const agentCount    = lfs.agent       || 0;
+  const escalateCount = lfs.escalate    || 0;
+  const bookingLeads  = lfs.booking_lead || 0;
+
+  // Өчигдрийн орлого
+  const revenue = revenueSnap.exists ? (revenueSnap.data().total || 0) : 0;
 
   // Билэгийн мэдээлэл
   const bileg = bilegSnap.exists ? bilegSnap.data() : {};
@@ -224,6 +229,8 @@ async function sendBrief() {
   msg += `📊 Өчигдрийн тойм:\n`;
   msg += `LFS: ${userCount} хандсан · Гайд: ${guideCount} · Эмнэлэг: ${medicalCount}`;
   if (agentCount)    msg += ` · Ажилтан: ${agentCount}`;
+  if (bookingLeads)  msg += `\n📋 Захиалга: ${bookingLeads} lead`;
+  if (revenue)       msg += ` · 💰 ${revenue.toLocaleString()}₮`;
   if (escalateCount) msg += `\n⚠️ Бухимдсан: ${escalateCount}`;
   msg += `\n`;
   msg += `Routine: `;
@@ -374,6 +381,46 @@ async function handleCallback(cb) {
   const { data: cmd, message, id: cbId } = cb;
   const msgId = message.message_id;
   await tgAnswer(cbId);
+
+  // ── Booking confirm / cancel ──────────────────────────────────
+  if (cmd.startsWith('bkc_') || cmd.startsWith('bkx_')) {
+    const isConfirm = cmd.startsWith('bkc_');
+    const bookingId = cmd.slice(4);
+    const bkRef     = db.collection(`users/${UID}/bookings`).doc(bookingId);
+    const bkSnap    = await bkRef.get();
+
+    if (!bkSnap.exists) {
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⚠️ Захиалга олдсонгүй (ID устсан байж магадгүй).' });
+      return;
+    }
+
+    const bk = bkSnap.data();
+    const now = new Date().toISOString();
+
+    if (isConfirm) {
+      await bkRef.update({ status: 'confirmed', confirmedAt: now });
+      // Товчлуурыг устгах
+      await tgCall('editMessageReplyMarkup', {
+        chat_id: TG_CHAT, message_id: msgId,
+        reply_markup: { inline_keyboard: [] },
+      });
+      await tgCall('sendMessage', {
+        chat_id: TG_CHAT,
+        text: `✅ Баталгаажлаа.\n\nНэр: ${bk.name}\nУтас: ${bk.phone}\nҮйлчилгээ: ${bk.service || '—'}\nОгноо: ${bk.start || '—'}`,
+      });
+    } else {
+      await bkRef.update({ status: 'cancelled', cancelledAt: now });
+      await tgCall('editMessageReplyMarkup', {
+        chat_id: TG_CHAT, message_id: msgId,
+        reply_markup: { inline_keyboard: [] },
+      });
+      await tgCall('sendMessage', {
+        chat_id: TG_CHAT,
+        text: `❌ Цуцлагдлаа.\n\nНэр: ${bk.name} · ${bk.phone}`,
+      });
+    }
+    return;
+  }
 
   // ── Ghost post approval ───────────────────────────────────────
   const pSnap = await pendingRef().get();
@@ -705,6 +752,100 @@ async function handleText(msg) {
     return;
   }
 
+  // ── Booking management ────────────────────────────────────────────
+  if (text === '/bookings' || text === 'bookings') {
+    const snap = await db.collection(`users/${UID}/bookings`)
+      .where('status', '==', 'pending')
+      .get()
+      .catch(() => ({ docs: [] }));
+
+    const bookings = snap.docs
+      .map(d => d.data())
+      .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+      .slice(0, 8);
+
+    if (!bookings.length) {
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '📋 Хүлээгдэж буй захиалга байхгүй байна.' });
+      return;
+    }
+
+    for (const bk of bookings) {
+      const lines = [
+        `📋 Захиалга — ${bk.name}`,
+        `Утас: ${bk.phone}`,
+        bk.service ? `Үйлчилгээ: ${bk.service}` : null,
+        bk.start   ? `Огноо: ${bk.start} · ${bk.days || '—'}` : null,
+        bk.people  ? `Хүн: ${bk.people}` : null,
+        bk.email   ? `И-мэйл: ${bk.email}` : null,
+        bk.note    ? `Тэмдэглэл: ${bk.note}` : null,
+        `\n${new Date(bk.createdAt).toLocaleDateString('mn-MN', { timeZone: 'Asia/Shanghai' })}`,
+      ].filter(Boolean).join('\n');
+
+      await tgCall('sendMessage', {
+        chat_id: TG_CHAT,
+        text:    lines,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ Баталгаажуулах', callback_data: `bkc_${bk.id}` },
+            { text: '❌ Цуцлах',         callback_data: `bkx_${bk.id}` },
+          ]],
+        },
+      });
+    }
+    return;
+  }
+
+  // ── Revenue tracking ──────────────────────────────────────────────
+  const incomeMatch = raw.match(/^\/income\s+(\d+)\s*(.*)?$/i);
+  if (incomeMatch) {
+    const amount = parseInt(incomeMatch[1]);
+    const note   = (incomeMatch[2] || '').trim() || 'Тодорхойгүй';
+    const d      = todaySH();
+    const ref    = db.doc(`users/${UID}/revenue/${d}`);
+    const snap   = await ref.get();
+    const cur    = snap.exists ? snap.data() : { total: 0, entries: [] };
+    const entries = [...(cur.entries || []), { amount, note, time: new Date().toISOString() }];
+    const total   = (cur.total || 0) + amount;
+    await ref.set({ total, entries, updatedAt: new Date().toISOString() }, { merge: true });
+    await tgCall('sendMessage', {
+      chat_id: TG_CHAT,
+      text: `💰 Орлого бүртгэгдлээ.\n\n+${amount.toLocaleString()}₮ — ${note}\nӨнөөдрийн нийт: ${total.toLocaleString()}₮`,
+    });
+    return;
+  }
+
+  if (text === '/revenue') {
+    const d         = todaySH();
+    const todaySnap = await db.doc(`users/${UID}/revenue/${d}`).get();
+    const todayData = todaySnap.exists ? todaySnap.data() : { total: 0, entries: [] };
+
+    // Энэ сарын нийт
+    const monthPrefix = d.slice(0, 7); // "2026-05"
+    const allRevSnap  = await db.collection(`users/${UID}/revenue`).get().catch(() => ({ docs: [] }));
+    const monthTotal  = allRevSnap.docs
+      .filter(doc => doc.id.startsWith(monthPrefix))
+      .reduce((sum, doc) => sum + (doc.data().total || 0), 0);
+
+    // Booking lead count
+    const analyticsSnap = await db.doc(`users/${UID}/analytics/${d}`).get();
+    const leads = analyticsSnap.exists ? (analyticsSnap.data().booking_lead || 0) : 0;
+
+    const entries = (todayData.entries || []).slice(-5).reverse();
+    let msg = `💰 Орлогын тайлан\n\n`;
+    msg += `Өнөөдөр: ${(todayData.total || 0).toLocaleString()}₮\n`;
+    msg += `${d.slice(0, 7)}-р сар: ${monthTotal.toLocaleString()}₮\n`;
+    msg += `Өнөөдөр захиалга: ${leads} lead\n`;
+    if (entries.length) {
+      msg += `\nСүүлийн орлогууд:\n`;
+      entries.forEach(e => { msg += `• +${Number(e.amount).toLocaleString()}₮ — ${e.note}\n`; });
+    } else {
+      msg += `\nОрлого бүртгэгдээгүй байна.\n`;
+    }
+    msg += `\n/income [дүн] [тэмдэглэл] — бүртгэх`;
+    await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
+    return;
+  }
+
   // ── Manual brief trigger ──────────────────────────────────────────
   if (raw.replace(/@\w+/, '').trim().toLowerCase() === '/brief') {
     await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⏳ Брифинг бэлдэж байна...' });
@@ -727,6 +868,10 @@ async function handleText(msg) {
       `/goal [зорилго] — зорилго хадгалах\n` +
       `/focus [зүйл] — өнөөдрийн focus\n` +
       `/brief — өглөөний брифинг одоо авах\n\n` +
+      `*🏢 LFS Бизнес*\n` +
+      `/bookings — хүлээгдэж буй захиалгууд\n` +
+      `/income [дүн] [тэмдэглэл] — орлого бүртгэх\n` +
+      `/revenue — орлогын тайлан\n\n` +
       `*💪 Routine*\n` +
       `/score — Өнөөдрийн score + streak\n` +
       `/dasgal — Дасгал хийлээ ✅\n` +

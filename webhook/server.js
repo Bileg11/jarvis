@@ -8,9 +8,10 @@
 
 const express   = require('express');
 const cron      = require('node-cron');
-const tgHandler = require('./api/telegram');
-const metaHook  = require('./api/meta-webhook');
-const alerts    = require('./api/alerts');
+const tgHandler   = require('./api/telegram');
+const metaHook    = require('./api/meta-webhook');
+const alerts      = require('./api/alerts');
+const bookingHook = require('./api/booking');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -25,6 +26,9 @@ app.post('/api/telegram', tgHandler);
 // Meta (IG DM + FB Messenger)
 app.get ('/api/meta-webhook', metaHook.verify);
 app.post('/api/meta-webhook', metaHook.handle);
+
+// LFS Booking form
+app.post('/api/booking', bookingHook);
 
 app.listen(PORT, () => console.log(`[JARVIS] Server running on port ${PORT}`));
 
