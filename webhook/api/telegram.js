@@ -203,7 +203,7 @@ async function sendBrief() {
     `Ус: ${water}мл.`,
     bileg.goal    ? `Зорилго: "${bileg.goal}".`  : '',
     tasks.length  ? `Хийх tasks: ${tasks.slice(0,3).join(', ')}.` : '',
-    `Чи бол Билэгийн хувийн ЖАРВИС. Өчигдрийн үр дүнд тулгуурлан өнөөдрийн 2-3 өгүүлбэр проактив, шууд, дотно зөвлөгөө өг. Хийгээгүй зүйлийг сануул. Монголоор, анхаарлын тэмдэггүй.`,
+    `Чи бол Билэгийн хувийн J.A.R.V.I.S. Өчигдрийн үр дүнд тулгуурлан өнөөдрийн 2-3 өгүүлбэр проактив, шууд, дотно зөвлөгөө өг. Хийгээгүй зүйлийг сануул. Монголоор, анхаарлын тэмдэггүй.`,
   ].filter(Boolean).join(' ');
 
   let advice = 'Өнөөдөр нэг алхам урагш.';
@@ -271,9 +271,9 @@ async function sendBrief() {
     });
   }
 
-  // Жарвисын зөвлөгөө
-  msg += `\n💡 Жарвис:\n${advice}\n`;
-  msg += `\n⚡ Жарвис ажиллаж байна.`;
+  // J.A.R.V.I.S зөвлөгөө
+  msg += `\n💡 J.A.R.V.I.S:\n${advice}\n`;
+  msg += `\n⚡ J.A.R.V.I.S ажиллаж байна.`;
 
   await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
 }
@@ -779,7 +779,7 @@ async function handleText(msg) {
   if (raw.startsWith('/goal ') || raw.startsWith('/goal\n')) {
     const goal = raw.slice(6).trim();
     await saveBilegProfile({ goal });
-    await tgSend(`🎯 Зорилго хадгаллаа:\n_"${goal}"_\n\nЖарвис өглөө бүр үүнийг чамд сануулна.`);
+    await tgSend(`🎯 Зорилго хадгаллаа:\n_"${goal}"_\n\nJ.A.R.V.I.S өглөө бүр үүнийг чамд сануулна.`);
     return;
   }
 

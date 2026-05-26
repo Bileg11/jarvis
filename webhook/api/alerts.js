@@ -30,7 +30,7 @@ async function checkLFSActivity() {
     const users = snap.exists ? (snap.data().users || []) : [];
     if (users.length === 0) {
       await tg(
-        '⚠️ ЖАРВИС: Өнөөдөр 12:00 болтол LFS-д хэн ч хандаагүй байна.\n\n' +
+        '⚠️ J.A.R.V.I.S: Өнөөдөр 12:00 болтол LFS-д хэн ч хандаагүй байна.\n\n' +
         'Story, post, эсвэл story reply хийж идэвхжүүлэх үү?'
       );
     }
@@ -58,7 +58,7 @@ async function checkEveningRoutine() {
 
     const list = missed.map(r => '• ' + r.label).join('\n');
     await tg(
-      `⏰ ЖАРВИС: 20:00 боллоо. Өнөөдөр хийгдээгүй зүйлс:\n\n${list}\n\n` +
+      `⏰ J.A.R.V.I.S: 20:00 боллоо. Өнөөдөр хийгдээгүй зүйлс:\n\n${list}\n\n` +
       `Унтахаасаа өмнө нэгийг нь хийж амж.`
     );
   } catch (e) {
@@ -80,7 +80,7 @@ async function checkPostFrequency() {
     if (diffDays >= 2) {
       const days = Math.floor(diffDays);
       await tg(
-        `📸 ЖАРВИС: ${days} хоног Instagram-д post хийгдээгүй байна.\n\n` +
+        `📸 J.A.R.V.I.S: ${days} хоног Instagram-д post хийгдээгүй байна.\n\n` +
         `LFS-ийн engagement буурч байж магадгүй. Өнөөдөр нэг post хийх үү?`
       );
     }

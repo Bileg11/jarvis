@@ -188,7 +188,7 @@ async function sendMorningBrief() {
       taskSection,
       '💡 ' + advice,
       '',
-      '⚡ _Жарвис ажиллаж байна._',
+      '⚡ _J.A.R.V.I.S ажиллаж байна._',
     ].join('\n');
 
     await tgNotify(brief);
@@ -217,7 +217,7 @@ async function sendDailyReport() {
     const revenue       = revenueSnap.exists ? (revenueSnap.data().total || 0) : 0;
 
     const report =
-`📊 *ЖАРВИСЫН ӨДРИЙН ТАЙЛАН*
+`📊 *J.A.R.V.I.SЫН ӨДРИЙН ТАЙЛАН*
 _${today}_
 \`------------------------\`
 Сайхан амарч байна уу, Билэг менежер.
