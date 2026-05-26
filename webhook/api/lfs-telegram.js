@@ -146,6 +146,41 @@ async function handleCallback(cb) {
     return;
   }
 
+  // ── Sprint 4: Marketing content queue approve/reject ─────────────
+  if (cmd.startsWith('mkq_')) {
+    const ideaId = cmd.slice(4);
+    try {
+      const qRef  = dbLFS.doc(`users/${UID}/marketing/weeklyQueue`);
+      const qSnap = await qRef.get();
+      const qData = qSnap.exists ? qSnap.data() : {};
+      const pendingKey  = `pending_${ideaId}`;
+      const approvedKey = `approved_${ideaId}`;
+      const ideaData    = qData[pendingKey] || {};
+
+      // approved-д шилжүүлж, pending-г устгах
+      await qRef.set({
+        [approvedKey]: { ...ideaData, status: 'approved', approvedAt: new Date().toISOString() },
+        [pendingKey]:  admin.firestore.FieldValue.delete(),
+      }, { merge: true });
+    } catch (e) {
+      console.error('[Marketing] Approve error:', e.message);
+    }
+    await tgCall('editMessageReplyMarkup', {
+      chat_id: TG_CHAT, message_id: msgId, reply_markup: { inline_keyboard: [] },
+    });
+    await tgSend('✅ Постын санаа queue-д нэмэгдлээ.');
+    await tgAnswer(cbId, 'Queue-д нэмэгдлээ ✅');
+    return;
+  }
+
+  if (cmd.startsWith('mkx_')) {
+    await tgCall('editMessageReplyMarkup', {
+      chat_id: TG_CHAT, message_id: msgId, reply_markup: { inline_keyboard: [] },
+    });
+    await tgAnswer(cbId, 'Орхилоо');
+    return;
+  }
+
   // ── Ghost post approval ────────────────────────────────────────
   const pSnap = await pendingRef().get();
   if (pSnap.exists) {
@@ -445,6 +480,89 @@ async function handleText(msg) {
   }
 }
 
+// ── SPRINT 4: AI MARKETING CONTENT INTELLIGENCE ───────────────────
+// server.js-ийн cron-оор дуудагдана (13:00 Шанхай / 05:00 UTC)
+async function generateMarketingIdeas() {
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_KEY) { console.warn('[Marketing] GEMINI_API_KEY тохиргоогүй'); return; }
+
+  const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+
+  const prompt =
+    `LFS Shanghai бизнесийн хувьд өнөөдөр (${today}) Instagram/Facebook постод тохирох 3 санаа бэлдэж өгнө үү.\n` +
+    `Зорилтот хэрэглэгч: Шанхайд аялах сонирхолтой Монголчууд.\n\n` +
+    `Хариу: JSON array ЗӨВХӨН (тайлбар текст хэрэггүй):\n` +
+    `[\n` +
+    `  {\n` +
+    `    "title": "Постын гарчиг",\n` +
+    `    "hook": "Анхны 2 мөр (attention-grabbing)",\n` +
+    `    "caption": "Caption 100-150 тэмдэгт, дотно хэлбэр, анхаарлын тэмдэггүй",\n` +
+    `    "hashtags": "#LFSShanghai #Шанхай #Монгол",\n` +
+    `    "angle": "Ямар өнцгөөс авсан"\n` +
+    `  }\n` +
+    `]\n\n` +
+    `Сэдэв: Шанхай аялал, эмнэлгийн багц, хөтөч үйлчилгээ, амьдралын хэв маяг.`;
+
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 1500, temperature: 0.9 },
+        }),
+      }
+    );
+    const data    = await r.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    const arrMatch = rawText?.match(/\[[\s\S]*\]/);
+    if (!arrMatch) { console.error('[Marketing] JSON array гарсангүй'); return; }
+
+    const ideas = JSON.parse(arrMatch[0]);
+
+    for (let i = 0; i < Math.min(ideas.length, 3); i++) {
+      const idea   = ideas[i];
+      const ideaId = `mk_${Date.now()}_${i}`;
+
+      // Firestore-д pending хэлбэрт хадгалах
+      await dbLFS.doc(`users/${UID}/marketing/weeklyQueue`).set({
+        [`pending_${ideaId}`]: {
+          ...idea,
+          ideaId,
+          status:    'pending',
+          createdAt: new Date().toISOString(),
+        },
+      }, { merge: true });
+
+      const msg =
+        `💡 *Постын санаа ${i + 1}/3*\n\n` +
+        `📌 *${idea.title}*\n\n` +
+        `🪝 *Hook:*\n${idea.hook}\n\n` +
+        `📝 *Caption:*\n${idea.caption}\n\n` +
+        `🏷 ${idea.hashtags}\n` +
+        `📐 _${idea.angle}_`;
+
+      await tgCall('sendMessage', {
+        chat_id:      TG_CHAT,
+        text:         msg,
+        parse_mode:   'Markdown',
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '✅ Зөвшөөрөх', callback_data: `mkq_${ideaId}` },
+            { text: '❌ Орхих',      callback_data: `mkx_${ideaId}` },
+          ]],
+        },
+      });
+
+      await new Promise(res => setTimeout(res, 800));
+    }
+  } catch (e) {
+    console.error('[Marketing] generateMarketingIdeas error:', e.message);
+  }
+}
+
 // ── WEBHOOK HANDLER ───────────────────────────────────────────────
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(200).send('LFS Bot OK');
@@ -467,5 +585,6 @@ module.exports = async (req, res) => {
 };
 
 // Бусад модулиас дуудах боломжтой
-module.exports.tgCall = tgCall;
-module.exports.tgSend = (text) => tgCall('sendMessage', { chat_id: TG_CHAT, text, parse_mode: 'Markdown' });
+module.exports.tgCall               = tgCall;
+module.exports.tgSend               = (text) => tgCall('sendMessage', { chat_id: TG_CHAT, text, parse_mode: 'Markdown' });
+module.exports.generateMarketingIdeas = generateMarketingIdeas;

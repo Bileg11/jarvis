@@ -8,6 +8,74 @@
   <title>Статс — Jarvis</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <style>
+    /* ── JARVIS v2.2 Live Panel ────────────────────────────────────── */
+    .v22-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      color: rgba(124,92,252,0.7); text-transform: uppercase;
+      padding: 18px 14px 8px; position: relative; z-index: 1;
+    }
+    .v22-card {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07);
+      border-radius: 16px; padding: 16px; margin: 0 14px 10px;
+      position: relative; z-index: 1;
+    }
+    .v22-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 1px;
+      color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 12px;
+    }
+    .v22-task-item {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4;
+    }
+    .v22-task-item:last-child { border-bottom: none; }
+    .v22-task-num { color: rgba(255,255,255,0.25); font-size: 11px; min-width: 16px; padding-top: 1px; }
+    .v22-hsk-bar-bg {
+      background: rgba(255,255,255,0.1); border-radius: 4px; height: 6px; overflow: hidden; margin: 8px 0 6px;
+    }
+    .v22-hsk-bar-fill {
+      height: 100%; background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      border-radius: 4px; transition: width 0.6s ease; width: 0%;
+    }
+    .v22-lfs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+    .v22-lfs-item {
+      background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px 8px; text-align: center;
+    }
+    .v22-lfs-num { font-size: 20px; font-weight: 700; color: rgba(124,92,252,0.9); }
+    .v22-lfs-lbl { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+    /* ── Sprint 7: Red Alert Overlay ──────────────────────────────── */
+    #jarvis-red-alert {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(220,38,38,0.12); backdrop-filter: blur(4px);
+      border: 2px solid rgba(220,38,38,0.6);
+      animation: jarvis-pulse 1.2s ease-in-out infinite;
+    }
+    #jarvis-red-alert.active { display: flex; align-items: center; justify-content: center; }
+    @keyframes jarvis-pulse {
+      0%,100% { border-color: rgba(220,38,38,0.6); }
+      50%      { border-color: rgba(252,165,165,0.9); }
+    }
+    .red-alert-box {
+      background: #1a0505; border: 1.5px solid rgba(220,38,38,0.8);
+      border-radius: 16px; padding: 24px 28px; text-align: center;
+      max-width: 320px; width: 90%; box-shadow: 0 0 40px rgba(220,38,38,0.3);
+    }
+    .red-alert-box h2 { color: #ef4444; font-size: 16px; margin-bottom: 6px; }
+    .red-alert-box .alert-sender { font-size: 12px; color: rgba(252,165,165,0.8); margin-bottom: 6px; }
+    .red-alert-box .alert-msg { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 16px; line-height: 1.5; }
+    .red-alert-resolve {
+      padding: 10px 28px; background: #dc2626; border: none; border-radius: 10px;
+      color: white; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+  </style>
   <style>
     body::before {
       content: '';
@@ -123,6 +191,70 @@
 
   <!-- CONTENT -->
   <div id="dash-content"></div>
+
+  <!-- ── Sprint 7: Red Alert Overlay ───────────────────────────── -->
+  <div id="jarvis-red-alert">
+    <div class="red-alert-box">
+      <h2>⚠️ Human Agent Needed!</h2>
+      <div class="alert-sender" id="alert-sender-txt"></div>
+      <div class="alert-msg" id="alert-msg-txt"></div>
+      <button class="red-alert-resolve" onclick="jarvisResolveAlert()">✓ Шийдвэрлэлээ</button>
+    </div>
+  </div>
+
+  <!-- ── Sprint 1: JARVIS v2.2 Live Panel ───────────────────────── -->
+  <div class="v22-label">⚡ J.A.R.V.I.S v2.2 — Live</div>
+
+  <!-- Tasks -->
+  <div class="v22-card">
+    <div class="v22-title">📋 Хийх зүйлүүд</div>
+    <div id="v22-task-list" style="color:rgba(255,255,255,0.35);font-size:13px">
+      Нэвтэрч орно уу...
+    </div>
+  </div>
+
+  <!-- HSK Readiness Progress -->
+  <div class="v22-card">
+    <div class="v22-title">🈶 HSK Readiness Progress</div>
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span id="v22-hsk-score" style="font-size:28px;font-weight:700;color:rgba(59,130,246,0.9)">—</span>
+      <span style="font-size:12px;color:rgba(255,255,255,0.3)">/100 дундаж</span>
+    </div>
+    <div class="v22-hsk-bar-bg">
+      <div class="v22-hsk-bar-fill" id="v22-hsk-bar"></div>
+    </div>
+    <div id="v22-hsk-sub" style="font-size:11px;color:rgba(255,255,255,0.3)">Дата байхгүй</div>
+  </div>
+
+  <!-- LFS Статистик (sendDailyReport-ийн дараа sync болно) -->
+  <div class="v22-card">
+    <div class="v22-title">🏢 LFS Өнөөдөр</div>
+    <div class="v22-lfs-grid">
+      <div class="v22-lfs-item">
+        <div class="v22-lfs-num" id="v22-lfs-users">—</div>
+        <div class="v22-lfs-lbl">Хэрэглэгч</div>
+      </div>
+      <div class="v22-lfs-item">
+        <div class="v22-lfs-num" id="v22-lfs-leads">—</div>
+        <div class="v22-lfs-lbl">Захиалга</div>
+      </div>
+      <div class="v22-lfs-item">
+        <div class="v22-lfs-num" id="v22-lfs-rev">—</div>
+        <div class="v22-lfs-lbl">Орлого ₮</div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:8px">
+      Өдрийн тайлангийн дараа шинэчлэгдэнэ (22:00)
+    </div>
+  </div>
+
+  <!-- Routine Streak (last 7 days) -->
+  <div class="v22-card" style="margin-bottom:80px">
+    <div class="v22-title">🔥 Streak (сүүлийн 7 хоног)</div>
+    <div id="v22-streak-grid" style="color:rgba(255,255,255,0.35);font-size:13px">
+      Уншиж байна...
+    </div>
+  </div>
 
   <!-- NAV -->
   <nav class="bottom-nav">
@@ -371,6 +503,134 @@
 
     // ── init ──────────────────────────────
     render(7);
+  </script>
+
+  <!-- ── Firebase config + JARVIS v2.2 Live listeners ────────────── -->
+  <script src="firebase-config.js"></script>
+  <script>
+    (function () {
+      const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+
+      // ── Firebase auth 준비 후 listeners 시작 ──────────────────────
+      _auth.onAuthStateChanged(function (user) {
+        if (!user) return;
+        var uid = user.uid;
+        var db  = _db; // firebase-config.js-ийн _db (jarvis-bileg)
+
+        // ── Tasks listener ──────────────────────────────────────────
+        db.collection('users/' + uid + '/tasks')
+          .where('done', '==', false)
+          .onSnapshot(function (snap) {
+            var tasks = snap.docs
+              .map(function (d) { return d.data(); })
+              .sort(function (a, b) { return (a.createdAt||'').localeCompare(b.createdAt||''); })
+              .slice(0, 8);
+            var el = document.getElementById('v22-task-list');
+            if (!el) return;
+            if (!tasks.length) {
+              el.innerHTML = '<span style="color:rgba(34,197,94,0.8)">✅ Бүх зүйл хийгдсэн</span>';
+              return;
+            }
+            el.innerHTML = tasks.map(function (t, i) {
+              return '<div class="v22-task-item">' +
+                '<span class="v22-task-num">' + (i + 1) + '.</span>' +
+                '<span>' + (t.text || '') + '</span>' +
+                '</div>';
+            }).join('');
+          });
+
+        // ── HSK Scores listener ──────────────────────────────────────
+        db.doc('users/' + uid + '/hsk/scores').onSnapshot(function (snap) {
+          if (!snap.exists) return;
+          var list   = snap.data().list || [];
+          var scores = list.map(function (s) { return s.score || 0; }).filter(function (s) { return s > 0; });
+          if (!scores.length) return;
+          var avg  = Math.round(scores.reduce(function (a, b) { return a + b; }, 0) / scores.length);
+          var last = scores[scores.length - 1];
+          var sc   = document.getElementById('v22-hsk-score');
+          var bar  = document.getElementById('v22-hsk-bar');
+          var sub  = document.getElementById('v22-hsk-sub');
+          if (sc)  sc.textContent  = avg + '/100';
+          if (bar) bar.style.width = avg + '%';
+          if (sub) sub.textContent = 'Сүүлийн оноо: ' + last + '/100 · ' + scores.length + ' удаа шалгасан';
+        });
+
+        // ── LFS Analytics listener (sendDailyReport-ийн дараа sync болсон өгөгдөл) ──
+        var today = todaySH();
+        db.doc('users/' + uid + '/analytics/' + today).onSnapshot(function (snap) {
+          var d = snap.exists ? snap.data() : {};
+          var uel = document.getElementById('v22-lfs-users');
+          var lel = document.getElementById('v22-lfs-leads');
+          var rel = document.getElementById('v22-lfs-rev');
+          if (uel) uel.textContent = d.lfs_users_today   != null ? d.lfs_users_today   : '—';
+          if (lel) lel.textContent = d.lfs_leads_today   != null ? d.lfs_leads_today   : '—';
+          if (rel) {
+            var rev = d.lfs_revenue_today;
+            rel.textContent = rev ? (rev >= 1000 ? Math.round(rev/1000) + 'K' : rev) : '—';
+          }
+        });
+
+        // ── Routine Streak (last 7 days) ────────────────────────────
+        var KEYS = ['exercise', 'hanzi', 'read', 'journal'];
+        var LABELS = { exercise: '💪', hanzi: '汉', read: '📚', journal: '📝' };
+        var dayData = {};
+        var pending = 7;
+        for (var i = 0; i < 7; i++) {
+          (function (daysAgo) {
+            var d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+            d.setDate(d.getDate() - daysAgo);
+            var ds = d.toLocaleDateString('sv');
+            db.doc('users/' + uid + '/routines/' + ds).get().then(function (snap) {
+              dayData[daysAgo] = snap.exists ? snap.data() : {};
+              pending--;
+              if (pending === 0) renderStreakGrid();
+            }).catch(function () { pending--; if (pending === 0) renderStreakGrid(); });
+          })(i);
+        }
+
+        function renderStreakGrid() {
+          var el = document.getElementById('v22-streak-grid');
+          if (!el) return;
+          var html = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">';
+          KEYS.forEach(function (key) {
+            var streak = 0;
+            for (var i = 0; i < 7; i++) {
+              if (dayData[i] && dayData[i][key]) streak++;
+            }
+            html += '<div style="text-align:center;padding:8px 4px;background:rgba(255,255,255,0.04);border-radius:10px">';
+            html += '<div style="font-size:18px">' + LABELS[key] + '</div>';
+            html += '<div style="font-size:16px;font-weight:700;color:rgba(124,92,252,0.9)">' + streak + '</div>';
+            html += '<div style="font-size:9px;color:rgba(255,255,255,0.25)">/7</div>';
+            html += '</div>';
+          });
+          html += '</div>';
+          el.innerHTML = html;
+        }
+
+        // ── Sprint 7: Red Alert listener ────────────────────────────
+        db.doc('users/' + uid + '/alerts/current').onSnapshot(function (snap) {
+          if (!snap.exists) return;
+          var alert = snap.data();
+          if (alert.resolved) return;
+          var senderEl = document.getElementById('alert-sender-txt');
+          var msgEl    = document.getElementById('alert-msg-txt');
+          if (senderEl) senderEl.textContent = 'Хэрэглэгч: ' + (alert.displayName || alert.senderId || '—');
+          if (msgEl)    msgEl.textContent    = '"' + (alert.message || '').slice(0, 120) + '"';
+          document.getElementById('jarvis-red-alert').classList.add('active');
+        });
+      });
+
+      // Resolve button handler
+      window.jarvisResolveAlert = function () {
+        document.getElementById('jarvis-red-alert').classList.remove('active');
+        var user = _auth.currentUser;
+        if (user) {
+          _db.doc('users/' + user.uid + '/alerts/current')
+            .set({ resolved: true }, { merge: true })
+            .catch(function () {});
+        }
+      };
+    })();
   </script>
 </body>
 </html>

@@ -234,6 +234,17 @@ _${today}_
 Маргаашийн ажилд чинь амжилт хүсье. 🚀`;
 
     await tgNotify(report);
+
+    // Sprint 1: LFS статистикийг dbPersonal-д sync хийх → вэб dashboard уншина
+    dbPersonal.doc(`users/${UID}/analytics/${today}`).set({
+      lfs_users_today:  userCount,
+      lfs_leads_today:  bookingLeads,
+      lfs_guide_today:  guideCount,
+      lfs_medical_today: medicalCount,
+      lfs_revenue_today: revenue,
+      syncedAt:         new Date().toISOString(),
+    }, { merge: true }).catch(() => {});
+
   } catch (e) {
     console.error('[Report] Daily report error:', e.message);
   }
@@ -569,10 +580,29 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
   // Автомат ESCALATE сэрэмжлүүлэг
   if (escalate) {
     const displayName = profile?.name || `ID: ${senderId}`;
+
     tgNotify(
-      `⚠️ *СЭРЭМЖЛҮҮЛЭГ:* Хэрэглэгч *${displayName}* чат дээр бухимдалтай эсвэл яаруу байна. Чатыг шалгана уу.`
+      `🚨 *СЭРЭМЖЛҮҮЛЭГ:* Хэрэглэгч *${displayName}* бухимдалтай байна. Чатыг шалгана уу.\n` +
+      `_Мессеж: "${text.slice(0, 100)}"_`
     ).catch(() => {});
     trackDaily('escalate');
+
+    // Sprint 7: Firestore-д бичих → вэбсайт дэлгэц дээр realtime red alert
+    const alertPayload = {
+      type:        'escalate',
+      senderId,
+      displayName,
+      message:     text.slice(0, 200),
+      platform,
+      triggeredAt: new Date().toISOString(),
+      resolved:    false,
+    };
+    // dbLFS — сервер талын хадгалалт
+    dbLFS.doc(`users/${UID}/alerts/current`).set(alertPayload)
+      .catch(e => console.error('[Alert] LFS write error:', e.message));
+    // dbPersonal — вэб dashboard (jarvis-bileg SDK) уншдаг
+    dbPersonal.doc(`users/${UID}/alerts/current`).set(alertPayload)
+      .catch(e => console.error('[Alert] Personal write error:', e.message));
   }
 
   const ok = await sendWithButtons(senderId, cleanReply, platform, accessToken);

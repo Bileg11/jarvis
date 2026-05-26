@@ -56,6 +56,12 @@ cron.schedule('30 23 * * 0', () => {
   sendWeeklyReport().catch(e => console.error('[Weekly] Error:', e.message));
 });
 
+// ── SPRINT 4: MARKETING CONTENT AI — 13:00 Шанхай (05:00 UTC) ────
+cron.schedule('0 5 * * *', () => {
+  console.log('[JARVIS] Generating marketing content ideas...');
+  lfsBot.generateMarketingIdeas().catch(e => console.error('[Marketing] Error:', e.message));
+});
+
 // ── PROACTIVE ALERTS ──────────────────────────────────────────────
 // 12:00 Шанхай (04:00 UTC) — LFS идэвхгүй байдал шалгана
 cron.schedule('0 4 * * *', () => {

@@ -120,6 +120,36 @@
   <div id="sync-bar" class="sync-bar" style="display:none"></div>
   <div id="toast"></div>
 
+  <!-- Sprint 7: Red Alert Overlay (index.html дээр ч харагдана) -->
+  <div id="jarvis-red-alert" style="
+    display:none; position:fixed; inset:0; z-index:9999;
+    background:rgba(220,38,38,0.1); backdrop-filter:blur(4px);
+    border:2px solid rgba(220,38,38,0.5);
+    animation:jarvis-alert-pulse 1.2s ease-in-out infinite;
+    align-items:center; justify-content:center;
+  ">
+    <div style="
+      background:#1a0505; border:1.5px solid rgba(220,38,38,0.8); border-radius:16px;
+      padding:24px 28px; text-align:center; max-width:300px; width:90%;
+      box-shadow:0 0 40px rgba(220,38,38,0.3);
+    ">
+      <h2 style="color:#ef4444;font-size:15px;margin:0 0 6px">⚠️ Human Agent Needed!</h2>
+      <p id="idx-alert-sender" style="font-size:12px;color:rgba(252,165,165,0.8);margin:0 0 4px"></p>
+      <p id="idx-alert-msg"    style="font-size:12px;color:rgba(255,255,255,0.55);margin:0 0 14px;line-height:1.5"></p>
+      <button onclick="idxResolveAlert()" style="
+        padding:9px 24px; background:#dc2626; border:none; border-radius:10px;
+        color:white; font-size:13px; font-weight:600; cursor:pointer;
+      ">✓ Шийдвэрлэлээ</button>
+    </div>
+  </div>
+  <style>
+    @keyframes jarvis-alert-pulse {
+      0%,100% { border-color: rgba(220,38,38,0.5); }
+      50%      { border-color: rgba(252,165,165,0.8); }
+    }
+    #jarvis-red-alert.active { display:flex !important; }
+  </style>
+
   <script src="app.js"></script>
   <script src="gemini.js"></script>
   <script src="firebase-config.js"></script>
@@ -143,6 +173,34 @@
         menu.style.display = 'none';
       }
     });
+
+    // ── Sprint 7: Red Alert listener ─────────────────────────────
+    _auth.onAuthStateChanged(function(user) {
+      if (!user) return;
+      _db.doc('users/' + user.uid + '/alerts/current')
+        .onSnapshot(function(snap) {
+          if (!snap.exists) return;
+          var a = snap.data();
+          if (a.resolved) {
+            document.getElementById('jarvis-red-alert').classList.remove('active');
+            return;
+          }
+          var sel = document.getElementById('idx-alert-sender');
+          var mel = document.getElementById('idx-alert-msg');
+          if (sel) sel.textContent = 'Хэрэглэгч: ' + (a.displayName || a.senderId || '—');
+          if (mel) mel.textContent = '"' + (a.message || '').slice(0, 120) + '"';
+          document.getElementById('jarvis-red-alert').classList.add('active');
+        });
+    });
+
+    window.idxResolveAlert = function() {
+      document.getElementById('jarvis-red-alert').classList.remove('active');
+      var user = _auth.currentUser;
+      if (user) {
+        _db.doc('users/' + user.uid + '/alerts/current')
+          .set({ resolved: true }, { merge: true }).catch(function(){});
+      }
+    };
   </script>
 </body>
 </html>
