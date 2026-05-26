@@ -885,8 +885,7 @@ async function handleText(msg) {
       await tgSend('⚠️ Google Calendar тохиргоогүй байна.\nRailway-д `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` нэмнэ үү.');
       return;
     }
-    await tgCall('sendMessage', { chat_id: TG_CHAT, text: '📅 Задлаж байна...' });
-    const parsed = await parseEvent(calText);
+    const parsed = parseEvent(calText);
     if (!parsed || !parsed.date) {
       await tgSend('⚠️ Ойлгож чадсангүй. Жишээ:\n`/cal маргааш 3 цагт meeting`\n`/cal өнөөдөр 10 цагт эмч`');
       return;

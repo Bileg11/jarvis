@@ -30,51 +30,74 @@ function isConfigured() {
   );
 }
 
-// ── Natural language → structured event (Gemini) ──────────────────
-async function parseEvent(text) {
-  const GEMINI_KEY = process.env.GEMINI_API_KEY;
-  if (!GEMINI_KEY) return null;
-
-  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+// ── Natural language → structured event ───────────────────────────
+// Rule-based parser — Кирилл, Латин транслитерац, Англи бүгдийг дэмжинэ
+function parseEvent(text) {
+  const now      = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   const todayStr = now.toLocaleDateString('sv');
   const tomorrow = new Date(now.getTime() + 86400000).toLocaleDateString('sv');
 
-  const prompt =
-    `Today is ${todayStr}, current time ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} (Shanghai UTC+8).\n` +
-    `Tomorrow is ${tomorrow}.\n\n` +
-    `Parse this calendar event request (may be in Mongolian Cyrillic, Mongolian Latin transliteration, or English):\n` +
-    `"${text}"\n\n` +
-    `Mongolian transliteration guide: margaash/marGaash=tomorrow, onoodor/unuudur=today, tsagt=o'clock, uulzalt=meeting, hural=meeting\n\n` +
-    `Reply ONLY with JSON (no explanation):\n` +
-    `{"title":"event title in original language","date":"YYYY-MM-DD","startTime":"HH:MM","endTime":"HH:MM","description":""}\n\n` +
-    `Rules:\n` +
-    `- If no time given, default 09:00\n` +
-    `- If no duration given, add 1 hour\n` +
-    `- "3 tsagt" or "3 цагт" = 15:00\n` +
-    `- "12 tsagt" = 12:00\n` +
-    `- "oroin 7" or "оройн 7" = 19:00\n` +
-    `- Keep title in the original language the user used`;
+  const t = text.toLowerCase();
 
-  try {
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 150, temperature: 0.1 },
-        }),
-      }
-    );
-    const data = await r.json();
-    const raw  = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const jsonMatch = raw.match(/\{[\s\S]*?\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
-  } catch (e) {
-    console.error('[Calendar] parseEvent error:', e.message);
+  // ── Огноо тодорхойлох ─────────────────────────────────────────
+  let date = todayStr; // default: өнөөдөр
+
+  if (/марга+ш|margaa?sh/i.test(t)) {
+    date = tomorrow;
+  } else if (/өнөөдөр|onoodor|unuudur|today/i.test(t)) {
+    date = todayStr;
   }
-  return null;
+  // "YYYY-MM-DD" хэлбэр шууд бичсэн бол
+  const dateMatch = t.match(/(\d{4}-\d{2}-\d{2})/);
+  if (dateMatch) date = dateMatch[1];
+
+  // ── Цаг тодорхойлох ───────────────────────────────────────────
+  let startHour = 9; // default 09:00
+  let startMin  = 0;
+
+  // "3 tsagt", "3 цагт", "3:00", "15:00", "3pm", "орой 7"
+  const timePatterns = [
+    // "15:30" or "3:30"
+    { re: /(\d{1,2}):(\d{2})/, h: m => parseInt(m[1]), min: m => parseInt(m[2]) },
+    // "орой X" or "oroin X" → evening, add 12 if < 7
+    { re: /(?:орой|evening|oroin|pm)\s*(\d{1,2})/i, h: m => {
+      const h = parseInt(m[1]); return h < 7 ? h + 12 : h; }, min: () => 0 },
+    // "өглөө X" or "morning X" → morning
+    { re: /(?:өглөө|morning|ugluu)\s*(\d{1,2})/i, h: m => parseInt(m[1]), min: () => 0 },
+    // "X цагт" or "X tsagt" or "X cagt"
+    { re: /(\d{1,2})\s*(?:цагт|tsagt|cagt|o'?clock)/i, h: m => {
+      const h = parseInt(m[1]); return h < 7 ? h + 12 : h; }, min: () => 0 },
+    // plain number followed by "am/pm"
+    { re: /(\d{1,2})\s*pm/i, h: m => { const h = parseInt(m[1]); return h < 12 ? h + 12 : h; }, min: () => 0 },
+    { re: /(\d{1,2})\s*am/i, h: m => parseInt(m[1]), min: () => 0 },
+  ];
+
+  for (const p of timePatterns) {
+    const m = t.match(p.re);
+    if (m) { startHour = p.h(m); startMin = p.min(m); break; }
+  }
+
+  const endHour = startHour + 1; // 1 цаг duration
+
+  const pad  = n => String(n).padStart(2, '0');
+  const startTime = `${pad(startHour)}:${pad(startMin)}`;
+  const endTime   = `${pad(endHour % 24)}:${pad(startMin)}`;
+
+  // ── Гарчиг: огноо, цаг, keyword-уудыг хасаад үлдсэн нь ─────
+  let title = text
+    .replace(/марга+ш|margaa?sh/gi, '')
+    .replace(/өнөөдөр|onoodor|unuudur|today/gi, '')
+    .replace(/\d{4}-\d{2}-\d{2}/g, '')
+    .replace(/(?:орой|evening|oroin)\s*\d{1,2}/gi, '')
+    .replace(/(?:өглөө|morning|ugluu)\s*\d{1,2}/gi, '')
+    .replace(/\d{1,2}:\d{2}/g, '')
+    .replace(/\d{1,2}\s*(?:цагт|tsagt|cagt|pm|am)/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!title) title = text.trim();
+
+  return { title, date, startTime, endTime, description: '' };
 }
 
 // ── Event үүсгэх ──────────────────────────────────────────────────
