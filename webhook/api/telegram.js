@@ -7,6 +7,7 @@ const fetch  = require('node-fetch');
 const { admin, dbPersonal, dbLFS } = require('../firebase');
 const { notionSave } = require('./notion');
 const { isConfigured: calOk, parseEvent, createEvent, listTodayEvents, listUpcomingEvents, deleteEvent, formatEventTime, formatEventDate } = require('./calendar');
+const { isConfigured: gmailOk, getUnreadEmails, getUnreadCount } = require('./gmail');
 
 // Хувийн өгөгдөл → dbPersonal (routines, logs, tasks, revenue, bileg/profile)
 // LFS өгөгдөл   → dbLFS      (analytics, marketing, bookings)
@@ -144,7 +145,11 @@ async function sendBrief() {
     ? listTodayEvents().catch(() => [])
     : Promise.resolve([]);
 
-  const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap, revenueSnap, calEvents] = await Promise.all([
+  const gmailPromise = gmailOk()
+    ? getUnreadEmails(3).catch(() => [])
+    : Promise.resolve([]);
+
+  const [analyticsSnap, bilegSnap, tasksRaw, routineSnap, logSnap, revenueSnap, calEvents, gmailEmails] = await Promise.all([
     dbLFS.doc(`users/${UID}/analytics/${yesterday}`).get(),       // LFS трафик
     dbPersonal.doc(`users/${UID}/bileg/profile`).get(),           // хувийн
     dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
@@ -152,6 +157,7 @@ async function sendBrief() {
     dbPersonal.doc(`users/${UID}/logs/${yesterday}`).get(),       // хувийн
     dbPersonal.doc(`users/${UID}/revenue/${yesterday}`).get(),    // хувийн
     calEventsPromise,
+    gmailPromise,
   ]);
 
   // LFS аналитик
@@ -254,6 +260,14 @@ async function sendBrief() {
     msg += `\n📅 Өнөөдрийн хуваарь:\n`;
     calEvents.forEach(e => {
       msg += `• ${formatEventTime(e)} — ${e.summary}\n`;
+    });
+  }
+
+  // Gmail уншаагүй имэйлүүд
+  if (gmailEmails && gmailEmails.length) {
+    msg += `\n📧 Уншаагүй имэйл (${gmailEmails.length}):\n`;
+    gmailEmails.forEach(e => {
+      msg += `• ${e.from.slice(0, 20)} — ${e.subject.slice(0, 40)}\n`;
     });
   }
 

@@ -11,7 +11,11 @@ const url  = require('url');
 const CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     || '';
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const REDIRECT_URI  = 'http://localhost:3333/callback';
-const SCOPE         = 'https://www.googleapis.com/auth/calendar';
+// Calendar + Gmail хоёуланг нэг token-д багтаана
+const SCOPE = [
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/gmail.readonly',
+].join(' ');
 
 const authUrl =
   `https://accounts.google.com/o/oauth2/v2/auth` +
