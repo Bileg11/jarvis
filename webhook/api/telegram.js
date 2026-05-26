@@ -5,6 +5,7 @@
 
 const fetch  = require('node-fetch');
 const { admin, dbPersonal, dbLFS } = require('../firebase');
+const { notionSave } = require('./notion');
 
 // Хувийн өгөгдөл → dbPersonal (routines, logs, tasks, revenue, bileg/profile)
 // LFS өгөгдөл   → dbLFS      (analytics, marketing, bookings)
@@ -732,6 +733,7 @@ async function handleText(msg) {
     const goal = raw.slice(6).trim();
     await saveBilegProfile({ goal });
     await tgSend(`🎯 Зорилго хадгаллаа:\n_"${goal}"_\n\nЖарвис өглөө бүр үүнийг чамд сануулна.`);
+    notionSave(`🎯 Зорилго: ${goal}`, `Тавьсан огноо: ${todaySH()}`, '🎯').catch(() => {});
     return;
   }
 
@@ -746,6 +748,22 @@ async function handleText(msg) {
     const focus = raw.slice(7).trim();
     await saveBilegProfile({ focus });
     await tgSend(`🔥 Өнөөдрийн focus хадгаллаа:\n_"${focus}"_`);
+    return;
+  }
+
+  // ── Notion тэмдэглэл ──────────────────────────────────────────────
+  if (raw.startsWith('/notion ') || raw.startsWith('/notion\n')) {
+    const noteText = raw.slice(8).trim();
+    if (!noteText) {
+      await tgSend('📝 Яг юу тэмдэглэх вэ?\n`/notion [текст]`');
+      return;
+    }
+    const url = await notionSave(noteText, `Telegram-аас: ${todaySH()}`, '📝');
+    if (url) {
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: `📝 Notion-д хадгаллаа.\n\n"${noteText.slice(0, 80)}${noteText.length > 80 ? '...' : ''}"` });
+    } else {
+      await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⚠️ Notion-д хадгалж чадсангүй. NOTION_TOKEN болон NOTION_DB_ID шалгана уу.' });
+    }
     return;
   }
 
@@ -808,6 +826,8 @@ async function handleText(msg) {
       chat_id: TG_CHAT,
       text: `💰 Орлого бүртгэгдлээ.\n\n+${amount.toLocaleString()}₮ — ${note}\nӨнөөдрийн нийт: ${total.toLocaleString()}₮`,
     });
+    // Notion-д auto-save
+    notionSave(`💰 +${amount.toLocaleString()}₮ — ${note}`, `Огноо: ${d}\nНийт өдрийн: ${total.toLocaleString()}₮`, '💰').catch(() => {});
     return;
   }
 
@@ -864,6 +884,7 @@ async function handleText(msg) {
       `*🧠 Санах ой*\n` +
       `/goal [зорилго] — зорилго хадгалах\n` +
       `/focus [зүйл] — өнөөдрийн focus\n` +
+      `/notion [текст] — Notion-д тэмдэглэх\n` +
       `/brief — өглөөний брифинг одоо авах\n\n` +
       `*🏢 LFS Бизнес*\n` +
       `/bookings — хүлээгдэж буй захиалгууд\n` +
