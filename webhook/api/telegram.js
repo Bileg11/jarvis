@@ -171,9 +171,9 @@ async function logWater(ml) {
 // notion.js-ийн notionSave() нь JARVIS page-д append хийдэг;
 // notionSaveScript() нь Content DB-д шинэ PAGE үүсгэдэг.
 async function notionSaveScript(title, content) {
-  const token = process.env.NOTION_TOKEN;
-  const dbId  = process.env.NOTION_CONTENT_DB_ID || process.env.NOTION_DB_ID;
-  if (!token || !dbId) return null;
+  const token  = process.env.NOTION_TOKEN;
+  const pageId = process.env.NOTION_DB_ID; // JARVIS хуудасны доор sub-page үүснэ
+  if (!token || !pageId) return null;
 
   const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
@@ -190,7 +190,7 @@ async function notionSaveScript(title, content) {
       type:   'callout',
       callout: {
         rich_text: [{ type: 'text', text: {
-          content: `J.A.R.V.I.S автоматаар үүсгэв — ${today}`,
+          content: `🎬 J.A.R.V.I.S автоматаар үүсгэв — ${today}`,
         }}],
         icon:  { emoji: '🎬' },
         color: 'gray_background',
@@ -206,7 +206,7 @@ async function notionSaveScript(title, content) {
   ];
 
   try {
-    // NOTION_CONTENT_DB_ID database-д шинэ хуудас үүсгэх
+    // JARVIS хуудасны доор шинэ sub-page үүсгэх (page_id ашиглана)
     const r = await fetch('https://api.notion.com/v1/pages', {
       method:  'POST',
       headers: {
@@ -215,9 +215,9 @@ async function notionSaveScript(title, content) {
         'Notion-Version': '2022-06-28',
       },
       body: JSON.stringify({
-        parent:     { database_id: dbId },
+        parent:     { page_id: pageId },
         properties: {
-          Name: {
+          title: {
             title: [{ type: 'text', text: { content: title.slice(0, 100) } }],
           },
         },
@@ -227,14 +227,13 @@ async function notionSaveScript(title, content) {
 
     const d = await r.json();
     if (d.object === 'error') {
-      console.error('[Notion Content] API error:', d.message);
-      // Fallback: JARVIS page-д append
-      return notionSave(title, content.slice(0, 1000), '🎬');
+      console.error('[Notion Script] API error:', d.message);
+      return null;
     }
     return d.url || `https://notion.so/${(d.id || '').replace(/-/g, '')}`;
 
   } catch (e) {
-    console.error('[Notion Content] Error:', e.message);
+    console.error('[Notion Script] Error:', e.message);
     return null;
   }
 }
