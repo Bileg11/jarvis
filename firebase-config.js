@@ -247,7 +247,10 @@ window.DB = {
 _auth.onAuthStateChanged(user => {
   if (user) {
     _hideLoginModal();
-    DB.syncDown();
+    DB.syncDown().then(() => {
+      // Notify pages that auth + sync is ready (e.g. chat.html HSK init)
+      document.dispatchEvent(new Event('jarvis:ready'));
+    });
   } else {
     _showLoginModal();
   }

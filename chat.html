@@ -5,575 +5,717 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>JARVIS — AI Chat</title>
+  <title>JARVIS — Command Center</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
   <link rel="manifest" href="manifest.json">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
-    /* ── RESET & BASE ────────────────────────────────────────────── */
+    /* ── RESET ───────────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #07090f;
-      --surface:   #0d1117;
-      --surface2:  #111827;
-      --border:    #1e2d3d;
-      --accent:    #00c6ff;
-      --gold:      #f0b429;
-      --gold-dim:  #a37a1a;
-      --text:      #e2e8f0;
-      --muted:     #4a5568;
-      --user-bg:   linear-gradient(135deg, #b7791f 0%, #f0b429 100%);
-      --bot-bg:    #111827;
-      --nav-h:     64px;
-      --header-h:  60px;
-      --safe-bot:  env(safe-area-inset-bottom, 0px);
+      --bg:       #07090f;
+      --s1:       #0d1117;
+      --s2:       #111827;
+      --border:   #1e2d3d;
+      --accent:   #00c6ff;
+      --gold:     #f0b429;
+      --gold-dim: #a37a1a;
+      --text:     #e2e8f0;
+      --muted:    #4a5568;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --user-bg:  linear-gradient(135deg,#b7791f,#f0b429);
+      --nav-h:    64px;
+      --hdr-h:    56px;
+      --tab-h:    44px;
+      --safe-bot: env(safe-area-inset-bottom, 0px);
     }
 
-    html, body { height: 100%; }
+    html, body { height: 100%; overflow: hidden; }
 
     body {
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
     }
 
-    /* ── GRID BACKGROUND ─────────────────────────────────────────── */
+    /* grid bg */
     body::before {
       content: '';
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background-image:
-        linear-gradient(rgba(0,198,255,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0,198,255,0.03) 1px, transparent 1px);
+        linear-gradient(rgba(0,198,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,198,255,.03) 1px, transparent 1px);
       background-size: 40px 40px;
-      pointer-events: none;
-      z-index: 0;
-    }
-
-    /* Glow orb top-right */
-    body::after {
-      content: '';
-      position: fixed;
-      top: -120px; right: -120px;
-      width: 400px; height: 400px;
-      background: radial-gradient(circle, rgba(0,198,255,0.07) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
+      pointer-events: none; z-index: 0;
     }
 
     /* ── HEADER ──────────────────────────────────────────────────── */
-    .chat-header {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      height: var(--header-h);
-      padding: 0 16px;
+    .hdr {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--hdr-h);
+      padding: 0 14px;
       padding-top: env(safe-area-inset-top, 0px);
-      background: rgba(7,9,15,0.92);
+      background: rgba(7,9,15,.94);
       backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 300;
+      gap: 10px;
     }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
+    .hdr-left { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-    .back-btn {
-      background: none;
-      border: none;
-      color: var(--accent);
-      font-size: 20px;
-      cursor: pointer;
-      padding: 4px 8px 4px 0;
-      line-height: 1;
-    }
-
-    .jarvis-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .j-avatar {
-      width: 34px; height: 34px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, #0d1117 0%, #1a2332 100%);
+    .j-badge { display: flex; align-items: center; gap: 7px; }
+    .j-av {
+      width: 30px; height: 30px; border-radius: 9px;
+      background: linear-gradient(135deg,#0d1117,#1a2332);
       border: 1px solid var(--accent);
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-      box-shadow: 0 0 12px rgba(0,198,255,0.2);
+      font-size: 15px; box-shadow: 0 0 10px rgba(0,198,255,.2);
+    }
+    .j-name { font-size: 13px; font-weight: 700; letter-spacing: 1.5px; }
+    .j-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); box-shadow: 0 0 6px var(--green);
+      animation: blink 2s infinite;
     }
 
-    .j-info { display: flex; flex-direction: column; }
-
-    .j-name {
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 2px;
-      color: var(--text);
+    /* ── MODE TABS ───────────────────────────────────────────────── */
+    .mode-tabs {
+      display: flex; gap: 4px;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 3px;
+      flex-shrink: 0;
     }
-
-    .j-status {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 10px;
+    .mode-tab {
+      padding: 4px 10px;
+      border-radius: 7px;
+      border: none;
+      background: none;
       color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      transition: all .18s;
+      white-space: nowrap;
+    }
+    .mode-tab.active {
+      background: rgba(0,198,255,.18);
+      color: var(--accent);
+      box-shadow: 0 0 8px rgba(0,198,255,.15);
     }
 
-    .status-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: #22c55e;
-      box-shadow: 0 0 6px #22c55e;
-      animation: pulse-dot 2s infinite;
-    }
+    .hdr-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
-    @keyframes pulse-dot {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; }
-    }
-
-    .header-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .clear-btn {
+    .icon-btn {
       background: none;
       border: 1px solid var(--border);
       color: var(--muted);
-      font-size: 13px;
-      padding: 5px 10px;
+      font-size: 12px;
+      padding: 5px 9px;
       border-radius: 8px;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all .2s;
+      display: flex; align-items: center; gap: 4px;
+      white-space: nowrap;
     }
-    .clear-btn:hover { border-color: #ef4444; color: #ef4444; }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .icon-btn.intel {
+      border-color: rgba(0,198,255,.35);
+      color: var(--accent);
+    }
+    .icon-btn.intel:disabled { opacity: .4; cursor: default; }
+    .pulse {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); box-shadow: 0 0 5px var(--accent);
+      animation: blink 1s infinite;
+    }
 
-    /* ── MESSAGES AREA ───────────────────────────────────────────── */
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    /* ── LAYOUT BODY ─────────────────────────────────────────────── */
+    .app-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      padding-top: var(--hdr-h);
+      padding-bottom: calc(var(--nav-h) + var(--safe-bot));
+      position: relative; z-index: 1;
+    }
+
+    /* ── SIDEBAR (HSK panel) ─────────────────────────────────────── */
+    .hsk-sidebar {
+      width: 260px;
+      min-width: 260px;
+      border-right: 1px solid var(--border);
+      background: rgba(13,17,23,.6);
+      display: flex; flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+      transition: transform .3s ease, width .3s ease;
+    }
+    .hsk-sidebar::-webkit-scrollbar { width: 3px; }
+    .hsk-sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+
+    /* mobile: sidebar hidden by default, shown in HSK mode */
+    @media (max-width: 767px) {
+      .hsk-sidebar {
+        position: fixed;
+        top: var(--hdr-h); bottom: calc(var(--nav-h) + var(--safe-bot));
+        left: 0; width: 100%;
+        z-index: 200;
+        transform: translateX(-100%);
+        border-right: none;
+      }
+      .hsk-sidebar.visible { transform: translateX(0); }
+      .chat-main { width: 100%; }
+    }
+
+    .sb-header {
+      padding: 14px 14px 8px;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2px; color: var(--accent);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── LEVEL CARDS ─────────────────────────────────────────────── */
+    .level-list { padding: 10px 10px 0; display: flex; flex-direction: column; gap: 6px; }
+
+    .lvl-card {
+      background: var(--s2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .lvl-card:hover { border-color: rgba(0,198,255,.3); background: rgba(0,198,255,.04); }
+    .lvl-card.active-level { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,198,255,.12); }
+
+    .lvl-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+    .lvl-tag { font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+    .lvl-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .lvl-pct { font-size: 12px; color: var(--accent); font-weight: 600; }
+    .lvl-count { font-size: 10px; color: var(--muted); }
+
+    .bar-track {
+      height: 5px; border-radius: 3px;
+      background: rgba(255,255,255,.06);
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 3px;
+      background: linear-gradient(90deg, #0d8faa, #00c6ff);
+      transition: width .6s ease;
+    }
+
+    .lvl-drill-btn {
+      margin-top: 7px;
+      width: 100%;
+      background: rgba(0,198,255,.1);
+      border: 1px solid rgba(0,198,255,.25);
+      color: var(--accent);
+      font-size: 11px; font-weight: 600;
+      padding: 5px 0;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all .18s;
+    }
+    .lvl-drill-btn:hover { background: rgba(0,198,255,.2); }
+
+    /* ── CHART ───────────────────────────────────────────────────── */
+    .chart-wrap {
+      padding: 12px 10px;
+      margin-top: 4px;
+      border-top: 1px solid var(--border);
+    }
+    .chart-title {
+      font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+      color: var(--muted); text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    #hsk-chart { max-height: 160px; }
+
+    /* ── MAIN AREA ───────────────────────────────────────────────── */
+    .chat-main {
+      flex: 1;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    /* ── MESSAGES ────────────────────────────────────────────────── */
     .messages {
       flex: 1;
       overflow-y: auto;
-      padding: calc(var(--header-h) + env(safe-area-inset-top, 0px) + 16px) 16px
-               calc(var(--nav-h) + 80px + var(--safe-bot) + 8px);
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      position: relative;
-      z-index: 1;
+      padding: 16px 14px 16px;
+      display: flex; flex-direction: column; gap: 14px;
     }
-
     .messages::-webkit-scrollbar { width: 3px; }
     .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-    /* ── MESSAGE BUBBLE ──────────────────────────────────────────── */
-    .msg-row {
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-      animation: fadeUp 0.25s ease;
-    }
+    .msg-row { display: flex; gap: 8px; align-items: flex-end; animation: fadeUp .22s ease; }
+    .msg-row.user { flex-direction: row-reverse; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
 
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .msg-row.user {
-      flex-direction: row-reverse;
-    }
-
-    .msg-avatar {
-      width: 30px; height: 30px;
-      border-radius: 9px;
+    .msg-av {
+      width: 28px; height: 28px; border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-      flex-shrink: 0;
+      font-size: 13px; flex-shrink: 0;
     }
-
-    .msg-row.bot .msg-avatar {
-      background: linear-gradient(135deg, #0d1117, #1a2332);
-      border: 1px solid var(--accent);
-      box-shadow: 0 0 10px rgba(0,198,255,0.15);
-    }
-
-    .msg-row.user .msg-avatar {
-      background: var(--user-bg);
-      font-size: 12px;
-      font-weight: 700;
-      color: #000;
-    }
+    .msg-row.bot .msg-av { background: linear-gradient(135deg,#0d1117,#1a2332); border: 1px solid var(--accent); }
+    .msg-row.user .msg-av { background: var(--user-bg); font-size: 11px; font-weight: 700; color: #000; }
 
     .bubble {
-      max-width: 78%;
-      padding: 12px 15px;
-      border-radius: 16px;
-      font-size: 14.5px;
-      line-height: 1.55;
-      position: relative;
-      word-break: break-word;
+      max-width: 80%; padding: 11px 14px;
+      border-radius: 14px; font-size: 14px; line-height: 1.55;
+      word-break: break-word; white-space: pre-wrap;
     }
-
     .msg-row.bot .bubble {
-      background: var(--bot-bg);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
-      color: var(--text);
-      box-shadow: 0 2px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.03);
+      background: var(--s1); border: 1px solid var(--border);
+      border-bottom-left-radius: 3px;
+      box-shadow: 0 2px 16px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.03);
     }
-
-    .msg-row.user .bubble {
-      background: var(--user-bg);
-      border-bottom-right-radius: 4px;
-      color: #0a0600;
-      font-weight: 500;
-      box-shadow: 0 2px 20px rgba(240,180,41,0.2);
-    }
-
-    /* Accent top-border on bot bubbles */
     .msg-row.bot .bubble::before {
-      content: '';
-      position: absolute;
-      top: -1px; left: 16px; right: 60%;
-      height: 2px;
+      content: ''; position: absolute;
+      top: -1px; left: 14px; right: 60%; height: 2px;
       background: linear-gradient(90deg, var(--accent), transparent);
-      border-radius: 2px;
+    }
+    .msg-row.bot .bubble { position: relative; }
+    .msg-row.user .bubble {
+      background: var(--user-bg); border-bottom-right-radius: 3px;
+      color: #0a0600; font-weight: 500;
     }
 
-    /* Typing indicator */
-    .typing-dots {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      padding: 4px 0;
-    }
+    .typing-dots { display: flex; gap: 4px; align-items: center; padding: 3px 0; }
     .typing-dots span {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--accent);
-      opacity: 0.4;
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); opacity: .3;
       animation: blink 1.2s infinite;
     }
-    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    .typing-dots span:nth-child(2) { animation-delay: .2s; }
+    .typing-dots span:nth-child(3) { animation-delay: .4s; }
 
-    @keyframes blink {
-      0%, 100% { opacity: 0.2; transform: scale(0.8); }
-      50% { opacity: 1; transform: scale(1); }
+    /* ── EMPTY STATE ─────────────────────────────────────────────── */
+    .empty-state {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 24px; gap: 14px;
+      opacity: .65; animation: fadeUp .4s ease;
     }
+    .empty-icon {
+      width: 56px; height: 56px; border-radius: 18px;
+      background: linear-gradient(135deg,#0d1117,#1a2332);
+      border: 1px solid rgba(0,198,255,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; box-shadow: 0 0 20px rgba(0,198,255,.12);
+    }
+    .empty-title { font-size: 15px; font-weight: 700; letter-spacing: 1px; }
+    .empty-sub { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.6; }
 
-    /* ── DATE DIVIDER ────────────────────────────────────────────── */
-    .date-divider {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin: 4px 0;
+    .quick-chips {
+      display: flex; flex-wrap: wrap; gap: 7px;
+      justify-content: center; margin-top: 6px;
     }
-    .date-divider::before, .date-divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
+    .chip {
+      background: var(--s2); border: 1px solid var(--border);
+      color: var(--text); font-size: 11px;
+      padding: 6px 13px; border-radius: 20px;
+      cursor: pointer; transition: all .2s;
     }
-    .date-divider span {
-      font-size: 10px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      white-space: nowrap;
+    .chip:hover { border-color: var(--accent); color: var(--accent); }
+    .chip.intel {
+      border-color: rgba(0,198,255,.3); color: var(--accent); font-weight: 600;
+      background: linear-gradient(135deg,rgba(0,198,255,.06),rgba(124,92,252,.06));
     }
 
     /* ── INPUT BAR ───────────────────────────────────────────────── */
     .input-bar {
-      position: fixed;
-      left: 0; right: 0;
-      bottom: calc(var(--nav-h) + var(--safe-bot));
-      padding: 10px 14px 10px;
-      background: rgba(7,9,15,0.95);
+      padding: 8px 12px 10px;
+      background: rgba(7,9,15,.95);
       backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
-      z-index: 100;
-    }
-
-    .input-wrap {
-      display: flex;
-      align-items: flex-end;
-      gap: 10px;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 8px 8px 8px 16px;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    .input-wrap:focus-within {
-      border-color: rgba(0,198,255,0.4);
-      box-shadow: 0 0 0 3px rgba(0,198,255,0.06), 0 0 20px rgba(0,198,255,0.08);
-    }
-
-    #chat-input {
-      flex: 1;
-      background: none;
-      border: none;
-      outline: none;
-      color: var(--text);
-      font-size: 15px;
-      font-family: inherit;
-      resize: none;
-      min-height: 22px;
-      max-height: 100px;
-      line-height: 1.5;
-      padding: 1px 0;
-    }
-
-    #chat-input::placeholder { color: var(--muted); }
-
-    .send-btn {
-      width: 38px; height: 38px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #0d8faa 0%, #00c6ff 100%);
-      border: none;
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
-      transition: transform 0.15s, box-shadow 0.15s, opacity 0.15s;
-      box-shadow: 0 4px 12px rgba(0,198,255,0.3);
     }
-
-    .send-btn:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(0,198,255,0.4); }
-    .send-btn:active { transform: scale(0.95); }
-    .send-btn:disabled { opacity: 0.4; transform: none; cursor: default; }
-
-    .send-btn svg { width: 18px; height: 18px; fill: #000; }
-
-    /* ── TOKEN ROW ───────────────────────────────────────────────── */
     .token-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: rgba(240,180,41,0.06);
-      border: 1px solid rgba(240,180,41,0.2);
-      border-radius: 12px;
-      margin-bottom: 8px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px;
+      background: rgba(240,180,41,.06);
+      border: 1px solid rgba(240,180,41,.2);
+      border-radius: 10px; margin-bottom: 8px;
     }
     .token-row input {
-      flex: 1;
-      background: none;
-      border: none;
-      outline: none;
-      color: var(--gold);
-      font-size: 13px;
-      font-family: inherit;
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--gold); font-size: 13px; font-family: inherit;
     }
     .token-row input::placeholder { color: var(--gold-dim); }
     .token-save-btn {
-      background: var(--gold);
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      padding: 5px 12px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
+      background: var(--gold); color: #000;
+      border: none; border-radius: 7px;
+      padding: 5px 11px; font-size: 12px; font-weight: 700; cursor: pointer;
     }
+    .input-wrap {
+      display: flex; align-items: flex-end; gap: 9px;
+      background: var(--s2); border: 1px solid var(--border);
+      border-radius: 14px; padding: 7px 7px 7px 14px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .input-wrap:focus-within {
+      border-color: rgba(0,198,255,.4);
+      box-shadow: 0 0 0 3px rgba(0,198,255,.05);
+    }
+    #chat-input {
+      flex: 1; background: none; border: none; outline: none;
+      color: var(--text); font-size: 14px; font-family: inherit;
+      resize: none; min-height: 21px; max-height: 90px; line-height: 1.5;
+    }
+    #chat-input::placeholder { color: var(--muted); }
+    .send-btn {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(135deg,#0d8faa,#00c6ff);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all .15s;
+      box-shadow: 0 4px 12px rgba(0,198,255,.3);
+    }
+    .send-btn:hover { transform: scale(1.05); }
+    .send-btn:active { transform: scale(.95); }
+    .send-btn:disabled { opacity: .4; transform: none; cursor: default; }
+    .send-btn svg { width: 16px; height: 16px; fill: #000; }
 
     /* ── BOTTOM NAV ──────────────────────────────────────────────── */
     .bottom-nav {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
+      position: fixed; bottom: 0; left: 0; right: 0;
       height: calc(var(--nav-h) + var(--safe-bot));
       padding-bottom: var(--safe-bot);
-      background: rgba(7,9,15,0.96);
+      background: rgba(7,9,15,.96);
       backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
-      display: flex;
-      z-index: 200;
+      display: flex; z-index: 300;
     }
-
     .nav-item {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      text-decoration: none;
-      color: var(--muted);
-      font-size: 10px;
-      letter-spacing: 0.5px;
-      transition: color 0.2s;
-      -webkit-tap-highlight-color: transparent;
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 3px;
+      text-decoration: none; color: var(--muted);
+      font-size: 10px; letter-spacing: .5px;
+      transition: color .2s;
     }
-
-    .nav-item .ni { font-size: 20px; line-height: 1; }
-    .nav-item span:last-child { font-size: 10px; }
-
+    .nav-item .ni { font-size: 19px; line-height: 1; }
     .nav-item.active { color: var(--accent); }
-    .nav-item.active .ni { filter: drop-shadow(0 0 6px var(--accent)); }
 
-    /* ── EMPTY STATE ─────────────────────────────────────────────── */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 60px 32px;
-      gap: 16px;
-      opacity: 0.6;
-      animation: fadeUp 0.4s ease;
+    /* ── FLASHCARD PANEL ─────────────────────────────────────────── */
+    #flashcard-panel {
+      flex: 1; display: none;
+      flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px 16px; gap: 16px; overflow-y: auto;
     }
+    #flashcard-panel.visible { display: flex; }
 
-    .empty-icon {
-      width: 64px; height: 64px;
-      border-radius: 20px;
-      background: linear-gradient(135deg, #0d1117, #1a2332);
-      border: 1px solid rgba(0,198,255,0.3);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 28px;
-      box-shadow: 0 0 24px rgba(0,198,255,0.15);
+    .fc-progress-bar {
+      width: 100%; max-width: 380px;
+      display: flex; align-items: center; gap: 10px;
     }
-
-    .empty-title {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      color: var(--text);
+    .fc-prog-track {
+      flex: 1; height: 4px; background: rgba(255,255,255,.08); border-radius: 2px;
     }
-
-    .empty-sub {
-      font-size: 13px;
-      color: var(--muted);
-      text-align: center;
-      line-height: 1.6;
+    .fc-prog-fill {
+      height: 100%; background: var(--accent); border-radius: 2px;
+      transition: width .4s ease;
     }
+    .fc-prog-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
 
-    .quick-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: center;
-      margin-top: 8px;
-    }
-
-    .chip {
-      background: var(--surface2);
+    .flashcard {
+      width: 100%; max-width: 380px;
+      background: var(--s1);
       border: 1px solid var(--border);
-      color: var(--text);
-      font-size: 12px;
-      padding: 7px 14px;
       border-radius: 20px;
-      cursor: pointer;
-      transition: all 0.2s;
-      -webkit-tap-highlight-color: transparent;
+      padding: 32px 28px;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.5), 0 0 0 1px rgba(0,198,255,.06);
+      animation: fadeUp .25s ease;
+      min-height: 220px; justify-content: center;
     }
-    .chip:hover { border-color: var(--accent); color: var(--accent); }
-    .chip:active { transform: scale(0.96); }
-
-    /* ── INTEL BUTTON ────────────────────────────────────────────── */
-    .intel-btn {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      background: linear-gradient(135deg, rgba(0,198,255,0.1), rgba(124,92,252,0.1));
-      border: 1px solid rgba(0,198,255,0.35);
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 6px 11px;
-      border-radius: 10px;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.2s;
-      letter-spacing: 0.3px;
+    .fc-level-tag {
+      font-size: 10px; font-weight: 700; letter-spacing: 2px;
+      padding: 3px 10px; border-radius: 6px;
+      background: rgba(0,198,255,.1); color: var(--accent);
+      border: 1px solid rgba(0,198,255,.2);
+      text-transform: uppercase;
     }
-    .intel-btn:hover { background: rgba(0,198,255,0.15); border-color: var(--accent); }
-    .intel-btn:active { transform: scale(0.96); }
-    .intel-btn:disabled { opacity: 0.45; cursor: default; transform: none; }
-    .intel-btn .pulse {
-      width: 7px; height: 7px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 6px var(--accent);
-      animation: blink 1s infinite;
-      flex-shrink: 0;
+    .fc-word {
+      font-size: 56px; font-weight: 700; line-height: 1.1;
+      color: var(--text); letter-spacing: 2px;
+      text-shadow: 0 0 30px rgba(0,198,255,.15);
     }
-    @keyframes scanning {
-      0%   { content: '🔍'; }
-      33%  { content: '📡'; }
-      66%  { content: '⚡'; }
-      100% { content: '🔍'; }
+    .fc-pinyin {
+      font-size: 18px; color: var(--accent);
+      letter-spacing: 1px; font-style: italic;
+    }
+    .fc-divider {
+      width: 40px; height: 1px;
+      background: var(--border); margin: 4px 0;
+    }
+    .fc-definition {
+      font-size: 15px; color: var(--text);
+      text-align: center; line-height: 1.5;
+      display: none;
+    }
+    .fc-en {
+      font-size: 12px; color: var(--muted);
+      text-align: center; display: none;
+    }
+    .fc-mastery {
+      font-size: 11px; color: var(--muted);
     }
 
-    /* Intel chip in empty state */
-    .chip.intel {
-      background: linear-gradient(135deg, rgba(0,198,255,0.08), rgba(124,92,252,0.08));
-      border-color: rgba(0,198,255,0.3);
-      color: var(--accent);
-      font-weight: 600;
+    .fc-show-btn {
+      width: 100%; max-width: 380px;
+      padding: 13px;
+      background: var(--s2);
+      border: 1px solid var(--border);
+      color: var(--text); font-size: 14px; font-weight: 600;
+      border-radius: 12px; cursor: pointer;
+      transition: all .18s;
     }
-    .chip.intel:hover { background: rgba(0,198,255,0.15); border-color: var(--accent); }
+    .fc-show-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .fc-actions {
+      width: 100%; max-width: 380px;
+      display: none; gap: 10px;
+    }
+    .fc-actions.visible { display: flex; }
+
+    .fc-btn {
+      flex: 1; padding: 14px;
+      border: none; border-radius: 12px;
+      font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all .15s;
+    }
+    .fc-btn.correct {
+      background: rgba(34,197,94,.15);
+      border: 1px solid rgba(34,197,94,.4);
+      color: var(--green);
+    }
+    .fc-btn.correct:hover { background: rgba(34,197,94,.25); transform: scale(1.02); }
+    .fc-btn.wrong {
+      background: rgba(239,68,68,.12);
+      border: 1px solid rgba(239,68,68,.35);
+      color: var(--red);
+    }
+    .fc-btn.wrong:hover { background: rgba(239,68,68,.22); transform: scale(1.02); }
+
+    .fc-stop-btn {
+      font-size: 11px; color: var(--muted);
+      background: none; border: none; cursor: pointer;
+      padding: 4px; text-decoration: underline;
+    }
+
+    /* ── DRILL SUMMARY ───────────────────────────────────────────── */
+    .drill-summary {
+      width: 100%; max-width: 380px;
+      background: var(--s1); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px;
+      display: none; flex-direction: column;
+      align-items: center; gap: 14px;
+    }
+    .drill-summary.visible { display: flex; }
+    .ds-medal { font-size: 48px; }
+    .ds-title { font-size: 18px; font-weight: 700; }
+    .ds-stats { display: flex; gap: 20px; }
+    .ds-stat { text-align: center; }
+    .ds-stat .num { font-size: 24px; font-weight: 700; }
+    .ds-stat .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .ds-num-correct .num { color: var(--green); }
+    .ds-num-wrong .num { color: var(--red); }
+
+    .ds-btn {
+      width: 100%; padding: 13px;
+      background: rgba(0,198,255,.12);
+      border: 1px solid rgba(0,198,255,.3);
+      color: var(--accent); font-size: 14px; font-weight: 600;
+      border-radius: 12px; cursor: pointer; transition: all .18s;
+    }
+    .ds-btn:hover { background: rgba(0,198,255,.2); }
+
+    /* ── COACH NOTE ──────────────────────────────────────────────── */
+    .coach-note {
+      width: 100%; max-width: 380px;
+      background: rgba(0,198,255,.06);
+      border: 1px solid rgba(0,198,255,.2);
+      border-radius: 12px; padding: 12px 14px;
+      font-size: 13px; line-height: 1.5; color: var(--text);
+      display: none;
+    }
+    .coach-note.visible { display: block; }
+
+    /* ── SYNC STATUS ─────────────────────────────────────────────── */
+    .sync-badge {
+      font-size: 10px; color: var(--muted);
+      display: flex; align-items: center; gap: 4px;
+      padding: 0 14px 8px;
+    }
+    .sync-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); }
+    .sync-dot.stale { background: var(--gold); }
+
+    /* Desktop sidebar always visible */
+    @media (min-width: 768px) {
+      .hsk-sidebar { display: flex !important; transform: none !important; position: static !important; }
+      .mode-tab[data-mode="hsk"] { display: none; }
+    }
   </style>
 </head>
 <body>
 
   <!-- HEADER -->
-  <header class="chat-header">
-    <div class="header-left">
-      <button class="back-btn" onclick="history.back()">‹</button>
-      <div class="jarvis-badge">
-        <div class="j-avatar">🤖</div>
-        <div class="j-info">
-          <span class="j-name">JARVIS</span>
-          <span class="j-status"><span class="status-dot"></span>Online</span>
-        </div>
+  <header class="hdr">
+    <div class="hdr-left">
+      <div class="j-badge">
+        <div class="j-av">🤖</div>
+        <span class="j-name">JARVIS</span>
+        <div class="j-dot"></div>
       </div>
     </div>
-    <div class="header-right">
-      <button class="intel-btn" id="intel-btn" onclick="scanIntel()">
-        <span class="pulse"></span>🌐 Intel
+
+    <div class="mode-tabs">
+      <button class="mode-tab active" data-mode="chat" onclick="setMode('chat')">💬 Chat</button>
+      <button class="mode-tab" data-mode="hsk" onclick="setMode('hsk')">🀄 HSK</button>
+    </div>
+
+    <div class="hdr-right">
+      <button class="icon-btn intel" id="intel-btn" onclick="scanIntel()">
+        <span class="pulse"></span>Intel
       </button>
-      <button class="clear-btn" onclick="onClear()">🗑</button>
+      <button class="icon-btn" onclick="onClear()">🗑</button>
     </div>
   </header>
 
-  <!-- MESSAGES -->
-  <div class="messages" id="messages"></div>
+  <!-- APP BODY -->
+  <div class="app-body">
 
-  <!-- INPUT BAR -->
-  <div class="input-bar">
-    <div id="token-row" class="token-row" style="display:none">
-      <input id="token-input" type="password" placeholder="GitHub Token оруул (ghp_...)">
-      <button class="token-save-btn" onclick="saveToken()">Хадгал</button>
-    </div>
-    <div class="input-wrap">
-      <textarea id="chat-input" rows="1"
-        placeholder="JARVIS-т бич..."
-        onkeydown="onKey(event)"
-        oninput="autoResize(this)"></textarea>
-      <button class="send-btn" id="send-btn" onclick="send()">
-        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
-      </button>
-    </div>
+    <!-- HSK SIDEBAR -->
+    <aside class="hsk-sidebar" id="hsk-sidebar">
+
+      <div class="sb-header">
+        🀄 HSK Master
+      </div>
+
+      <!-- Sync status -->
+      <div class="sync-badge" id="sync-badge">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="sync-label">Уншиж байна...</span>
+      </div>
+
+      <!-- Level cards -->
+      <div class="level-list" id="level-list">
+        <!-- populated by JS -->
+      </div>
+
+      <!-- Chart -->
+      <div class="chart-wrap">
+        <div class="chart-title">📊 Mastery хуваарилалт</div>
+        <canvas id="hsk-chart"></canvas>
+      </div>
+
+    </aside>
+
+    <!-- MAIN PANEL -->
+    <main class="chat-main" id="chat-main">
+
+      <!-- FLASHCARD PANEL -->
+      <div id="flashcard-panel">
+
+        <!-- Progress bar -->
+        <div class="fc-progress-bar">
+          <div class="fc-prog-track">
+            <div class="fc-prog-fill" id="fc-prog-fill" style="width:0%"></div>
+          </div>
+          <span class="fc-prog-label" id="fc-prog-label">0/0</span>
+        </div>
+
+        <!-- Card -->
+        <div class="flashcard" id="fc-card">
+          <div class="fc-level-tag" id="fc-lvl-tag">HSK 1</div>
+          <div class="fc-word" id="fc-word">—</div>
+          <div class="fc-pinyin" id="fc-pinyin"></div>
+          <div class="fc-divider"></div>
+          <div class="fc-definition" id="fc-def"></div>
+          <div class="fc-en" id="fc-en"></div>
+          <div class="fc-mastery" id="fc-mastery"></div>
+        </div>
+
+        <!-- Show definition button -->
+        <button class="fc-show-btn" id="fc-show-btn" onclick="revealDefinition()">
+          👁 Тайлбар харах
+        </button>
+
+        <!-- Correct / Wrong buttons -->
+        <div class="fc-actions" id="fc-actions">
+          <button class="fc-btn correct" onclick="markAnswer(true)">✓ Зөв</button>
+          <button class="fc-btn wrong"   onclick="markAnswer(false)">✗ Буруу</button>
+        </div>
+
+        <!-- Stop -->
+        <button class="fc-stop-btn" onclick="stopDrill()">drill зогсоох</button>
+
+        <!-- Coach note -->
+        <div class="coach-note" id="coach-note"></div>
+
+        <!-- Summary (shown after drill) -->
+        <div class="drill-summary" id="drill-summary">
+          <div class="ds-medal" id="ds-medal">🏆</div>
+          <div class="ds-title">Drill дууслаа!</div>
+          <div class="ds-stats">
+            <div class="ds-stat ds-num-correct">
+              <div class="num" id="ds-correct">0</div>
+              <div class="lbl">Зөв</div>
+            </div>
+            <div class="ds-stat ds-num-wrong">
+              <div class="num" id="ds-wrong">0</div>
+              <div class="lbl">Буруу</div>
+            </div>
+            <div class="ds-stat">
+              <div class="num" id="ds-pct" style="color:var(--accent)">0%</div>
+              <div class="lbl">Оноо</div>
+            </div>
+          </div>
+          <button class="ds-btn" id="ds-next-btn">🔄 Дахин</button>
+          <button class="ds-btn" onclick="stopDrill()" style="background:var(--s2);border-color:var(--border);color:var(--muted)">💬 Chat руу буцах</button>
+        </div>
+
+      </div>
+
+      <!-- CHAT PANEL -->
+      <div class="messages" id="messages"></div>
+
+      <!-- INPUT BAR (chat only) -->
+      <div class="input-bar" id="input-bar">
+        <div id="token-row" class="token-row" style="display:none">
+          <input id="token-input" type="password" placeholder="GitHub Token (ghp_...)">
+          <button class="token-save-btn" onclick="saveToken()">Хадгал</button>
+        </div>
+        <div class="input-wrap">
+          <textarea id="chat-input" rows="1"
+            placeholder="JARVIS-т бич..."
+            onkeydown="onKey(event)"
+            oninput="autoResize(this)"></textarea>
+          <button class="send-btn" id="send-btn" onclick="send()">
+            <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>
+        </div>
+      </div>
+
+    </main>
   </div>
 
   <!-- BOTTOM NAV -->
@@ -590,179 +732,605 @@
   <script src="intel.js"></script>
   <script src="firebase-config.js"></script>
   <script>
-    const msgsEl  = document.getElementById('messages');
-    const inputEl = document.getElementById('chat-input');
-    const sendBtn = document.getElementById('send-btn');
+  // ══════════════════════════════════════════════════════════════════
+  //  JARVIS COMMAND CENTER — HSK Dashboard + Chat
+  // ══════════════════════════════════════════════════════════════════
 
-    // ── INIT ─────────────────────────────────────────────────────
-    window.addEventListener('load', () => {
-      checkToken();
-      renderHistory();
-    });
+  // ── DOM refs ──────────────────────────────────────────────────────
+  const msgsEl    = document.getElementById('messages');
+  const inputEl   = document.getElementById('chat-input');
+  const sendBtn   = document.getElementById('send-btn');
+  const sidebar   = document.getElementById('hsk-sidebar');
+  const inputBar  = document.getElementById('input-bar');
+  const fcPanel   = document.getElementById('flashcard-panel');
+  const fcCard    = document.getElementById('fc-card');
+  const fcActions = document.getElementById('fc-actions');
+  const fcShowBtn = document.getElementById('fc-show-btn');
+  const fcSummary = document.getElementById('drill-summary');
+  const coachNote = document.getElementById('coach-note');
 
-    function checkToken() {
-      const hasProxy = !!localStorage.getItem('jarvis_proxy_url');
-      const hasKey   = !!localStorage.getItem('jarvis_chat_key');
-      document.getElementById('token-row').style.display = (hasProxy || hasKey) ? 'none' : 'flex';
-    }
+  // ── HSK level colors ──────────────────────────────────────────────
+  const LVL_COLOR = { 1:'#60a5fa', 2:'#34d399', 3:'#fbbf24', 4:'#fb923c', 5:'#f87171', 6:'#a78bfa' };
+  const LVL_EMOJI = { 1:'🔵', 2:'🟢', 3:'🟡', 4:'🟠', 5:'🔴', 6:'🟣' };
 
-    function saveToken() {
-      const val = document.getElementById('token-input').value.trim();
-      if (!val) return;
-      localStorage.setItem('jarvis_chat_key', val);
-      document.getElementById('token-input').value = '';
-      document.getElementById('token-row').style.display = 'none';
-      addMsg('bot', '✅ Token хадгалагдлаа! Одоо чатлаж болно.');
-    }
+  // ── SRS ───────────────────────────────────────────────────────────
+  const SRS = { 1:1, 2:2, 3:4, 4:8, 5:14 };
 
-    // ── RENDER HISTORY ────────────────────────────────────────────
-    function renderHistory() {
-      msgsEl.innerHTML = '';
-      const history = _loadHistory();
+  // ── Encode word ID (matches server) ──────────────────────────────
+  function encodeWordId(w) {
+    const bytes = new TextEncoder().encode(w);
+    const bin   = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+    return btoa(bin).replace(/\//g,'_').replace(/\+/g,'-').replace(/=/g,'.');
+  }
 
-      if (history.length === 0) {
-        showEmpty();
+  // ── State ─────────────────────────────────────────────────────────
+  let _mode       = 'chat';   // 'chat' | 'hsk'
+  let _progress   = {};       // { 1:{total,mastered,pct,dist}, ... }
+  let _allWords   = [];       // all vocab docs
+  let _drillQueue = [];       // current drill words
+  let _drillIdx   = 0;
+  let _drillCorrect = 0;
+  let _drillWrong   = 0;
+  let _drillLevel   = null;
+  let _chart      = null;
+  let _syncUnsub  = null;
+
+  // ════════════════════════════════════════════════════════════════
+  //  INIT
+  // ════════════════════════════════════════════════════════════════
+  window.addEventListener('load', () => {
+    checkToken();
+    renderHistory();
+  });
+
+  // Wait for auth then load HSK data
+  document.addEventListener('jarvis:ready', initHSK);
+  // Also try after 2s in case event already fired
+  setTimeout(() => { if (!Object.keys(_progress).length) initHSK(); }, 2000);
+
+  async function initHSK() {
+    const uid = window._uid ? window._uid() : null;
+    if (!uid) { setTimeout(initHSK, 1500); return; }
+    await loadProgress(uid);
+    renderSidebar();
+    renderChart();
+    setupSync(uid);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  FIRESTORE — LOAD PROGRESS
+  // ════════════════════════════════════════════════════════════════
+  async function loadProgress(uid) {
+    try {
+      const snap = await window._db.collection(`users/${uid}/vocabulary`).get();
+      if (snap.empty) {
+        setSyncStatus('Vocabulary хоосон — /seed_hsk Telegram-д илгэ', true);
         return;
       }
+      _allWords = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      history.forEach(m => {
-        const text = m.content || m.parts?.[0]?.text || '';
-        const role = m.role === 'user' ? 'user' : 'bot';
-        addMsg(role, text, false);
-      });
+      // Build per-level stats
+      const prog = {};
+      for (let l = 1; l <= 6; l++) prog[l] = { total:0, mastered:0, dist:{1:0,2:0,3:0,4:0,5:0} };
 
-      msgsEl.scrollTop = msgsEl.scrollHeight;
-    }
-
-    function showEmpty() {
-      msgsEl.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">🤖</div>
-          <div class="empty-title">JARVIS бэлэн байна</div>
-          <div class="empty-sub">Дасгал, бизнес, хятад хэл —<br>юу ч асуугаарай</div>
-          <div class="quick-chips">
-            <div class="chip intel" onclick="scanIntel()">🌐 Шуурхай дэлхийн мэдээ</div>
-            <div class="chip" onclick="quickSend(this)">📊 Өнөөдрийн байдал</div>
-            <div class="chip" onclick="quickSend(this)">💪 Дасгалын зөвлөгөө</div>
-            <div class="chip" onclick="quickSend(this)">🏢 LFS стратеги</div>
-            <div class="chip" onclick="quickSend(this)">🇨🇳 HSK4 бэлтгэл</div>
-          </div>
-        </div>`;
-    }
-
-    function quickSend(chip) {
-      inputEl.value = chip.textContent.slice(2).trim();
-      send();
-    }
-
-    // ── ADD MESSAGE ───────────────────────────────────────────────
-    function addMsg(role, text, scroll = true) {
-      // empty state устгана
-      const es = msgsEl.querySelector('.empty-state');
-      if (es) es.remove();
-
-      const row = document.createElement('div');
-      row.className = `msg-row ${role}`;
-
-      const avatar = document.createElement('div');
-      avatar.className = 'msg-avatar';
-      avatar.textContent = role === 'user' ? 'Б' : '🤖';
-
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.textContent = text;
-
-      row.appendChild(avatar);
-      row.appendChild(bubble);
-      msgsEl.appendChild(row);
-
-      if (scroll) msgsEl.scrollTop = msgsEl.scrollHeight;
-      return bubble;
-    }
-
-    function addTyping() {
-      const es = msgsEl.querySelector('.empty-state');
-      if (es) es.remove();
-
-      const row = document.createElement('div');
-      row.className = 'msg-row bot';
-      row.id = 'typing-row';
-
-      const avatar = document.createElement('div');
-      avatar.className = 'msg-avatar';
-      avatar.textContent = '🤖';
-
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
-
-      row.appendChild(avatar);
-      row.appendChild(bubble);
-      msgsEl.appendChild(row);
-      msgsEl.scrollTop = msgsEl.scrollHeight;
-      return row;
-    }
-
-    // ── SEND ──────────────────────────────────────────────────────
-    async function send() {
-      const text = inputEl.value.trim();
-      if (!text || sendBtn.disabled) return;
-
-      inputEl.value = '';
-      autoResize(inputEl);
-      sendBtn.disabled = true;
-
-      addMsg('user', text);
-
-      const typingRow = addTyping();
-
-      const reply = await sendChatMessage(text);
-
-      typingRow.remove();
-      addMsg('bot', reply);
-      sendBtn.disabled = false;
-      inputEl.focus();
-    }
-
-    function onKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        send();
-      }
-    }
-
-    function autoResize(el) {
-      el.style.height = 'auto';
-      el.style.height = Math.min(el.scrollHeight, 100) + 'px';
-    }
-
-    // ── INTEL SCAN ────────────────────────────────────────────────
-    async function scanIntel() {
-      const btn = document.getElementById('intel-btn');
-      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="pulse"></span>⏳ Хайж байна...'; }
-
-      const typing = addTyping();
-
-      const reply = await fetchLiveIntel(progress => {
-        if (typing && typing.querySelector('.bubble')) {
-          typing.querySelector('.bubble').innerHTML =
-            `<div style="font-size:12px;color:#64748b">${progress}</div>`;
+      _allWords.forEach(w => {
+        const l  = w.hsk_level || 3;
+        const ml = w.mastery_level || 1;
+        if (prog[l]) {
+          prog[l].total++;
+          prog[l].dist[ml]++;
+          if (ml === 5) prog[l].mastered++;
         }
       });
 
-      typing.remove();
-      addMsg('bot', reply);
+      for (let l = 1; l <= 6; l++) {
+        prog[l].pct = prog[l].total ? Math.round(prog[l].mastered / prog[l].total * 100) : 0;
+      }
 
-      if (btn) { btn.disabled = false; btn.innerHTML = '<span class="pulse"></span>🌐 Intel'; }
+      _progress = prog;
+
+      // Active level = lowest not 80% mastered
+      let active = 6;
+      for (let l = 1; l <= 6; l++) {
+        if (prog[l].total > 0 && prog[l].pct < 80) { active = l; break; }
+      }
+      _progress._active = active;
+
+      const total    = _allWords.length;
+      const mastered = _allWords.filter(w => (w.mastery_level||1) === 5).length;
+      setSyncStatus(`${mastered}/${total} цээжилсэн · сүүлд шинэчлэгдлээ`, false);
+    } catch (e) {
+      console.warn('[HSK] loadProgress:', e.message);
+      setSyncStatus('Ачааллахад алдаа гарлаа', true);
+    }
+  }
+
+  function setSyncStatus(msg, stale) {
+    document.getElementById('sync-label').textContent = msg;
+    const dot = document.getElementById('sync-dot');
+    dot.classList.toggle('stale', !!stale);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  FIRESTORE REALTIME SYNC (Telegram drill activity)
+  // ════════════════════════════════════════════════════════════════
+  function setupSync(uid) {
+    if (_syncUnsub) _syncUnsub();
+    // Listen to hsk/session — when Telegram drill changes, reload progress
+    _syncUnsub = window._db.doc(`users/${uid}/hsk/session`).onSnapshot(async snap => {
+      if (snap.exists) {
+        const d = snap.data();
+        // Telegram drill ended → updatedAt changed → refresh
+        if (d.updatedAt) {
+          await loadProgress(uid);
+          renderSidebar();
+          renderChart();
+          setSyncStatus(`Telegram sync · ${new Date(d.updatedAt).toLocaleTimeString()}`, false);
+        }
+      }
+    }, () => {});
+
+    // Also refresh every 90s (passive sync)
+    setInterval(async () => {
+      await loadProgress(uid);
+      renderSidebar();
+      renderChart();
+    }, 90000);
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  RENDER SIDEBAR
+  // ════════════════════════════════════════════════════════════════
+  function renderSidebar() {
+    const list = document.getElementById('level-list');
+    list.innerHTML = '';
+
+    for (let l = 1; l <= 6; l++) {
+      const p   = _progress[l] || { total:0, mastered:0, pct:0 };
+      if (p.total === 0) continue;
+      const isActive = l === _progress._active;
+      const color    = LVL_COLOR[l];
+
+      const card = document.createElement('div');
+      card.className = `lvl-card${isActive ? ' active-level' : ''}`;
+      card.innerHTML = `
+        <div class="lvl-top">
+          <div class="lvl-tag">
+            <div class="lvl-dot" style="background:${color}"></div>
+            <span>${LVL_EMOJI[l]} HSK ${l}</span>
+            ${isActive ? '<span style="font-size:10px;color:var(--accent);opacity:.7">← одоо</span>' : ''}
+          </div>
+          <div>
+            <span class="lvl-pct">${p.pct}%</span>
+            <span class="lvl-count"> ${p.mastered}/${p.total}</span>
+          </div>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${p.pct}%;background:linear-gradient(90deg,${color}88,${color})"></div>
+        </div>
+        <button class="lvl-drill-btn" onclick="startDrill(${l})">
+          ▶ HSK ${l} Drill эхлэх
+        </button>`;
+      list.appendChild(card);
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  CHART.JS — mastery % per level
+  // ════════════════════════════════════════════════════════════════
+  function renderChart() {
+    const ctx    = document.getElementById('hsk-chart').getContext('2d');
+    const labels = [];
+    const data   = [];
+    const colors = [];
+
+    for (let l = 1; l <= 6; l++) {
+      const p = _progress[l];
+      if (!p || p.total === 0) continue;
+      labels.push(`HSK${l}`);
+      data.push(p.pct);
+      colors.push(LVL_COLOR[l]);
     }
 
-    // ── CLEAR ─────────────────────────────────────────────────────
-    function onClear() {
-      if (!confirm('Чат түүхийг устгах уу?')) return;
-      clearChatHistory();
-      msgsEl.innerHTML = '';
-      showEmpty();
+    if (_chart) _chart.destroy();
+    _chart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor: colors.map(c => c + '44'),
+          borderColor:     colors,
+          borderWidth: 2,
+          borderRadius: 5,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+          x: {
+            min: 0, max: 100,
+            ticks: { color: '#4a5568', font: { size: 10 }, stepSize: 25,
+              callback: v => v + '%' },
+            grid: { color: 'rgba(255,255,255,.04)' },
+          },
+          y: {
+            ticks: { color: '#94a3b8', font: { size: 11 } },
+            grid: { display: false },
+          }
+        }
+      }
+    });
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  MODE TOGGLE
+  // ════════════════════════════════════════════════════════════════
+  function setMode(mode) {
+    _mode = mode;
+    document.querySelectorAll('.mode-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+
+    if (mode === 'hsk') {
+      sidebar.classList.add('visible');
+      // If no drill running, hide flashcard, show sidebar full on mobile
+      if (!_drillQueue.length) showHSKEmpty();
+      document.getElementById('intel-btn').style.display = 'none';
+    } else {
+      sidebar.classList.remove('visible');
+      fcPanel.classList.remove('visible');
+      fcPanel.style.display = 'none';
+      msgsEl.style.display = '';
+      inputBar.style.display = '';
+      document.getElementById('intel-btn').style.display = '';
     }
+  }
+
+  function showHSKEmpty() {
+    fcPanel.classList.remove('visible');
+    fcPanel.style.display = 'none';
+    msgsEl.style.display  = 'none';
+    inputBar.style.display = 'none';
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  DRILL — load words + start flashcard
+  // ════════════════════════════════════════════════════════════════
+  async function startDrill(level) {
+    const uid = window._uid ? window._uid() : null;
+    if (!uid) { alert('Нэвтрэх шаардлагатай'); return; }
+
+    // Filter due words from cached _allWords
+    const now = Date.now();
+    let pool  = _allWords.filter(w => w.hsk_level === level);
+
+    const due = pool.filter(w => {
+      if (!w.last_reviewed) return true;
+      const interval = SRS[w.mastery_level || 1] || 1;
+      return now >= new Date(w.last_reviewed).getTime() + interval * 86400000;
+    });
+
+    due.sort((a, b) => {
+      if ((a.mastery_level||1) !== (b.mastery_level||1))
+        return (a.mastery_level||1) - (b.mastery_level||1);
+      if (!a.last_reviewed) return -1;
+      if (!b.last_reviewed) return 1;
+      return new Date(a.last_reviewed) - new Date(b.last_reviewed);
+    });
+
+    const words = due.slice(0, 10);
+
+    if (!words.length) {
+      // Show in main area
+      showFlashcardPanel();
+      fcCard.style.display = 'none';
+      fcShowBtn.style.display = 'none';
+      fcActions.classList.remove('visible');
+      fcSummary.classList.remove('visible');
+      coachNote.textContent = `🎉 HSK ${level}-д өнөөдөр давтах үг байхгүй! Бүх үг давтагдлаа.`;
+      coachNote.classList.add('visible');
+      document.querySelector('.fc-stop-btn').style.display = 'block';
+      return;
+    }
+
+    _drillQueue   = words;
+    _drillIdx     = 0;
+    _drillCorrect = 0;
+    _drillWrong   = 0;
+    _drillLevel   = level;
+
+    setMode('hsk');
+    showFlashcardPanel();
+    showCard(0);
+  }
+
+  function showFlashcardPanel() {
+    msgsEl.style.display  = 'none';
+    inputBar.style.display = 'none';
+    fcPanel.style.display  = 'flex';
+    fcPanel.classList.add('visible');
+    fcSummary.classList.remove('visible');
+    coachNote.classList.remove('visible');
+    document.querySelector('.fc-stop-btn').style.display = 'block';
+  }
+
+  function showCard(idx) {
+    const w     = _drillQueue[idx];
+    const total = _drillQueue.length;
+    const pct   = Math.round(idx / total * 100);
+
+    // Progress bar
+    document.getElementById('fc-prog-fill').style.width  = pct + '%';
+    document.getElementById('fc-prog-label').textContent = `${idx}/${total}`;
+
+    // Card content
+    document.getElementById('fc-lvl-tag').textContent  = `HSK ${w.hsk_level || _drillLevel}`;
+    document.getElementById('fc-word').textContent      = w.word;
+    document.getElementById('fc-pinyin').textContent    = w.pinyin || '';
+    document.getElementById('fc-def').textContent       = w.definition || '';
+    document.getElementById('fc-en').textContent        = w.en || '';
+    document.getElementById('fc-mastery').textContent   = '⭐'.repeat(w.mastery_level || 1);
+
+    // Hide definition
+    document.getElementById('fc-def').style.display  = 'none';
+    document.getElementById('fc-en').style.display   = 'none';
+    fcCard.style.display = 'flex';
+
+    // Buttons
+    fcShowBtn.style.display  = 'block';
+    fcActions.classList.remove('visible');
+    fcSummary.classList.remove('visible');
+    coachNote.classList.remove('visible');
+
+    // Re-animate card
+    fcCard.style.animation = 'none';
+    fcCard.offsetHeight;
+    fcCard.style.animation = '';
+  }
+
+  function revealDefinition() {
+    document.getElementById('fc-def').style.display = 'block';
+    document.getElementById('fc-en').style.display  = 'block';
+    fcShowBtn.style.display = 'none';
+    fcActions.classList.add('visible');
+  }
+
+  async function markAnswer(correct) {
+    const uid = window._uid ? window._uid() : null;
+    const w   = _drillQueue[_drillIdx];
+
+    if (correct) _drillCorrect++; else _drillWrong++;
+
+    // Update Firestore
+    if (uid && w.id) {
+      try {
+        const ref   = window._db.doc(`users/${uid}/vocabulary/${w.id}`);
+        const snap  = await ref.get();
+        if (snap.exists) {
+          const d   = snap.data();
+          const lvl = Math.min(5, Math.max(1, (d.mastery_level || 1) + (correct ? 1 : -1)));
+          await ref.update({
+            mastery_level: lvl,
+            last_reviewed: new Date().toISOString(),
+            correct_count: (d.correct_count || 0) + (correct ? 1 : 0),
+            wrong_count:   (d.wrong_count   || 0) + (correct ? 0 : 1),
+          });
+          // Update cached copy
+          w.mastery_level = lvl;
+          // Update local _allWords cache
+          const ci = _allWords.findIndex(x => x.id === w.id);
+          if (ci >= 0) _allWords[ci].mastery_level = lvl;
+        }
+      } catch (e) { console.warn('[HSK] updateMastery:', e.message); }
+    }
+
+    _drillIdx++;
+
+    if (_drillIdx >= _drillQueue.length) {
+      // Drill done
+      showDrillSummary(uid);
+    } else {
+      showCard(_drillIdx);
+    }
+  }
+
+  async function showDrillSummary(uid) {
+    const total = _drillQueue.length;
+    const pct   = Math.round(_drillCorrect / total * 100);
+    const medal = pct >= 80 ? '🏆' : pct >= 60 ? '🥈' : '💪';
+
+    // Update progress bar to 100%
+    document.getElementById('fc-prog-fill').style.width  = '100%';
+    document.getElementById('fc-prog-label').textContent = `${total}/${total}`;
+
+    fcCard.style.display = 'none';
+    fcShowBtn.style.display = 'none';
+    fcActions.classList.remove('visible');
+    document.querySelector('.fc-stop-btn').style.display = 'none';
+
+    document.getElementById('ds-medal').textContent   = medal;
+    document.getElementById('ds-correct').textContent = _drillCorrect;
+    document.getElementById('ds-wrong').textContent   = _drillWrong;
+    document.getElementById('ds-pct').textContent     = pct + '%';
+    fcSummary.classList.add('visible');
+
+    // Reload progress + re-render sidebar
+    if (uid) {
+      await loadProgress(uid);
+      renderSidebar();
+      renderChart();
+    }
+
+    // Dynamic coaching: check if level mastered (≥80%)
+    const lp = _progress[_drillLevel];
+    let note = '';
+    let nextLvl = null;
+    if (lp && lp.pct >= 80 && _drillLevel < 6) {
+      nextLvl = _drillLevel + 1;
+      note = `🎉 HSK ${_drillLevel} — ${lp.pct}% давлаа! Дараагийн түвшин HSK ${nextLvl} руу шилжихэд бэлэн.`;
+    } else if (pct >= 80) {
+      note = `💪 Гайхалтай! Хэмнэл хадгалаарай.`;
+    } else {
+      note = `📚 Буруу үгсийг дахин давтаарай.`;
+    }
+    coachNote.textContent = note;
+    coachNote.classList.add('visible');
+
+    // "Дахин" button
+    const nextBtn = document.getElementById('ds-next-btn');
+    if (nextLvl) {
+      nextBtn.textContent = `➡️ HSK ${nextLvl} эхлэх`;
+      nextBtn.onclick = () => startDrill(nextLvl);
+    } else {
+      nextBtn.textContent = `🔄 Дахин`;
+      nextBtn.onclick = () => startDrill(_drillLevel);
+    }
+  }
+
+  function stopDrill() {
+    _drillQueue = [];
+    _drillIdx   = 0;
+    fcPanel.classList.remove('visible');
+    fcPanel.style.display = 'none';
+    fcSummary.classList.remove('visible');
+    setMode('chat');
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  //  CHAT (existing logic preserved)
+  // ════════════════════════════════════════════════════════════════
+  function checkToken() {
+    const hasProxy = !!localStorage.getItem('jarvis_proxy_url');
+    const hasKey   = !!localStorage.getItem('jarvis_chat_key');
+    document.getElementById('token-row').style.display = (hasProxy || hasKey) ? 'none' : 'flex';
+  }
+
+  function saveToken() {
+    const val = document.getElementById('token-input').value.trim();
+    if (!val) return;
+    localStorage.setItem('jarvis_chat_key', val);
+    document.getElementById('token-input').value = '';
+    document.getElementById('token-row').style.display = 'none';
+    addMsg('bot', '✅ Token хадгалагдлаа! Одоо чатлаж болно.');
+  }
+
+  function renderHistory() {
+    msgsEl.innerHTML = '';
+    const history = typeof _loadHistory === 'function' ? _loadHistory() : [];
+    if (!history.length) { showEmpty(); return; }
+    history.forEach(m => addMsg(m.role === 'user' ? 'user' : 'bot', m.content || m.parts?.[0]?.text || '', false));
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function showEmpty() {
+    msgsEl.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🤖</div>
+        <div class="empty-title">JARVIS бэлэн байна</div>
+        <div class="empty-sub">Дасгал, бизнес, хятад хэл —<br>юу ч асуугаарай</div>
+        <div class="quick-chips">
+          <div class="chip intel" onclick="scanIntel()">🌐 Intel</div>
+          <div class="chip" onclick="quickSend(this)">📊 Өнөөдрийн байдал</div>
+          <div class="chip" onclick="quickSend(this)">💪 Дасгалын зөвлөгөө</div>
+          <div class="chip" onclick="quickSend(this)">🏢 LFS стратеги</div>
+          <div class="chip" onclick="quickSend(this)">🇨🇳 HSK бэлтгэл</div>
+        </div>
+      </div>`;
+  }
+
+  function quickSend(chip) {
+    inputEl.value = chip.textContent.slice(2).trim();
+    setMode('chat');
+    send();
+  }
+
+  function addMsg(role, text, scroll = true) {
+    const es = msgsEl.querySelector('.empty-state');
+    if (es) es.remove();
+
+    const row    = document.createElement('div');
+    row.className = `msg-row ${role}`;
+    const av     = document.createElement('div');
+    av.className  = 'msg-av';
+    av.textContent = role === 'user' ? 'Б' : '🤖';
+    const bub    = document.createElement('div');
+    bub.className  = 'bubble';
+    bub.textContent = text;
+    row.appendChild(av);
+    row.appendChild(bub);
+    msgsEl.appendChild(row);
+    if (scroll) msgsEl.scrollTop = msgsEl.scrollHeight;
+    return bub;
+  }
+
+  function addTyping() {
+    const es = msgsEl.querySelector('.empty-state');
+    if (es) es.remove();
+    const row = document.createElement('div');
+    row.className = 'msg-row bot'; row.id = 'typing-row';
+    const av  = document.createElement('div');
+    av.className = 'msg-av'; av.textContent = '🤖';
+    const bub = document.createElement('div');
+    bub.className = 'bubble';
+    bub.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+    row.appendChild(av); row.appendChild(bub);
+    msgsEl.appendChild(row);
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+    return row;
+  }
+
+  async function send() {
+    const text = inputEl.value.trim();
+    if (!text || sendBtn.disabled) return;
+    inputEl.value = ''; autoResize(inputEl);
+    sendBtn.disabled = true;
+    addMsg('user', text);
+    const typingRow = addTyping();
+    const reply = await sendChatMessage(text);
+    typingRow.remove();
+    addMsg('bot', reply);
+    sendBtn.disabled = false;
+    inputEl.focus();
+  }
+
+  function onKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+  }
+
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 90) + 'px';
+  }
+
+  async function scanIntel() {
+    const btn = document.getElementById('intel-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="pulse"></span>⏳';
+    setMode('chat');
+    const typing = addTyping();
+    const reply  = await fetchLiveIntel(p => {
+      const bub = typing.querySelector('.bubble');
+      if (bub) bub.innerHTML = `<div style="font-size:12px;color:#64748b">${p}</div>`;
+    });
+    typing.remove(); addMsg('bot', reply);
+    btn.disabled = false; btn.innerHTML = '<span class="pulse"></span>Intel';
+  }
+
+  function onClear() {
+    if (!confirm('Чат түүхийг устгах уу?')) return;
+    if (typeof clearChatHistory === 'function') clearChatHistory();
+    msgsEl.innerHTML = ''; showEmpty();
+  }
+
+  // Expose for firebase-config.js auth callback
+  window.syncChatFromFirestore = function() {
+    renderHistory();
+    // Trigger HSK init after auth
+    document.dispatchEvent(new Event('jarvis:ready'));
+  };
   </script>
 </body>
 </html>
