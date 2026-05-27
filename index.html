@@ -1898,7 +1898,7 @@ document.addEventListener('jarvis:ready', ()=>{
 </script>
 
 <!-- ── STARK TASK MATRIX OVERLAY ──────────────────────────────── -->
-<div id="matrix-overlay" style="display:none;position:fixed;inset:0;z-index:80;background:var(--bg);flex-direction:column;overflow:hidden;transform:translateZ(0);">
+<div id="matrix-overlay" style="display:none;position:fixed;top:var(--bar-h);left:0;right:0;bottom:0;z-index:80;background:var(--bg);flex-direction:column;overflow:hidden;transform:translateZ(0);">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:40px;flex-shrink:0;border-bottom:1px solid var(--border);background:rgba(0,5,15,.95);">
     <span style="font-family:var(--hud);font-size:12px;color:var(--accent);letter-spacing:.14em;text-shadow:var(--neon)">◈ STARK TASK MATRIX — COMMAND BOARD</span>
     <button onclick="document.getElementById('matrix-overlay').style.display='none'" style="font-family:var(--mono);font-size:10px;color:var(--text);background:rgba(0,229,255,.06);border:1px solid var(--border);border-radius:2px;padding:3px 10px;cursor:pointer;">← CLOSE</button>
@@ -2140,8 +2140,10 @@ const _navMap = { intel:'chat.html', track:'tracker.html', profile:'profile.html
 const _loaded  = {}; // lazy-load iframes once
 
 function navTo(tab) {
-  // Hide all overlay pages
+  // Hide all overlays (matrix + SPA pages)
   document.querySelectorAll('.os-page').forEach(p => p.classList.remove('active'));
+  const mx = document.getElementById('matrix-overlay');
+  if (mx) mx.style.display = 'none';
   // Update nav button active state
   document.querySelectorAll('.os-nav-btn').forEach(b => b.classList.remove('active'));
   const btn = document.getElementById('nav-' + tab);
