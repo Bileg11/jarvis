@@ -1,0 +1,49 @@
+{
+  "name": "jarvis-os",
+  "version": "1.0.0",
+  "description": "JARVIS OS — Stark's Personal Command Core",
+  "author": "Bileg <bileg@lfs.mn>",
+  "license": "MIT",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start":     "electron .",
+    "build":     "electron-builder --mac",
+    "build:dmg": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron":         "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId":       "mn.lfs.jarvis-os",
+    "productName": "JARVIS OS",
+    "copyright":   "© 2026 Bileg",
+    "mac": {
+      "category":    "public.app-category.productivity",
+      "target":      [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "icon":        "assets/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "dmg": {
+      "title":   "JARVIS OS",
+      "window":  { "width": 540, "height": 380 }
+    },
+    "files": [
+      "index.html",
+      "main.js",
+      "app.js",
+      "gemini.js",
+      "firebase-config.js",
+      "style.css",
+      "manifest.json",
+      "sw.js",
+      "intel.js",
+      "ghost-poster.js",
+      "assets/**"
+    ],
+    "extraResources": [],
+    "asar": true
+  }
+}

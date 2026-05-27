@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -39,9 +39,9 @@
   --text:     #8ab8d4;
   --text-b:   #c8e0f0;
   --dim:      #0d2033;
-  --mono:     'Share Tech Mono', 'Courier New', monospace;
+  --mono:     'SF Pro Mono', 'JetBrains Mono', 'Menlo', 'Courier New', monospace;
   --hud:      'Orbitron', sans-serif;
-  --body:     'Rajdhani', sans-serif;
+  --body:     'SF Pro Text', '-apple-system', 'Rajdhani', sans-serif;
   --bar-h:    40px;
   --col-l:    248px;
   --col-r:    288px;
@@ -317,15 +317,25 @@ canvas#reactor { display:block; }
 .term-output::-webkit-scrollbar-thumb { background:rgba(0,229,255,.25); border-radius:2px; }
 
 .term-line {
-  font-family:var(--mono); font-size:12px; line-height:1.55;
-  display:flex; gap:8px; align-items:flex-start;
+  font-family: var(--mono); font-size: 12.5px; font-weight: 400;
+  line-height: 1.6; letter-spacing: 0.01em;
+  display:flex; gap:10px; align-items:flex-start;
 }
-.term-prompt { color:var(--accent); text-shadow:var(--neon); flex-shrink:0; }
-.term-text { color:var(--text-b); white-space:pre-wrap; word-break:break-word; }
-.term-line.jarvis .term-text { color:var(--accent); }
-.term-line.sys .term-text { color:rgba(0,229,255,.5); font-size:10px; }
-.term-line.warn .term-text { color:var(--amber); text-shadow:var(--neon-a); }
-.term-line.ok .term-text { color:var(--green); }
+.term-prompt {
+  color:var(--accent); text-shadow:var(--neon); flex-shrink:0;
+  font-size: 11px; font-weight: 500; padding-top: 1px;
+  min-width: 28px;
+}
+.term-text {
+  color:var(--text-b); white-space:pre-wrap; word-break:break-word;
+  font-size: 12.5px; line-height: 1.6;
+}
+.term-line.jarvis .term-text { color: #a8e6f0; font-weight: 400; }
+.term-line.jarvis .term-prompt { color: #00e5ff; }
+.term-line.user  .term-text { color: #e2f0ff; font-weight: 500; }
+.term-line.sys   .term-text { color: rgba(0,229,255,.45); font-size: 11px; font-weight: 300; }
+.term-line.warn  .term-text { color: #ffb347; }
+.term-line.ok    .term-text { color: var(--green); }
 
 /* Terminal input row */
 .term-input-row {
@@ -337,15 +347,16 @@ canvas#reactor { display:block; }
   gap: 6px;
 }
 .term-prefix {
-  font-family:var(--mono); font-size:12px; white-space:nowrap;
+  font-family:var(--mono); font-size:12px; font-weight:500; white-space:nowrap;
   color:var(--accent); text-shadow:var(--neon); flex-shrink:0;
+  letter-spacing:0.02em;
 }
 .term-in {
   flex:1; background:transparent; border:none; outline:none;
-  font-family:var(--mono); font-size:12px; color:var(--text-b);
-  caret-color:var(--accent);
+  font-family:var(--mono); font-size:12.5px; font-weight:400;
+  color:#e2f0ff; caret-color:var(--accent); letter-spacing:0.01em;
 }
-.term-in::placeholder { color:rgba(0,229,255,.22); font-style:italic; }
+.term-in::placeholder { color:rgba(0,229,255,.2); font-style:normal; font-weight:300; }
 .term-send {
   background:rgba(0,229,255,.08); border:1px solid var(--border);
   color:var(--accent); font-family:var(--hud); font-size:9px; letter-spacing:.1em;
@@ -404,18 +415,32 @@ canvas#reactor { display:block; }
 .biz-items::-webkit-scrollbar { width:2px; }
 .biz-items::-webkit-scrollbar-thumb { background:rgba(0,229,255,.2); }
 .biz-item {
-  padding: 6px 7px;
+  padding: 7px 8px;
   background: rgba(0,229,255,.04);
   border-left: 2px solid rgba(0,229,255,.25);
   border-radius: 0 2px 2px 0;
+  transition: opacity .35s ease;
 }
-.biz-item-tag { font-family:var(--hud); font-size:8px; letter-spacing:.1em; color:var(--accent);
-  opacity:.7; margin-bottom:2px; }
-.biz-item-title { font-family:var(--body); font-size:11px; color:var(--text-b); font-weight:500;
-  line-height:1.3; margin-bottom:2px; }
-.biz-item-desc { font-family:var(--mono); font-size:9px; color:var(--text); line-height:1.4; }
+.biz-item.fading { opacity: 0; }
+.biz-item-tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  letter-spacing: .1em; color: var(--accent); opacity: .75; margin-bottom: 3px;
+}
+.biz-item-title {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  color: var(--text-b); line-height: 1.45; margin-bottom: 3px;
+}
+.biz-item-desc {
+  font-family: var(--mono); font-size: 10px; font-weight: 300;
+  color: var(--text); line-height: 1.55;
+}
+.biz-items { flex:1; overflow-y:auto; padding:5px 6px;
+  display:flex; flex-direction:column; gap:5px;
+  scrollbar-width:thin; scrollbar-color:rgba(0,229,255,.15) transparent; }
 .biz-item:nth-child(2) { border-left-color: rgba(255,140,0,.4); }
 .biz-item:nth-child(2) .biz-item-tag { color: var(--amber); }
+.biz-item:nth-child(3) { border-left-color: rgba(0,255,136,.3); }
+.biz-item:nth-child(3) .biz-item-tag { color: var(--green); }
 
 /* Exchange rate ticker */
 .fx-ticker {
@@ -1018,6 +1043,8 @@ function runBootSequence() {
     startTelemFluctuation();
     // Delay slightly so Firestore sync completes before we render
     setTimeout(()=>{ updateRoutineUI(); }, 800);
+    // Periodic resync: Firestore may settle after initial render
+    setInterval(updateRoutineUI, 2500);
     jarvisGreeting();
   }, 1050);
   // clock
@@ -1131,12 +1158,65 @@ async function jarvisGreeting() {
 // ── TERMINAL SEND ─────────────────────────────────────────────────
 async function termSend() {
   if (!_booted) return;
-  const inp = document.getElementById('term-in');
+  const inp  = document.getElementById('term-in');
   const text = inp.value.trim();
   if (!text) return;
   inp.value = '';
-  addTermLine('user', text);
   _reactor?.triggerFlare(350);
+
+  // ── SLASH COMMANDS ───────────────────────────────────────────────
+  if (text === '/clear') {
+    const out = document.getElementById('term-output');
+    if (out) out.innerHTML = '';
+    _msgCount = 0;
+    addTermLine('sys', '>> TERMINAL CLEARED — SESSION CONTINUES');
+    return;
+  }
+
+  if (text === '/status') {
+    addTermLine('user', '/status');
+    const r = (typeof loadRoutine==='function') ? loadRoutine() : {};
+    const score = Math.round(((r.water||0)/8)*25) + (r.exercise?20:0) + (r.hanzi?20:0) + (r.read?15:0) + (r.journal?10:0);
+    const diff  = EXAM_DATE - Date.now();
+    const days  = Math.max(0, Math.floor(diff/86400000));
+    const hrs   = Math.max(0, Math.floor((diff%86400000)/3600000));
+    const done  = ['exercise','hanzi','read','journal'].filter(k=>r[k]);
+    const miss  = ['exercise','hanzi','read','journal'].filter(k=>!r[k]);
+    const up    = Math.floor((Date.now()-_startTs)/1000);
+    const pad   = n=>String(n).padStart(2,'0');
+    const upStr = `${pad(Math.floor(up/3600))}:${pad(Math.floor((up%3600)/60))}:${pad(up%60)}`;
+    const ms    = (typeof getMissionStats==='function') ? getMissionStats() : [];
+    const lfs   = ms.find(m=>m.id==='lfs')    || {};
+    const hanM  = ms.find(m=>m.id==='hanziw') || {};
+    const fitM  = ms.find(m=>m.id==='fitness')|| {};
+
+    const cpu   = document.getElementById('t-cpu')?.textContent  || '—';
+    const mem   = document.getElementById('t-mem')?.textContent  || '—';
+    const lat   = document.getElementById('t-lat')?.textContent  || '—';
+
+    const lines = [
+      `── OPERATIONAL STATUS REPORT ──────────────────`,
+      `DAILY SCORE    : ${String(score).padStart(3)} / 100`,
+      `ROUTINE        : ${done.length}/4 complete  [ ${done.join(' ') || 'none'} ]`,
+      `PENDING        : [ ${miss.join(' ') || 'all done'} ]`,
+      `HYDRATION      : ${r.water||0} / 8 cups`,
+      `── MISSION INTEL ───────────────────────────────`,
+      `LFS            : ${lfs.val||0} / ${lfs.max||100} users   (${lfs.pct||0}%)`,
+      `HSK4 VOCAB     : ${hanM.val||0} / 300 words  (${hanM.pct||0}%)`,
+      `FITNESS        : ${fitM.val||0} / 30 sessions this month`,
+      `── EXAM COUNTDOWN ──────────────────────────────`,
+      `HSK4 DEADLINE  : ${days}d ${hrs}h  →  2026-06-28`,
+      `── SYSTEM VITALS ───────────────────────────────`,
+      `CPU / MEM      : ${cpu}  /  ${mem}`,
+      `LATENCY        : ${lat}`,
+      `SESSION UPTIME : ${upStr}`,
+      `──────────────────────────────────────────────`,
+    ];
+    lines.forEach((l, i) => setTimeout(()=>addTermLine('sys', l), i*45));
+    return;
+  }
+
+  addTermLine('user', text);
   if (typeof sendChatMessage!=='function') {
     termTypeJarvis('⚙️ Профайл хуудсанд Token тохируулна уу, Stark.');
     return;
@@ -1321,29 +1401,41 @@ const BIZ_INTEL = [
 ];
 
 let _bizIdx = 0;
-function renderBizFeed() {
-  const container = document.getElementById('biz-items');
-  if (!container) return;
-  const items = BIZ_INTEL.slice(0,4);
-  container.innerHTML = items.map(item=>`
+function _bizHTML(items) {
+  return items.map((item,i)=>`
     <div class="biz-item">
       <div class="biz-item-tag">◈ ${item.tag}</div>
       <div class="biz-item-title">${item.title}</div>
       <div class="biz-item-desc">${item.desc}</div>
     </div>
   `).join('');
-  // Rotate every 20s
+}
+function renderBizFeed() {
+  const container = document.getElementById('biz-items');
+  if (!container) return;
+  container.innerHTML = _bizHTML(BIZ_INTEL.slice(0,4));
+
   setInterval(()=>{
-    _bizIdx = (_bizIdx+1) % (BIZ_INTEL.length-3);
-    const rotated = [...BIZ_INTEL.slice(_bizIdx, _bizIdx+4)];
-    container.innerHTML = rotated.map(item=>`
-      <div class="biz-item">
-        <div class="biz-item-tag">◈ ${item.tag}</div>
-        <div class="biz-item-title">${item.title}</div>
-        <div class="biz-item-desc">${item.desc}</div>
-      </div>
-    `).join('');
-  }, 20000);
+    // Fade out all current items
+    const current = container.querySelectorAll('.biz-item');
+    current.forEach(el => el.classList.add('fading'));
+
+    setTimeout(()=>{
+      // Advance index and inject new content while invisible
+      _bizIdx = (_bizIdx + 1) % BIZ_INTEL.length;
+      const next = [];
+      for (let i=0;i<4;i++) next.push(BIZ_INTEL[(_bizIdx+i) % BIZ_INTEL.length]);
+      container.innerHTML = _bizHTML(next);
+
+      // Force reflow then fade in
+      container.querySelectorAll('.biz-item').forEach(el=>{
+        el.style.opacity = '0';
+        void el.offsetWidth; // reflow
+        el.style.transition = 'opacity 0.6s ease';
+        el.style.opacity = '1';
+      });
+    }, 380); // wait for fade-out transition (0.35s + buffer)
+  }, 10000);
 }
 
 // ── Override showToast from app.js ───────────────────────────────
