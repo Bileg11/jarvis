@@ -21,6 +21,7 @@ const {
 } = require('./calendar');
 const { isConfigured: gmailOk, getUnreadEmails } = require('./gmail');
 const {
+  HSK_VOCAB_ALL,
   seedVocab,
   getWeakWords,
   updateMastery,
@@ -803,7 +804,7 @@ async function handleCallback(cb) {
     return;
   }
 
-  // HSK Reminder кнопкууд
+  // HSK Reminder + Dashboard кнопкууд
   if (cmd === 'hsk_start_drill') {
     await handleText({ text: '/hsk_drill' }, { uid: UID });
     return;
@@ -812,23 +813,29 @@ async function handleCallback(cb) {
     await handleText({ text: '/hsk_progress' }, { uid: UID });
     return;
   }
+  // Level-specific drill: hsk_drill_3, hsk_drill_4 ...
+  const lvlDrillMatch = cmd.match(/^hsk_drill_(\d)$/);
+  if (lvlDrillMatch) {
+    await handleText({ text: `/hsk_drill ${lvlDrillMatch[1]}` }, { uid: UID });
+    return;
+  }
 }
 
 // ── DRILL HELPERS (Sprint 10) ─────────────────────────────────────
 
 // Drill-ийн асуултыг илгээх
 async function sendDrillQuestion(session, idx, uid) {
-  const w     = session.words[idx];
-  const total = session.words.length;
-  const stars = '⭐'.repeat(Math.min(5, idx + 1));  // явц
+  const w      = session.words[idx];
+  const total  = session.words.length;
+  const lvlTag = w.hsk_level ? `HSK ${w.hsk_level}` : 'HSK';
 
   await tgCall('sendMessage', {
     chat_id:    TG_CHAT,
     parse_mode: 'Markdown',
     text:
-      `🎯 *${idx + 1}/${total}* — HSK 3 Drill\n` +
+      `🎯 *${idx + 1}/${total}* — ${lvlTag} Drill\n` +
       `\`────────────────────\`\n\n` +
-      `*${w.word}*\n\n` +
+      `*${w.word}*  _(${w.pinyin})_\n\n` +
       `Юу гэсэн үг вэ? _(Монгол эсвэл Англиар хариул)_\n\n` +
       `_/drill\\_stop — зогсоох_`,
   });
@@ -891,7 +898,7 @@ async function handleDrillAnswer(msg, ctx, session) {
   }
 
   // Mastery шинэчлэх
-  const newLevel = await updateMastery(w.word, correct, uid);
+  const newLevel = await updateMastery(w.word, correct, uid, w.hsk_level || null);
   const stars    = newLevel ? '⭐'.repeat(newLevel) : '';
 
   const resultEmoji = correct ? '✅' : '❌';
@@ -907,20 +914,40 @@ async function handleDrillAnswer(msg, ctx, session) {
   if (nextIdx >= session.words.length) {
     // Drill дууслаа!
     await clearDrillSession(uid);
-    const pct = Math.round(newCorrect / session.words.length * 100);
+    const pct   = Math.round(newCorrect / session.words.length * 100);
     const medal = pct >= 80 ? '🏆' : pct >= 60 ? '🥈' : '💪';
+    const drillLvl = session.hsk_level || null;
+
+    // Dynamic coaching: тухайн түвшний дэвшил шалгах
+    let coachNote = pct >= 80 ? '💪 Гайхалтай! Хэмнэл хадгалаарай.' : '📚 Буруу үгсийг дахин давтаарай.';
+    let nextLvlBtn = null;
+    if (drillLvl) {
+      try {
+        const prog = await getProgress(uid);
+        const lp   = prog?.byLevel?.[drillLvl];
+        if (lp && lp.pct >= 80 && drillLvl < 6) {
+          coachNote = `🎉 *HSK ${drillLvl} 80%+ давлаа!* Дараагийн түвшин рүү шилжихэд бэлэн байна.`;
+          nextLvlBtn = { text: `➡️ HSK ${drillLvl + 1} эхлэх`, callback_data: `hsk_drill_${drillLvl + 1}` };
+        }
+      } catch {}
+    }
+
+    const kbd = nextLvlBtn
+      ? { inline_keyboard: [[nextLvlBtn, { text: '📊 Дэвшил', callback_data: 'hsk_progress' }]] }
+      : { inline_keyboard: [[{ text: '🔄 Дахин', callback_data: drillLvl ? `hsk_drill_${drillLvl}` : 'hsk_start_drill' }, { text: '📊 Дэвшил', callback_data: 'hsk_progress' }]] };
 
     await tgCall('sendMessage', {
-      chat_id:    TG_CHAT,
-      parse_mode: 'Markdown',
+      chat_id:      TG_CHAT,
+      parse_mode:   'Markdown',
       text:
         `${resultText}\n\n` +
         `\`━━━━━━━━━━━━━━━━━━━━\`\n` +
         `${medal} *Drill дууслаа!*\n\n` +
         `✅ Зөв: *${newCorrect}/${session.words.length}* (${pct}%)\n` +
         `❌ Буруу: *${newWrong}*\n\n` +
-        `${pct >= 80 ? '💪 Гайхалтай! Хэмнэл хадгалаарай.' : '📚 Буруу үгсийг дахин давтаарай.'}\n\n` +
+        `${coachNote}\n\n` +
         `_/hsk\\_drill — дахин  |  /hsk\\_progress — дэвшил_`,
+      reply_markup: kbd,
     });
   } else {
     // Дараагийн үг
@@ -1252,23 +1279,38 @@ async function handleText(msg, ctx = {}) {
 
   // ── Sprint 10: HSK 3 Commands ────────────────────────────────────
 
-  // /seed_hsk — стандарт 300 үгийг Firestore-д нэмэх
-  if (text === '/seed_hsk') {
-    await tgSend('📥 HSK 3 үгсийг seed хийж байна...');
+  // /seed_hsk [force] — HSK 1-6 бүх үгийг Firestore-д нэмэх
+  if (text.startsWith('/seed_hsk')) {
+    const force = text.includes('force');
+    await tgSend(`📥 HSK 1-6 үгсийг seed хийж байна… (2094 үг, ~5 batch)${force ? ' [FORCE]' : ''}`);
     try {
-      const count = await seedVocab(uid);
-      await tgSend(
-        `✅ *HSK 3 Vocab Seed дууслаа!*\n\n` +
-        `📚 ${count || 0} үг хадгалагдлаа\n` +
-        `_/hsk\\_drill хийж эхлэ_`
-      );
+      const result = await seedVocab(uid, { force });
+      if (result?.skipped) {
+        await tgSend(
+          `ℹ️ Vocab аль хэдийн seed хийгдсэн байна.\n` +
+          `Дахин бичихийн тулд: \`/seed_hsk force\`\n\n` +
+          `_/hsk\\_drill — drill эхлэх_`
+        );
+      } else {
+        const byLevel = [1,2,3,4,5,6].map(l => {
+          const n = (HSK_VOCAB_ALL || []).filter(v => v.hsk_level === l).length;
+          return `HSK${l}: ${n}`;
+        }).join(' | ');
+        await tgSend(
+          `✅ *HSK 1-6 Vocab Seed дууслаа!*\n\n` +
+          `📚 *${result.seeded}* үг Firestore-д хадгалагдлаа\n` +
+          `${byLevel}\n\n` +
+          `_/hsk\\_drill 3 — HSK 3 drill_\n` +
+          `_/hsk\\_progress — дэвшил харах_`
+        );
+      }
     } catch (e) {
       await tgSend(`❌ Seed алдаа: ${e.message}`);
     }
     return;
   }
 
-  // /hsk_progress — нийт дэвшил харах
+  // /hsk_progress — per-level dashboard
   if (text === '/hsk_progress' || text === '/progress') {
     try {
       const p = await getProgress(uid);
@@ -1276,56 +1318,86 @@ async function handleText(msg, ctx = {}) {
         await tgSend('📭 Vocabulary байхгүй. `/seed_hsk` командаар эхлэ.');
         return;
       }
-      const bar = (n, total) => {
-        const pct  = Math.round(n / total * 10);
-        return '█'.repeat(pct) + '░'.repeat(10 - pct);
+      const bar5 = (pct) => {
+        const filled = Math.round(pct / 20);  // 0-5 stars
+        return '█'.repeat(filled) + '░'.repeat(5 - filled);
       };
-      await tgSend(
-        `📊 *HSK 3 ДЭВШИЛ*\n` +
-        `\`────────────────────\`\n\n` +
-        `🎯 Нийт: *${p.total}* үг  |  ⭐⭐⭐⭐⭐ Цээжилсэн: *${p.mastered}* (${p.pct}%)\n\n` +
-        `⭐ Lv1: ${p.dist[1]} үг   ⭐⭐ Lv2: ${p.dist[2]} үг\n` +
-        `⭐⭐⭐ Lv3: ${p.dist[3]} үг   ⭐⭐⭐⭐ Lv4: ${p.dist[4]} үг\n` +
-        `⭐⭐⭐⭐⭐ Lv5: *${p.dist[5]}* үг (мастер)\n\n` +
-        `\`${bar(p.mastered, p.total)}\` ${p.pct}%\n\n` +
-        `📅 Шалгалт: *2026/06/28* — _${p.daysLeft} хоног үлдлээ_\n` +
-        `⚡ Өдөрт хийх: *${p.dailyGoal}* үг\n\n` +
-        `_/hsk\\_drill — Drill эхлэх_`
-      );
+      const LEVEL_LABELS = { 1:'🔵', 2:'🟢', 3:'🟡', 4:'🟠', 5:'🔴', 6:'🟣' };
+
+      let lvlLines = '';
+      for (let l = 1; l <= 6; l++) {
+        const lp = p.byLevel[l];
+        if (!lp || lp.total === 0) continue;
+        const tag = l === p.activeLevel ? ' ← одоо' : '';
+        lvlLines += `${LEVEL_LABELS[l]} *HSK ${l}*  \`${bar5(lp.pct)}\` ${lp.pct}%  (${lp.mastered}/${lp.total})${tag}\n`;
+      }
+
+      // Per-level drill buttons
+      const levelBtns = [1,2,3,4,5,6].filter(l => p.byLevel[l]?.total > 0).map(l => ({
+        text: `HSK ${l} ${p.byLevel[l].pct}%`, callback_data: `hsk_drill_${l}`
+      }));
+      const kbd = {
+        inline_keyboard: [
+          levelBtns.slice(0,3),
+          levelBtns.slice(3,6),
+        ].filter(r => r.length > 0)
+      };
+
+      await tgCall('sendMessage', {
+        chat_id:      TG_CHAT,
+        parse_mode:   'Markdown',
+        reply_markup: kbd,
+        text:
+          `📊 *HSK MASTER DASHBOARD*\n` +
+          `\`────────────────────────\`\n\n` +
+          lvlLines +
+          `\n🌐 Нийт: *${p.mastered}/${p.total}* үг цээжилсэн (${p.pct}%)\n` +
+          `⚡ Өдөрт: *${p.dailyGoal}* үг  |  📅 *${p.daysLeft}* хоног үлдлээ\n\n` +
+          `_Drill хийхийн тулд дээрх товчийг дарна уу_`,
+      });
     } catch (e) {
       await tgSend(`❌ Алдаа: ${e.message}`);
     }
     return;
   }
 
-  // /hsk_drill — Spaced Repetition drill эхлэх
-  if (text === '/hsk_drill' || text === '/drill') {
+  // /hsk_drill [1-6] — level-based Spaced Repetition drill
+  if (text.startsWith('/hsk_drill') || text.startsWith('/drill')) {
     try {
-      // Өмнөх session цэвэрлэх
+      // Parse optional level: /hsk_drill 3  or  /hsk_drill3
+      const lvlMatch = text.match(/(\d)/);
+      const drillLvl = lvlMatch ? parseInt(lvlMatch[1]) : null;
+      if (drillLvl && (drillLvl < 1 || drillLvl > 6)) {
+        await tgSend('⚠️ Түвшин 1-6 байх ёстой. Жишээ: `/hsk_drill 3`');
+        return;
+      }
+
       await clearDrillSession(uid);
 
-      const words = await getWeakWords(uid, 10);
+      const words = await getWeakWords(uid, 10, drillLvl);
       if (!words.length) {
+        const lvlTag = drillLvl ? `HSK ${drillLvl}` : 'бүх';
         await tgSend(
-          `🎉 Өнөөдөр давтах үг байхгүй! Бүх үг давтагдлаа.\n\n` +
-          `_/hsk\\_progress — статс харах_`
+          `🎉 ${lvlTag} түвшинд өнөөдөр давтах үг байхгүй!\n\n` +
+          `_/hsk\\_progress — дэвшил харах_`
         );
         return;
       }
 
-      // Session хадгалах
+      const lvlTag = drillLvl ? `HSK ${drillLvl}` : `HSK ${words[0]?.hsk_level || '?'}`;
       const session = {
-        active:  true,
-        type:    'drill',
-        words:   words.map(w => ({ word: w.word, pinyin: w.pinyin, definition: w.definition, en: w.en || '' })),
-        current: 0,
-        correct: 0,
-        wrong:   0,
+        active:    true,
+        type:      'drill',
+        hsk_level: drillLvl,
+        words:     words.map(w => ({ word: w.word, pinyin: w.pinyin, definition: w.definition, en: w.en || '', hsk_level: w.hsk_level || drillLvl })),
+        current:   0,
+        correct:   0,
+        wrong:     0,
         startedAt: new Date().toISOString(),
       };
       await saveDrillSession(session, uid);
 
-      // Эхний үг илгээх
+      await tgSend(`🎯 *${lvlTag} Drill* — ${words.length} үг бэлэн`, { parse_mode: 'Markdown' });
       await sendDrillQuestion(session, 0, uid);
 
     } catch (e) {
@@ -1624,12 +1696,14 @@ async function sendHSKReminder() {
     const p = await getProgress(UID);
 
     let progressLine = '';
+    let activeLvl    = 3;
     if (p) {
-      const examDate = new Date('2026-06-28T09:00:00+08:00');
-      const daysLeft = Math.ceil((examDate - Date.now()) / 86400000);
+      activeLvl = p.activeLevel || 3;
+      const lp  = p.byLevel?.[activeLvl] || {};
       progressLine =
-        `\n📊 Дэвшил: *${p.mastered}/${p.total}* үг (${p.pct}% мастер)\n` +
-        `📅 Шалгалт хүртэл: *${daysLeft}* хоног\n` +
+        `\n📊 *HSK ${activeLvl}* одоогийн түвшин: *${lp.mastered || 0}/${lp.total || 0}* үг (${lp.pct || 0}%)\n` +
+        `🌐 Нийт: *${p.mastered}/${p.total}* үг мастер\n` +
+        `📅 Шалгалт хүртэл: *${p.daysLeft}* хоног\n` +
         `⚡ Өнөөдрийн зорилт: *${p.dailyGoal}* үг\n`;
     }
 
@@ -1639,15 +1713,15 @@ async function sendHSKReminder() {
       text:
         `⏰ *15:00 болж байна — Хичээл дуусав!*\n\n` +
         `Одоо чиний хувийн суралцах цаг эхэллээ.\n` +
-        `HSK 3 шалгалт ойртож байна — орой болтол орхиж болохгүй!\n` +
+        `HSK ${activeLvl} түвшин давах хүртэл орой болтол орхиж болохгүй!\n` +
         `${progressLine}\n` +
-        `📚 */hsk\\_drill* — Drill эхлэх\n` +
+        `📚 */hsk\\_drill ${activeLvl}* — HSK ${activeLvl} drill\n` +
         `🎧 */listening* — Reading comp\n` +
         `📈 */hsk\\_progress* — Дэвшил харах\n\n` +
         `_"每天进步一点点" — Өдөр бүр жаахан ч гэсэн урагш_`,
       reply_markup: {
         inline_keyboard: [[
-          { text: '🎯 Drill эхлэх', callback_data: 'hsk_start_drill' },
+          { text: `🎯 HSK ${activeLvl} Drill`, callback_data: `hsk_drill_${activeLvl}` },
           { text: '📊 Дэвшил', callback_data: 'hsk_progress' },
         ]],
       },
