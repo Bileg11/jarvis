@@ -1016,7 +1016,8 @@ function runBootSequence() {
     document.getElementById('terminal-panel').classList.add('booted');
     _booted = true;
     startTelemFluctuation();
-    updateRoutineUI();
+    // Delay slightly so Firestore sync completes before we render
+    setTimeout(()=>{ updateRoutineUI(); }, 800);
     jarvisGreeting();
   }, 1050);
   // clock
