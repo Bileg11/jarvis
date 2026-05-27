@@ -164,6 +164,26 @@ body::after {
 .os-nav-btn:hover { border-color:var(--accent); color:var(--accent); box-shadow:var(--neon); }
 .os-nav-btn.active { border-color:var(--accent); color:var(--accent); box-shadow:var(--neon); }
 
+/* ── PAGE OVERLAY PANELS (SPA nav — no separate page loads) ─── */
+.os-page {
+  position:fixed; top:var(--bar-h); left:0; right:0; bottom:0;
+  background:var(--bg); z-index:50;
+  display:none; flex-direction:column;
+  overflow:hidden;
+}
+.os-page.active { display:flex; }
+.page-bar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px; height:40px; flex-shrink:0;
+  border-bottom:1px solid var(--border);
+  background:rgba(0,5,15,.9);
+}
+.page-bar-title { font-family:var(--hud); font-size:12px; color:var(--accent); letter-spacing:.14em; text-shadow:var(--neon); }
+.page-back { font-family:var(--mono); font-size:10px; color:var(--text); background:rgba(0,229,255,.06); border:1px solid var(--border); border-radius:2px; padding:3px 10px; cursor:pointer; transition:all .2s; }
+.page-back:hover { border-color:var(--accent); color:var(--accent); }
+.page-iframe { flex:1; border:none; background:var(--bg); }
+.page-body { flex:1; overflow:auto; padding:20px; }
+
 /* ── OS GRID ───────────────────────────────────────────────────── */
 .os-grid {
   position: fixed;
@@ -675,10 +695,10 @@ canvas#reactor { display:block; will-change:transform; transform:translateZ(0); 
   </div>
   <div class="os-clock" id="os-clock">--:--:--</div>
   <div class="os-bar-nav">
-    <a class="os-nav-btn active" href="index.html">⌂ CORE</a>
-    <a class="os-nav-btn" href="chat.html">⬡ INTEL</a>
-    <a class="os-nav-btn" href="tracker.html">◎ TRACK</a>
-    <a class="os-nav-btn" href="profile.html">◈ PROFILE</a>
+    <button class="os-nav-btn active" id="nav-core"    onclick="navTo('core')">⌂ CORE</button>
+    <button class="os-nav-btn"        id="nav-intel"   onclick="navTo('intel')">⬡ INTEL</button>
+    <button class="os-nav-btn"        id="nav-track"   onclick="navTo('track')">◎ TRACK</button>
+    <button class="os-nav-btn"        id="nav-profile" onclick="navTo('profile')">◈ PROFILE</button>
   </div>
 </div>
 
@@ -1706,6 +1726,63 @@ document.addEventListener('jarvis:ready', ()=>{
     });
   }
 });
+</script>
+
+<!-- ── SPA OVERLAY PAGES ────────────────────────────────────────── -->
+<!-- INTEL page: loads chat.html in iframe -->
+<div class="os-page" id="page-intel">
+  <div class="page-bar">
+    <span class="page-bar-title">⬡ INTEL — COMMAND CENTER</span>
+    <button class="page-back" onclick="navTo('core')">← CORE</button>
+  </div>
+  <iframe class="page-iframe" id="iframe-intel" src="" allowfullscreen></iframe>
+</div>
+
+<!-- TRACK page: loads tracker.html in iframe -->
+<div class="os-page" id="page-track">
+  <div class="page-bar">
+    <span class="page-bar-title">◎ TRACK — MISSION CONTROL</span>
+    <button class="page-back" onclick="navTo('core')">← CORE</button>
+  </div>
+  <iframe class="page-iframe" id="iframe-track" src="" allowfullscreen></iframe>
+</div>
+
+<!-- PROFILE page: loads profile.html in iframe -->
+<div class="os-page" id="page-profile">
+  <div class="page-bar">
+    <span class="page-bar-title">◈ PROFILE — STARK SETTINGS</span>
+    <button class="page-back" onclick="navTo('core')">← CORE</button>
+  </div>
+  <iframe class="page-iframe" id="iframe-profile" src="" allowfullscreen></iframe>
+</div>
+
+<script>
+// ── SPA NAVIGATION ──────────────────────────────────────────────
+const _navMap = { intel:'chat.html', track:'tracker.html', profile:'profile.html' };
+const _loaded  = {}; // lazy-load iframes once
+
+function navTo(tab) {
+  // Hide all overlay pages
+  document.querySelectorAll('.os-page').forEach(p => p.classList.remove('active'));
+  // Update nav button active state
+  document.querySelectorAll('.os-nav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('nav-' + tab);
+  if (btn) btn.classList.add('active');
+
+  if (tab === 'core') return; // CORE = main view, nothing to show
+
+  // Show target overlay
+  const page = document.getElementById('page-' + tab);
+  if (!page) return;
+  page.classList.add('active');
+
+  // Lazy-load iframe once
+  if (!_loaded[tab]) {
+    _loaded[tab] = true;
+    const iframe = document.getElementById('iframe-' + tab);
+    if (iframe) iframe.src = _navMap[tab];
+  }
+}
 </script>
 </body>
 </html>
