@@ -1106,50 +1106,22 @@ function addTermLine(type, text, noScroll) {
 }
 
 // Typewriter for JARVIS terminal response
-let _termTimer  = null;
-let _termTxtEl  = null;   // current typing target — used for skip-to-end
-let _termFull   = '';     // full text being typed
-let _termCursor = null;
+let _termTimer = null; // kept for compat
 
 function termTypeJarvis(text) {
   const out = document.getElementById('term-output');
   if (!out) return;
-  // Skip any in-progress typing instantly
-  if (_termTimer) {
-    clearInterval(_termTimer); _termTimer = null;
-    if (_termTxtEl && _termFull) {
-      // flush remaining text immediately
-      const remaining = _termFull.slice(_termTxtEl.textContent.length);
-      if (_termCursor) _termTxtEl.insertBefore(document.createTextNode(remaining), _termCursor);
-      if (_termCursor) { _termCursor.remove(); _termCursor=null; }
-    }
-    setAIState('idle');
-  }
+  if (_termTimer) { clearInterval(_termTimer); _termTimer = null; }
   const txtEl = addTermLine('jarvis', '', true);
   if (!txtEl) return;
-  const cursor = document.createElement('span');
-  cursor.className = 'j-cursor';
-  txtEl.appendChild(cursor);
-  _termTxtEl  = txtEl;
-  _termFull   = text;
-  _termCursor = cursor;
-  let i = 0;
+  // Instant display with CSS fade-in — zero lag
+  txtEl.textContent = text;
+  txtEl.style.opacity = '0';
+  txtEl.style.transition = 'opacity 0.25s ease';
+  requestAnimationFrame(()=>{ txtEl.style.opacity = '1'; });
+  out.scrollTop = out.scrollHeight;
   setAIState('active');
-  _termTimer = setInterval(()=>{
-    if (i >= text.length) {
-      clearInterval(_termTimer); _termTimer=null;
-      _termTxtEl=null; _termFull=''; _termCursor=null;
-      setAIState('idle');
-      setTimeout(()=>cursor.remove(), 1800);
-      out.scrollTop = out.scrollHeight;
-      return;
-    }
-    // Batch 2 chars per tick for shorter lag feel
-    const chunk = text.slice(i, i+2);
-    txtEl.insertBefore(document.createTextNode(chunk), cursor);
-    i += 2;
-    out.scrollTop = out.scrollHeight;
-  }, 22);
+  setTimeout(()=>setAIState('idle'), 400);
 }
 
 function setAIState(state) {
