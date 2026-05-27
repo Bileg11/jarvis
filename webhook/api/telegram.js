@@ -832,11 +832,10 @@ async function sendDrillQuestion(session, idx, uid) {
   const lvlTag = w.hsk_level ? `HSK ${w.hsk_level}` : 'HSK';
 
   await tgCall('sendMessage', {
-    chat_id:    TG_CHAT,
-    parse_mode: 'Markdown',
+    chat_id: TG_CHAT,
     text:
-      `🎯 *${idx + 1}/${total}* — ${lvlTag} Drill\n\n` +
-      `*${w.word}*   ${w.pinyin}\n\n` +
+      `🎯 ${idx + 1}/${total} — ${lvlTag} Drill\n\n` +
+      `${w.word}   [${w.pinyin}]\n\n` +
       `Юу гэсэн үг вэ? Монгол эсвэл Англиар хариул\n\n` +
       `/drill_stop — зогсоох`,
   });
@@ -903,8 +902,8 @@ async function handleDrillAnswer(msg, ctx, session) {
   const stars    = newLevel ? '⭐'.repeat(newLevel) : '';
 
   const resultText  = correct
-    ? `✅ *Зөв!* ${feedback || ''}\n📈 Mastery: ${stars}`
-    : `❌ *Буруу.* *${w.word}* = ${w.definition}${w.en ? ` / ${w.en}` : ''}\n${feedback ? `${feedback}\n` : ''}📉 Mastery: ${stars}`;
+    ? `✅ Зөв! ${feedback || ''}\n📈 Mastery: ${stars}`
+    : `❌ Буруу. ${w.word} = ${w.definition}${w.en ? ` / ${w.en}` : ''}\n${feedback ? `${feedback}\n` : ''}📉 Mastery: ${stars}`;
 
   // Session шинэчлэх
   const newCorrect = session.correct + (correct ? 1 : 0);
@@ -938,24 +937,22 @@ async function handleDrillAnswer(msg, ctx, session) {
 
     await tgCall('sendMessage', {
       chat_id:      TG_CHAT,
-      parse_mode:   'Markdown',
       text:
         `${resultText}\n\n` +
-        `\`━━━━━━━━━━━━━━━━━━━━\`\n` +
-        `${medal} *Drill дууслаа!*\n\n` +
-        `✅ Зөв: *${newCorrect}/${session.words.length}* (${pct}%)\n` +
-        `❌ Буруу: *${newWrong}*\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━\n` +
+        `${medal} Drill дууслаа!\n\n` +
+        `✅ Зөв: ${newCorrect}/${session.words.length} (${pct}%)\n` +
+        `❌ Буруу: ${newWrong}\n\n` +
         `${coachNote}\n\n` +
-        `_/hsk\\_drill — дахин  |  /hsk\\_progress — дэвшил_`,
+        `/hsk_drill — дахин  |  /hsk_progress — дэвшил`,
       reply_markup: kbd,
     });
   } else {
     // Дараагийн үг
     await saveDrillSession({ ...session, current: nextIdx, correct: newCorrect, wrong: newWrong }, uid);
     await tgCall('sendMessage', {
-      chat_id:    TG_CHAT,
-      parse_mode: 'Markdown',
-      text: resultText,
+      chat_id: TG_CHAT,
+      text:    resultText,
     });
     // Жаахан зай өгсний дараа дараагийн асуулт
     await sendDrillQuestion({ ...session, current: nextIdx }, nextIdx, uid);
