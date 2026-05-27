@@ -978,8 +978,8 @@ function updateAlarmData() {
   const lfs  = mstats.find(m=>m.id==='lfs')     || {val:0};
   const hz   = mstats.find(m=>m.id==='hanziw')  || {val:0};
   const fit  = mstats.find(m=>m.id==='fitness') || {val:0};
-  const rawScore = (typeof getDailyScore==="function") ? getDailyScore() : 0;
-  const score = (isNaN(rawScore)||rawScore==null) ? 0 : rawScore;
+  const rr = (typeof loadRoutine==='function') ? loadRoutine() : {};
+  const score = Math.round(((rr.water||0)/8)*25) + (rr.exercise?20:0) + (rr.hanzi?20:0) + (rr.read?15:0) + (rr.journal?10:0);
   const setTxt = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
   setTxt('alarm-lfs-val', lfs.val);
   setTxt('alarm-hz-val',  hz.val);
@@ -1102,9 +1102,8 @@ function setAIState(state) {
 
 // ── JARVIS GREETING ──────────────────────────────────────────────
 async function jarvisGreeting() {
-  const rawScore = (typeof getDailyScore==="function") ? getDailyScore() : 0;
-  const score = (isNaN(rawScore)||rawScore==null) ? 0 : rawScore;
   const r = (typeof loadRoutine==='function') ? loadRoutine() : {};
+  const score = Math.round(((r.water||0)/8)*25) + (r.exercise?20:0) + (r.hanzi?20:0) + (r.read?15:0) + (r.journal?10:0);
   const done = ['exercise','hanzi','read','journal'].filter(k=>r[k]).length;
   const diff = EXAM_DATE - Date.now();
   const days = Math.floor(diff/86400000);
@@ -1164,8 +1163,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ── ROUTINE UI SYNC ──────────────────────────────────────────────
 function updateRoutineUI() {
   const r = (typeof loadRoutine==='function') ? loadRoutine() : {};
-  const rawScore = (typeof getDailyScore==="function") ? getDailyScore() : 0;
-  const score = (isNaN(rawScore)||rawScore==null) ? 0 : rawScore;
+  // Compute score directly — getDailyScore() may return null when Firebase overrides it
+  const waterPts = Math.round(((r.water||0) / 8) * 25);
+  const score = waterPts + (r.exercise?20:0) + (r.hanzi?20:0) + (r.read?15:0) + (r.journal?10:0);
 
   // Water
   const wPct = Math.min(100, (r.water||0)/8*100);
