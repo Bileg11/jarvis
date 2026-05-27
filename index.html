@@ -140,7 +140,7 @@ body::after {
   background: rgba(0,3,8,.95);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px;
+  padding: 0 14px 0 82px; /* 82px left: macOS traffic-light buttons clearance */
   font-family: var(--hud); font-size: 11px; letter-spacing: .12em;
 }
 .os-bar-brand { color: var(--accent); font-weight:700; font-size:12px; letter-spacing:.18em;
@@ -820,8 +820,8 @@ canvas#reactor { display:block; }
   <!-- ── RIGHT: GLOBAL MISSIONS & BUSINESS HUB ───────────────── -->
   <div class="col-right" id="col-right">
 
-    <!-- LFS Shanghai Mission -->
-    <div class="glass hud-br gauge-left mission-card-os">
+    <!-- WIDGET: Missions -->
+    <div class="glass hud-br gauge-left mission-card-os" id="widget-missions">
       <div class="panel-hdr">
         ACTIVE MISSIONS
         <span class="hdr-tag">STARK-OPS</span>
@@ -831,8 +831,18 @@ canvas#reactor { display:block; }
       </div>
     </div>
 
-    <!-- Exchange Rates -->
-    <div class="glass hud-br" style="flex:0 0 auto">
+    <!-- WIDGET: HSK Drill -->
+    <div class="glass hud-br" id="widget-hsk" style="display:none;flex:0 0 auto">
+      <div class="panel-hdr">HSK4 DRILL <span class="hdr-tag" id="drill-hdr-score">—</span></div>
+      <div style="padding:10px 12px;text-align:center">
+        <div id="drill-hanzi" style="font-size:36px;letter-spacing:.05em;color:var(--accent);text-shadow:var(--neon);padding:8px 0;font-family:'Orbitron',sans-serif">—</div>
+        <div id="drill-pinyin" style="font-size:11px;color:var(--text);font-family:var(--mono);margin-bottom:4px">терминалд хариулт бичнэ үү</div>
+        <div id="drill-result-display" style="font-size:11px;min-height:16px;font-family:var(--mono)"></div>
+      </div>
+    </div>
+
+    <!-- WIDGET: FX Monitor -->
+    <div class="glass hud-br" id="widget-fx" style="flex:0 0 auto">
       <div class="panel-hdr">FX MONITOR <span class="hdr-tag">LIVE</span></div>
       <div class="fx-ticker" id="fx-ticker">
         <div class="fx-pair"><span class="fx-name">CNY/MNT</span><span class="fx-val" id="fx-cny">—</span></div>
@@ -841,8 +851,8 @@ canvas#reactor { display:block; }
       </div>
     </div>
 
-    <!-- Global Business Feed -->
-    <div class="glass hud-br gauge-left biz-feed">
+    <!-- WIDGET: Intel Feed -->
+    <div class="glass hud-br gauge-left biz-feed" id="widget-intel">
       <div class="panel-hdr">
         GLOBAL INTEL FEED
         <span class="hdr-tag" id="intel-ts">--:--</span>
@@ -875,6 +885,7 @@ canvas#reactor { display:block; }
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>
 <script src="gemini.js"></script>
+<script src="themes.js"></script>
 <script>
 /* ═══════════════════════════════════════════════════════════════
    JARVIS OS — SPRINT 21: COMMAND CORE ENGINE
@@ -1025,6 +1036,7 @@ function acknowledgeAlarm() {
 // ── BOOT SEQUENCE ────────────────────────────────────────────────
 function runBootSequence() {
   _reactor = new ArcReactor('reactor');
+  window._reactor = _reactor; // expose for themes.js
   _reactor.triggerFlare(600);
   setTimeout(()=>{
     addTermLine('sys', '>> INITIALIZING JARVIS OS v21.0 — STARK-CORE ACTIVE');
@@ -1045,6 +1057,8 @@ function runBootSequence() {
     setTimeout(()=>{ updateRoutineUI(); }, 800);
     // Periodic resync: Firestore may settle after initial render
     setInterval(updateRoutineUI, 2500);
+    if (typeof loadSavedTheme==='function') loadSavedTheme();
+    loadWidgetLayout();
     jarvisGreeting();
   }, 1050);
   // clock
@@ -1155,6 +1169,114 @@ async function jarvisGreeting() {
   }
 }
 
+// ── HSK4 DRILL WORD LIST ──────────────────────────────────────────
+const HSK4_WORDS = [
+  {h:'根据',p:'gēnjù',m:'үндэслэн'},{h:'影响',p:'yǐngxiǎng',m:'нөлөөлөх'},
+  {h:'机会',p:'jīhuì',m:'боломж'},{h:'方面',p:'fāngmiàn',m:'тал, хэсэг'},
+  {h:'关键',p:'guānjiàn',m:'гол, чухал'},{h:'发展',p:'fāzhǎn',m:'хөгжил'},
+  {h:'经济',p:'jīngjì',m:'эдийн засаг'},{h:'社会',p:'shèhuì',m:'нийгэм'},
+  {h:'政府',p:'zhèngfǔ',m:'засгийн газар'},{h:'文化',p:'wénhuà',m:'соёл'},
+  {h:'教育',p:'jiàoyù',m:'боловсрол'},{h:'科技',p:'kējì',m:'технологи'},
+  {h:'环境',p:'huánjìng',m:'орчин'},{h:'健康',p:'jiànkāng',m:'эрүүл мэнд'},
+  {h:'目标',p:'mùbiāo',m:'зорилго'},{h:'计划',p:'jìhuà',m:'төлөвлөгөө'},
+  {h:'努力',p:'nǔlì',m:'хичээх'},{h:'成功',p:'chénggōng',m:'амжилт'},
+  {h:'失败',p:'shībài',m:'бүтэлгүйтэх'},{h:'经验',p:'jīngyàn',m:'туршлага'},
+  {h:'能力',p:'nénglì',m:'чадвар'},{h:'网络',p:'wǎngluò',m:'интернэт'},
+  {h:'数据',p:'shùjù',m:'өгөгдөл'},{h:'系统',p:'xìtǒng',m:'систем'},
+  {h:'比较',p:'bǐjiào',m:'харьцуулахад'},{h:'认为',p:'rènwéi',m:'гэж бодох'},
+  {h:'提高',p:'tígāo',m:'дээшлүүлэх'},{h:'改变',p:'gǎibiàn',m:'өөрчлөх'},
+  {h:'建立',p:'jiànlì',m:'байгуулах'},{h:'解决',p:'jiějué',m:'шийдвэрлэх'},
+  {h:'了解',p:'liǎojiě',m:'ойлгох'},{h:'参加',p:'cānjiā',m:'оролцох'},
+  {h:'完成',p:'wánchéng',m:'дуусгах'},{h:'需要',p:'xūyào',m:'хэрэгтэй'},
+  {h:'可能',p:'kěnéng',m:'магадгүй'},{h:'通过',p:'tōngguò',m:'дамжуулан'},
+  {h:'已经',p:'yǐjīng',m:'аль хэдийнэ'},{h:'虽然',p:'suīrán',m:'хэдийгээр'},
+  {h:'因此',p:'yīncǐ',m:'тиймийн тулд'},{h:'继续',p:'jìxù',m:'үргэлжлүүлэх'},
+  {h:'选择',p:'xuǎnzé',m:'сонгох'},{h:'最终',p:'zuìzhōng',m:'эцэст нь'},
+  {h:'实现',p:'shíxiàn',m:'хэрэгжүүлэх'},{h:'重要',p:'zhòngyào',m:'чухал'},
+  {h:'表示',p:'biǎoshì',m:'илэрхийлэх'},{h:'问题',p:'wèntí',m:'асуудал'},
+  {h:'生活',p:'shēnghuó',m:'амьдрал'},{h:'工作',p:'gōngzuò',m:'ажил'},
+  {h:'机器',p:'jīqì',m:'машин'},{h:'程序',p:'chéngxù',m:'програм'},
+];
+let _drillMode  = false;
+let _drillIdx   = 0;
+let _drillOrder = [];
+let _drillScore = { ok:0, total:0 };
+
+function _drillShuffle() {
+  _drillOrder = [...Array(HSK4_WORDS.length).keys()];
+  for (let i=_drillOrder.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [_drillOrder[i],_drillOrder[j]]=[_drillOrder[j],_drillOrder[i]];
+  }
+}
+function _drillShowWord() {
+  const w = HSK4_WORDS[_drillOrder[_drillIdx % _drillOrder.length]];
+  const hanziEl = document.getElementById('drill-hanzi');
+  const pinyinEl= document.getElementById('drill-pinyin');
+  const scoreEl = document.getElementById('drill-hdr-score');
+  if(hanziEl)  hanziEl.textContent  = w.h;
+  if(pinyinEl) pinyinEl.textContent = w.p + '  —  монголоор?';
+  if(scoreEl)  scoreEl.textContent  = `${_drillScore.ok}/${_drillScore.total}`;
+  termTypeJarvis(`[DRILL ${_drillIdx+1}/${HSK4_WORDS.length}]  ${w.h}  (${w.p})  — монголоор?`);
+}
+function _drillEval(answer) {
+  const w = HSK4_WORDS[_drillOrder[_drillIdx % _drillOrder.length]];
+  _drillScore.total++;
+  const correct = w.m.toLowerCase().split(/[,，、]/).map(s=>s.trim());
+  const ans     = answer.toLowerCase().trim();
+  const isOk    = correct.some(c => ans.includes(c) || c.includes(ans));
+  const resEl   = document.getElementById('drill-result-display');
+  if (isOk) {
+    _drillScore.ok++;
+    if(resEl) { resEl.textContent='✓ ЗӨРӨЛГҮЙ'; resEl.style.color='var(--green)'; }
+    termTypeJarvis(`✓ Зөв! "${w.h}" = "${w.m}" — шалгалтанд дийлнэ.`);
+  } else {
+    if(resEl) { resEl.textContent=`✗ ${w.m}`; resEl.style.color='var(--red)'; }
+    termTypeJarvis(`✗ Буруу. "${w.h}" = "${w.m}". Санаж ав, Stark.`);
+  }
+  const scoreEl = document.getElementById('drill-hdr-score');
+  if(scoreEl) scoreEl.textContent = `${_drillScore.ok}/${_drillScore.total}`;
+  _drillIdx++;
+  setTimeout(_drillShowWord, 1800);
+}
+
+// ── WIDGET SYSTEM ─────────────────────────────────────────────────
+const WIDGET_DEFS = {
+  missions: { label:'ACTIVE MISSIONS', default:true  },
+  hsk:      { label:'HSK4 DRILL',      default:false },
+  fx:       { label:'FX MONITOR',      default:true  },
+  intel:    { label:'GLOBAL INTEL',    default:true  },
+};
+let _activeWidgets = ['missions','fx','intel'];
+
+function _applyWidgets() {
+  Object.keys(WIDGET_DEFS).forEach(id => {
+    const el = document.getElementById('widget-'+id);
+    if (el) el.style.display = _activeWidgets.includes(id) ? '' : 'none';
+  });
+}
+function _saveWidgets() {
+  localStorage.setItem('jarvis_widgets', JSON.stringify(_activeWidgets));
+  if (window._db && window._auth?.currentUser) {
+    window._db.doc('users/'+window._auth.currentUser.uid+'/settings/layout')
+      .set({ active_widgets: _activeWidgets }, { merge: true }).catch(()=>{});
+  }
+}
+async function loadWidgetLayout() {
+  const saved = localStorage.getItem('jarvis_widgets');
+  if (saved) try { _activeWidgets = JSON.parse(saved); } catch {}
+  _applyWidgets();
+  if (window._db && window._auth?.currentUser) {
+    const snap = await window._db.doc('users/'+window._auth.currentUser.uid+'/settings/layout')
+      .get().catch(()=>null);
+    if (snap?.exists) {
+      const d = snap.data();
+      if (d.active_widgets) { _activeWidgets = d.active_widgets; _applyWidgets(); }
+      if (d.theme && typeof applyTheme==='function') applyTheme(d.theme);
+    }
+  }
+}
+
 // ── TERMINAL SEND ─────────────────────────────────────────────────
 async function termSend() {
   if (!_booted) return;
@@ -1164,7 +1286,13 @@ async function termSend() {
   inp.value = '';
   _reactor?.triggerFlare(350);
 
-  // ── SLASH COMMANDS ───────────────────────────────────────────────
+  // ── DRILL MODE INTERCEPT ──────────────────────────────────────────
+  if (_drillMode && !text.startsWith('/')) {
+    _drillEval(text);
+    return;
+  }
+
+  // ── SLASH COMMANDS ────────────────────────────────────────────────
   if (text === '/clear') {
     const out = document.getElementById('term-output');
     if (out) out.innerHTML = '';
@@ -1173,46 +1301,135 @@ async function termSend() {
     return;
   }
 
+  // /status — live diagnostic + AI weekly audit
   if (text === '/status') {
     addTermLine('user', '/status');
-    const r = (typeof loadRoutine==='function') ? loadRoutine() : {};
-    const score = Math.round(((r.water||0)/8)*25) + (r.exercise?20:0) + (r.hanzi?20:0) + (r.read?15:0) + (r.journal?10:0);
-    const diff  = EXAM_DATE - Date.now();
-    const days  = Math.max(0, Math.floor(diff/86400000));
-    const hrs   = Math.max(0, Math.floor((diff%86400000)/3600000));
-    const done  = ['exercise','hanzi','read','journal'].filter(k=>r[k]);
-    const miss  = ['exercise','hanzi','read','journal'].filter(k=>!r[k]);
-    const up    = Math.floor((Date.now()-_startTs)/1000);
-    const pad   = n=>String(n).padStart(2,'0');
-    const upStr = `${pad(Math.floor(up/3600))}:${pad(Math.floor((up%3600)/60))}:${pad(up%60)}`;
-    const ms    = (typeof getMissionStats==='function') ? getMissionStats() : [];
-    const lfs   = ms.find(m=>m.id==='lfs')    || {};
-    const hanM  = ms.find(m=>m.id==='hanziw') || {};
-    const fitM  = ms.find(m=>m.id==='fitness')|| {};
-
-    const cpu   = document.getElementById('t-cpu')?.textContent  || '—';
-    const mem   = document.getElementById('t-mem')?.textContent  || '—';
-    const lat   = document.getElementById('t-lat')?.textContent  || '—';
-
+    const r    = (typeof loadRoutine==='function') ? loadRoutine() : {};
+    const score= Math.round(((r.water||0)/8)*25)+(r.exercise?20:0)+(r.hanzi?20:0)+(r.read?15:0)+(r.journal?10:0);
+    const diff = EXAM_DATE - Date.now();
+    const days = Math.max(0, Math.floor(diff/86400000));
+    const hrs  = Math.max(0, Math.floor((diff%86400000)/3600000));
+    const done = ['exercise','hanzi','read','journal'].filter(k=>r[k]);
+    const miss = ['exercise','hanzi','read','journal'].filter(k=>!r[k]);
+    const up   = Math.floor((Date.now()-_startTs)/1000);
+    const pad  = n=>String(n).padStart(2,'0');
+    const upStr= `${pad(Math.floor(up/3600))}:${pad(Math.floor((up%3600)/60))}:${pad(up%60)}`;
+    const ms   = (typeof getMissionStats==='function') ? getMissionStats() : [];
+    const lfs  = ms.find(m=>m.id==='lfs')    || {};
+    const hanM = ms.find(m=>m.id==='hanziw') || {};
+    const fitM = ms.find(m=>m.id==='fitness')|| {};
+    const s7   = (typeof get7DayStats==='function') ? get7DayStats() : {};
+    const exStr= (typeof getStreak==='function') ? getStreak('exercise')+'d 🔥' : '—';
+    const hzStr= (typeof getStreak==='function') ? getStreak('hanzi')+'d 🔥'    : '—';
+    const cpu  = document.getElementById('t-cpu')?.textContent || '—';
+    const mem  = document.getElementById('t-mem')?.textContent || '—';
     const lines = [
-      `── OPERATIONAL STATUS REPORT ──────────────────`,
+      `── WEEKLY AUDIT + LIVE STATUS ──────────────────`,
       `DAILY SCORE    : ${String(score).padStart(3)} / 100`,
-      `ROUTINE        : ${done.length}/4 complete  [ ${done.join(' ') || 'none'} ]`,
-      `PENDING        : [ ${miss.join(' ') || 'all done'} ]`,
+      `ROUTINE        : ${done.length}/4  ✓[${done.join(' ')||'none'}]  ✗[${miss.join(' ')||'all done'}]`,
       `HYDRATION      : ${r.water||0} / 8 cups`,
-      `── MISSION INTEL ───────────────────────────────`,
+      `STREAKS        : workout ${exStr}  |  汉字 ${hzStr}`,
+      `── MISSIONS ────────────────────────────────────`,
       `LFS            : ${lfs.val||0} / ${lfs.max||100} users   (${lfs.pct||0}%)`,
       `HSK4 VOCAB     : ${hanM.val||0} / 300 words  (${hanM.pct||0}%)`,
-      `FITNESS        : ${fitM.val||0} / 30 sessions this month`,
+      `FITNESS        : ${fitM.val||0} / 30 sessions`,
       `── EXAM COUNTDOWN ──────────────────────────────`,
-      `HSK4 DEADLINE  : ${days}d ${hrs}h  →  2026-06-28`,
-      `── SYSTEM VITALS ───────────────────────────────`,
-      `CPU / MEM      : ${cpu}  /  ${mem}`,
-      `LATENCY        : ${lat}`,
-      `SESSION UPTIME : ${upStr}`,
-      `──────────────────────────────────────────────`,
+      `HSK4 2026-06-28: ${days}d ${hrs}h remaining`,
+      `── VITALS ──────────────────────────────────────`,
+      `CPU / MEM      : ${cpu}  /  ${mem}  |  uptime ${upStr}`,
+      `── AI WEEKLY AUDIT ─────────────────────────────`,
     ];
-    lines.forEach((l, i) => setTimeout(()=>addTermLine('sys', l), i*45));
+    lines.forEach((l, i) => setTimeout(()=>addTermLine('sys', l), i*40));
+    // AI audit after static lines
+    if (typeof sendChatMessage==='function') {
+      const delay = lines.length * 40 + 200;
+      setTimeout(async ()=>{
+        const weakLabel = s7?.weakest || 'тодорхойгүй';
+        const prompt = `[WEEKLY AUDIT — дотоод систем хүсэлт]
+Өнөөдрийн score: ${score}/100 | Routine: ${done.length}/4
+Ус: ${r.water||0}/8 | Workout streak: ${exStr} | 汉字 streak: ${hzStr}
+LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.val||0}/30
+Хамгийн сул зүйл 7 хоногт: ${weakLabel} | HSK4 шалгалт: ${days} хоног үлдлээ
+
+3-4 өгүүлбэрт: энэ долоо хоногт юу сайн хийгдсэн, юу яаралтай анхаарах ёстой, өнөөдрийн нэг тодорхой үйлдэл санал болго. Stark гэж хандаж, шулуун хариул.`;
+        const audit = await sendChatMessage(prompt);
+        if (audit) termTypeJarvis(audit);
+      }, delay);
+    }
+    return;
+  }
+
+  // /theme — dynamic theme switcher
+  if (text.startsWith('/theme')) {
+    addTermLine('user', text);
+    const arg = text.slice(7).trim().toLowerCase();
+    if (!arg || arg === 'list') {
+      const names = Object.entries(JARVIS_THEMES).map(([k,v])=>`  ${k.padEnd(14)} — ${v.label}`).join('\n');
+      addTermLine('sys', '── AVAILABLE THEMES ──────────────────────────');
+      Object.entries(JARVIS_THEMES).forEach(([k,v],i)=>{
+        setTimeout(()=>addTermLine('sys',`  ${k.padEnd(14)} ${v.label}`), i*30);
+      });
+      setTimeout(()=>addTermLine('sys','  usage: /theme <name>'), Object.keys(JARVIS_THEMES).length*30+30);
+      return;
+    }
+    if (typeof applyTheme==='function' && applyTheme(arg)) {
+      termTypeJarvis(`Theme "${JARVIS_THEMES[arg]?.label || arg}" активжлаа, Stark. Систем шинэчлэгдлээ.`);
+    } else {
+      addTermLine('warn', `Theme олдсонгүй: "${arg}". /theme list харна уу.`);
+    }
+    return;
+  }
+
+  // /widget — widget layout manager
+  if (text.startsWith('/widget')) {
+    addTermLine('user', text);
+    const parts = text.split(' ');
+    const sub   = parts[1] || 'list';
+    const wid   = parts[2] || '';
+    if (sub === 'list') {
+      addTermLine('sys', '── WIDGET LAYOUT ──────────────────────────────');
+      Object.entries(WIDGET_DEFS).forEach(([id,def],i)=>{
+        const on = _activeWidgets.includes(id) ? '✓ ON ' : '✗ OFF';
+        setTimeout(()=>addTermLine('sys', `  [${on}]  ${id.padEnd(10)} — ${def.label}`), i*30);
+      });
+      setTimeout(()=>addTermLine('sys','  usage: /widget add <id>  |  /widget rm <id>'), Object.keys(WIDGET_DEFS).length*30+30);
+    } else if ((sub==='add'||sub==='on') && wid && WIDGET_DEFS[wid]) {
+      if (!_activeWidgets.includes(wid)) _activeWidgets.push(wid);
+      _applyWidgets(); _saveWidgets();
+      termTypeJarvis(`Widget "${WIDGET_DEFS[wid].label}" идэвхжлээ, Stark.`);
+    } else if ((sub==='rm'||sub==='off'||sub==='remove') && wid && WIDGET_DEFS[wid]) {
+      _activeWidgets = _activeWidgets.filter(w=>w!==wid);
+      _applyWidgets(); _saveWidgets();
+      termTypeJarvis(`Widget "${WIDGET_DEFS[wid].label}" унтраав.`);
+    } else if (sub==='reset') {
+      _activeWidgets = ['missions','fx','intel'];
+      _applyWidgets(); _saveWidgets();
+      termTypeJarvis('Layout reset хийгдлээ. Default 3 widget идэвхтэй.');
+    } else {
+      addTermLine('warn', 'Буруу syntax. /widget list харна уу.');
+    }
+    return;
+  }
+
+  // /drill — HSK4 drill mode
+  if (text === '/drill' || text === '/drill start') {
+    addTermLine('user', '/drill');
+    _drillMode = true;
+    _drillScore = { ok:0, total:0 };
+    _drillShuffle();
+    _drillIdx = 0;
+    // Activate HSK widget
+    if (!_activeWidgets.includes('hsk')) { _activeWidgets.push('hsk'); _applyWidgets(); }
+    termTypeJarvis('HSK4 Drill Mode идэвхжлээ, Stark. /drill stop гэж бичвэл зогсоно. Эхэлцгээе —');
+    setTimeout(_drillShowWord, 1000);
+    return;
+  }
+  if (text === '/drill stop' || text === '/exit') {
+    addTermLine('user', text);
+    _drillMode = false;
+    const resEl = document.getElementById('drill-result-display');
+    if(resEl) resEl.textContent = '';
+    termTypeJarvis(`Drill дуусав, Stark. Үр дүн: ${_drillScore.ok}/${_drillScore.total} зөв (${_drillScore.total?Math.round(_drillScore.ok/_drillScore.total*100):0}%). ${_drillScore.ok===_drillScore.total&&_drillScore.total>0?'Гайхалтай!':'Дахин дасгал хий.'}`);
     return;
   }
 

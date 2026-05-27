@@ -152,6 +152,41 @@ async function syncChatFromFirestore() {
   }
 }
 
+// ── PERSONAL BRAIN — Firestore → localStorage sync ────────────────
+async function syncKnowledgeBase() {
+  if (!window._db || !window._auth?.currentUser) return;
+  try {
+    const uid  = window._auth.currentUser.uid;
+    const snap = await window._db.doc(`users/${uid}/profile/knowledge_base`).get();
+    if (!snap.exists) return;
+    const kb = (snap.data().content || snap.data().text || '').trim();
+    if (kb) localStorage.setItem('jarvis_core_memory', kb);
+  } catch {}
+}
+
+// ── API KEY FALLBACK — Firestore custom_api_key ───────────────────
+async function _resolveApiKey() {
+  if (_getProxyUrl()) return; // proxy takes priority
+  if (!window._db || !window._auth?.currentUser) return;
+  try {
+    const uid  = window._auth.currentUser.uid;
+    const snap = await window._db.doc(`users/${uid}/settings/api`).get();
+    if (snap.exists) {
+      const k = snap.data().custom_api_key || '';
+      if (k) localStorage.setItem('jarvis_chat_key', k);
+    }
+  } catch {}
+}
+
+// Auto-sync when user logs in
+if (window._auth) {
+  window._auth.onAuthStateChanged(function(user) {
+    if (!user) return;
+    syncKnowledgeBase();
+    _resolveApiKey();
+  });
+}
+
 // ── SEND CHAT ─────────────────────────────────────────────────────
 async function sendChatMessage(userText) {
   if (!_isConfigured()) return '⚙️ Профайл хуудсанд Proxy URL эсвэл GitHub Token оруулна уу.';
