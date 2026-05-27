@@ -281,7 +281,7 @@ body::after {
   font-family:var(--hud); font-size:9px; letter-spacing:.22em; color:var(--text);
   margin-bottom: 6px; opacity:.6;
 }
-canvas#reactor { display:block; }
+canvas#reactor { display:block; will-change:transform; transform:translateZ(0); }
 .reactor-status {
   font-family:var(--mono); font-size:9px; letter-spacing:.14em; color:var(--text);
   margin-top: 6px; text-align:center; transition: color .3s;
@@ -890,6 +890,13 @@ canvas#reactor { display:block; }
    JARVIS OS — SPRINT 21: COMMAND CORE ENGINE
 ═══════════════════════════════════════════════════════════════ */
 
+// ── PERFORMANCE: Kill app.js background timers ────────────────────
+// app.js runs typeJarvis() with setInterval(20ms) into #j-msg (hidden).
+// Even hidden, 50 DOM ops/sec compete with keypress events → input lag.
+// Override immediately before any DOMContentLoaded fires.
+window.typeJarvis    = function() {};   // kills 20ms _typeTimer
+window.refreshJarvis = function() {};  // kills 5-min Gemini loop from app.js
+
 // ── ARC REACTOR ─────────────────────────────────────────────────
 class ArcReactor {
   constructor(id) {
@@ -1059,7 +1066,7 @@ function runBootSequence() {
     // Delay slightly so Firestore sync completes before we render
     setTimeout(()=>{ updateRoutineUI(); }, 800);
     // Periodic resync: Firestore may settle after initial render
-    setInterval(updateRoutineUI, 2500);
+    setInterval(updateRoutineUI, 10000); // 10s — was 2500ms
     if (typeof loadSavedTheme==='function') loadSavedTheme();
     loadWidgetLayout();
     jarvisGreeting();
