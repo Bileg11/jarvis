@@ -1347,12 +1347,15 @@ function _renderPlanCard(plan, container) {
         ${totalDur?`<div style="font:9px/1 var(--mono);color:rgba(0,229,255,.4);margin-top:4px;">${tl.length} блок · нийт ${totalDur}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="_savePlanToFirestore(this)" title="Firestore-д хадгалах"
+          style="font:8px/1 var(--mono);padding:3px 8px;background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);color:#00ff88;border-radius:3px;cursor:pointer;letter-spacing:.04em;">⚡ CONFIRM</button>
         <button onclick="_savePlanToMatrix(this)" title="Matrix-д нэм"
           style="font:8px/1 var(--mono);padding:3px 7px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--accent);border-radius:3px;cursor:pointer;">+ MATRIX</button>
         <span onclick="this.closest('[style*=grab]').remove()" style="font:10px/1 var(--mono);color:rgba(255,255,255,.2);cursor:pointer;padding:2px 5px;">✕</span>
       </div>
     </div>
-    <div id="plan-rows-${Date.now()}">${rowsHTML}</div>`;
+    <div id="plan-rows-${Date.now()}">${rowsHTML}</div>
+    <div class="plan-save-status" style="font:9px/1.4 var(--mono);color:rgba(0,229,255,.4);padding:6px 0 0;min-height:14px;"></div>`;
 
   // Store plan data for matrix export
   card._planData = plan;
@@ -1389,6 +1392,99 @@ function _savePlanToMatrix(btn) {
   btn.style.color = 'var(--green)';
   btn.style.borderColor = 'rgba(0,255,136,.3)';
   termTypeJarvis(`Stark, ${plan.timeline.length} блок Matrix-ын TODO баганд нэмэгдлээ. /matrix-р харна уу.`);
+}
+
+// ── SPRINT 25: FIRESTORE PLAN SAVE ───────────────────────────────
+async function _savePlanToFirestore(btn) {
+  const card   = btn.closest('[style*=grab]');
+  const plan   = card?._planData;
+  const status = card?.querySelector('.plan-save-status');
+  if (!plan?.timeline) return;
+
+  // Auth guard
+  const uid = window._auth?.currentUser?.uid;
+  if (!uid) {
+    if (status) status.textContent = '⚠ Нэвтэрсэн байх шаардлагатай.';
+    addTermLine('warn', 'Firestore: нэвтрээгүй байна — profile-д login хийнэ үү.');
+    return;
+  }
+  if (!window._db) {
+    if (status) status.textContent = '⚠ Firestore холбогдоогүй.';
+    return;
+  }
+
+  // Disable button while saving
+  btn.disabled = true;
+  btn.textContent = '...';
+  if (status) status.textContent = 'Системд хадгалж байна...';
+
+  const dateStr = plan.date || new Date().toISOString().slice(0,10);
+
+  try {
+    // Save to users/{uid}/dailyPlans/{YYYY-MM-DD}
+    await window._db
+      .collection('users').doc(uid)
+      .collection('dailyPlans').doc(dateStr)
+      .set({
+        date:        dateStr,
+        label:       plan.label || dateStr,
+        isFinalized: true,
+        createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+        timeline:    plan.timeline,
+      });
+
+    // UI feedback
+    btn.textContent = '✓ CONFIRMED';
+    btn.style.background = 'rgba(0,255,136,.18)';
+    if (status) status.textContent = `✓ ${dateStr} — Firestore-д хадгалагдлаа.`;
+
+    // Terminal + reactor
+    addTermLine('ok', `PLAN CONFIRMED — ${dateStr} · ${plan.timeline.length} blocks → Firestore`);
+    _reactor?.triggerFlare(1000);
+    _reactor?.setMode('active');
+    setTimeout(()=>_reactor?.setMode('idle'), 1200);
+
+    // Auto-export to Matrix
+    _savePlanToMatrix(card.querySelector('[onclick*="_savePlanToMatrix"]'));
+
+    termTypeJarvis(`Баталгаажлаа, Stark. ${dateStr}-ний хуваарь системд бүртгэгдлээ. /matrix-р дэлгэрэнгүй харна уу.`);
+
+  } catch (e) {
+    console.error('[JARVIS] Plan save error:', e);
+    btn.disabled = false;
+    btn.textContent = '⚡ RETRY';
+    if (status) status.textContent = '❌ Алдаа: ' + (e.message||'unknown');
+    addTermLine('warn', 'Firestore save failed: ' + (e.message||e));
+  }
+}
+
+// ── SPRINT 25: /plans — Firestore-д хадгалсан хуваарийн жагсаалт ─
+async function _loadSavedPlans() {
+  const uid = window._auth?.currentUser?.uid;
+  if (!uid || !window._db) {
+    addTermLine('warn', 'Firestore холбогдоогүй эсвэл нэвтрээгүй байна.');
+    return;
+  }
+  addTermLine('sys', '>> FETCHING SAVED PLANS FROM FIRESTORE...');
+  try {
+    const snap = await window._db
+      .collection('users').doc(uid)
+      .collection('dailyPlans')
+      .orderBy('createdAt','desc')
+      .limit(7)
+      .get();
+
+    if (snap.empty) { termTypeJarvis('Хадгалсан хуваарь байхгүй байна. Хуваарь үүсгэхийн тулд надаас асуугаарай.'); return; }
+
+    const out = document.getElementById('term-output');
+    snap.docs.forEach(doc => {
+      const d = doc.data();
+      _renderPlanCard({ ...d, label: d.label||d.date }, out);
+    });
+    addTermLine('sys', `>> ${snap.docs.length} хуваарь ачаалагдлаа`);
+  } catch (e) {
+    addTermLine('warn', 'Plans fetch error: ' + (e.message||e));
+  }
 }
 
 function setAIState(state) {
@@ -1557,6 +1653,31 @@ async function termSend() {
   }
 
   // ── SLASH COMMANDS ────────────────────────────────────────────────
+  if (text === '/help' || text === '/?') {
+    addTermLine('user', text);
+    const cmds = [
+      ['',             '── JARVIS OS — COMMAND REFERENCE ─────────────────'],
+      ['/status',      'Өдрийн score, streak, AI weekly audit'],
+      ['/matrix',      'Stark Task Matrix (Kanban board)'],
+      ['/matrix add',  'Шинэ карт нэмэх — /matrix add <task>'],
+      ['/plans',       'Firestore-д хадгалсан хуваарийн жагсаалт'],
+      ['/drill',       'HSK4 цээж бичгийн drill эхлүүлэх'],
+      ['/drill stop',  'Drill дуусгах'],
+      ['/theme list',  'Бүх theme жагсаах'],
+      ['/theme <name>','Theme сонгох (stark-cyan, amber, matrix, red-alert, void)'],
+      ['/widget list', 'Widget жагсаах + идэвхжүүлэх'],
+      ['/clear',       'Терминал цэвэрлэх'],
+      ['',             '── Хуваарь гаргах: "Маргааш gym, үсчин, кино" гэж бичнэ үү ──'],
+    ];
+    cmds.forEach(([cmd,desc],i)=>{
+      setTimeout(()=>{
+        if (!cmd) addTermLine('sys', desc);
+        else addTermLine('sys', `  ${cmd.padEnd(18)} ${desc}`);
+      }, i*35);
+    });
+    return;
+  }
+
   if (text === '/clear') {
     const out = document.getElementById('term-output');
     if (out) out.innerHTML = '';
@@ -1703,6 +1824,13 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
     _showMatrix();
     return;
   }
+  // /plans — Firestore-д хадгалсан хуваарийн жагсаалт
+  if (text === '/plans' || text === '/plan list') {
+    addTermLine('user', text);
+    _loadSavedPlans();
+    return;
+  }
+
   // /matrix add <task> — add custom card
   if (text.startsWith('/matrix add ')) {
     addTermLine('user', text);
