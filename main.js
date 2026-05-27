@@ -25,8 +25,10 @@ function createWindow() {
     show: false,                       // show after ready-to-show
   });
 
-  // Load from GitHub Pages — always latest code, no rebuild needed
-  mainWindow.loadURL('https://bileg11.github.io/jarvis/index.html');
+  // Clear cache then load — always fresh from GitHub Pages
+  mainWindow.webContents.session.clearCache().then(() => {
+    mainWindow.loadURL('https://bileg11.github.io/jarvis/index.html?v=' + Date.now());
+  });
 
   // Show once DOM is painted — no white flash
   mainWindow.once('ready-to-show', () => {
