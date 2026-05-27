@@ -599,6 +599,15 @@
       if (profile.custom_api_key)     document.getElementById('js-api-key').value    = '••••' + profile.custom_api_key.slice(-4);
       if (profile.telegram_bot_token) document.getElementById('js-bot-token').value  = '••••' + profile.telegram_bot_token.slice(-4);
       if (profile.system_instruction) document.getElementById('js-sys-prompt').value = profile.system_instruction;
+
+      // ── Web chat-д Firestore system_instruction-г тохируулна ───
+      if (profile.custom_api_key && !localStorage.getItem('jarvis_chat_key')) {
+        localStorage.setItem('jarvis_chat_key', profile.custom_api_key);
+      }
+      if (profile.system_instruction) {
+        window._jarvisSystemInstruction = profile.system_instruction;
+        localStorage.setItem('jarvis_system_instruction', profile.system_instruction);
+      }
     }
 
     async function saveJarvisSettings() {
@@ -622,6 +631,20 @@
       statusEl.textContent = '⏳ Хадгалж байна...';
       try {
         await window.DB?.saveProfile(patch);
+
+        // ── Settings sync: localStorage-г шууд шинэчлэх ───────────
+        // custom_api_key → jarvis_chat_key (chat.html-д шууд ажиллана)
+        if (patch.custom_api_key) {
+          localStorage.setItem('jarvis_chat_key', patch.custom_api_key);
+          window.DB?.saveSettings?.({ chat_key: patch.custom_api_key });
+        }
+        // system_instruction → window._jarvisSystemInstruction (web chat-д ашиглана)
+        if (patch.system_instruction) {
+          window._jarvisSystemInstruction = patch.system_instruction;
+          localStorage.setItem('jarvis_system_instruction', patch.system_instruction);
+        }
+
+        statusEl.style.color = '';
         statusEl.textContent = '✅ Хадгалагдлаа!';
         showToast('✅ JARVIS тохиргоо хадгалагдлаа');
         setTimeout(() => { statusEl.textContent = ''; }, 3000);

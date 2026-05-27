@@ -24,9 +24,21 @@ function _isConfigured() {
 }
 
 // ── SYSTEM PROMPT ─────────────────────────────────────────────────
-const JARVIS_SYSTEM = `Та Билэгийн хувийн AI туслах юм. Билэг бол 18 настай Монгол залуу, Шанхайд амьдардаг. Түүний зорилго: фитнесс, LFS Shanghai бизнес, HSK4 хятад хэлний шалгалт.
+// Default — profile.html нэвтэрсний дараа window._jarvisSystemInstruction
+// эсвэл localStorage 'jarvis_system_instruction'-р дарагдана
+const JARVIS_SYSTEM_DEFAULT = `Та Билэгийн хувийн AI туслах юм. Билэг бол 18 настай Монгол залуу, Шанхайд амьдардаг. Түүний зорилго: фитнесс, LFS Shanghai бизнес, HSK4 хятад хэлний шалгалт.
 
 Монгол хэлээр байнга хариулна уу. Асуултад бүрэн, байгалийн байдлаар хариулна уу.`;
+
+// Firestore profile → profile.html тохируулна, эсвэл localStorage-с уна
+function _getSystemInstruction() {
+  return window._jarvisSystemInstruction
+    || localStorage.getItem('jarvis_system_instruction')
+    || JARVIS_SYSTEM_DEFAULT;
+}
+
+// Backward-compat alias
+const JARVIS_SYSTEM = JARVIS_SYSTEM_DEFAULT;
 
 // ── BRIEFING (Автомат өдөрт 3 удаа, frontend-оос) ────────────────
 function _buildPrompt(d) {
@@ -61,7 +73,7 @@ async function askGemini(d) {
       body: JSON.stringify({
         model: CHAT_MODEL,
         messages: [
-          { role: 'system', content: JARVIS_SYSTEM },
+          { role: 'system', content: _getSystemInstruction() },
           { role: 'user',   content: _buildPrompt(d) }
         ],
         max_tokens: 300, temperature: 0.85
@@ -127,9 +139,10 @@ async function sendChatMessage(userText) {
 
   const ctx        = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
   const coreMemory = (localStorage.getItem('jarvis_core_memory') || '').trim();
+  const sysBase    = _getSystemInstruction();
   const systemText = coreMemory
-    ? `${JARVIS_SYSTEM}\n\n${ctx}\n\n[ХЭРЭГЛЭГЧИЙН ХУВИЙН КОНТЕКСТ БОЛОН САНАХ ОЙ]:\n${coreMemory}`
-    : `${JARVIS_SYSTEM}\n\n${ctx}`;
+    ? `${sysBase}\n\n${ctx}\n\n[ХЭРЭГЛЭГЧИЙН ХУВИЙН КОНТЕКСТ БОЛОН САНАХ ОЙ]:\n${coreMemory}`
+    : `${sysBase}\n\n${ctx}`;
 
   _chatHistory.push({ role: 'user', content: userText });
 

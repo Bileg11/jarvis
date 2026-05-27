@@ -160,18 +160,29 @@ async function saveBilegProfile(updates, uid = UID) {
 }
 
 // ── CHAT HISTORY — Sliding Window (max 10) ────────────────────────
-// Ганцхан doc: users/${uid}/history/chat  →  { messages: [...] }
+// Path: users/${uid}/meta/chat  (web + Telegram хоёулаа энэ path ашиглана)
+// Format: { role: 'user'|'assistant', content: '...' }
+//   → web gemini.js _migrateMsg() backward-compat-тэй
+
 async function getChatHistory(uid = UID) {
   try {
-    const snap = await dbPersonal.doc(`users/${uid}/history/chat`).get();
-    return snap.exists ? (snap.data().messages || []) : [];
+    const snap = await dbPersonal.doc(`users/${uid}/meta/chat`).get();
+    if (!snap.exists) return [];
+    const msgs = snap.data().history || snap.data().messages || [];
+    // Migrate Gemini-format { role:'model', parts:[{text}] } → { role:'assistant', content }
+    return msgs.map(m => {
+      if (m.content !== undefined) return m;            // already new format
+      const text = m.parts?.[0]?.text || '';
+      return { role: m.role === 'model' ? 'assistant' : (m.role || 'user'), content: text };
+    });
   } catch { return []; }
 }
 
 async function saveChatHistory(msgs, uid = UID) {
   try {
-    await dbPersonal.doc(`users/${uid}/history/chat`).set({
-      messages:  msgs.slice(-10),
+    // Хадгалахдаа шинэ format ашиглана, web-ийн DB.saveChatHistory()-тэй compatible
+    await dbPersonal.doc(`users/${uid}/meta/chat`).set({
+      history:   msgs.slice(-10),
       updatedAt: new Date().toISOString(),
     });
   } catch {}
@@ -179,7 +190,9 @@ async function saveChatHistory(msgs, uid = UID) {
 
 async function appendHistory(role, text, uid = UID) {
   const hist = await getChatHistory(uid);
-  hist.push({ role, parts: [{ text: String(text).slice(0, 600) }] });
+  // role: 'user' | 'assistant' (Telegram-д 'model' → 'assistant')
+  const normRole = role === 'model' ? 'assistant' : role;
+  hist.push({ role: normRole, content: String(text).slice(0, 600) });
   await saveChatHistory(hist, uid);
 }
 
@@ -732,11 +745,11 @@ async function handleVoice(msg, ctx = {}) {
     resultMsg += resultLines.join('\n');
     await tgSend(resultMsg);
 
-    // History-д хадгалах (Voice-to-Action)
+    // History-д хадгалах (Voice-to-Action, шинэ format)
     await saveChatHistory([
       ...(await getChatHistory(uid)),
-      { role: 'user',  parts: [{ text: `[Voice] ${transcript}` }] },
-      { role: 'model', parts: [{ text: resultMsg }] },
+      { role: 'user',      content: `[Voice] ${transcript}` },
+      { role: 'assistant', content: resultMsg },
     ], uid);
 
   } catch (e) {
@@ -1213,13 +1226,10 @@ async function handleText(msg, ctx = {}) {
   try {
     const hist = await getChatHistory(uid);
 
-    // History-г OpenAI формат руу хөрвүүлэх
+    // History нь { role:'user'|'assistant', content } format — шууд ашиглана
     const messages = [
       { role: 'system', content: sysText },
-      ...hist.map(m => ({
-        role:    m.role === 'model' ? 'assistant' : 'user',
-        content: m.parts?.[0]?.text || '',
-      })),
+      ...hist.map(m => ({ role: m.role, content: m.content || '' })),
       { role: 'user', content: raw },
     ];
 
@@ -1237,11 +1247,11 @@ async function handleText(msg, ctx = {}) {
     const reply = data.choices?.[0]?.message?.content?.trim();
     if (!reply) { await tgSend('🤖 Хариу ирсэнгүй. Дахин оролд.'); return; }
 
-    // Sliding window history хадгалах
+    // Sliding window history хадгалах (шинэ format: { role, content })
     await saveChatHistory([
       ...hist,
-      { role: 'user',  parts: [{ text: raw }] },
-      { role: 'model', parts: [{ text: reply }] },
+      { role: 'user',      content: raw   },
+      { role: 'assistant', content: reply },
     ], uid);
 
     await tgSend(reply);

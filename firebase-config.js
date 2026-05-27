@@ -160,12 +160,13 @@ window.DB = {
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      const [rSnap, mSnap, lSnap, bSnap, sSnap] = await Promise.all([
+      const [rSnap, mSnap, lSnap, bSnap, sSnap, pSnap] = await Promise.all([
         _db.doc(`users/${uid}/routines/${today}`).get(),
         _db.doc(`users/${uid}/meta/missions`).get(),
         _db.doc(`users/${uid}/logs/${today}`).get(),
         _db.doc(`users/${uid}/briefings/latest`).get(),
-        _db.doc(`users/${uid}/meta/settings`).get(),   // ← шинэ
+        _db.doc(`users/${uid}/meta/settings`).get(),
+        _db.doc(`users/${uid}/profile`).get(),         // ← SaaS profile
       ]);
 
       if (rSnap.exists) {
@@ -214,6 +215,22 @@ window.DB = {
         // Profile хуудас дээр байвал дахин render хийнэ
         if (changed && typeof renderUser === 'function') {
           renderUser(_auth.currentUser);
+        }
+      }
+
+      // ── Profile sync: custom_api_key + system_instruction → localStorage
+      if (pSnap.exists) {
+        const p = pSnap.data();
+        // custom_api_key → jarvis_chat_key (зөвхөн localStorage хоосон үед seed хийнэ)
+        if (p.custom_api_key && !localStorage.getItem('jarvis_chat_key')) {
+          localStorage.setItem('jarvis_chat_key', p.custom_api_key);
+        }
+        // system_instruction → window + localStorage (хэзээд шинэчилнэ)
+        if (p.system_instruction) {
+          localStorage.setItem('jarvis_system_instruction', p.system_instruction);
+          if (typeof window !== 'undefined') {
+            window._jarvisSystemInstruction = p.system_instruction;
+          }
         }
       }
 
