@@ -852,9 +852,10 @@ async function handleDrillAnswer(msg, ctx, session) {
     try {
       const checkPrompt =
         `Chinese word: "${w.word}" (${w.pinyin})\n` +
-        `Correct definition: "${w.definition}"\n` +
+        `Mongolian definition: "${w.definition}"\n` +
+        (w.en ? `English definition: "${w.en}"\n` : '') +
         `User's answer: "${answer}"\n\n` +
-        `Is the user's answer correct or close enough? Be lenient with synonyms and paraphrasing.\n` +
+        `Is the user's answer correct or close enough (accept Mongolian OR English answers)? Be lenient with synonyms and paraphrasing.\n` +
         `Reply JSON only: {"correct": true/false, "feedback": "one sentence in Mongolian"}`;
 
       const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
@@ -876,14 +877,17 @@ async function handleDrillAnswer(msg, ctx, session) {
       const defLower = w.definition.toLowerCase();
       const ansLower = answer.toLowerCase();
       correct = defLower.split(/[,\s]+/).some(kw => kw.length > 2 && ansLower.includes(kw));
-      feedback = correct ? 'Зөв байна!' : `Хариулт: ${w.definition}`;
+      feedback = correct ? 'Зөв байна!' : `Хариулт: ${w.definition}${w.en ? ` / ${w.en}` : ''}`;
     }
   } else {
-    // API key байхгүй: keyword match
+    // API key байхгүй: keyword match (Mongolian + English)
     const defLower = w.definition.toLowerCase();
+    const enLower  = (w.en || '').toLowerCase();
     const ansLower = answer.toLowerCase();
-    correct = defLower.split(/[,\s]+/).some(kw => kw.length > 2 && ansLower.includes(kw));
-    feedback = correct ? 'Зөв!' : `Хариулт: ${w.definition}`;
+    const mnMatch  = defLower.split(/[,\s;]+/).some(kw => kw.length > 2 && ansLower.includes(kw));
+    const enMatch  = enLower.split(/[,\s;]+/).some(kw => kw.length > 2 && ansLower.includes(kw));
+    correct  = mnMatch || enMatch;
+    feedback = correct ? 'Зөв!' : `Хариулт: ${w.definition}${w.en ? ` / ${w.en}` : ''}`;
   }
 
   // Mastery шинэчлэх
@@ -893,7 +897,7 @@ async function handleDrillAnswer(msg, ctx, session) {
   const resultEmoji = correct ? '✅' : '❌';
   const resultText  = correct
     ? `✅ *Зөв!* ${feedback ? `_${feedback}_` : ''}\n📈 Mastery: ${stars}`
-    : `❌ *Буруу.* *${w.word}* = _${w.definition}_\n${feedback ? `_${feedback}_\n` : ''}📉 Mastery: ${stars}`;
+    : `❌ *Буруу.* *${w.word}* = _${w.definition}_${w.en ? ` / _${w.en}_` : ''}\n${feedback ? `_${feedback}_\n` : ''}📉 Mastery: ${stars}`;
 
   // Session шинэчлэх
   const newCorrect = session.correct + (correct ? 1 : 0);
@@ -1313,7 +1317,7 @@ async function handleText(msg, ctx = {}) {
       const session = {
         active:  true,
         type:    'drill',
-        words:   words.map(w => ({ word: w.word, pinyin: w.pinyin, definition: w.definition })),
+        words:   words.map(w => ({ word: w.word, pinyin: w.pinyin, definition: w.definition, en: w.en || '' })),
         current: 0,
         correct: 0,
         wrong:   0,
