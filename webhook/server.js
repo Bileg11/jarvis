@@ -9,7 +9,7 @@
 const express   = require('express');
 const cron      = require('node-cron');
 const tgHandler   = require('./api/telegram');
-const { sendWeeklyReport, sendBrief } = tgHandler;
+const { sendWeeklyReport, sendBrief, sendHSKReminder } = tgHandler;
 const lfsBot      = require('./api/lfs-telegram');
 const metaHook    = require('./api/meta-webhook');
 const alerts      = require('./api/alerts');
@@ -60,6 +60,15 @@ cron.schedule('30 23 * * 0', () => {
 cron.schedule('0 5 * * *', () => {
   console.log('[JARVIS] Generating marketing content ideas...');
   lfsBot.generateMarketingIdeas().catch(e => console.error('[Marketing] Error:', e.message));
+});
+
+// ── HSK 3 DAILY REMINDER — 15:00 Шанхай (07:00 UTC) ─────────────
+// Хичээл дуусаад хувийн бэлтгэлийн цаг эхлэх үед сануулна
+cron.schedule('0 7 * * *', () => {
+  console.log('[JARVIS] Sending HSK daily reminder...');
+  if (typeof sendHSKReminder === 'function') {
+    sendHSKReminder().catch(e => console.error('[HSK Reminder] Error:', e.message));
+  }
 });
 
 // ── PROACTIVE ALERTS ──────────────────────────────────────────────

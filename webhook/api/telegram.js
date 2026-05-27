@@ -1,9 +1,10 @@
 'use strict';
-// ── JARVIS PERSONAL TELEGRAM BOT — v2.2 ──────────────────────────
-// Sprint 2: Voice-to-Action Agent      (handleVoice)
-// Sprint 3: HSK & Chinese Journal Coach (/journal upgrade)
-// Sprint 5: HSK Blitz Mode             (sendBrief + voice eval)
-// Sprint 6: Hook & Script Machine      (/hook + notionSaveScript)
+// ── JARVIS PERSONAL TELEGRAM BOT — v2.3 ──────────────────────────
+// Sprint 2:  Voice-to-Action Agent      (handleVoice)
+// Sprint 3:  HSK & Chinese Journal Coach (/journal upgrade)
+// Sprint 5:  HSK Blitz Mode             (sendBrief + voice eval)
+// Sprint 6:  Hook & Script Machine      (/hook + notionSaveScript)
+// Sprint 10: HSK 3 Head Coach           (/hsk_drill /listening /hsk_progress)
 
 const fetch  = require('node-fetch');
 const { dbPersonal }  = require('../firebase');
@@ -19,6 +20,15 @@ const {
   formatEventDate,
 } = require('./calendar');
 const { isConfigured: gmailOk, getUnreadEmails } = require('./gmail');
+const {
+  seedVocab,
+  getWeakWords,
+  updateMastery,
+  getProgress,
+  getDrillSession,
+  saveDrillSession,
+  clearDrillSession,
+} = require('./hsk3-coach');
 
 const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT    = process.env.TELEGRAM_ID;   // cron job-д ашиглана
@@ -28,21 +38,31 @@ const GEMINI_URL = GEMINI_KEY
   ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`
   : null;
 
-// ── BILEG SYSTEM INSTRUCTION — хэзээ ч мартахгүй core ────────────
+// ── BILEG SYSTEM INSTRUCTION — HSK 3 HEAD COACH + Personal AI ────
 const BILEG_SYSTEM = { parts: [{ text:
-  `Чи J.A.R.V.I.S — Билэгийн хувийн AI туслагч.\n\n` +
-  `Билэгийн профайл:\n` +
-  `• 18 настай, Шанхайд ганцаараа амьдарч буй Монгол залуу\n` +
-  `• LFS Shanghai эрхэлдэг (bileg11.github.io) — Монгол аялагчдад VIP туслалцаа\n` +
-  `• 2026/06/28-нд HSK 4 шалгалт өгнө — ханзаар идэвхтэй бэлдэж байна\n` +
-  `• Улаанбаатарын Beauty Town-д өссөн, одоо Шанхайд\n` +
+  `Чи J.A.R.V.I.S — Билэгийн хувийн AI туслагч бөгөөд HSK 3 Head Coach юм.\n\n` +
+
+  `━━ ХЭРЭГЛЭГЧИЙН ПРОФАЙЛ ━━\n` +
+  `• Нэр: Билэг, 18 настай Монгол залуу\n` +
+  `• Байршил: Шанхай, ганцаараа амьдардаг\n` +
+  `• Бизнес: LFS Shanghai (bileg11.github.io) — Монгол аялагчдад VIP туслалцаа\n` +
   `• Tech: React, Firebase, Node.js, Railway\n` +
-  `• Зорилго: AI-г амьдралдаа бүрэн ашиглах, LFS-г бодит бизнес болгох\n\n` +
-  `Харилцах дүрэм:\n` +
+  `• Зорилго: AI-г бүрэн ашиглах, LFS бизнес болгох\n\n` +
+
+  `━━ HSK 3 COACH ДҮРЭМ ━━\n` +
+  `• Шалгалт: 2026/06/28 — 100% оноо авах ёстой\n` +
+  `• Хуваарь: 09:40–15:00 хичээл (завгүй), 15:00+ хувийн бэлтгэл\n` +
+  `• Чи маш хатуу, сахилга баттай, үр дүн л шаарддаг coach\n` +
+  `• Өдөр бүр "Daily Drill" төлөвлөгөө гаргаж өгнө\n` +
+  `• Shалгахдаа өмнөх алдсан үгс дээр төвлөрнө (Spaced Repetition)\n` +
+  `• 15:00-аас хойш суралцах цагийг дэмжиж, хойшлуулах шалтаг хүлээхгүй\n` +
+  `• Алдааг шууд зааж, урамшуулал + шаардлагыг хослуул\n\n` +
+
+  `━━ ХАРИЛЦАХ ХЭЛБЭР ━━\n` +
   `• Үргэлж Монголоор хариул\n` +
-  `• Найрсаг, шууд, товч — найз + mentor хослол\n` +
-  `• Дараагийн алхмыг санал бол\n` +
-  `• Telegram Markdown ашигла (*bold*, _italic_, \`code\`)`,
+  `• Найрсаг ч хатуу — Stark-level precision\n` +
+  `• Telegram Markdown ашигла (*bold*, _italic_, \`code\`)\n` +
+  `• Дараагийн алхмыг үргэлж санал бол`,
 }]};
 
 // ── HSK WORD BANK (HSK 4-6 хэцүү ханзууд) ───────────────────────
@@ -782,6 +802,133 @@ async function handleCallback(cb) {
     }
     return;
   }
+
+  // HSK Reminder кнопкууд
+  if (cmd === 'hsk_start_drill') {
+    await handleText({ text: '/hsk_drill' }, { uid: UID });
+    return;
+  }
+  if (cmd === 'hsk_progress') {
+    await handleText({ text: '/hsk_progress' }, { uid: UID });
+    return;
+  }
+}
+
+// ── DRILL HELPERS (Sprint 10) ─────────────────────────────────────
+
+// Drill-ийн асуултыг илгээх
+async function sendDrillQuestion(session, idx, uid) {
+  const w     = session.words[idx];
+  const total = session.words.length;
+  const stars = '⭐'.repeat(Math.min(5, idx + 1));  // явц
+
+  await tgCall('sendMessage', {
+    chat_id:    TG_CHAT,
+    parse_mode: 'Markdown',
+    text:
+      `🎯 *${idx + 1}/${total}* — HSK 3 Drill\n` +
+      `\`────────────────────\`\n\n` +
+      `*${w.word}*\n\n` +
+      `Юу гэсэн үг вэ? _(Монгол эсвэл Англиар хариул)_\n\n` +
+      `_/drill\\_stop — зогсоох_`,
+  });
+}
+
+// Хэрэглэгчийн хариултыг AI-аар шалгах
+async function handleDrillAnswer(msg, ctx, session) {
+  const uid      = ctx.uid || UID;
+  const apiKey   = ctx.custom_api_key || process.env.SYSTEM_USE_TOKEN;
+  const answer   = (msg.text || '').trim();
+  const idx      = session.current;
+  const w        = session.words[idx];
+
+  if (!w) { await clearDrillSession(uid); return; }
+
+  let correct = false;
+  let feedback = '';
+
+  if (apiKey) {
+    // AI-аар хариулт шалгах
+    try {
+      const checkPrompt =
+        `Chinese word: "${w.word}" (${w.pinyin})\n` +
+        `Correct definition: "${w.definition}"\n` +
+        `User's answer: "${answer}"\n\n` +
+        `Is the user's answer correct or close enough? Be lenient with synonyms and paraphrasing.\n` +
+        `Reply JSON only: {"correct": true/false, "feedback": "one sentence in Mongolian"}`;
+
+      const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: checkPrompt }],
+          max_tokens: 80, temperature: 0.2,
+        }),
+      });
+      const data = await resp.json();
+      const raw  = data.choices?.[0]?.message?.content?.trim() || '{}';
+      const json = JSON.parse(raw.replace(/```json\n?|```/g, '').trim());
+      correct  = !!json.correct;
+      feedback = json.feedback || '';
+    } catch {
+      // Fallback: keyword match
+      const defLower = w.definition.toLowerCase();
+      const ansLower = answer.toLowerCase();
+      correct = defLower.split(/[,\s]+/).some(kw => kw.length > 2 && ansLower.includes(kw));
+      feedback = correct ? 'Зөв байна!' : `Хариулт: ${w.definition}`;
+    }
+  } else {
+    // API key байхгүй: keyword match
+    const defLower = w.definition.toLowerCase();
+    const ansLower = answer.toLowerCase();
+    correct = defLower.split(/[,\s]+/).some(kw => kw.length > 2 && ansLower.includes(kw));
+    feedback = correct ? 'Зөв!' : `Хариулт: ${w.definition}`;
+  }
+
+  // Mastery шинэчлэх
+  const newLevel = await updateMastery(w.word, correct, uid);
+  const stars    = newLevel ? '⭐'.repeat(newLevel) : '';
+
+  const resultEmoji = correct ? '✅' : '❌';
+  const resultText  = correct
+    ? `✅ *Зөв!* ${feedback ? `_${feedback}_` : ''}\n📈 Mastery: ${stars}`
+    : `❌ *Буруу.* *${w.word}* = _${w.definition}_\n${feedback ? `_${feedback}_\n` : ''}📉 Mastery: ${stars}`;
+
+  // Session шинэчлэх
+  const newCorrect = session.correct + (correct ? 1 : 0);
+  const newWrong   = session.wrong   + (correct ? 0 : 1);
+  const nextIdx    = idx + 1;
+
+  if (nextIdx >= session.words.length) {
+    // Drill дууслаа!
+    await clearDrillSession(uid);
+    const pct = Math.round(newCorrect / session.words.length * 100);
+    const medal = pct >= 80 ? '🏆' : pct >= 60 ? '🥈' : '💪';
+
+    await tgCall('sendMessage', {
+      chat_id:    TG_CHAT,
+      parse_mode: 'Markdown',
+      text:
+        `${resultText}\n\n` +
+        `\`━━━━━━━━━━━━━━━━━━━━\`\n` +
+        `${medal} *Drill дууслаа!*\n\n` +
+        `✅ Зөв: *${newCorrect}/${session.words.length}* (${pct}%)\n` +
+        `❌ Буруу: *${newWrong}*\n\n` +
+        `${pct >= 80 ? '💪 Гайхалтай! Хэмнэл хадгалаарай.' : '📚 Буруу үгсийг дахин давтаарай.'}\n\n` +
+        `_/hsk\\_drill — дахин  |  /hsk\\_progress — дэвшил_`,
+    });
+  } else {
+    // Дараагийн үг
+    await saveDrillSession({ ...session, current: nextIdx, correct: newCorrect, wrong: newWrong }, uid);
+    await tgCall('sendMessage', {
+      chat_id:    TG_CHAT,
+      parse_mode: 'Markdown',
+      text: resultText,
+    });
+    // Жаахан зай өгсний дараа дараагийн асуулт
+    await sendDrillQuestion({ ...session, current: nextIdx }, nextIdx, uid);
+  }
 }
 
 // ── TEXT HANDLER ──────────────────────────────────────────────────
@@ -793,6 +940,16 @@ async function handleText(msg, ctx = {}) {
   const sysText = ctx.system_instruction || BILEG_SYSTEM.parts[0].text;
   // API key: профайлаас авах, байхгүй бол env var
   const apiKey  = ctx.custom_api_key || process.env.SYSTEM_USE_TOKEN;
+
+  // ── Sprint 10: Active Drill session шалгах ───────────────────────
+  // Хэрэв идэвхтэй drill session байвал хариултыг drill handler руу дамжуулна
+  if (!text.startsWith('/')) {
+    const session = await getDrillSession(uid);
+    if (session?.active && session?.type === 'drill') {
+      await handleDrillAnswer(msg, ctx, session);
+      return;
+    }
+  }
 
   // ── Routine ──────────────────────────────────────────────────────
   if (text === '/score') {
@@ -1089,6 +1246,148 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
+  // ── Sprint 10: HSK 3 Commands ────────────────────────────────────
+
+  // /seed_hsk — стандарт 300 үгийг Firestore-д нэмэх
+  if (text === '/seed_hsk') {
+    await tgSend('📥 HSK 3 үгсийг seed хийж байна...');
+    try {
+      const count = await seedVocab(uid);
+      await tgSend(
+        `✅ *HSK 3 Vocab Seed дууслаа!*\n\n` +
+        `📚 ${count || 0} үг хадгалагдлаа\n` +
+        `_/hsk\\_drill хийж эхлэ_`
+      );
+    } catch (e) {
+      await tgSend(`❌ Seed алдаа: ${e.message}`);
+    }
+    return;
+  }
+
+  // /hsk_progress — нийт дэвшил харах
+  if (text === '/hsk_progress' || text === '/progress') {
+    try {
+      const p = await getProgress(uid);
+      if (!p) {
+        await tgSend('📭 Vocabulary байхгүй. `/seed_hsk` командаар эхлэ.');
+        return;
+      }
+      const bar = (n, total) => {
+        const pct  = Math.round(n / total * 10);
+        return '█'.repeat(pct) + '░'.repeat(10 - pct);
+      };
+      await tgSend(
+        `📊 *HSK 3 ДЭВШИЛ*\n` +
+        `\`────────────────────\`\n\n` +
+        `🎯 Нийт: *${p.total}* үг  |  ⭐⭐⭐⭐⭐ Цээжилсэн: *${p.mastered}* (${p.pct}%)\n\n` +
+        `⭐ Lv1: ${p.dist[1]} үг   ⭐⭐ Lv2: ${p.dist[2]} үг\n` +
+        `⭐⭐⭐ Lv3: ${p.dist[3]} үг   ⭐⭐⭐⭐ Lv4: ${p.dist[4]} үг\n` +
+        `⭐⭐⭐⭐⭐ Lv5: *${p.dist[5]}* үг (мастер)\n\n` +
+        `\`${bar(p.mastered, p.total)}\` ${p.pct}%\n\n` +
+        `📅 Шалгалт: *2026/06/28* — _${p.daysLeft} хоног үлдлээ_\n` +
+        `⚡ Өдөрт хийх: *${p.dailyGoal}* үг\n\n` +
+        `_/hsk\\_drill — Drill эхлэх_`
+      );
+    } catch (e) {
+      await tgSend(`❌ Алдаа: ${e.message}`);
+    }
+    return;
+  }
+
+  // /hsk_drill — Spaced Repetition drill эхлэх
+  if (text === '/hsk_drill' || text === '/drill') {
+    try {
+      // Өмнөх session цэвэрлэх
+      await clearDrillSession(uid);
+
+      const words = await getWeakWords(uid, 10);
+      if (!words.length) {
+        await tgSend(
+          `🎉 Өнөөдөр давтах үг байхгүй! Бүх үг давтагдлаа.\n\n` +
+          `_/hsk\\_progress — статс харах_`
+        );
+        return;
+      }
+
+      // Session хадгалах
+      const session = {
+        active:  true,
+        type:    'drill',
+        words:   words.map(w => ({ word: w.word, pinyin: w.pinyin, definition: w.definition })),
+        current: 0,
+        correct: 0,
+        wrong:   0,
+        startedAt: new Date().toISOString(),
+      };
+      await saveDrillSession(session, uid);
+
+      // Эхний үг илгээх
+      await sendDrillQuestion(session, 0, uid);
+
+    } catch (e) {
+      await tgSend(`❌ Drill алдаа: ${e.message}`);
+    }
+    return;
+  }
+
+  // /drill_stop — drill дуусгах
+  if (text === '/drill_stop' || text === '/stop') {
+    const session = await getDrillSession(uid);
+    if (session?.active) {
+      await clearDrillSession(uid);
+      await tgSend(
+        `⏹ Drill зогсоолоо.\n` +
+        `✅ ${session.correct} зөв  |  ❌ ${session.wrong} буруу\n\n` +
+        `_/hsk\\_drill — дахин эхлэх_`
+      );
+    } else {
+      await tgSend('Идэвхтэй drill байхгүй байна.');
+    }
+    return;
+  }
+
+  // /listening — HSK 3 унших + ойлголт шалгах
+  if (text === '/listening') {
+    if (!apiKey) { await tgSend('⚠️ API key тохиргоогүй.'); return; }
+    await tgSend('📖 HSK 3 passage бэлдэж байна...');
+    try {
+      const prompt =
+        `HSK 3 түвшний богино хятад хэлний диалог/текст үүсгэ (6-8 өгүүлбэр).\n` +
+        `Агуулга: өдөр тутмын сэдэв (хөдөлмөр, хот, аялал, хоол гм).\n` +
+        `Зөвхөн HSK 1-3 үгс хэрэглэ. Пиньинь байх шаардлагагүй.\n\n` +
+        `Дараа нь текстэд тулгуурлан 3 ойлголтын асуулт гарга (A/B/C/D сонголттой).\n\n` +
+        `Формат:\n` +
+        `📖 ТЕКСТ:\n[хятад текст]\n\n` +
+        `❓ АСУУЛТ:\n1. [асуулт]\nA) ... B) ... C) ... D) ...\n2. ...\n3. ...\n\n` +
+        `Монгол тайлбар ХЭРЭГГҮЙ — зөвхөн хятад текст + асуулт.\n` +
+        `Хариулт: текстийн дараа тусдаа блокод ||ХАРИУЛТ: 1-?, 2-?, 3-?|| гэж нуу.`;
+
+      const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'You are an HSK 3 Chinese language teacher. Create reading comprehension exercises.' },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 600, temperature: 0.8,
+        }),
+      });
+      const data   = await resp.json();
+      const result = data.choices?.[0]?.message?.content?.trim();
+      if (!result) { await tgSend('❌ Passage үүсгэж чадсангүй.'); return; }
+
+      await tgSend(
+        `🎧 *HSK 3 Reading Comprehension*\n\n` +
+        result + `\n\n_Хариултаа нь 1-A, 2-B, 3-C гэх мэтээр илгээ_`
+      );
+    } catch (e) {
+      await tgSend(`❌ Алдаа: ${e.message}`);
+    }
+    return;
+  }
+
   // ── Brief / Weekly ────────────────────────────────────────────────
   if (raw.replace(/@\w+/, '').trim().toLowerCase() === '/brief') {
     await tgCall('sendMessage', { chat_id: TG_CHAT, text: '⏳ Брифинг бэлдэж байна...' });
@@ -1313,3 +1612,43 @@ module.exports = async (req, res) => {
 
 module.exports.sendWeeklyReport = sendWeeklyReport;
 module.exports.sendBrief        = sendBrief;
+module.exports.sendHSKReminder  = sendHSKReminder;
+
+// ── HSK DAILY REMINDER — 15:00 Шанхай ────────────────────────────
+async function sendHSKReminder() {
+  try {
+    const p = await getProgress(UID);
+
+    let progressLine = '';
+    if (p) {
+      const examDate = new Date('2026-06-28T09:00:00+08:00');
+      const daysLeft = Math.ceil((examDate - Date.now()) / 86400000);
+      progressLine =
+        `\n📊 Дэвшил: *${p.mastered}/${p.total}* үг (${p.pct}% мастер)\n` +
+        `📅 Шалгалт хүртэл: *${daysLeft}* хоног\n` +
+        `⚡ Өнөөдрийн зорилт: *${p.dailyGoal}* үг\n`;
+    }
+
+    await tgCall('sendMessage', {
+      chat_id:    TG_CHAT,
+      parse_mode: 'Markdown',
+      text:
+        `⏰ *15:00 болж байна — Хичээл дуусав!*\n\n` +
+        `Одоо чиний хувийн суралцах цаг эхэллээ.\n` +
+        `HSK 3 шалгалт ойртож байна — орой болтол орхиж болохгүй!\n` +
+        `${progressLine}\n` +
+        `📚 */hsk\\_drill* — Drill эхлэх\n` +
+        `🎧 */listening* — Reading comp\n` +
+        `📈 */hsk\\_progress* — Дэвшил харах\n\n` +
+        `_"每天进步一点点" — Өдөр бүр жаахан ч гэсэн урагш_`,
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '🎯 Drill эхлэх', callback_data: 'hsk_start_drill' },
+          { text: '📊 Дэвшил', callback_data: 'hsk_progress' },
+        ]],
+      },
+    });
+  } catch (e) {
+    console.error('[HSK Reminder] Error:', e.message);
+  }
+}
