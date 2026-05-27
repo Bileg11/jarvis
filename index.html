@@ -831,6 +831,13 @@ canvas#reactor { display:block; }
 
 </div><!-- /os-grid -->
 
+<!-- Hidden stubs for app.js compatibility -->
+<div id="date-txt"    style="display:none"></div>
+<div id="score-chip"  style="display:none"></div>
+<div id="j-msg"       style="display:none"></div>
+<div id="feed"        style="display:none"></div>
+<div id="mission-section" style="display:none"></div>
+
 <div id="toast"></div>
 
 <script src="firebase-config.js"></script>
@@ -1044,12 +1051,12 @@ function addTermLine(type, text, noScroll) {
   return txt;
 }
 
-// Typewriter for JARVIS response
-let _typeTimer = null;
-function typeJarvis(text) {
+// Typewriter for JARVIS terminal response
+let _termTimer = null;
+function termTypeJarvis(text) {
   const out = document.getElementById('term-output');
   if (!out) return;
-  if (_typeTimer) { clearInterval(_typeTimer); _typeTimer=null; }
+  if (_termTimer) { clearInterval(_termTimer); _termTimer=null; }
   const txtEl = addTermLine('jarvis', '', true);
   if (!txtEl) return;
   const cursor = document.createElement('span');
@@ -1057,9 +1064,9 @@ function typeJarvis(text) {
   txtEl.appendChild(cursor);
   let i = 0;
   setAIState('active');
-  _typeTimer = setInterval(()=>{
+  _termTimer = setInterval(()=>{
     if (i >= text.length) {
-      clearInterval(_typeTimer); _typeTimer=null;
+      clearInterval(_termTimer); _termTimer=null;
       setAIState('idle');
       setTimeout(()=>cursor.remove(), 1800);
       out.scrollTop = out.scrollHeight;
@@ -1102,13 +1109,13 @@ async function jarvisGreeting() {
     greeting = `Stark, систем онлайн. Score: ${score}/100, routine ${done}/4 биелсэн. Дасгал дутуу харагдаж байна. Цаг алдалгүй консолыг ашигла.`;
   }
 
-  typeJarvis(greeting);
+  termTypeJarvis(greeting);
 
   // Optional Gemini upgrade
   if (typeof askGemini==='function') {
     const ctx2 = (typeof buildGeminiContext==='function') ? buildGeminiContext() : {};
     const aiMsg = await askGemini(ctx2);
-    if (aiMsg) setTimeout(()=>typeJarvis(aiMsg), 3500);
+    if (aiMsg) setTimeout(()=>termTypeJarvis(aiMsg), 3500);
   }
 }
 
@@ -1122,11 +1129,11 @@ async function termSend() {
   addTermLine('user', text);
   _reactor?.triggerFlare(350);
   if (typeof sendChatMessage!=='function') {
-    typeJarvis('⚙️ Профайл хуудсанд Token тохируулна уу, Stark.');
+    termTypeJarvis('⚙️ Профайл хуудсанд Token тохируулна уу, Stark.');
     return;
   }
   const reply = await sendChatMessage(text);
-  typeJarvis(reply || '...');
+  termTypeJarvis(reply || '...');
 }
 
 // Wire up input
