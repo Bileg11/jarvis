@@ -832,11 +832,18 @@ canvas#reactor { display:block; }
 </div><!-- /os-grid -->
 
 <!-- Hidden stubs for app.js compatibility -->
-<div id="date-txt"    style="display:none"></div>
-<div id="score-chip"  style="display:none"></div>
-<div id="j-msg"       style="display:none"></div>
-<div id="feed"        style="display:none"></div>
-<div id="mission-section" style="display:none"></div>
+<div style="display:none">
+  <div id="date-txt"></div>
+  <div id="score-chip"></div>
+  <div id="j-msg"></div>
+  <div id="feed"></div>
+  <div id="mission-section"></div>
+  <div id="ri-water"><div class="r-circle"></div></div>
+  <div id="ri-exercise"><div class="r-circle"></div></div>
+  <div id="ri-hanzi"><div class="r-circle"></div></div>
+  <div id="ri-read"><div class="r-circle"></div></div>
+  <div id="ri-journal"><div class="r-circle"></div></div>
+</div>
 
 <div id="toast"></div>
 
@@ -971,7 +978,8 @@ function updateAlarmData() {
   const lfs  = mstats.find(m=>m.id==='lfs')     || {val:0};
   const hz   = mstats.find(m=>m.id==='hanziw')  || {val:0};
   const fit  = mstats.find(m=>m.id==='fitness') || {val:0};
-  const score = (typeof getDailyScore==='function') ? getDailyScore() : 0;
+  const rawScore = (typeof getDailyScore==="function") ? getDailyScore() : 0;
+  const score = (isNaN(rawScore)||rawScore==null) ? 0 : rawScore;
   const setTxt = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
   setTxt('alarm-lfs-val', lfs.val);
   setTxt('alarm-hz-val',  hz.val);
@@ -1094,7 +1102,8 @@ function setAIState(state) {
 
 // ── JARVIS GREETING ──────────────────────────────────────────────
 async function jarvisGreeting() {
-  const score = (typeof getDailyScore==='function') ? getDailyScore() : 0;
+  const rawScore = (typeof getDailyScore==="function") ? getDailyScore() : 0;
+  const score = (isNaN(rawScore)||rawScore==null) ? 0 : rawScore;
   const r = (typeof loadRoutine==='function') ? loadRoutine() : {};
   const done = ['exercise','hanzi','read','journal'].filter(k=>r[k]).length;
   const diff = EXAM_DATE - Date.now();
@@ -1155,7 +1164,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
 // ── ROUTINE UI SYNC ──────────────────────────────────────────────
 function updateRoutineUI() {
   const r = (typeof loadRoutine==='function') ? loadRoutine() : {};
-  const score = (typeof getDailyScore==='function') ? getDailyScore() : 0;
+  const rawScore = (typeof getDailyScore==="function") ? getDailyScore() : 0;
+  const score = (isNaN(rawScore)||rawScore==null) ? 0 : rawScore;
 
   // Water
   const wPct = Math.min(100, (r.water||0)/8*100);
