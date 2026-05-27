@@ -116,7 +116,7 @@ window.DB = {
   async saveProfile(patch) {
     const uid = _uid();
     if (!uid) return;
-    await _db.doc(`users/${uid}/profile`).set(
+    await _db.doc(`users/${uid}/meta/profile`).set(
       { ...patch, updatedAt: new Date().toISOString() },
       { merge: true }
     );
@@ -133,7 +133,7 @@ window.DB = {
     const uid = _uid();
     if (!uid) return null;
     try {
-      const snap = await _db.doc(`users/${uid}/profile`).get();
+      const snap = await _db.doc(`users/${uid}/meta/profile`).get();
       return snap.exists ? snap.data() : null;
     } catch { return null; }
   },
@@ -166,7 +166,7 @@ window.DB = {
         _db.doc(`users/${uid}/logs/${today}`).get(),
         _db.doc(`users/${uid}/briefings/latest`).get(),
         _db.doc(`users/${uid}/meta/settings`).get(),
-        _db.doc(`users/${uid}/profile`).get(),         // ← SaaS profile
+        _db.doc(`users/${uid}/meta/profile`).get(),         // ← SaaS profile
       ]);
 
       if (rSnap.exists) {

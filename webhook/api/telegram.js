@@ -105,7 +105,7 @@ async function findUserByChatId(chatId) {
     if (!snap.exists) return null;
     const { uid } = snap.data();
     if (!uid) return null;
-    const pSnap = await dbPersonal.doc(`users/${uid}/profile`).get();
+    const pSnap = await dbPersonal.doc(`users/${uid}/meta/profile`).get();
     const profile = pSnap.exists ? pSnap.data() : {};
     return { uid, chatId: String(chatId), ...profile };
   } catch (e) {
@@ -121,7 +121,7 @@ async function seedBilegProfile() {
     const chat = TG_CHAT;
     if (!uid) return;
 
-    const pRef  = dbPersonal.doc(`users/${uid}/profile`);
+    const pRef  = dbPersonal.doc(`users/${uid}/meta/profile`);
     const pSnap = await pRef.get();
 
     // Зөвхөн system_instruction байхгүй бол seed хийнэ
