@@ -25,8 +25,8 @@ function createWindow() {
     show: false,                       // show after ready-to-show
   });
 
-  // Load local index.html
-  mainWindow.loadFile('index.html');
+  // Load from GitHub Pages — always latest code, no rebuild needed
+  mainWindow.loadURL('https://bileg11.github.io/jarvis/index.html');
 
   // Show once DOM is painted — no white flash
   mainWindow.once('ready-to-show', () => {
