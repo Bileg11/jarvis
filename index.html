@@ -920,6 +920,10 @@ class ArcReactor {
   }
   triggerFlare(ms=700) { this.flare=ms; }
   _loop(ts) {
+    // Throttle to ~30fps (skip if < 30ms since last frame)
+    if (ts - this._last < 30) { requestAnimationFrame(this._loop); return; }
+    // Pause when tab/window hidden — saves CPU
+    if (document.hidden) { requestAnimationFrame(this._loop); return; }
     const dt = Math.min(ts-this._last, 50); this._last=ts;
     const L=0.045;
     this.cr+=(this.tr-this.cr)*L;
@@ -1102,29 +1106,50 @@ function addTermLine(type, text, noScroll) {
 }
 
 // Typewriter for JARVIS terminal response
-let _termTimer = null;
+let _termTimer  = null;
+let _termTxtEl  = null;   // current typing target — used for skip-to-end
+let _termFull   = '';     // full text being typed
+let _termCursor = null;
+
 function termTypeJarvis(text) {
   const out = document.getElementById('term-output');
   if (!out) return;
-  if (_termTimer) { clearInterval(_termTimer); _termTimer=null; }
+  // Skip any in-progress typing instantly
+  if (_termTimer) {
+    clearInterval(_termTimer); _termTimer = null;
+    if (_termTxtEl && _termFull) {
+      // flush remaining text immediately
+      const remaining = _termFull.slice(_termTxtEl.textContent.length);
+      if (_termCursor) _termTxtEl.insertBefore(document.createTextNode(remaining), _termCursor);
+      if (_termCursor) { _termCursor.remove(); _termCursor=null; }
+    }
+    setAIState('idle');
+  }
   const txtEl = addTermLine('jarvis', '', true);
   if (!txtEl) return;
   const cursor = document.createElement('span');
   cursor.className = 'j-cursor';
   txtEl.appendChild(cursor);
+  _termTxtEl  = txtEl;
+  _termFull   = text;
+  _termCursor = cursor;
   let i = 0;
   setAIState('active');
   _termTimer = setInterval(()=>{
     if (i >= text.length) {
       clearInterval(_termTimer); _termTimer=null;
+      _termTxtEl=null; _termFull=''; _termCursor=null;
       setAIState('idle');
       setTimeout(()=>cursor.remove(), 1800);
       out.scrollTop = out.scrollHeight;
       return;
     }
-    txtEl.insertBefore(document.createTextNode(text[i++]), cursor);
+    // Batch 2 chars per tick for shorter lag feel
+    const chunk = text.slice(i, i+2);
+    txtEl.insertBefore(document.createTextNode(chunk), cursor);
+    i += 2;
     out.scrollTop = out.scrollHeight;
-  }, 18);
+  }, 22);
 }
 
 function setAIState(state) {
@@ -1522,7 +1547,7 @@ function startTelemFluctuation() {
   function fmt(n,dec=1) { return n.toFixed(dec); }
   function pct(n,max) { return Math.round(n/max*100); }
 
-  _telemInterval = setInterval(()=>{
+  _telemInterval = setInterval(()=>{ // 1600ms — was 800ms, halves CPU
     const cpu = nudge(_telem.cpu);
     const mem = nudge(_telem.mem);
     const ops = nudge(_telem.ops);
@@ -1542,7 +1567,7 @@ function startTelemFluctuation() {
     setW('t-ops-bar', pct(ops,240));
     setV('t-lat',   fmt(lat,0)+'ms');
     setV('t-uptime',`${pad(h)}:${pad(m)}:${pad(s)}`);
-  }, 800);
+  }, 1600);
 }
 
 // ── FX RATES FLUCTUATION ─────────────────────────────────────────
@@ -1564,7 +1589,7 @@ function startFXFluctuation() {
     if(ucEl)  ucEl.textContent  = fx.uc.val.toFixed(3);
   }
   tickFX();
-  setInterval(tickFX, 800);
+  setInterval(tickFX, 2000); // was 800ms
 }
 
 // ── MISSIONS PANEL (RIGHT COL) ────────────────────────────────────
