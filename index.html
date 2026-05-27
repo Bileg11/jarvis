@@ -917,17 +917,21 @@ class ArcReactor {
     this._raf   = null;
     this._stopped = false;
     this._loop  = this._loop.bind(this);
-    // Stop rAF entirely when hidden, restart on visible
-    document.addEventListener('visibilitychange', ()=>{
-      if (document.hidden) {
-        this._stopped = true;
-        if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
-      } else {
+    // Stop rAF entirely when hidden OR window loses focus
+    const _pause = () => {
+      this._stopped = true;
+      if (this._raf) { cancelAnimationFrame(this._raf); this._raf = null; }
+    };
+    const _resume = () => {
+      if (this._stopped) {
         this._stopped = false;
         this._last = 0;
         this._raf = requestAnimationFrame(this._loop);
       }
-    });
+    };
+    document.addEventListener('visibilitychange', ()=>{ document.hidden ? _pause() : _resume(); });
+    window.addEventListener('blur',  _pause);
+    window.addEventListener('focus', _resume);
     this._raf = requestAnimationFrame(this._loop);
   }
   setMode(m) {
@@ -937,8 +941,8 @@ class ArcReactor {
   triggerFlare(ms=700) { this.flare=ms; }
   _loop(ts) {
     if (this._stopped) return;
-    // Hard 10fps cap (100ms) — was 30fps, 30fps × 26 shadowBlur = huge GPU cost
-    if (ts - this._last < 100) { this._raf = requestAnimationFrame(this._loop); return; }
+    // Hard 5fps cap (200ms) — canvas animation on 2015 MacBook Air
+    if (ts - this._last < 200) { this._raf = requestAnimationFrame(this._loop); return; }
     const dt = Math.min(ts - this._last, 150); this._last = ts;
     const L = 0.08; // faster lerp at lower fps
     this.cr += (this.tr-this.cr)*L;
@@ -1538,7 +1542,7 @@ function startTelemFluctuation() {
   function fmt(n,dec=1) { return n.toFixed(dec); }
   function pct(n,max) { return Math.round(n/max*100); }
 
-  _telemInterval = setInterval(()=>{ // 1600ms — was 800ms, halves CPU
+  _telemInterval = setInterval(()=>{ // 3000ms — 2015 MacBook Air friendly
     const cpu = nudge(_telem.cpu);
     const mem = nudge(_telem.mem);
     const ops = nudge(_telem.ops);
@@ -1558,7 +1562,7 @@ function startTelemFluctuation() {
     setW('t-ops-bar', pct(ops,240));
     setV('t-lat',   fmt(lat,0)+'ms');
     setV('t-uptime',`${pad(h)}:${pad(m)}:${pad(s)}`);
-  }, 1600);
+  }, 3000);
 }
 
 // ── FX RATES FLUCTUATION ─────────────────────────────────────────
