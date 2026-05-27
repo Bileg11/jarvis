@@ -798,6 +798,8 @@ canvas#reactor { display:block; will-change:transform; transform:translateZ(0); 
           <span class="telem-key">HSK STREAK</span>
           <span class="telem-val" id="t-streak" style="color:var(--amber);text-shadow:var(--neon-a)">--</span>
         </div>
+        <!-- Watchdog: top CPU processes (Sprint 24) -->
+        <div id="watchdog-line" style="font:9px/1.4 var(--mono);color:rgba(0,229,255,.45);padding:4px 0 0;overflow:hidden;white-space:nowrap;"></div>
       </div>
     </div>
 
@@ -1093,8 +1095,8 @@ function runBootSequence() {
     addTermLine('sys', '>> LOADING MISSION MATRIX — LFS SHANGHAI LINKED');
     document.getElementById('col-right').classList.add('booted');
     renderMissionsOS();
-    renderBizFeed();
-    startFXFluctuation();
+    renderBizFeed();       // async — live RSS, falls back to mock instantly
+    startFXFluctuation();  // async — live FX, falls back to cache instantly
   }, 600);
   setTimeout(()=>{
     document.getElementById('terminal-panel').classList.add('booted');
@@ -1155,9 +1157,14 @@ function termTypeJarvis(text) {
   const out = document.getElementById('term-output');
   if (!out) return;
   if (_termTimer) { clearInterval(_termTimer); _termTimer = null; }
+
+  // ── INTERACTIVE CARD RENDER ENGINE (Sprint 24) ───────────────────
+  // If AI returns JSON with __jarvis_card flag, render as a visual card
+  const card = _tryParseCard(text);
+  if (card) { _renderInteractiveCard(card, out); setAIState('active'); setTimeout(()=>setAIState('idle'),400); return; }
+
   const txtEl = addTermLine('jarvis', '', true);
   if (!txtEl) return;
-  // Instant display with CSS fade-in — zero lag
   txtEl.textContent = text;
   txtEl.style.opacity = '0';
   txtEl.style.transition = 'opacity 0.25s ease';
@@ -1165,6 +1172,75 @@ function termTypeJarvis(text) {
   out.scrollTop = out.scrollHeight;
   setAIState('active');
   setTimeout(()=>setAIState('idle'), 400);
+}
+
+// ── INTERACTIVE CARD ENGINE ───────────────────────────────────────
+function _tryParseCard(text) {
+  const t = (text||'').trim();
+  if (!t.startsWith('{')) return null;
+  try {
+    const j = JSON.parse(t);
+    return j.__jarvis_card ? j : null;
+  } catch { return null; }
+}
+
+function _renderInteractiveCard(card, container) {
+  const wrap = document.createElement('div');
+  wrap.className = 'icard';
+  wrap.style.cssText = `
+    background:rgba(0,229,255,.05); border:1px solid rgba(0,229,255,.22);
+    border-radius:6px; padding:10px 14px; margin:4px 0;
+    cursor:grab; user-select:none; position:relative;
+    transform:translateZ(0); transition:box-shadow .2s;
+    will-change:transform;
+  `;
+
+  let inner = '';
+  if (card.type === 'progress') {
+    const pct = Math.round((card.value||0)/(card.max||100)*100);
+    inner = `
+      <div style="font:10px/1 var(--hud);color:var(--accent);letter-spacing:.1em;margin-bottom:6px">${card.title||''}</div>
+      <div style="font:20px/1 var(--hud);color:${card.color||'var(--accent)'};">${card.value||0}<span style="font-size:11px;opacity:.6">/${card.max||100}</span></div>
+      <div style="height:4px;background:rgba(0,229,255,.1);border-radius:2px;margin:8px 0 4px;">
+        <div style="height:100%;width:${pct}%;background:${card.color||'var(--accent)'};border-radius:2px;transition:width .6s ease;"></div>
+      </div>
+      <div style="font:9px/1 var(--mono);opacity:.5;">${card.subtitle||pct+'% complete'}</div>`;
+  } else if (card.type === 'metric') {
+    inner = `
+      <div style="font:9px/1 var(--mono);color:var(--text);opacity:.6;letter-spacing:.08em;">${card.label||''}</div>
+      <div style="font:28px/1.1 var(--hud);color:${card.color||'var(--accent)'};">${card.value||''}</div>
+      <div style="font:9px/1 var(--mono);opacity:.4;margin-top:4px;">${card.subtitle||''}</div>`;
+  } else if (card.type === 'list') {
+    const items = (card.items||[]).map(i=>`<div style="padding:2px 0;font:10px/1.4 var(--mono);">▸ ${i}</div>`).join('');
+    inner = `
+      <div style="font:10px/1 var(--hud);color:var(--accent);letter-spacing:.1em;margin-bottom:8px;">${card.title||''}</div>
+      ${items}`;
+  } else {
+    inner = `<div style="font:11px/1.5 var(--mono);">${card.content||JSON.stringify(card)}</div>`;
+  }
+
+  wrap.innerHTML = `${inner}<div style="position:absolute;top:5px;right:8px;font:8px/1 var(--mono);opacity:.3;cursor:pointer" onclick="this.parentNode.remove()">✕</div>`;
+
+  // Drag support (GPU-composited, no layout thrashing)
+  let ox=0, oy=0, mx=0, my=0, dragging=false;
+  wrap.addEventListener('mousedown', e => {
+    dragging=true; ox=e.clientX-mx; oy=e.clientY-my;
+    wrap.style.boxShadow='0 0 18px rgba(0,229,255,.4)'; wrap.style.cursor='grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    mx=e.clientX-ox; my=e.clientY-oy;
+    wrap.style.transform=`translate(${mx}px,${my}px) translateZ(0)`;
+  }, { passive:true });
+  document.addEventListener('mouseup', () => {
+    if (dragging) { dragging=false; wrap.style.boxShadow=''; wrap.style.cursor='grab'; }
+  });
+
+  wrap.style.opacity='0'; wrap.style.transition='opacity .3s ease';
+  container.appendChild(wrap);
+  requestAnimationFrame(()=>{ wrap.style.opacity='1'; });
+  container.scrollTop = container.scrollHeight;
 }
 
 function setAIState(state) {
@@ -1473,6 +1549,24 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
     return;
   }
 
+  // /matrix — Stark Task Matrix (Kanban)
+  if (text === '/matrix' || text === 'jarvis status matrix') {
+    addTermLine('user', text);
+    _showMatrix();
+    return;
+  }
+  // /matrix add <task> — add custom card
+  if (text.startsWith('/matrix add ')) {
+    addTermLine('user', text);
+    const taskLabel = text.slice(12).trim();
+    if (!taskLabel) { addTermLine('warn','Usage: /matrix add <task name>'); return; }
+    const custom = (() => { try { return JSON.parse(localStorage.getItem('jarvis_matrix_custom')||'[]'); } catch { return []; } })();
+    custom.push({ id:'c_'+Date.now(), label:taskLabel, tag:'CUSTOM', col:0, type:'custom', draggable:true });
+    localStorage.setItem('jarvis_matrix_custom', JSON.stringify(custom));
+    termTypeJarvis(`Карт нэмэгдлээ: "${taskLabel}" — TODO баганд. /matrix-р харна уу.`);
+    return;
+  }
+
   addTermLine('user', text);
   if (typeof sendChatMessage!=='function') {
     termTypeJarvis('⚙️ Профайл хуудсанд Token тохируулна уу, Stark.');
@@ -1551,60 +1645,101 @@ function updateRoutineUI() {
   }
 }
 
-// ── LIVE TELEMETRY FLUCTUATION ────────────────────────────────────
+// ── REAL TELEMETRY (Sprint 24 — IPC from main.js) ─────────────────
+// Uses window.jarvisAPI.onSystemStats (preload.js bridge)
+// Falls back to mock if running outside Electron
 function startTelemFluctuation() {
-  function nudge(obj) {
-    const delta = (Math.random()-0.5)*4;
-    obj.target = Math.max(obj.min, Math.min(obj.max, obj.target+delta));
-    obj.val += (obj.target-obj.val)*0.3;
-    return obj.val;
+  if (window.jarvisAPI?.onSystemStats) {
+    window.jarvisAPI.onSystemStats(_applySystemStats);
+    return;
   }
-  function fmt(n,dec=1) { return n.toFixed(dec); }
-  function pct(n,max) { return Math.round(n/max*100); }
+  _startMockTelem(); // dev/browser fallback
+}
 
-  _telemInterval = setInterval(()=>{ // 3000ms — 2015 MacBook Air friendly
-    const cpu = nudge(_telem.cpu);
-    const mem = nudge(_telem.mem);
-    const ops = nudge(_telem.ops);
-    const lat = nudge(_telem.lat);
-    const up  = Math.floor((Date.now()-_startTs)/1000);
-    const h   = Math.floor(up/3600), m=Math.floor((up%3600)/60), s=up%60;
-    const pad = n=>String(n).padStart(2,'0');
+function _applySystemStats(d) {
+  const setV = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+  const setW = (id,w) => { const el=document.getElementById(id); if(el) el.style.width=Math.min(100,w)+'%'; };
+  const pad  = n => String(n).padStart(2,'0');
 
-    const setV=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
-    const setW=(id,w)=>{ const el=document.getElementById(id); if(el) el.style.width=w+'%'; };
+  const cpuColor = d.cpu>80?'var(--red)':d.cpu>55?'var(--amber)':'var(--accent)';
+  setV('t-cpu', d.cpu+'%');
+  setW('t-cpu-bar', d.cpu);
+  const cpuBar = document.getElementById('t-cpu-bar');
+  if (cpuBar) cpuBar.style.background = cpuColor;
 
-    setV('t-cpu',   fmt(cpu)+'%');
-    setW('t-cpu-bar', pct(cpu,100));
-    setV('t-mem',   fmt(mem)+'%');
-    setW('t-mem-bar', pct(mem,100));
-    setV('t-ops',   fmt(ops,0)+'/s');
-    setW('t-ops-bar', pct(ops,240));
-    setV('t-lat',   fmt(lat,0)+'ms');
-    setV('t-uptime',`${pad(h)}:${pad(m)}:${pad(s)}`);
+  setV('t-mem', d.memPct+'% · '+d.memUsed+'G');
+  setW('t-mem-bar', d.memPct);
+
+  setV('t-ops', d.loadAvg+' load');
+  setW('t-ops-bar', Math.min(100, d.loadAvg/8*100));
+
+  setV('t-lat', d.battery!==null&&d.battery!==undefined ? d.battery+'% 🔋' : '—');
+
+  const h=Math.floor(d.uptime/3600), m=Math.floor((d.uptime%3600)/60), s=d.uptime%60;
+  setV('t-uptime', `${pad(h)}:${pad(m)}:${pad(s)}`);
+
+  _renderWatchdog(d.topProcs||[], d.cpu);
+}
+
+// Watchdog: top CPU processes (writes directly to #watchdog-line)
+function _renderWatchdog(procs, totalCpu) {
+  const el = document.getElementById('watchdog-line');
+  if (!el || !procs.length) return;
+  const top = procs.slice(0,3).map(p=>`${p.name.slice(0,14)} ${p.cpu.toFixed(0)}%`).join('  │  ');
+  el.textContent = '▸ ' + top;
+  el.style.color = totalCpu>75 ? 'var(--red)' : 'rgba(0,229,255,.45)';
+}
+
+function _startMockTelem() {
+  const _t = { cpu:{val:42,target:42,min:18,max:78}, mem:{val:62,target:62,min:50,max:82} };
+  const nudge = o => { o.target=Math.max(o.min,Math.min(o.max,o.target+(Math.random()-.5)*4)); o.val+=(o.target-o.val)*.3; return o.val; };
+  setInterval(()=>{
+    const cpu=nudge(_t.cpu), mem=nudge(_t.mem);
+    const setV=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+    const setW=(id,w)=>{const e=document.getElementById(id);if(e)e.style.width=Math.min(100,w)+'%';};
+    setV('t-cpu',cpu.toFixed(1)+'%'); setW('t-cpu-bar',cpu);
+    setV('t-mem',mem.toFixed(1)+'%'); setW('t-mem-bar',mem);
   }, 3000);
 }
 
-// ── FX RATES FLUCTUATION ─────────────────────────────────────────
-function startFXFluctuation() {
-  const fx = {
-    cny: { val:353.4, dir:1 }, // MNT
-    usd: { val:3452,  dir:1 },
-    uc:  { val:7.25,  dir:1 },
-  };
-  function tickFX() {
-    fx.cny.val += (Math.random()-.48)*1.5;
-    fx.usd.val += (Math.random()-.48)*8;
-    fx.uc.val  += (Math.random()-.48)*0.008;
-    const cnyEl = document.getElementById('fx-cny');
-    const usdEl = document.getElementById('fx-usd');
-    const ucEl  = document.getElementById('fx-usd-cny');
-    if(cnyEl) cnyEl.textContent = fx.cny.val.toFixed(1);
-    if(usdEl) usdEl.textContent = Math.round(fx.usd.val).toLocaleString();
-    if(ucEl)  ucEl.textContent  = fx.uc.val.toFixed(3);
+// ── LIVE FX RATES (Sprint 24 — Frankfurter API via IPC) ───────────
+// Cache: 24h в localStorage  |  Fallback: last cached values
+async function startFXFluctuation() {
+  const CACHE_KEY = 'jarvis_fx_cache';
+  const CACHE_TTL = 86400000; // 24 hours
+
+  async function loadAndRender() {
+    // 1. Show cache immediately
+    const cached = _parseFXCache();
+    if (cached) _renderFX(cached);
+
+    // 2. Fetch fresh if cache expired or missing
+    if (!window.jarvisAPI?.fetchFX) return; // not in Electron
+    const age = cached ? Date.now() - cached.ts : Infinity;
+    if (age < CACHE_TTL) return; // still fresh
+
+    try {
+      const data = await window.jarvisAPI.fetchFX();
+      if (data.ok) {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        _renderFX(data);
+        addTermLine('sys', `>> FX RATES UPDATED — USD/CNY ${data.usdCny} · USD/MNT ${data.usdMnt}`);
+      }
+    } catch {}
   }
-  tickFX();
-  setInterval(tickFX, 2000); // was 800ms
+
+  function _parseFXCache() {
+    try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch { return null; }
+  }
+
+  function _renderFX(d) {
+    const setV = (id,v) => { const el=document.getElementById(id); if(el) el.textContent=v; };
+    setV('fx-cny',     d.cnyMnt);    // CNY/MNT
+    setV('fx-usd',     d.usdMnt);    // USD/MNT
+    setV('fx-usd-cny', d.usdCny);    // USD/CNY
+  }
+
+  loadAndRender();
 }
 
 // ── MISSIONS PANEL (RIGHT COL) ────────────────────────────────────
@@ -1667,31 +1802,65 @@ function _bizHTML(items) {
     </div>
   `).join('');
 }
-function renderBizFeed() {
+// ── LIVE INTEL FEED (Sprint 24 — BBC Tech RSS via IPC) ───────────
+// Cache: 1h в localStorage  |  Fallback: built-in BIZ_INTEL
+async function renderBizFeed() {
+  const CACHE_KEY = 'jarvis_news_cache';
+  const CACHE_TTL = 3600000; // 1 hour
+
+  async function loadAndRender() {
+    // Show fallback immediately
+    _renderIntelItems(BIZ_INTEL.slice(0,4).map(b=>({
+      title: b.title, desc: b.desc, tag: b.tag
+    })));
+
+    // Try cache
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(CACHE_KEY)); } catch {}
+    if (cached?.items?.length) _renderIntelItems(cached.items.slice(0,4));
+
+    // Fetch fresh if needed
+    if (!window.jarvisAPI?.fetchNews) return;
+    const age = cached ? Date.now() - (cached.ts||0) : Infinity;
+    if (age < CACHE_TTL && cached?.items?.length) return; // still fresh
+
+    try {
+      const data = await window.jarvisAPI.fetchNews();
+      if (data.ok && data.items.length) {
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        _renderIntelItems(data.items.slice(0,4));
+        const ts = document.getElementById('intel-ts');
+        if (ts) ts.textContent = new Date().toLocaleTimeString('en',{hour:'2-digit',minute:'2-digit'});
+        addTermLine('sys', `>> INTEL FEED SYNCED — ${data.items.length} articles`);
+      }
+    } catch {}
+  }
+
+  loadAndRender();
+  // Auto-refresh every hour (lazy, non-blocking)
+  setInterval(()=>{ loadAndRender(); }, CACHE_TTL);
+}
+
+function _renderIntelItems(items) {
   const container = document.getElementById('biz-items');
   if (!container) return;
-  container.innerHTML = _bizHTML(BIZ_INTEL.slice(0,4));
+  const newHTML = items.map(item => `
+    <div class="biz-item">
+      <div class="biz-item-tag">◈ ${(item.tag||'INTEL').toUpperCase()}</div>
+      <div class="biz-item-title">${item.title||''}</div>
+      <div class="biz-item-desc">${(item.desc||'').slice(0,100)}</div>
+    </div>`).join('');
 
-  setInterval(()=>{
-    // Fade out all current items
-    const current = container.querySelectorAll('.biz-item');
-    current.forEach(el => el.classList.add('fading'));
-
-    setTimeout(()=>{
-      // Advance index and inject new content while invisible
-      _bizIdx = (_bizIdx + 1) % BIZ_INTEL.length;
-      const next = [];
-      for (let i=0;i<4;i++) next.push(BIZ_INTEL[(_bizIdx+i) % BIZ_INTEL.length]);
-      container.innerHTML = _bizHTML(next);
-
-      // Fade in — requestAnimationFrame instead of forced reflow
-      const newItems = container.querySelectorAll('.biz-item');
-      newItems.forEach(el=>{ el.style.opacity='0'; el.style.transition='none'; });
-      requestAnimationFrame(()=>{
-        newItems.forEach(el=>{ el.style.transition='opacity 0.6s ease'; el.style.opacity='1'; });
-      });
-    }, 380); // wait for fade-out transition (0.35s + buffer)
-  }, 10000);
+  // Fade-out → swap → fade-in (no forced reflow)
+  container.querySelectorAll('.biz-item').forEach(el=>el.classList.add('fading'));
+  setTimeout(()=>{
+    container.innerHTML = newHTML;
+    const els = container.querySelectorAll('.biz-item');
+    els.forEach(el=>{ el.style.opacity='0'; el.style.transition='none'; });
+    requestAnimationFrame(()=>{
+      els.forEach(el=>{ el.style.transition='opacity 0.5s ease'; el.style.opacity='1'; });
+    });
+  }, 350);
 }
 
 // ── Override showToast from app.js ───────────────────────────────
@@ -1728,6 +1897,26 @@ document.addEventListener('jarvis:ready', ()=>{
 });
 </script>
 
+<!-- ── STARK TASK MATRIX OVERLAY ──────────────────────────────── -->
+<div id="matrix-overlay" style="display:none;position:fixed;inset:0;z-index:80;background:var(--bg);flex-direction:column;overflow:hidden;transform:translateZ(0);">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:40px;flex-shrink:0;border-bottom:1px solid var(--border);background:rgba(0,5,15,.95);">
+    <span style="font-family:var(--hud);font-size:12px;color:var(--accent);letter-spacing:.14em;text-shadow:var(--neon)">◈ STARK TASK MATRIX — COMMAND BOARD</span>
+    <button onclick="document.getElementById('matrix-overlay').style.display='none'" style="font-family:var(--mono);font-size:10px;color:var(--text);background:rgba(0,229,255,.06);border:1px solid var(--border);border-radius:2px;padding:3px 10px;cursor:pointer;">← CLOSE</button>
+  </div>
+  <div id="matrix-board" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px;flex:1;overflow:auto;"></div>
+</div>
+
+<!-- ── BOOKING ALERT OVERLAY ───────────────────────────────────── -->
+<div id="booking-alert" style="display:none;position:fixed;top:60px;right:20px;z-index:200;width:300px;transform:translateZ(0);will-change:transform,opacity;">
+  <div style="background:rgba(0,8,22,.96);border:1px solid rgba(0,229,255,.5);border-radius:8px;padding:16px;box-shadow:0 0 30px rgba(0,229,255,.25),0 0 60px rgba(0,229,255,.08);">
+    <div style="font-family:var(--hud);font-size:10px;color:var(--accent);letter-spacing:.14em;margin-bottom:8px;text-shadow:var(--neon)">⚡ NEW BOOKING DETECTED</div>
+    <div id="booking-alert-body" style="font-family:var(--mono);font-size:11px;color:var(--text-b);line-height:1.5;"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+      <button onclick="_dismissBookingAlert()" style="flex:1;font-family:var(--mono);font-size:9px;padding:5px;background:rgba(0,229,255,.1);border:1px solid var(--border);color:var(--accent);border-radius:3px;cursor:pointer;letter-spacing:.06em;">ACKNOWLEDGE</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── SPA OVERLAY PAGES ────────────────────────────────────────── -->
 <!-- INTEL page: loads chat.html in iframe -->
 <div class="os-page" id="page-intel">
@@ -1757,6 +1946,195 @@ document.addEventListener('jarvis:ready', ()=>{
 </div>
 
 <script>
+// ── STARK TASK MATRIX (Sprint 24) ────────────────────────────────
+const MATRIX_COLS = ['TODO','IN PROGRESS','REVIEW','DONE'];
+const MATRIX_COL_COLORS = ['rgba(0,229,255,.06)','rgba(255,140,0,.06)','rgba(168,85,247,.06)','rgba(0,255,136,.06)'];
+const MATRIX_COL_BORDERS = ['rgba(0,229,255,.2)','rgba(255,140,0,.2)','rgba(168,85,247,.2)','rgba(0,255,136,.2)'];
+
+let _matrixCards = [];
+let _dragCard = null;
+
+function _buildMatrixCards() {
+  const r      = (typeof loadRoutine==='function') ? loadRoutine() : {};
+  const ms     = (typeof getMissionStats==='function') ? getMissionStats() : [];
+  const cards  = [];
+
+  // Routine tasks
+  const routineMap = [
+    {id:'exercise', label:'Morning Workout', tag:'ROUTINE', col: r.exercise?3:1},
+    {id:'hanzi',    label:'汉字 Study Session', tag:'HSK4',    col: r.hanzi?3:0},
+    {id:'read',     label:'Daily Reading 30m', tag:'ROUTINE', col: r.read?3:0},
+    {id:'journal',  label:'Journal Entry',    tag:'ROUTINE', col: r.journal?3:0},
+    {id:'water',    label:`Water ${r.water||0}/8 шил`, tag:'HEALTH', col: (r.water||0)>=8?3:1},
+  ];
+  routineMap.forEach(t => cards.push({ ...t, type:'routine', draggable:true }));
+
+  // Mission tasks
+  ms.forEach(m => {
+    const col = m.pct>=100 ? 3 : m.pct>=50 ? 1 : 0;
+    cards.push({ id:'m_'+m.id, label:`${m.icon} ${m.label} — ${m.val}/${m.max}`, tag:'MISSION', col, type:'mission', pct:m.pct });
+  });
+
+  // HSK4 exam countdown
+  const days = Math.max(0, Math.floor((new Date('2026-06-28T09:00:00+08:00')-Date.now())/86400000));
+  cards.push({ id:'hsk_exam', label:`HSK4 Exam — ${days}d left`, tag:'DEADLINE', col: days<14?1:0, type:'deadline' });
+
+  // GitHub tasks from localStorage (user can add via /matrix add <task>)
+  const custom = (() => { try { return JSON.parse(localStorage.getItem('jarvis_matrix_custom')||'[]'); } catch { return []; } })();
+  custom.forEach(c => cards.push({ ...c, type:'custom', draggable:true }));
+
+  return cards;
+}
+
+function _renderMatrixBoard(cards) {
+  const board = document.getElementById('matrix-board');
+  if (!board) return;
+
+  const cols = MATRIX_COLS.map((label, ci) => ({
+    label, ci,
+    cards: cards.filter(c => c.col === ci)
+  }));
+
+  board.innerHTML = cols.map(col => `
+    <div class="mxcol" data-col="${col.ci}" style="
+      background:${MATRIX_COL_COLORS[col.ci]};
+      border:1px solid ${MATRIX_COL_BORDERS[col.ci]};
+      border-radius:6px; padding:10px; display:flex; flex-direction:column; gap:8px;
+      min-height:200px; transition:background .2s;
+    " ondragover="event.preventDefault();this.style.background='rgba(0,229,255,.12)'"
+       ondragleave="this.style.background='${MATRIX_COL_COLORS[col.ci]}'"
+       ondrop="_matrixDrop(event,${col.ci})">
+      <div style="font-family:var(--hud);font-size:9px;letter-spacing:.14em;
+        color:${['var(--accent)','var(--amber)','#a855f7','var(--green)'][col.ci]};
+        margin-bottom:4px;padding-bottom:6px;border-bottom:1px solid ${MATRIX_COL_BORDERS[col.ci]}">
+        ${col.label}
+        <span style="float:right;font-family:var(--mono);font-size:8px;opacity:.5">${col.cards.length}</span>
+      </div>
+      ${col.cards.map(c => _mxCardHTML(c)).join('')}
+    </div>`).join('');
+}
+
+function _mxCardHTML(c) {
+  const doneMark = c.col===3 ? 'opacity:.45;' : '';
+  return `<div class="mxcard" draggable="true" data-id="${c.id}"
+    ondragstart="_matrixDragStart(event,'${c.id}')"
+    style="${doneMark}background:rgba(0,5,15,.7);border:1px solid rgba(255,255,255,.07);
+      border-radius:4px;padding:8px 10px;cursor:grab;transition:box-shadow .15s,transform .15s;
+      transform:translateZ(0);"
+    onmouseenter="this.style.boxShadow='0 0 10px rgba(0,229,255,.2)';this.style.transform='translateY(-1px) translateZ(0)'"
+    onmouseleave="this.style.boxShadow='';this.style.transform='translateZ(0)'">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-b);line-height:1.3;">${c.label}</div>
+    <div style="font-family:var(--mono);font-size:8px;color:var(--accent);opacity:.5;margin-top:4px;letter-spacing:.06em">${c.tag||''}</div>
+    ${c.pct!==undefined?`<div style="height:2px;background:rgba(0,229,255,.1);border-radius:1px;margin-top:6px;"><div style="height:100%;width:${c.pct}%;background:var(--accent);border-radius:1px;"></div></div>`:''}
+  </div>`;
+}
+
+function _matrixDragStart(e, id) {
+  _dragCard = id;
+  e.dataTransfer.setData('text/plain', id);
+}
+
+function _matrixDrop(e, colIdx) {
+  e.preventDefault();
+  const id = _dragCard || e.dataTransfer.getData('text/plain');
+  if (!id) return;
+  const card = _matrixCards.find(c => c.id === id);
+  if (!card) return;
+  card.col = colIdx;
+  // Persist custom cards
+  const custom = _matrixCards.filter(c=>c.type==='custom');
+  localStorage.setItem('jarvis_matrix_custom', JSON.stringify(custom));
+  _renderMatrixBoard(_matrixCards);
+  document.querySelectorAll('.mxcol').forEach((col,ci)=>{ col.style.background=MATRIX_COL_COLORS[ci]; });
+  _reactor?.triggerFlare(300);
+}
+
+function _showMatrix() {
+  const overlay = document.getElementById('matrix-overlay');
+  if (!overlay) return;
+  overlay.style.display = 'flex';
+  _matrixCards = _buildMatrixCards();
+  _renderMatrixBoard(_matrixCards);
+  termTypeJarvis(`STARK TASK MATRIX ачааллаа, Stark. ${_matrixCards.length} карт · Чирж шилжүүлэх боломжтой.`);
+}
+
+// ── BOOKING ALERT SYSTEM (Sprint 24 — Firestore onSnapshot) ────────
+let _bookingUnsub = null;
+let _lastBookingId = null;
+
+function _startBookingListener() {
+  if (!window._db || !window._auth?.currentUser) {
+    // Retry after auth
+    setTimeout(_startBookingListener, 3000);
+    return;
+  }
+  if (_bookingUnsub) return; // already listening
+
+  try {
+    _bookingUnsub = window._db.collection('bookings')
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .onSnapshot(snap => {
+        if (snap.empty) return;
+        const doc = snap.docs[0];
+        // Only fire for NEW docs (not old ones on initial load)
+        if (_lastBookingId === null) { _lastBookingId = doc.id; return; }
+        if (doc.id === _lastBookingId) return;
+        _lastBookingId = doc.id;
+        _showBookingAlert(doc.data(), doc.id);
+      });
+  } catch (e) {
+    console.warn('[JARVIS] Booking listener error:', e);
+  }
+}
+
+function _showBookingAlert(data, id) {
+  const el = document.getElementById('booking-alert');
+  const body = document.getElementById('booking-alert-body');
+  if (!el || !body) return;
+
+  const name  = data.name || data.guestName || 'Unknown';
+  const date  = data.date || data.checkIn   || '—';
+  const guests= data.guests || data.pax || '—';
+  const phone = data.phone  || data.contact || '—';
+
+  body.innerHTML = `
+    <b style="color:var(--accent)">${name}</b><br>
+    📅 ${date} · 👥 ${guests} нийт<br>
+    📞 ${phone}<br>
+    <span style="opacity:.5;font-size:9px">#${id.slice(0,8)}</span>`;
+
+  el.style.display = 'block';
+  el.style.opacity = '0';
+  el.style.transform = 'translate(20px,0) translateZ(0)';
+  el.style.transition = 'opacity .35s ease, transform .35s ease';
+  requestAnimationFrame(()=>{
+    el.style.opacity = '1';
+    el.style.transform = 'translateZ(0)';
+  });
+
+  // Terminal notification
+  addTermLine('warn', `⚡ NEW BOOKING — ${name} · ${date}`);
+  _reactor?.triggerFlare(1200);
+
+  // Auto-dismiss after 30s
+  setTimeout(_dismissBookingAlert, 30000);
+}
+
+function _dismissBookingAlert() {
+  const el = document.getElementById('booking-alert');
+  if (!el) return;
+  el.style.transition = 'opacity .3s ease, transform .3s ease';
+  el.style.opacity = '0';
+  el.style.transform = 'translate(20px,0) translateZ(0)';
+  setTimeout(()=>{ el.style.display='none'; }, 320);
+}
+
+// Start booking listener when Firestore is ready
+document.addEventListener('jarvis:ready', ()=>{
+  setTimeout(_startBookingListener, 2000);
+});
+
 // ── SPA NAVIGATION ──────────────────────────────────────────────
 const _navMap = { intel:'chat.html', track:'tracker.html', profile:'profile.html' };
 const _loaded  = {}; // lazy-load iframes once

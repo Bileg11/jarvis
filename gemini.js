@@ -199,9 +199,19 @@ async function sendChatMessage(userText) {
   const ctx        = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
   const coreMemory = (localStorage.getItem('jarvis_core_memory') || '').trim();
   const sysBase    = _getSystemInstruction();
+
+  // Sprint 24: Interactive Card instruction — хэрэглэгч дата/статистик асуухад JSON card хариулна
+  const cardInstruction = `
+ИНТЕРАКТИВ КАРТ ДҮРЭМ:
+Хэрэглэгч progress, тоо, дүн, жагсаалт асуувал ЗӨВХӨН дараах JSON форматаар хариул:
+- Progress card: {"__jarvis_card":true,"type":"progress","title":"...","value":N,"max":N,"subtitle":"...","color":"#00e5ff"}
+- Metric card: {"__jarvis_card":true,"type":"metric","label":"...","value":"...","subtitle":"...","color":"#00e5ff"}
+- List card: {"__jarvis_card":true,"type":"list","title":"...","items":["...","..."]}
+Энгийн асуулт, яриа, зөвлөгөөнд JSON БИШ — монголоор хариул.`;
+
   const systemText = coreMemory
-    ? `${sysBase}\n\n${ctx}\n\n[ХЭРЭГЛЭГЧИЙН ХУВИЙН КОНТЕКСТ БОЛОН САНАХ ОЙ]:\n${coreMemory}`
-    : `${sysBase}\n\n${ctx}`;
+    ? `${sysBase}\n\n${ctx}\n\n[ХЭРЭГЛЭГЧИЙН ХУВИЙН КОНТЕКСТ БОЛОН САНАХ ОЙ]:\n${coreMemory}\n\n${cardInstruction}`
+    : `${sysBase}\n\n${ctx}\n\n${cardInstruction}`;
 
   _chatHistory.push({ role: 'user', content: userText });
 
