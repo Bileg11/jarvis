@@ -1158,10 +1158,29 @@ function termTypeJarvis(text) {
   if (!out) return;
   if (_termTimer) { clearInterval(_termTimer); _termTimer = null; }
 
+  // ── PLAN: text + JSON mixed response ────────────────────────────
+  const split = _splitTextAndPlan(text);
+  if (split) {
+    if (split.preText) {
+      const pre = addTermLine('jarvis','',true);
+      if (pre) { pre.textContent=split.preText; pre.style.opacity='0'; pre.style.transition='opacity .25s'; requestAnimationFrame(()=>{pre.style.opacity='1';}); }
+    }
+    _renderPlanCard(split.plan, out);
+    if (split.postText) {
+      const post = addTermLine('jarvis','',true);
+      if (post) { post.textContent=split.postText; post.style.opacity='0'; post.style.transition='opacity .25s'; requestAnimationFrame(()=>{post.style.opacity='1';}); }
+    }
+    out.scrollTop=out.scrollHeight; setAIState('active'); setTimeout(()=>setAIState('idle'),400);
+    return;
+  }
+
   // ── INTERACTIVE CARD RENDER ENGINE (Sprint 24) ───────────────────
-  // If AI returns JSON with __jarvis_card flag, render as a visual card
   const card = _tryParseCard(text);
-  if (card) { _renderInteractiveCard(card, out); setAIState('active'); setTimeout(()=>setAIState('idle'),400); return; }
+  if (card) {
+    if (card.__plan || card.action === 'FINALIZE_PLAN') { _renderPlanCard(card, out); }
+    else { _renderInteractiveCard(card, out); }
+    setAIState('active'); setTimeout(()=>setAIState('idle'),400); return;
+  }
 
   const txtEl = addTermLine('jarvis', '', true);
   if (!txtEl) return;
@@ -1175,12 +1194,41 @@ function termTypeJarvis(text) {
 }
 
 // ── INTERACTIVE CARD ENGINE ───────────────────────────────────────
+// Detects both __jarvis_card JSON and FINALIZE_PLAN action JSON
+// Also handles AI responses that wrap JSON in ```json ... ``` fences
 function _tryParseCard(text) {
   const t = (text||'').trim();
-  if (!t.startsWith('{')) return null;
+
+  // Extract JSON from markdown code fences if present
+  const fenced = t.match(/```json\s*([\s\S]*?)```/i);
+  const raw = fenced ? fenced[1].trim() : t;
+
+  // Try to find a JSON object anywhere in the text (AI may prepend text)
+  const jsonMatch = raw.match(/\{[\s\S]*"action"\s*:\s*"FINALIZE_PLAN"[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const j = JSON.parse(jsonMatch[0]);
+      if (j.action === 'FINALIZE_PLAN') return { __plan: true, ...j };
+    } catch {}
+  }
+
+  if (!raw.startsWith('{')) return null;
   try {
-    const j = JSON.parse(t);
-    return j.__jarvis_card ? j : null;
+    const j = JSON.parse(raw);
+    return (j.__jarvis_card || j.action === 'FINALIZE_PLAN') ? j : null;
+  } catch { return null; }
+}
+
+// ── PLAN RENDERER: split text + JSON, show both ──────────────────
+// If AI sends "Сайн байна! ...text... ```json{...}```"
+// → render text as normal message, then render timeline card below
+function _splitTextAndPlan(text) {
+  const fenced = text.match(/([\s\S]*?)```json\s*(\{[\s\S]*?\})\s*```([\s\S]*)/i);
+  if (!fenced) return null;
+  try {
+    const j = JSON.parse(fenced[2]);
+    if (j.action !== 'FINALIZE_PLAN') return null;
+    return { preText: fenced[1].trim(), plan: j, postText: fenced[3].trim() };
   } catch { return null; }
 }
 
@@ -1241,6 +1289,106 @@ function _renderInteractiveCard(card, container) {
   container.appendChild(wrap);
   requestAnimationFrame(()=>{ wrap.style.opacity='1'; });
   container.scrollTop = container.scrollHeight;
+}
+
+// ── TIMELINE / PLAN CARD RENDERER ────────────────────────────────
+const _PLAN_TYPE_STYLE = {
+  activity: { color:'#00e5ff', bg:'rgba(0,229,255,.08)',  icon:'◉' },
+  buffer:   { color:'#ff8c00', bg:'rgba(255,140,0,.08)',  icon:'◌' },
+  travel:   { color:'#00ff88', bg:'rgba(0,255,136,.08)',  icon:'→' },
+  meal:     { color:'#ffd700', bg:'rgba(255,215,0,.08)',  icon:'◈' },
+  study:    { color:'#a855f7', bg:'rgba(168,85,247,.08)', icon:'▣' },
+  sleep:    { color:'#4488ff', bg:'rgba(68,136,255,.08)', icon:'◐' },
+};
+
+function _planDuration(s, e) {
+  const [sh,sm]= s.split(':').map(Number);
+  const [eh,em]= e.split(':').map(Number);
+  const mins = (eh*60+em) - (sh*60+sm);
+  if (mins <= 0) return '';
+  return mins >= 60 ? `${Math.floor(mins/60)}ц ${mins%60?mins%60+'м':''}` : `${mins}м`;
+}
+
+function _renderPlanCard(plan, container) {
+  const tl   = plan.timeline || [];
+  const date = plan.label || plan.date || '';
+
+  const rowsHTML = tl.map((item, i) => {
+    const st  = _PLAN_TYPE_STYLE[item.type] || _PLAN_TYPE_STYLE.activity;
+    const dur = _planDuration(item.startTime, item.endTime);
+    const connector = i < tl.length-1
+      ? `<div style="width:1px;height:8px;background:rgba(255,255,255,.08);margin:1px 0 1px 11px;"></div>`
+      : '';
+    return `
+      <div style="display:flex;align-items:flex-start;gap:10px;padding:5px 8px;border-radius:4px;background:${st.bg};margin-bottom:2px;">
+        <div style="flex-shrink:0;width:22px;height:22px;border:1px solid ${st.color};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:${st.color};margin-top:1px;">${st.icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font:10px/1.3 var(--mono);color:#c8e0f0;">${item.activity}</div>
+          <div style="font:9px/1 var(--mono);color:${st.color};opacity:.75;margin-top:2px;">${item.startTime} – ${item.endTime}  ${dur?'· '+dur:''}</div>
+        </div>
+      </div>${connector}`;
+  }).join('');
+
+  // Total span
+  const first = tl[0], last = tl[tl.length-1];
+  const totalDur = first&&last ? _planDuration(first.startTime, last.endTime) : '';
+
+  const card = document.createElement('div');
+  card.style.cssText = `
+    background:rgba(0,5,18,.85); border:1px solid rgba(0,229,255,.2);
+    border-radius:7px; padding:12px 14px; margin:6px 0;
+    transform:translateZ(0); will-change:transform;
+    cursor:grab; position:relative;
+  `;
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid rgba(0,229,255,.1);">
+      <div>
+        <div style="font:11px/1 var(--hud);color:var(--accent);letter-spacing:.12em;text-shadow:var(--neon)">◈ STARK PLAN — ${date.toUpperCase()}</div>
+        ${totalDur?`<div style="font:9px/1 var(--mono);color:rgba(0,229,255,.4);margin-top:4px;">${tl.length} блок · нийт ${totalDur}</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button onclick="_savePlanToMatrix(this)" title="Matrix-д нэм"
+          style="font:8px/1 var(--mono);padding:3px 7px;background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.2);color:var(--accent);border-radius:3px;cursor:pointer;">+ MATRIX</button>
+        <span onclick="this.closest('[style*=grab]').remove()" style="font:10px/1 var(--mono);color:rgba(255,255,255,.2);cursor:pointer;padding:2px 5px;">✕</span>
+      </div>
+    </div>
+    <div id="plan-rows-${Date.now()}">${rowsHTML}</div>`;
+
+  // Store plan data for matrix export
+  card._planData = plan;
+
+  // Drag support (GPU-composited)
+  let ox=0,oy=0,mx=0,my=0,drag=false;
+  card.addEventListener('mousedown',e=>{drag=true;ox=e.clientX-mx;oy=e.clientY-my;card.style.cursor='grabbing';e.preventDefault();});
+  document.addEventListener('mousemove',e=>{if(!drag)return;mx=e.clientX-ox;my=e.clientY-oy;card.style.transform=`translate(${mx}px,${my}px) translateZ(0)`;},{passive:true});
+  document.addEventListener('mouseup',()=>{if(drag){drag=false;card.style.cursor='grab';}});
+
+  card.style.opacity='0'; card.style.transition='opacity .3s ease';
+  container.appendChild(card);
+  requestAnimationFrame(()=>{ card.style.opacity='1'; });
+  container.scrollTop = container.scrollHeight;
+  _reactor?.triggerFlare(800);
+}
+
+// Export plan blocks to Matrix (+ MATRIX button)
+function _savePlanToMatrix(btn) {
+  const card = btn.closest('[style*=grab]');
+  const plan  = card?._planData;
+  if (!plan?.timeline) return;
+  const custom = (() => { try { return JSON.parse(localStorage.getItem('jarvis_matrix_custom')||'[]'); } catch { return []; } })();
+  plan.timeline.forEach(item => {
+    custom.push({
+      id:   'plan_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
+      label: `${item.startTime} ${item.activity}`,
+      tag:  (item.type||'activity').toUpperCase(),
+      col:  0, type:'custom', draggable:true,
+    });
+  });
+  localStorage.setItem('jarvis_matrix_custom', JSON.stringify(custom));
+  btn.textContent = '✓ SAVED';
+  btn.style.color = 'var(--green)';
+  btn.style.borderColor = 'rgba(0,255,136,.3)';
+  termTypeJarvis(`Stark, ${plan.timeline.length} блок Matrix-ын TODO баганд нэмэгдлээ. /matrix-р харна уу.`);
 }
 
 function setAIState(state) {
