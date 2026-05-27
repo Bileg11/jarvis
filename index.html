@@ -99,8 +99,7 @@ body::after {
 /* ── GLASS PANEL ──────────────────────────────────────────────── */
 .glass {
   background: var(--glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* backdrop-filter removed — causes typing lag on Intel integrated GPU */
   border: 1px solid var(--border);
   border-radius: 2px;
   position: relative;
