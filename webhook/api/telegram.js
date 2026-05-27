@@ -152,12 +152,14 @@ async function seedBilegProfile() {
 
 // ── TELEGRAM HELPERS ──────────────────────────────────────────────
 async function tgCall(method, body) {
-  const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/${method}`, {
+  const r    = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/${method}`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
     body:    JSON.stringify(body),
   });
-  return r.json();
+  const data = await r.json();
+  if (!data.ok) console.error(`[TG] ${method} failed:`, JSON.stringify(data.description || data));
+  return data;
 }
 const tgSend   = (text, extra = {}) =>
   tgCall('sendMessage', { chat_id: TG_CHAT, text, parse_mode: 'Markdown', ...extra });
@@ -833,11 +835,10 @@ async function sendDrillQuestion(session, idx, uid) {
     chat_id:    TG_CHAT,
     parse_mode: 'Markdown',
     text:
-      `🎯 *${idx + 1}/${total}* — ${lvlTag} Drill\n` +
-      `\`────────────────────\`\n\n` +
-      `*${w.word}*  _(${w.pinyin})_\n\n` +
-      `Юу гэсэн үг вэ? _(Монгол эсвэл Англиар хариул)_\n\n` +
-      `_/drill\\_stop — зогсоох_`,
+      `🎯 *${idx + 1}/${total}* — ${lvlTag} Drill\n\n` +
+      `*${w.word}*   ${w.pinyin}\n\n` +
+      `Юу гэсэн үг вэ? Монгол эсвэл Англиар хариул\n\n` +
+      `/drill_stop — зогсоох`,
   });
 }
 
@@ -901,10 +902,9 @@ async function handleDrillAnswer(msg, ctx, session) {
   const newLevel = await updateMastery(w.word, correct, uid, w.hsk_level || null);
   const stars    = newLevel ? '⭐'.repeat(newLevel) : '';
 
-  const resultEmoji = correct ? '✅' : '❌';
   const resultText  = correct
-    ? `✅ *Зөв!* ${feedback ? `_${feedback}_` : ''}\n📈 Mastery: ${stars}`
-    : `❌ *Буруу.* *${w.word}* = _${w.definition}_${w.en ? ` / _${w.en}_` : ''}\n${feedback ? `_${feedback}_\n` : ''}📉 Mastery: ${stars}`;
+    ? `✅ *Зөв!* ${feedback || ''}\n📈 Mastery: ${stars}`
+    : `❌ *Буруу.* *${w.word}* = ${w.definition}${w.en ? ` / ${w.en}` : ''}\n${feedback ? `${feedback}\n` : ''}📉 Mastery: ${stars}`;
 
   // Session шинэчлэх
   const newCorrect = session.correct + (correct ? 1 : 0);
