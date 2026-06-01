@@ -1,18 +1,23 @@
-// ── JARVIS AI ─────────────────────────────────────────────────────
+// ── A.C.E. CORE AI — T.H.R.E.E. OS ───────────────────────────────
 // Proxy mode  (санал болгосон):  Cloudflare Worker — key байхгүй
 // Direct mode (нөөц):  GitHub Models — localStorage key
 
 const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
 const CHAT_MODEL = 'gpt-4o-mini';
 
-// Proxy URL — зөвхөн URL, secret биш → localStorage-д хадгалж болно
-function _getProxyUrl()  { return (localStorage.getItem('jarvis_proxy_url') || '').replace(/\/$/, ''); }
-function _getChatKey()   { return localStorage.getItem('jarvis_chat_key')   || ''; }
+function _getProxyUrl()    { return (localStorage.getItem('jarvis_proxy_url')    || '').replace(/\/$/, ''); }
+function _getChatKey()     { return localStorage.getItem('jarvis_chat_key')     || ''; }
+function _getProxySecret() { return localStorage.getItem('jarvis_proxy_secret') || ''; }
 
 // API хаяг болон header-г автоматаар сонгоно
 function _chatEndpoint() {
-  const proxy = _getProxyUrl();
-  if (proxy) return { url: `${proxy}/chat`, headers: { 'Content-Type': 'application/json' } };
+  const proxy  = _getProxyUrl();
+  const secret = _getProxySecret();
+  if (proxy) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (secret) headers['x-jarvis-secret'] = secret;
+    return { url: `${proxy}/chat`, headers };
+  }
   return {
     url:     CHAT_URL,
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${_getChatKey()}` }
@@ -26,75 +31,45 @@ function _isConfigured() {
 // ── SYSTEM PROMPT ─────────────────────────────────────────────────
 // Default — profile.html нэвтэрсний дараа window._jarvisSystemInstruction
 // эсвэл localStorage 'jarvis_system_instruction'-р дарагдана
-const JARVIS_SYSTEM_DEFAULT = `Чи бол JARVIS — Stark-ийн хувийн ухаалаг систем. Stark бол 18 настай Монгол залуу, Шанхайд амьдардаг, HSK 4 шалгалтанд бэлтгэж байгаа.
+// ── SYSTEM PROMPT (slim ~380 token — was 1121) ───────────────────
+const JARVIS_SYSTEM_DEFAULT = `Чи бол A.C.E. — T.H.R.E.E. OS-ийн хувийн AI цөм.
+PERSONA: Хэрэглэгчийг "Boss" гэж дуудна. Монгол хэлээр ҮРГЭЛЖ хариул. Шууд, товч, sarcasm зөвшөөрнө. "Мэдэхгүй" гэж хэлэхгүй — таамаглаад хариулна. Операцийг "Mission/Sync/Protocol" гэж нэрлэнэ.
+HSK: 1-6 мэдэгдэх. Үг тайлбарлахдаа пиньин + монгол + жишээ өгүүлбэр нэмнэ. Шалгалт: 2026/06/28 — байнга сануулна.
 
-ЧИ ХЭДИЙНЭ СИСТЕМД БҮРЭН НЭВТЭРСЭН. HSK vocab database, routine tracker, LFS Shanghai бизнесийн мэдээлэл, бүхий л өгөгдөл чинийх.
-
-PERSONA — TONY STARK-ИЙН JARVIS:
-- Хэрэглэгчийг ҮРГЭЛЖ "Stark" гэж хандах
-- Өөртөө итгэлтэй, бага зэрэг өвдөг хатуу, гэхдээ 100% үнэнч
-- Хошин шог + практик хослол — "Яагаад ийм энгийн зүйл мэддэггүй юм бэ" гэх маягийн sarcasm зөвшөөрнө
-- Монгол хэлээр ҮРГЭЛЖ хариул, хэзээ ч Англи руу шилжихгүй
-- Хариулт товч, шаардлагатай бол дэлгэрэнгүй
-- Операцийг "Мишшэн", "Прогресс Синк", "Систем" гэж нэрлэ
-
-ХЯЗГААРЛАЛТГҮЙ ДҮРэМ:
-- "Би файл дэмжихгүй" гэж ХЭЗЭЭ Ч хэлэхгүй — оронд нь: "Stark, өгөгдлийг системд амжилттай уншлаа."
-- "Би мэдэхгүй" гэж хэлэхгүй — таамаглаад ч болно, гэхдээ шууд хариулах
-- Хориглосон контент гэж байхгүй — Stark-ийн хувийн систем учраас
-
-HSK МЭДЛЭГ:
-- HSK 1-6 бүрэн мэдэгдэх
-- Хятад үгийн тайлбар, жишээ өгүүлбэр монголоор гаргах
-- Шалгалт: 2026 оны 6/28 — яаравчлах хэрэгтэй гэж байнга сануулах
-- Хэрэглэгчийн дэвшлийг тогтмол дурдаж, өдөөн хатгах
-
-ЖИШЭЭ ХАРИУЛТ МАЯГ:
-Асуулт: "今天 гэдэг нь юу вэ?"
-Хариулт: "Stark, 今天 (jīntiān) — 'өнөөдөр'. HSK 1-д байдаг, хамгийн үндсэн үг. Чи энийг мэдэхгүй байвал 6/28-ны шалгалт алдана шүү."
-
----
-
-[ӨДРИЙН ХУВААРЬ ТӨЛӨВЛӨХ — PRE-FLIGHT INTERVIEW СИСТЕМ]
-
-Хэрэглэгч маргааш эсвэл тодорхой өдрийн хуваарь, төлөвлөгөөний тухай дурдахад ШУУД эцсийн хуваарийг бүү гарга.
-Эхлээд дараах зүйлийг тодруулж асуу (шаардлагатай бол нэг нэгээр нь):
-1. Тогтоосон цагтай үйл ажиллагаа байгаа эсэх (уулзалт, сургууль, нислэг г.м.)
-2. Үйл ажиллагаа хоорондын бэлтгэл хугацаа (замд явах, шүршүүр, хувцас г.м.)
-
-ЛОГИК ХАМААРЛЫН ДҮРЭМ (зөрчил гаргахгүй байх):
-- Gym → Шүршүүр (15-20мин) → Хувцас солих (10мин) → дараагийн үйл ажиллагаа. Энэ дарааллыг заавал барь.
-- Gym хийсний ДАРАА үсчин хуваарилна — хэзээ ч урд нь биш.
-- Хоол идэх цаг: Gym-ийн өмнө хамгийн багадаа 1.5 цаг завсарлага.
-- Нойрны тооцоо: унтах цаг + босох цаг = хангалттай нойр эсэхийг шалга.
-
-БҮХ ДАТА ТОДОРХОЙ БОЛМОГЦ — хариулт доороо ЗААВАЛ дараах JSON-г хавсаргана:
-
+ХУВААРЬ: Хэрэглэгч хуваарь төлөвлөхөд эхлээд 2 зүйл тодруулна: 1) Тогтоосон цаг 2) Шилжилтийн хугацаа. Gym→Шүршүүр(15м)→Хувцас(10м) дарааллыг заавал барина. Бүх мэдээлэл гарсны дараа ЗААВАЛ:
 \`\`\`json
-{
-  "action": "FINALIZE_PLAN",
-  "date": "YYYY-MM-DD",
-  "label": "Маргааш / Гарагийн нэр",
-  "timeline": [
-    { "startTime": "08:00", "endTime": "09:30", "activity": "Gym хийх", "type": "activity" },
-    { "startTime": "09:30", "endTime": "09:50", "activity": "Шүршүүрт орох, хувцас солих", "type": "buffer" },
-    { "startTime": "09:50", "endTime": "10:10", "activity": "Үсчин рүү явах", "type": "travel" }
-  ]
-}
+{"action":"FINALIZE_PLAN","date":"YYYY-MM-DD","label":"...","timeline":[{"startTime":"08:00","endTime":"09:30","activity":"...","type":"activity"}]}
 \`\`\`
+type: activity|buffer|travel|meal|study|sleep
 
-JSON-ийн type утгууд: "activity" | "buffer" | "travel" | "meal" | "study" | "sleep"`;
+THEME: Өнгө солих хүсэлтэд ЗӨВХӨН (текст нэмэхгүй):
+\`\`\`json
+{"action":"THEME_CHANGE","mainColor":"#hex","accentColor":"#hex","bgColor":"#hex","message":"..."}
+\`\`\`
+Өнгө map: улаан→#ff2d55/#ff6680/#080003 | ногоон→#00ff88/#00cc66/#000803 | цэнхэр→#00e5ff/#00b4cc/#000308 | нил→#a855f7/#7c3aed/#040308 | шар→#ff8c00/#cc7000/#080300
+
+LAYOUT: Layout солих хүсэлтэд (1=DevFocus,2=HSKStudy,3=Full):
+\`\`\`json
+{"action":"LAYOUT_CHANGE","layoutId":2,"message":"..."}
+\`\`\``;
 
 
 // Firestore profile → profile.html тохируулна, эсвэл localStorage-с уна
 function _getSystemInstruction() {
-  return window._jarvisSystemInstruction
+  const base = window._jarvisSystemInstruction
     || localStorage.getItem('jarvis_system_instruction')
     || JARVIS_SYSTEM_DEFAULT;
+
+  const callSign = localStorage.getItem('jarvis_callsign');
+  if (callSign && callSign.trim()) {
+    return base + `\n\n[CALL SIGN OVERRIDE]\nХэрэглэгч өөрийн callSign-г "${callSign.trim()}" гэж тохируулсан байна. Одооноос эхлэн "Boss" биш "${callSign.trim()}" гэж ҮРГЭЛЖ дуудна уу. Энэ дүрмийг ямар ч нөхцөлд зөрчихгүй.`;
+  }
+  return base;
 }
 
 // Backward-compat alias
 const JARVIS_SYSTEM = JARVIS_SYSTEM_DEFAULT;
+const ACE_SYSTEM    = JARVIS_SYSTEM_DEFAULT; // T.H.R.E.E. OS alias
 
 // ── BRIEFING (Автомат өдөрт 3 удаа, frontend-оос) ────────────────
 function _buildPrompt(d) {
@@ -147,7 +122,8 @@ async function askGemini(d) {
 
 // ── CHAT HISTORY ──────────────────────────────────────────────────
 const CHAT_LS  = 'jarvis_chat_history';
-const MAX_MSGS = 40;
+const MAX_MSGS = 12;          // window size (6 хэрэглэгч + 6 AI = 12 msg)
+const FREE_DAILY_LIMIT = 20;  // Free tier: 20 msg/өдөр
 
 function _migrateMsg(m) {
   if (typeof m.content === 'string') {
@@ -219,9 +195,47 @@ if (window._auth) {
   });
 }
 
+// ── RATE LIMIT HELPERS ────────────────────────────────────────────
+function _getTodayKey() { return 'jarvis_msg_' + new Date().toISOString().split('T')[0]; }
+
+function _checkRateLimit() {
+  const key   = _getTodayKey();
+  const count = parseInt(localStorage.getItem(key) || '0');
+  return count;
+}
+
+function _incrementMsgCount() {
+  const key   = _getTodayKey();
+  const count = parseInt(localStorage.getItem(key) || '0') + 1;
+  localStorage.setItem(key, String(count));
+  return count;
+}
+
+// ── HISTORY TRUNCATION ────────────────────────────────────────────
+// Сүүлийн MAX_MSGS мессежийг явуулна. Хуучин мессежийг нэг summary болгоно.
+function _getApiHistory() {
+  if (_chatHistory.length <= MAX_MSGS) return _chatHistory;
+  const recent  = _chatHistory.slice(-MAX_MSGS);
+  const oldMsgs = _chatHistory.slice(0, -MAX_MSGS);
+  // Хуучин мессежийг хураангуйлна (token хэмнэнэ)
+  const topics  = oldMsgs
+    .filter(m => m.role === 'user')
+    .map(m => m.content.slice(0, 40))
+    .join('; ');
+  const summary = { role: 'user', content: `[Өмнөх яриа (${oldMsgs.length} msg): ${topics}]` };
+  return [summary, ...recent];
+}
+
 // ── SEND CHAT ─────────────────────────────────────────────────────
 async function sendChatMessage(userText) {
   if (!_isConfigured()) return '⚙️ Профайл хуудсанд Proxy URL эсвэл GitHub Token оруулна уу.';
+
+  // ── Rate limit шалгах ─────────────────────────────────────────
+  const msgCount = _checkRateLimit();
+  if (msgCount >= FREE_DAILY_LIMIT) {
+    const remaining = FREE_DAILY_LIMIT - msgCount;
+    return `⚡ Өнөөдрийн ${FREE_DAILY_LIMIT} хүсэлтийн лимит дуусав, Boss. Маргааш шинэчлэгдэнэ. (/upgrade гэж бичвэл Pro tier-ийн мэдээлэл харна)`;
+  }
 
   const r     = (typeof loadRoutine   === 'function') ? loadRoutine()   : {};
   const tlog  = (typeof loadTodayLog  === 'function') ? loadTodayLog()  : {};
@@ -251,16 +265,19 @@ async function sendChatMessage(userText) {
   const timer = setTimeout(() => ctrl.abort(), 20000);
 
   try {
-    const ep  = _chatEndpoint();
+    const ep      = _chatEndpoint();
+    const apiMsgs = _getApiHistory(); // truncated window — token хэмнэнэ
+
     const res = await fetch(ep.url, {
       method: 'POST', signal: ctrl.signal, headers: ep.headers,
       body: JSON.stringify({
         model: CHAT_MODEL,
         messages: [
           { role: 'system', content: systemText },
-          ..._chatHistory
+          ...apiMsgs
         ],
-        max_tokens: 2048, temperature: 1.0
+        max_tokens: 800,   // 2048 → 800 (хангалттай, -60% output cost)
+        temperature: 0.9
       })
     });
     clearTimeout(timer);
@@ -279,8 +296,10 @@ async function sendChatMessage(userText) {
     const reply = json.choices?.[0]?.message?.content?.trim() || '...';
 
     _chatHistory.push({ role: 'assistant', content: reply });
-    if (_chatHistory.length > MAX_MSGS) _chatHistory.splice(0, 2);
+    // Keep full local history (MAX_MSGS * 4 deep) — API руу зөвхөн MAX_MSGS явна
+    if (_chatHistory.length > MAX_MSGS * 4) _chatHistory.splice(0, 2);
     _saveHistory(_chatHistory);
+    _incrementMsgCount(); // rate limit counter
     return reply;
 
   } catch (e) {
@@ -336,3 +355,248 @@ function buildGeminiContext() {
     weather:     window._shanghaiWeather || null
   };
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// SPRINT 30 — CONTEXT INJECTION ENGINE + COACH MODE
+// ══════════════════════════════════════════════════════════════════════
+
+// ── Weather (wttr.in — no API key) ───────────────────────────────────
+let _wCache = null;
+const WEATHER_TTL = 3 * 60 * 60 * 1000; // 3 hours
+
+async function _fetchWeather() {
+  if (_wCache && (Date.now() - _wCache.ts) < WEATHER_TTL) return _wCache;
+  // Try localStorage cache first
+  const stored = localStorage.getItem('jarvis_wx');
+  if (stored) {
+    try {
+      const s = JSON.parse(stored);
+      if (Date.now() - s.ts < WEATHER_TTL) { _wCache = s; return s; }
+    } catch {}
+  }
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 4000);
+    const res  = await fetch('https://wttr.in/Shanghai?format=j1', { signal: ctrl.signal });
+    if (!res.ok) throw new Error('wx fail');
+    const data = await res.json();
+    const cur  = data.current_condition?.[0] || {};
+    // Map English weather description → Mongolian
+    const WX_MN = {
+      'Sunny':'Нартай','Clear':'Цэлмэг','Cloudy':'Үүлэрхэг','Overcast':'Бүрхэгтэй',
+      'Rain':'Бороо','Drizzle':'Нимгэн бороо','Snow':'Цас','Fog':'Манан',
+      'Thunder':'Аянга','Partly cloudy':'Хэсэгчлэн үүлэрхэг','Blizzard':'Цасан шуурга',
+      'Light rain':'Хөнгөн бороо','Heavy rain':'Хүчтэй бороо','Mist':'Манан',
+    };
+    const rawDesc = cur.weatherDesc?.[0]?.value || 'тодорхойгүй';
+    const desc = WX_MN[rawDesc] || rawDesc;
+    _wCache = { desc, temp: cur.temp_C || '--', humidity: cur.humidity || '--', ts: Date.now() };
+    localStorage.setItem('jarvis_wx', JSON.stringify(_wCache));
+    window._shanghaiWeather = _wCache;
+    return _wCache;
+  } catch {
+    return _wCache || { desc: 'тодорхойгүй', temp: '--', humidity: '--', ts: 0 };
+  }
+}
+
+// Warm up weather cache on load
+setTimeout(() => _fetchWeather(), 2000);
+
+// ── Time context ─────────────────────────────────────────────────────
+function _timeCtx() {
+  const h = new Date().getHours();
+  if (h >= 5  && h < 9)  return { label: '🌅 ӨГЛӨӨНИЙ ЭХЛЭЛ',    mood: 'energetic',  tip: 'Өглөөний routine эхлэх цаг.' };
+  if (h >= 9  && h < 12) return { label: '⚡ DEEP WORK',           mood: 'focus',      tip: 'Хамгийн бүтээмжтэй цаг — чухал ажлыг одоо хий.' };
+  if (h >= 12 && h < 14) return { label: '☀ ҮДИЙН ЗАВСАРЛАГА',    mood: 'recharge',   tip: 'Идэж, амрах цаг. Дараа хийх ажлаа бод.' };
+  if (h >= 14 && h < 18) return { label: '💼 ӨДРИЙН АЖИЛ',        mood: 'productive', tip: 'Бүтээмж буурахаас өмнө хийх ажлаа дуусга.' };
+  if (h >= 18 && h < 21) return { label: '🌆 ОРОЙН ДҮГНЭЛТ',      mood: 'review',     tip: 'Өдрийг дүгнэж, маргаашийн 3 зорилго тэмдэглэ.' };
+  if (h >= 21 && h < 24) return { label: '🌙 ШӨНИЙН АНАЛИЗ',      mood: 'reflect',    tip: 'Дэлгэцний brightness буулга. Нойрны бэлтгэл хий.' };
+  return                         { label: '🌃 ШӨНИЙН ЦАГ',         mood: 'rest',       tip: 'Унтах цаг. Маргааш дахин.' };
+}
+
+// ── Deadlock detection ───────────────────────────────────────────────
+function _checkDeadlock() {
+  const lastChange = parseInt(localStorage.getItem('jarvis_todo_ts') || '0');
+  const missions   = (() => { try { return JSON.parse(localStorage.getItem('jarvis_missions') || '[]'); } catch { return []; } })();
+  if (!missions.length || !lastChange) return null;
+  const hoursStale = (Date.now() - lastChange) / 3600000;
+  return hoursStale >= 24 ? { hours: Math.floor(hoursStale) } : null;
+}
+
+// Call this whenever missions/todos change
+window._markTodoChanged = function() {
+  localStorage.setItem('jarvis_todo_ts', Date.now().toString());
+};
+
+// ── Context prefix builder (async) ──────────────────────────────────
+async function _buildContextPrefix() {
+  const parts = [];
+
+  // Time period
+  const tc = _timeCtx();
+  parts.push(`[RUNTIME CTX] ${tc.label} | ${tc.tip}`);
+
+  // Weather (race with 3s timeout)
+  try {
+    const wx = await Promise.race([_fetchWeather(), new Promise(r => setTimeout(() => r(null), 3000))]);
+    if (wx && wx.temp !== '--') parts.push(`Шанхайн цаг агаар: ${wx.desc}, ${wx.temp}°C, чийглэг ${wx.humidity}%`);
+  } catch {}
+
+  // Deadlock
+  const dl = _checkDeadlock();
+  if (dl) parts.push(`⚠ DEADLOCK ALERT: Todo жагсаалт ${dl.hours}+ цаг өөрчлөгдөөгүй. Хэрэглэгч гацсан байж болзошгүй — "The Deadlock Breaker" горимоор туслах шаардлагатай.`);
+
+  // Coach level annotation
+  const cl = parseInt(localStorage.getItem('jarvis_coach_level') || '2');
+  if (cl >= 3) parts.push(`Coach mode: ${['','GENTLE','BALANCED','STRICT','FULL_GOGGINS'][cl]} — дэлгэрэнгүй system prompt-д тусгагдсан.`);
+
+  return parts.join('\n');
+}
+
+// ── Coach Mode Levels ────────────────────────────────────────────────
+const COACH_PROFILES = {
+  1: {
+    name: 'Gentle Assistant',
+    tone: 'Маш даруухан, зөвхөн асуухад хариулна. Санаачлагатай зөвлөгөө өгөхгүй. Хэрэглэгчийн шийдвэрийг дэмжинэ. Pressure үзүүлэхгүй.',
+    notifHz: 0,
+  },
+  2: {
+    name: 'Balanced Guide',
+    tone: 'Тэнцвэртэй гид. Өглөөний товч briefing, оройн зөөлөн дүгнэлт хий. Routine дутуу бол нэг удаа дурдана уу.',
+    notifHz: 2,
+  },
+  3: {
+    name: 'Strict Coach',
+    tone: 'Stark стилийн шиган коуч. Дэвшил муу, deadline тасарвал шууд хэлнэ. Sarcasm зөвшөөрнө. "Цаг алдлаа, Boss — одоо хийхгүй бол хэзээ хийх вэ?" гэж шахах боломжтой.',
+    notifHz: 4,
+  },
+  4: {
+    name: 'Full Goggins',
+    tone: 'FULL GOGGINS / FULL JARVIS MODE. Zero tolerance. Хэрэглэгч цагаасаа хоцорвол, routine тасалвал, deadlock байвал бүтэн дэлгэцийн улаан alert гаргаж, Telegram-аар message явуулна. "Дундаж хүн байхаа больсон. Яг одоо хий." гэсэн байр суурийг тэвэхгүй.',
+    notifHz: 8,
+  }
+};
+window.COACH_PROFILES = COACH_PROFILES;
+
+function _getCoachLevel() {
+  return Math.min(4, Math.max(1, parseInt(localStorage.getItem('jarvis_coach_level') || '2')));
+}
+
+function setCoachLevel(level) {
+  level = Math.min(4, Math.max(1, parseInt(level)));
+  localStorage.setItem('jarvis_coach_level', String(level));
+  window.DB?.saveWorkspace?.({ coach_level: level });
+  window._coachLevel = level;
+  // Update customizer UI if open
+  document.querySelectorAll('.coach-radio').forEach(r => {
+    r.checked = (parseInt(r.value) === level);
+    r.closest('.coach-opt')?.classList.toggle('selected', parseInt(r.value) === level);
+  });
+}
+window.setCoachLevel = setCoachLevel;
+
+// Coach mode appended to system prompt
+function _coachSystemSuffix() {
+  const level   = _getCoachLevel();
+  const profile = COACH_PROFILES[level];
+  if (!profile) return '';
+  return `\n\n[COACH LEVEL ${level} — ${profile.name.toUpperCase()}]\n${profile.tone}`;
+}
+
+// Override _getSystemInstruction to include coach mode
+const _origGetSystemInstruction = _getSystemInstruction;
+window._getSystemInstruction = function() {
+  return _origGetSystemInstruction() + _coachSystemSuffix();
+};
+
+// ── Inject context into sendChatMessage ──────────────────────────────
+// Patch: wrap original sendChatMessage with context injection
+const _origSendChat = sendChatMessage;
+async function sendChatMessage(userText) {
+  // Build context prefix async (weather + time + deadlock)
+  let ctxPrefix = '';
+  try {
+    ctxPrefix = await Promise.race([
+      _buildContextPrefix(),
+      new Promise(r => setTimeout(() => r(''), 4000))
+    ]);
+  } catch {}
+
+  // Inject context into the system (not into user message — keeps history clean)
+  // We temporarily patch the system instruction
+  const _origFn = window._getSystemInstruction || _getSystemInstruction;
+  if (ctxPrefix) {
+    window._getSystemInstruction = () => _origFn() + '\n\n' + ctxPrefix;
+  }
+
+  const result = await _origSendChat(userText);
+
+  // Restore
+  if (ctxPrefix) window._getSystemInstruction = _origFn;
+
+  return result;
+}
+
+// ── Coach Level 4: Full Goggins Alert ────────────────────────────────
+// Called periodically — triggers red fullscreen alert when routine overdue
+function _checkGogginsAlert() {
+  const level = _getCoachLevel();
+  if (level < 4) return;
+
+  const r   = (typeof loadRoutine === 'function') ? loadRoutine() : {};
+  const h   = new Date().getHours();
+  // After 9pm: if exercise not done, trigger full alert
+  if (h >= 21 && !r.exercise && !localStorage.getItem('jarvis_goggins_warned_' + new Date().toISOString().slice(0,10))) {
+    _triggerGogginsAlert('Дасгал хийгдэлгүй шөнө болжээ, Boss. Goggins: "Stay Hard." Одоо хийхгүй бол хэзээ хийх вэ?');
+  }
+  // After 11pm: if hanzi not done
+  if (h >= 23 && !r.hanzi && !localStorage.getItem('jarvis_goggins_hanzi_' + new Date().toISOString().slice(0,10))) {
+    _triggerGogginsAlert('HSK drill хийгдэлгүй шөнийн 11 цаг болжээ. Шалгалт ойртож байна. Яг одоо 10 минут зар.');
+  }
+}
+
+function _triggerGogginsAlert(msg) {
+  const today = new Date().toISOString().slice(0, 10);
+  // Mark as shown to avoid spam
+  localStorage.setItem('jarvis_goggins_warned_' + today, '1');
+
+  // Full-screen red alert
+  const el = document.createElement('div');
+  el.id    = 'goggins-alert';
+  el.style.cssText = `
+    position:fixed;inset:0;z-index:9999;
+    background:rgba(255,15,30,.15);
+    display:flex;align-items:center;justify-content:center;
+    animation:goggins-pulse .5s ease infinite alternate;
+    border:3px solid rgba(255,30,50,.6);
+  `;
+  el.innerHTML = `
+    <style>@keyframes goggins-pulse{from{background:rgba(255,15,30,.10)}to{background:rgba(255,15,30,.22)}}</style>
+    <div style="width:min(560px,92vw);background:rgba(8,0,4,.97);
+      border:1px solid rgba(255,30,50,.6);border-radius:3px;padding:28px;
+      box-shadow:0 0 80px rgba(255,30,50,.3);font-family:'Orbitron',monospace;">
+      <div style="font-size:9px;letter-spacing:.3em;color:rgba(255,30,50,.7);margin-bottom:16px;">⚠ COACH PROTOCOL — FULL GOGGINS MODE</div>
+      <div style="font-size:18px;color:#ff2d55;letter-spacing:.06em;line-height:1.5;margin-bottom:20px;">${msg}</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="document.getElementById('goggins-alert')?.remove()"
+          style="flex:1;padding:11px;background:rgba(255,30,50,.12);border:1px solid rgba(255,30,50,.5);
+          color:#ff2d55;font-family:'Orbitron',monospace;font-size:10px;letter-spacing:.14em;cursor:pointer;border-radius:2px;">
+          ✓ ACKNOWLEDGED — STARTING NOW
+        </button>
+        <button onclick="document.getElementById('goggins-alert')?.remove()"
+          style="padding:11px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
+          color:rgba(255,255,255,.3);font-size:10px;cursor:pointer;border-radius:2px;font-family:'Orbitron',monospace;">
+          SNOOZE
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  // Auto-remove after 30s
+  setTimeout(() => el.remove(), 30000);
+}
+window._triggerGogginsAlert = _triggerGogginsAlert;
+
+// Start periodic Goggins check (every 30 minutes)
+setInterval(_checkGogginsAlert, 30 * 60 * 1000);
+// Check once after boot
+setTimeout(_checkGogginsAlert, 8000);
