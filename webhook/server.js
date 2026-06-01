@@ -23,6 +23,34 @@ app.use(express.json());
 
 app.get('/', (req, res) => res.send('JARVIS webhook running ✅'));
 
+// ── CHAT PROXY — Electron desktop app-аас дуудагдана ────────────────
+// gemini.js: fetch(`${proxy}/chat`, ...) → GitHub Models relay
+const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
+app.post('/chat', async (req, res) => {
+  const GH_TOKEN = process.env.SYSTEM_USE_TOKEN || process.env.META_BOT_TOKEN;
+  if (!GH_TOKEN) return res.status(500).json({ error: 'SYSTEM_USE_TOKEN тохируулаагүй' });
+
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+  try {
+    const upstream = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
+      body: JSON.stringify(req.body),
+    });
+    const data = await upstream.json();
+    res.status(upstream.status).json(data);
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.options('/chat', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(204);
+});
+
 // Telegram — хувийн JARVIS
 app.post('/api/telegram', tgHandler);
 
