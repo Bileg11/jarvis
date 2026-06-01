@@ -1,4 +1,4 @@
-// JARVIS OS — Electron Main Process
+// T.H.R.E.E. OS — Electron Main Process
 // Sprint 24: Real Telemetry, Live FX, Live News
 
 'use strict';
@@ -6,8 +6,43 @@
 const { app, BrowserWindow, Menu, globalShortcut, shell, ipcMain, powerMonitor } = require('electron');
 const path  = require('path');
 const os    = require('os');
+const fs    = require('fs');
 const https = require('https');
 const { exec } = require('child_process');
+
+// ── PERSISTENT SETUP FLAG (survives reinstall) ────────────────────
+// Stored in ~/Library/Preferences/ — NOT in app userData
+const SETUP_FLAG_PATH = path.join(os.homedir(), 'Library', 'Preferences', 'three-os-setup.json');
+
+// ── PAGE NAVIGATION (iframe alternative — asar-safe) ─────────────
+ipcMain.handle('load-page', (_, page) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const allowed = ['index.html','chat.html','profile.html','tracker.html','guide.html'];
+  if (!allowed.includes(page)) return;
+  mainWindow.loadFile(page);
+});
+
+// Sprint 30: Open external URL in system browser (calendar export etc.)
+ipcMain.handle('open-external', (_, url) => {
+  if (!url || typeof url !== 'string') return;
+  // Only allow http/https
+  if (!/^https?:\/\//i.test(url)) return;
+  shell.openExternal(url);
+});
+
+ipcMain.handle('get-setup-flag', () => {
+  try {
+    if (!fs.existsSync(SETUP_FLAG_PATH)) return null;
+    return JSON.parse(fs.readFileSync(SETUP_FLAG_PATH, 'utf8'));
+  } catch { return null; }
+});
+
+ipcMain.handle('set-setup-flag', (_, data) => {
+  try {
+    fs.writeFileSync(SETUP_FLAG_PATH, JSON.stringify(data), 'utf8');
+    return true;
+  } catch { return false; }
+});
 
 let mainWindow;
 let _statsInterval = null;
@@ -101,7 +136,7 @@ async function collectAndPush() {
 // ── HTTP HELPER (Node native https, no npm) ──────────────────────
 function _fetchUrl(url, timeoutMs = 8000) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { timeout: timeoutMs, headers: { 'User-Agent': 'JARVIS-OS/24' } }, res => {
+    const req = https.get(url, { timeout: timeoutMs, headers: { 'User-Agent': 'THREE-OS/27' } }, res => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         return _fetchUrl(res.headers.location, timeoutMs).then(resolve).catch(reject);
       }
@@ -114,16 +149,34 @@ function _fetchUrl(url, timeoutMs = 8000) {
   });
 }
 
-// ── FX RATES (Frankfurter — free, no API key) ────────────────────
-// https://api.frankfurter.app/latest?from=USD&to=CNY,MNT
+// ── FX RATES (open.er-api.com — free, MNT-г дэмждэг) ──────────────
+// Primary:  https://open.er-api.com/v6/latest/USD  (MNT дэмждэг)
+// Fallback: https://api.frankfurter.app/latest?from=USD&to=CNY
+//           + hardcoded 1 USD ≈ 3450 MNT (cache-аас)
 ipcMain.handle('fetch-fx', async () => {
   try {
-    const body = await _fetchUrl('https://api.frankfurter.app/latest?from=USD&to=CNY,MNT');
-    const json = JSON.parse(body);
-    // json.rates = { CNY: 7.25, MNT: 3445.0 }
-    const usdCny = json.rates?.CNY   || 0;
-    const usdMnt = json.rates?.MNT   || 0;
-    const cnyMnt = usdMnt / usdCny;
+    // Try primary source first (supports MNT)
+    let usdCny = 0, usdMnt = 0;
+
+    try {
+      const body = await _fetchUrl('https://open.er-api.com/v6/latest/USD');
+      const json = JSON.parse(body);
+      // json.rates = { CNY: 7.25, MNT: 3450, ... }
+      usdCny = json.rates?.CNY || 0;
+      usdMnt = json.rates?.MNT || 0;
+    } catch {
+      // Fallback: Frankfurter for CNY, approximate MNT
+      try {
+        const body = await _fetchUrl('https://api.frankfurter.app/latest?from=USD&to=CNY');
+        const json = JSON.parse(body);
+        usdCny = json.rates?.CNY || 7.25;
+        usdMnt = 3450; // approximate fallback — MongoDB Central Bank rate ~2026
+      } catch {
+        usdCny = 7.25; usdMnt = 3450; // double fallback
+      }
+    }
+
+    const cnyMnt = usdCny > 0 ? usdMnt / usdCny : 0;
     return {
       ok:     true,
       usdCny: usdCny.toFixed(4),
@@ -254,4 +307,69 @@ app.on('window-all-closed', () => {
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+});
+
+// ══════════════════════════════════════════════════════════════════
+// SPRINT 34 — DIRECT TELEGRAM IPC (Cloud Functions шаардахгүй!)
+// Бүх Telegram урсгал Electron main process-аар шууд явна.
+// send: main.js → Telegram Bot API
+// receive: main.js polling getUpdates (30s) → renderer
+// ══════════════════════════════════════════════════════════════════
+
+let _tgBotToken = null; // In-memory cache (also stored in electron-store via setup flag)
+
+// Bot token тохируулах
+ipcMain.handle('telegram-set-token', (_, token) => {
+  if (token && typeof token === 'string' && token.includes(':')) {
+    _tgBotToken = token.trim();
+    return { ok: true };
+  }
+  return { ok: false, error: 'Invalid token format' };
+});
+
+// Telegram руу мессеж илгээх
+ipcMain.handle('telegram-send', async (_, { msg, chatId }) => {
+  if (!_tgBotToken) {
+    // Try loading from setup flag
+    try {
+      const flag = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'setup-flag.json'), 'utf8'));
+      if (flag?.telegram_bot_token) _tgBotToken = flag.telegram_bot_token;
+    } catch {}
+  }
+  if (!_tgBotToken || !chatId) return { ok: false, error: 'No bot token or chat_id' };
+
+  return new Promise((resolve) => {
+    const body = JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'HTML' });
+    const options = {
+      hostname: 'api.telegram.org',
+      path:     `/bot${_tgBotToken}/sendMessage`,
+      method:   'POST',
+      headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+      timeout:  8000,
+    };
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', d => { data += d; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch { resolve({ ok: false, error: 'parse error' }); }
+      });
+    });
+    req.on('error', (e) => resolve({ ok: false, error: e.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ ok: false, error: 'timeout' }); });
+    req.write(body);
+    req.end();
+  });
+});
+
+// getUpdates polling — renderer хүсэх бүрт (30s interval)
+ipcMain.handle('telegram-get-updates', async (_, { offset }) => {
+  if (!_tgBotToken) return { ok: false, result: [] };
+  try {
+    const url = `https://api.telegram.org/bot${_tgBotToken}/getUpdates?offset=${offset || 0}&limit=10&timeout=0`;
+    const body = await _fetchUrl(url, 10000);
+    return JSON.parse(body);
+  } catch (e) {
+    return { ok: false, result: [], error: e.message };
+  }
 });

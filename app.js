@@ -111,10 +111,25 @@ function loadRoutine() {
   return { date: getToday(), water: 0, exercise: false, hanzi: false, read: false, journal: false };
 }
 
+// ── DEBOUNCE UTILITY ─────────────────────────────────────────────
+// Хэрэглэлт: const debouncedFn = _debounce(fn, 1500)
+function _debounce(fn, ms) {
+  let t;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
+
+// Firestore write — 1.5s debounce (дараалсан товчлолд нэг удаа л хадгална)
+const _saveRoutineToFirestore = _debounce((r) => {
+  window.DB?.saveRoutine(r);
+}, 1500);
+
 function saveRoutine(r) {
   localStorage.setItem('jarvis_r', JSON.stringify(r));
   localStorage.setItem('jarvis_r_' + r.date, JSON.stringify(r));
-  window.DB?.saveRoutine(r);
+  _saveRoutineToFirestore(r); // debounced — 1.5s хүлээнэ
 }
 
 // ── STREAKS & SCORE ───────────────────────────────────────────────
@@ -296,6 +311,8 @@ function changeMission(id, delta) {
   if (!m) return;
   m.val = Math.max(0, Math.min(m.max, m.val + delta * (m.step || 1)));
   saveMissions(missions);
+  // Sprint 30: notify context engine that missions were updated (deadlock detection)
+  window._markTodoChanged?.();
 
   const pct = Math.round(m.val / m.max * 100);
   const valEl  = document.getElementById('mv-' + id);
@@ -626,6 +643,185 @@ function observeCards() {
   }, { threshold: 0.08 });
 
   document.querySelectorAll('.card').forEach(el => obs.observe(el));
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SPRINT 30 — MOOD SYSTEM (Layout Presets)
+// Хэрэглэгч дэлгэцийн тохиргоогоо нэрлэж хадгалж, дараа ачаалж чадна
+// ══════════════════════════════════════════════════════════════════
+
+const MOODS_KEY = 'jarvis_moods_v1';
+
+// All saved moods from localStorage
+function _loadMoods() {
+  try {
+    const s = JSON.parse(localStorage.getItem(MOODS_KEY));
+    return s && typeof s === 'object' ? s : {};
+  } catch { return {}; }
+}
+
+// Save current layout state as a named mood
+function _saveMood(name) {
+  if (!name || !name.trim()) return false;
+  name = name.trim();
+  const moods = _loadMoods();
+  moods[name] = {
+    opacity:    typeof _custOpacity !== 'undefined' ? _custOpacity : 85,
+    order:      typeof _custOrder   !== 'undefined' ? [..._custOrder]   : [],
+    visible:    typeof _custVisible !== 'undefined' ? { ..._custVisible } : {},
+    coachLevel: parseInt(localStorage.getItem('jarvis_coach_level') || '2'),
+    savedAt:    new Date().toISOString(),
+  };
+  localStorage.setItem(MOODS_KEY, JSON.stringify(moods));
+  // Sync to Firestore workspace
+  window.DB?.saveWorkspace?.({ moods });
+  return true;
+}
+
+// Delete a saved mood
+function _deleteMood(name) {
+  const moods = _loadMoods();
+  if (!moods[name]) return;
+  delete moods[name];
+  localStorage.setItem(MOODS_KEY, JSON.stringify(moods));
+  window.DB?.saveWorkspace?.({ moods });
+}
+
+// Apply a saved mood by name — restores opacity, order, visibility, coach level
+function _applyMood(name) {
+  const moods = _loadMoods();
+  const m = moods[name];
+  if (!m) return;
+
+  // Opacity
+  if (m.opacity != null && typeof _applyOpacity === 'function') {
+    _applyOpacity(m.opacity);
+    const sl = document.getElementById('cust-opacity-slider');
+    const vl = document.getElementById('cust-opacity-val');
+    if (sl) sl.value = m.opacity;
+    if (vl) vl.textContent = Math.round(m.opacity) + '%';
+  }
+
+  // Widget order + visibility
+  if (m.order && m.order.length && typeof _applyLayoutOrder === 'function') {
+    _custOrder = [...m.order];
+    _applyLayoutOrder(_custOrder);
+  }
+  if (m.visible && typeof _applyWidgetVisibility === 'function') {
+    _custVisible = { ...m.visible };
+    _applyWidgetVisibility();
+  }
+
+  // Coach level
+  if (m.coachLevel != null && typeof setCoachLevel === 'function') {
+    setCoachLevel(m.coachLevel);
+    _renderCustomizerCoach(); // refresh coach UI
+  }
+
+  showToast(`🎨 Mood "${name}" ачааллаа`);
+}
+
+// ── _applyWorkspace ───────────────────────────────────────────────
+// Called by firebase-config.js syncDown() when workspace doc loads
+// Merges remote workspace settings into local state
+window._applyWorkspace = function(ws) {
+  if (!ws) return;
+
+  // Coach level from workspace
+  if (ws.coach_level != null && typeof setCoachLevel === 'function') {
+    setCoachLevel(ws.coach_level);
+  }
+
+  // Moods from workspace (merge: remote wins for new moods, local wins for newer)
+  if (ws.moods && typeof ws.moods === 'object') {
+    const localMoods = _loadMoods();
+    const merged = { ...localMoods };
+    Object.entries(ws.moods).forEach(([name, data]) => {
+      const localTs  = localMoods[name]?.savedAt || '';
+      const remoteTs = data?.savedAt || '';
+      if (!localMoods[name] || remoteTs > localTs) {
+        merged[name] = data;
+      }
+    });
+    localStorage.setItem(MOODS_KEY, JSON.stringify(merged));
+  }
+
+  // Opacity
+  if (ws.opacity != null && typeof _applyOpacity === 'function') {
+    _applyOpacity(ws.opacity);
+  }
+
+  // Layout order
+  if (ws.layoutOrder && ws.layoutOrder.length && typeof _applyLayoutOrder === 'function') {
+    _custOrder = [...ws.layoutOrder];
+    _applyLayoutOrder(_custOrder);
+  }
+
+  // Layout visibility
+  if (ws.layoutVis && typeof _applyWidgetVisibility === 'function') {
+    _custVisible = { ...ws.layoutVis };
+    _applyWidgetVisibility();
+  }
+};
+
+// Render coach level section inside customizer panel (called on open + after mood apply)
+function _renderCustomizerCoach() {
+  const el = document.getElementById('cust-coach-btns');
+  if (!el) return;
+  const cur = parseInt(localStorage.getItem('jarvis_coach_level') || '2');
+  const profiles = window.COACH_PROFILES || {
+    1: { name: 'Зөөлөн' },
+    2: { name: 'Тэнцвэртэй' },
+    3: { name: 'Чанд' },
+    4: { name: 'Goggins' },
+  };
+  el.innerHTML = [1,2,3,4].map(lvl => {
+    const active = lvl === cur ? ' coach-btn-active' : '';
+    const icons  = ['🌿','⚡','🔥','💀'];
+    return `<button class="coach-lvl-btn${active}" onclick="_setCoachUI(${lvl})" title="${profiles[lvl]?.name}">
+      ${icons[lvl-1]} ${lvl}
+    </button>`;
+  }).join('');
+}
+
+function _setCoachUI(level) {
+  if (typeof setCoachLevel === 'function') setCoachLevel(level);
+  _renderCustomizerCoach();
+  const profiles = window.COACH_PROFILES || {};
+  const names = { 1:'Зөөлөн', 2:'Тэнцвэртэй', 3:'Чанд', 4:'Goggins' };
+  showToast(`💪 Coach: ${profiles[level]?.name || names[level] || 'Level ' + level}`);
+  // Sprint 33: Restart ACE engine with new coach level
+  window._aceReinit?.();
+}
+
+// Render mood list section inside customizer panel
+function _renderCustomizerMoods() {
+  const listEl = document.getElementById('cust-mood-list');
+  if (!listEl) return;
+  const moods = _loadMoods();
+  const names  = Object.keys(moods);
+  if (!names.length) {
+    listEl.innerHTML = '<div style="color:rgba(0,229,255,.4);font-size:10px;padding:4px 0">Хадгалагдсан mood байхгүй</div>';
+    return;
+  }
+  // Use data-name to avoid quote injection in onclick
+  listEl.innerHTML = names.map((n, i) => `
+    <div class="cust-mood-row">
+      <button class="cust-mood-apply" data-idx="${i}">▶ ${n.replace(/</g,'&lt;')}</button>
+      <button class="cust-mood-del"   data-idx="${i}">✕</button>
+    </div>`).join('');
+
+  // Attach click handlers referencing names by index (safe from injection)
+  listEl.querySelectorAll('.cust-mood-apply').forEach((btn, i) => {
+    btn.addEventListener('click', () => _applyMood(names[i]));
+  });
+  listEl.querySelectorAll('.cust-mood-del').forEach((btn, i) => {
+    btn.addEventListener('click', () => {
+      _deleteMood(names[i]);
+      _renderCustomizerMoods();
+      showToast(`🗑 Mood "${names[i]}" устгагдлаа`);
+    });
+  });
 }
 
 // ── INIT ──────────────────────────────────────────────────────────

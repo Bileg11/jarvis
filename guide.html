@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T.H.R.E.E. OS — Гарын авлага</title>
+<style>
+:root {
+  --bg:      #000308;
+  --bg2:     #040a14;
+  --accent:  #00e5ff;
+  --accent2: #00b4cc;
+  --gold:    #d4af37;
+  --green:   #00ff88;
+  --red:     #ff3c50;
+  --text:    #c8dcea;
+  --text2:   rgba(180,210,230,.55);
+  --border:  rgba(0,229,255,.12);
+  --glass:   rgba(0,10,28,.82);
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; }
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+  font-size:15px; line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── GRID BACKGROUND ── */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.015) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,255,.015) 1px,transparent 1px);
+  background-size:48px 48px;
+}
+
+/* ── TOP BAR ── */
+.top-bar {
+  position:sticky; top:0; z-index:100;
+  background:rgba(0,3,8,.95);
+  border-bottom:1px solid var(--border);
+  backdrop-filter:blur(12px);
+  padding:0 24px;
+  display:flex; align-items:center; gap:16px; height:52px;
+}
+.logo { font-family:'Courier New',monospace; font-size:11px; color:var(--accent); letter-spacing:.25em; font-weight:700; }
+.logo span { color:var(--text2); font-weight:400; }
+.top-badge { background:rgba(0,229,255,.08); border:1px solid var(--border); border-radius:3px; padding:2px 8px; font-size:9px; color:var(--accent2); letter-spacing:.12em; }
+
+/* ── SIDEBAR ── */
+.layout { display:flex; position:relative; }
+.sidebar {
+  width:240px; flex-shrink:0;
+  position:sticky; top:52px; height:calc(100vh - 52px);
+  overflow-y:auto; padding:24px 0;
+  border-right:1px solid var(--border);
+  background:rgba(0,3,8,.6);
+}
+.sidebar::-webkit-scrollbar { width:3px; }
+.sidebar::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+.sidebar-section { padding:0 16px 8px; font-size:9px; letter-spacing:.2em; color:var(--text2); margin-top:16px; margin-bottom:4px; }
+.sidebar a {
+  display:block; padding:7px 20px;
+  font-size:12px; color:var(--text2);
+  text-decoration:none; border-left:2px solid transparent;
+  transition:all .15s;
+}
+.sidebar a:hover, .sidebar a.active { color:var(--accent); border-left-color:var(--accent); background:rgba(0,229,255,.04); }
+
+/* ── MAIN CONTENT ── */
+.main { flex:1; min-width:0; padding:40px 48px 80px; max-width:860px; position:relative; z-index:1; }
+
+/* ── HERO ── */
+.hero {
+  text-align:center; padding:60px 20px 48px;
+  border-bottom:1px solid var(--border); margin-bottom:48px;
+}
+.hero-badge { display:inline-block; background:rgba(0,229,255,.08); border:1px solid rgba(0,229,255,.2); border-radius:20px; padding:5px 16px; font-size:10px; letter-spacing:.2em; color:var(--accent); margin-bottom:20px; }
+.hero h1 { font-size:36px; font-weight:700; color:#fff; letter-spacing:.04em; margin-bottom:10px; }
+.hero h1 span { color:var(--accent); }
+.hero p { font-size:14px; color:var(--text2); max-width:520px; margin:0 auto; line-height:1.8; }
+.hero-platforms { display:flex; gap:12px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
+.platform-badge {
+  display:flex; align-items:center; gap:8px;
+  background:var(--glass); border:1px solid var(--border);
+  border-radius:8px; padding:8px 16px; font-size:12px;
+}
+.platform-badge .icon { font-size:18px; }
+
+/* ── SECTIONS ── */
+.section { margin-bottom:56px; scroll-margin-top:72px; }
+.section-label { font-size:9px; letter-spacing:.25em; color:var(--accent2); margin-bottom:10px; }
+.section h2 { font-size:22px; font-weight:700; color:#fff; margin-bottom:6px; }
+.section h3 { font-size:16px; font-weight:600; color:var(--accent); margin:28px 0 12px; }
+.section h4 { font-size:13px; font-weight:600; color:var(--gold); margin:20px 0 8px; letter-spacing:.05em; }
+.divider { height:1px; background:var(--border); margin:32px 0; }
+
+/* ── PLATFORM TABS ── */
+.tabs { display:flex; gap:4px; margin-bottom:20px; flex-wrap:wrap; }
+.tab-btn {
+  padding:7px 16px; border:1px solid var(--border); border-radius:4px;
+  background:transparent; color:var(--text2); font-size:12px; cursor:pointer;
+  transition:all .15s; letter-spacing:.05em;
+}
+.tab-btn.active { background:rgba(0,229,255,.1); border-color:var(--accent); color:var(--accent); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* ── STEPS ── */
+.steps { counter-reset:step; }
+.step {
+  display:flex; gap:16px; margin-bottom:24px; align-items:flex-start;
+}
+.step-num {
+  counter-increment:step;
+  flex-shrink:0; width:32px; height:32px;
+  background:rgba(0,229,255,.1); border:1px solid rgba(0,229,255,.25);
+  border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:700; color:var(--accent); font-family:'Courier New',monospace;
+}
+.step-num::after { content:counter(step); }
+.step-body h4 { margin-top:0; }
+.step-body p { color:var(--text2); font-size:13px; margin-top:4px; }
+
+/* ── CALLOUT BOXES ── */
+.callout {
+  border-radius:8px; padding:14px 18px; margin:16px 0;
+  font-size:13px; line-height:1.7;
+  display:flex; gap:12px; align-items:flex-start;
+}
+.callout-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+.callout.info  { background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.15); }
+.callout.warn  { background:rgba(255,140,0,.06);  border:1px solid rgba(255,140,0,.2); }
+.callout.ok    { background:rgba(0,255,136,.06);  border:1px solid rgba(0,255,136,.2); }
+.callout.tip   { background:rgba(212,175,55,.06); border:1px solid rgba(212,175,55,.2); }
+
+/* ── CODE BLOCKS ── */
+.code-block {
+  background:#020c18; border:1px solid rgba(0,229,255,.12);
+  border-radius:6px; padding:14px 18px; margin:12px 0;
+  font-family:'Courier New',monospace; font-size:13px;
+  color:#7dd3fc; overflow-x:auto; line-height:1.6;
+}
+.code-block .cmd  { color:var(--accent); }
+.code-block .cmt  { color:rgba(0,229,255,.35); }
+.code-block .ok   { color:var(--green); }
+.code-block .warn { color:#ff8c00; }
+
+/* ── COMMAND TABLE ── */
+.cmd-table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
+.cmd-table th {
+  text-align:left; padding:8px 14px;
+  background:rgba(0,229,255,.06); border-bottom:1px solid var(--border);
+  font-size:10px; letter-spacing:.12em; color:var(--accent2); font-weight:600;
+}
+.cmd-table td { padding:8px 14px; border-bottom:1px solid rgba(0,229,255,.05); vertical-align:top; }
+.cmd-table tr:hover td { background:rgba(0,229,255,.03); }
+.cmd-table td:first-child { font-family:'Courier New',monospace; color:var(--accent); white-space:nowrap; }
+.cmd-table td:last-child { color:var(--text2); }
+
+/* ── FEATURE CARDS ── */
+.feature-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; margin:16px 0; }
+.feature-card {
+  background:var(--glass); border:1px solid var(--border);
+  border-radius:8px; padding:16px;
+  transition:border-color .2s;
+}
+.feature-card:hover { border-color:rgba(0,229,255,.3); }
+.feature-card .icon { font-size:24px; margin-bottom:8px; }
+.feature-card h4 { margin:0 0 4px; color:var(--accent); font-size:13px; }
+.feature-card p  { color:var(--text2); font-size:11px; line-height:1.6; }
+
+/* ── SCREENSHOT PLACEHOLDER ── */
+.screen-mock {
+  background:#020c18; border:1px solid var(--border);
+  border-radius:10px; padding:20px;
+  margin:16px 0; text-align:center;
+  font-family:'Courier New',monospace; font-size:11px;
+  color:rgba(0,229,255,.4); line-height:2;
+}
+.screen-mock .bar { background:rgba(0,229,255,.05); border-radius:4px; padding:6px 12px; margin-bottom:12px; display:flex; gap:8px; align-items:center; }
+.screen-mock .dot { width:10px; height:10px; border-radius:50%; }
+.screen-mock .dot.r { background:#ff5f57; }
+.screen-mock .dot.y { background:#ffbd2e; }
+.screen-mock .dot.g { background:#28c840; }
+
+/* ── FAQ ── */
+.faq-item { border-bottom:1px solid var(--border); }
+.faq-q {
+  padding:14px 0; cursor:pointer; display:flex; justify-content:space-between;
+  align-items:center; font-size:14px; color:var(--text); user-select:none;
+}
+.faq-q:hover { color:var(--accent); }
+.faq-q .arrow { font-size:10px; color:var(--text2); transition:transform .2s; }
+.faq-item.open .arrow { transform:rotate(90deg); }
+.faq-a { display:none; padding:0 0 14px; font-size:13px; color:var(--text2); line-height:1.8; }
+.faq-item.open .faq-a { display:block; }
+
+/* ── KEYBOARD SHORTCUT ── */
+kbd {
+  display:inline-block; background:rgba(0,229,255,.08);
+  border:1px solid rgba(0,229,255,.2); border-bottom-width:2px;
+  border-radius:4px; padding:2px 8px;
+  font-family:'Courier New',monospace; font-size:11px; color:var(--accent);
+}
+
+/* ── TOC INDICATOR ── */
+.toc-mobile { display:none; }
+
+/* ── RESPONSIVE ── */
+@media (max-width:768px) {
+  .sidebar { display:none; }
+  .main { padding:24px 20px 60px; }
+  .hero h1 { font-size:26px; }
+  .hero { padding:40px 16px 32px; }
+  .toc-mobile { display:block; background:var(--glass); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:28px; }
+  .toc-mobile summary { cursor:pointer; color:var(--accent); font-size:13px; }
+  .toc-mobile a { display:block; padding:5px 0; font-size:12px; color:var(--text2); text-decoration:none; }
+  .feature-grid { grid-template-columns:1fr 1fr; }
+}
+@media (max-width:480px) {
+  .feature-grid { grid-template-columns:1fr; }
+  .cmd-table td:first-child { font-size:11px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <!-- Sprint 32: Universal Nav Mesh -->
+  <div style="display:flex;gap:4px;align-items:center">
+    <button id="back-btn" onclick="goBack()" style="background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.2);border-radius:2px;color:rgba(0,229,255,.6);font-size:9px;letter-spacing:.08em;padding:3px 8px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;" onmouseover="this.style.borderColor='#00e5ff';this.style.color='#00e5ff';" onmouseout="this.style.borderColor='rgba(0,229,255,.2)';this.style.color='rgba(0,229,255,.6)';">← BACK</button>
+    <button onclick="goHome()" style="background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.2);border-radius:2px;color:rgba(0,255,136,.6);font-size:9px;letter-spacing:.08em;padding:3px 8px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;" onmouseover="this.style.borderColor='#00ff88';this.style.color='#00ff88';" onmouseout="this.style.borderColor='rgba(0,255,136,.2)';this.style.color='rgba(0,255,136,.6)';">🏠 HOME</button>
+  </div>
+  <div class="logo">T.H.R.E.E. <span>OS</span></div>
+  <div class="top-badge">ГАРЫН АВЛАГА</div>
+  <div class="top-badge" style="margin-left:auto;color:var(--text2);">v28.0</div>
+</div>
+
+<div class="layout">
+
+<!-- ── SIDEBAR ── -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-section">ЭХЛЭЛ</div>
+  <a href="#what-is">T.H.R.E.E. OS гэж юу вэ?</a>
+  <a href="#what-is">Юу хийж чадах вэ?</a>
+
+  <div class="sidebar-section">СУУЛГАХ</div>
+  <a href="#mac">🍎 Mac дээр суулгах</a>
+  <a href="#windows">🪟 Windows дээр суулгах</a>
+  <a href="#mobile">📱 Утас дээр ашиглах</a>
+
+  <div class="sidebar-section">ЭХНИЙ ТОХИРУУЛГА</div>
+  <a href="#setup">Эхний удаа тохируулах</a>
+  <a href="#callsign">CallSign, goal тохируулах</a>
+
+  <div class="sidebar-section">ХЭРЭГЛЭЛТ</div>
+  <a href="#terminal">Терминал — AI-тай ярих</a>
+  <a href="#routine">Routine tracker</a>
+  <a href="#hsk">HSK / Хятад хэл</a>
+
+  <div class="sidebar-section">ДИЗАЙН</div>
+  <a href="#themes">Өнгө, theme солих</a>
+  <a href="#hyper-custom">⚙ Hyper-Customization</a>
+  <a href="#layouts">Layout солих</a>
+  <a href="#widgets">Widget-үүд</a>
+  <a href="#drag">Drag mode</a>
+  <a href="#voice">Дуу хоолойн оролт</a>
+
+  <div class="sidebar-section">КОМАНДУУД</div>
+  <a href="#commands">Бүх командын жагсаалт</a>
+
+  <div class="sidebar-section">ДЭМЖЛЭГ</div>
+  <a href="#faq">Түгээмэл асуултууд</a>
+  <a href="#upgrade">Pro tier</a>
+</nav>
+
+<!-- ── MAIN ── -->
+<main class="main">
+
+<!-- MOBILE TOC -->
+<details class="toc-mobile">
+  <summary>📋 Агуулга харах</summary>
+  <a href="#what-is">T.H.R.E.E. OS гэж юу вэ?</a>
+  <a href="#mac">Mac суулгах</a>
+  <a href="#windows">Windows суулгах</a>
+  <a href="#mobile">Утас дээр</a>
+  <a href="#setup">Эхний тохируулга</a>
+  <a href="#terminal">AI-тай ярих</a>
+  <a href="#routine">Routine tracker</a>
+  <a href="#hsk">HSK / Хятад хэл</a>
+  <a href="#themes">Theme солих</a>
+  <a href="#hyper-custom">⚙ Hyper-Customization</a>
+  <a href="#commands">Бүх командууд</a>
+  <a href="#faq">Түгээмэл асуулт</a>
+</details>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">OFFICIAL DOCUMENTATION</div>
+  <h1><span>T.H.R.E.E.</span> OS — Гарын авлага</h1>
+  <p>Tactical High-performance & Real-time Efficiency Engine.<br>
+  Энэхүү гарын авлага компьютерийн мэдлэг огт шаардахгүй — аппыг татахаас эхлэн бүх функцийг хэрхэн ашиглахыг алхам алхмаар тайлбарлана.</p>
+  <div class="hero-platforms">
+    <div class="platform-badge"><span class="icon">🍎</span> macOS 12+</div>
+    <div class="platform-badge"><span class="icon">🪟</span> Windows 10/11</div>
+    <div class="platform-badge"><span class="icon">📱</span> Утас (Browser)</div>
+  </div>
+</div>
+
+<!-- ═══════════════ WHAT IS ═══════════════ -->
+<div class="section" id="what-is">
+  <div class="section-label">ТАНИЛЦУУЛГА</div>
+  <h2>T.H.R.E.E. OS гэж юу вэ?</h2>
+  <p>T.H.R.E.E. OS бол чиний <strong style="color:#fff">хувийн "Үйлдлийн систем"</strong> — апп дотроо дөрвөн том зүйлийг нэгэн дороос хийнэ:</p>
+
+  <div class="feature-grid" style="margin-top:20px;">
+    <div class="feature-card">
+      <div class="icon">🤖</div>
+      <h4>A.C.E. AI туслах</h4>
+      <p>Монгол хэлээр ярьдаг, чамайг мэддэг хувийн AI. Хуваарь, зөвлөгөө, мэдлэг — бүгдийг хариулна.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📋</div>
+      <h4>Routine Tracker</h4>
+      <p>Дасгал, ус, унших, journal — өдөр бүрийн дадлыг хянана. Score тооцдог.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🈳</div>
+      <h4>HSK / Хятад хэл</h4>
+      <p>Хятад үгийн сан, streak харах, Telegram-аас sync хийх боломж.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">⚡</div>
+      <h4>Mission Matrix</h4>
+      <p>Ажлын картуудыг Kanban хэлбэрээр зохицуулна. TODO → Done хүртэл.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📰</div>
+      <h4>Live Intelligence</h4>
+      <p>Технологийн мэдээ, валютын ханш (USD/MNT/CNY) шууд харагдана.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🎨</div>
+      <h4>Hyper-Customization</h4>
+      <p>Neural Boot анимаци, 5 theme-тэй Mini-Layout Preview, Global Font Scaling, чатны Floating input — бүхий л дизайн тохируулж болно.</p>
+    </div>
+    <div class="feature-card">
+      <div class="icon">💬</div>
+      <h4>Telegram Coach</h4>
+      <p>@ThreeOSBot 2 алхмаар холбогдоно. Coach Level 1–4 (Goggins!), өглөөний briefing, milestone мэдэгдэл утсаараа.</p>
+    </div>
+  </div>
+
+  <div class="callout info" style="margin-top:20px;">
+    <span class="callout-icon">💡</span>
+    <div><strong>Ингэж бод:</strong> Notion + ChatGPT + Todolist + Streak app + Telegram Coach — бүгдийг нэг апп болгосон систем. Монголоор ажиллана.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ MAC ═══════════════ -->
+<div class="section" id="mac">
+  <div class="section-label">СУУЛГАХ — MAC</div>
+  <h2>🍎 Mac дээр суулгах</h2>
+  <p>macOS Monterey (12) болон түүнээс дээш хувилбарт ажиллана.</p>
+
+  <h3>Алхам алхмаар</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>DMG файл татаж авах</h4>
+        <p>GitHub Releases хуудаснаас <strong>JARVIS OS-1.0.0.dmg</strong> файлыг татна уу.<br>
+        Хоёр файл харагдах бол <kbd>x64</kbd> гэж бичигдсэн файлыг сонгоно уу.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>DMG файлыг нээх</h4>
+        <p>Татаж авсан файл дээр <strong>давхар товшиж</strong> нээнэ. Цонх нээгдэнэ.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Applications руу чирэх</h4>
+        <p>Нээгдсэн цонхонд <strong>JARVIS OS дүрсийг чирж Applications хавтас руу тавина</strong>. Ийм зураг харагдана:</p>
+        <div class="screen-mock">
+          [ JARVIS OS.app ]  →→→  [ Applications ]
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Аппыг нээх</h4>
+        <p>Applications хавтасаас <strong>JARVIS OS</strong>-ийг давхар товшиж нээнэ.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div>
+      <strong>"Malicious software" эсвэл "Apple cannot verify" гэсэн анхааруулга гарвал:</strong><br>
+      1. <strong>System Settings</strong> (System Preferences) нээнэ<br>
+      2. <strong>Privacy & Security</strong> хэсэгт орно<br>
+      3. Доош гүйлгэхэд <strong>"JARVIS OS was blocked"</strong> гэсэн мессеж харагдана<br>
+      4. <strong>"Open Anyway"</strong> товчийг дарна<br>
+      5. Дахин апп нээхэд нормалаар ажиллана ✓
+    </div>
+  </div>
+
+  <div class="callout ok">
+    <span class="callout-icon">✓</span>
+    <div>Дараа дараагийн удаа нээхэд энэ анхааруулга <strong>гарахгүй</strong>. Нэг удаа л зөвшөөрвөл хангалттай.</div>
+  </div>
+
+  <h3>Гарын товчлол (Mac)</h3>
+  <table class="cmd-table">
+    <tr><th>Товчлол</th><th>Үйлдэл</th></tr>
+    <tr><td><kbd>⌘ Cmd</kbd> + <kbd>Shift</kbd> + <kbd>J</kbd></td><td>Апп нуух / дахин харуулах</td></tr>
+    <tr><td><kbd>⌘ Cmd</kbd> + <kbd>W</kbd></td><td>Цонх хаах (апп ажиллаж хэвээр)</td></tr>
+    <tr><td><kbd>⌘ Cmd</kbd> + <kbd>Q</kbd></td><td>Апп бүрэн гаргах</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════ WINDOWS ═══════════════ -->
+<div class="section" id="windows">
+  <div class="section-label">СУУЛГАХ — WINDOWS</div>
+  <h2>🪟 Windows дээр суулгах</h2>
+
+  <div class="callout info">
+    <span class="callout-icon">🔔</span>
+    <div>Windows хувилбар одоогоор <strong>бета хувилбартай</strong>. Mac хувилбараас арай бага функц дэмжиж болно.</div>
+  </div>
+
+  <h3>Алхам алхмаар</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Setup файл татаж авах</h4>
+        <p>GitHub Releases хуудаснаас <strong>JARVIS OS Setup.exe</strong> файлыг татна уу.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Setup файлыг ажиллуулах</h4>
+        <p>Татаж авсан <strong>.exe</strong> файл дээр давхар товшиж нээнэ.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Windows Defender анхааруулга</h4>
+        <p>"Windows protected your PC" гэсэн цэнхэр дэлгэц гарвал:</p>
+        <div class="callout warn" style="margin:8px 0 0;">
+          <span class="callout-icon">🛡️</span>
+          <div>
+            <strong>"More info"</strong> → <strong>"Run anyway"</strong> дарна.<br>
+            Энэ нь аюулгүй — апп certificate-ийн асуудлаас иймэрхүү харагдаж байгаа юм.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Суулгалт дуусгах</h4>
+        <p><strong>"Install"</strong> → <strong>"Finish"</strong> дарна. Desktop-д shortcut үүснэ.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MOBILE ═══════════════ -->
+<div class="section" id="mobile">
+  <div class="section-label">СУУЛГАХ — УТАС</div>
+  <h2>📱 Утас дээр ашиглах</h2>
+  <p>Утас дээр <strong>суулгах зүйлгүй</strong> — вэб хөтчөөрөө шууд нэвтэрнэ. PWA горимд ажилладаг.</p>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(this,'ios')">🍎 iPhone (Safari)</button>
+    <button class="tab-btn" onclick="switchTab(this,'android')">🤖 Android (Chrome)</button>
+  </div>
+
+  <div class="tab-content active" id="ios">
+    <div class="steps">
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h4>Safari-д нээх</h4>
+          <p>iPhone-ийн <strong>Safari</strong> хөтчийг нээж T.H.R.E.E. OS-ийн вэб хаягийг оруулна.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h4>Share товч дарах</h4>
+          <p>Доод хэсгийн <strong>⬆️ Share</strong> товчийг дарна.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h4>"Add to Home Screen" сонгох</h4>
+          <p>Гарч ирсэн цэснээс <strong>"Add to Home Screen"</strong>-ийг олж дарна.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h4>Нэрийг батлаж нэмэх</h4>
+          <p><strong>"Add"</strong> дарна. Home Screen дээр T.H.R.E.E. OS-ийн дүрс нэмэгдэнэ.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-content" id="android">
+    <div class="steps">
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h4>Chrome-д нээх</h4>
+          <p>Android-ийн <strong>Chrome</strong> хөтчийг нээж T.H.R.E.E. OS-ийн хаягийг оруулна.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h4>⋮ цэс нээх</h4>
+          <p>Баруун дээд булангийн <strong>⋮ (гурван цэг)</strong> товчийг дарна.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h4>"Add to Home screen" сонгох</h4>
+          <p>Цэснээс <strong>"Add to Home screen"</strong> олж дарна.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"></div>
+        <div class="step-body">
+          <h4>Нэмэх</h4>
+          <p><strong>"Add"</strong> дарна. Home Screen дээр гарч ирнэ.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <span class="callout-icon">⭐</span>
+    <div>Home Screen-д нэмсний дараа <strong>бүтэн дэлгэцэн дээр</strong> (fullscreen) нэг апп шиг ажиллана. Хөтчийн toolbar харагдахгүй болно.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ SETUP ═══════════════ -->
+<div class="section" id="setup">
+  <div class="section-label">ЭХНИЙ ТОХИРУУЛГА</div>
+  <h2>Эхний удаа тохируулах</h2>
+  <p>Аппыг анх нээхэд <strong>Neural Boot Animation</strong> эхэлж, дараа нь <strong>5 алхмат тохируулалтын wizard</strong> гарна. Нэг ч алхмыг орхихгүй хийвэл систем бүрэн тохируулагдана.</p>
+
+  <div class="callout info" style="margin-bottom:24px">
+    <span class="callout-icon">🧠</span>
+    <div>
+      <strong>Neural Boot Animation</strong><br>
+      Activation Key оруулсаны дараа систем шууд wizard рүү орохгүй — дэлгэц дүүрэн <strong>мэдрэлийн сүлжээ</strong> шиг кодын урсгалтай анимаци ажиллана. Дата урсгалууд тулгарч, цөм (Arc Reactor) угсрагдана. Хэрэв хурдасгахыг хүсвэл баруун доод буланд байрлах <strong>SKIP ▶</strong> товч дарна.
+    </div>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Activation Key оруулах → Neural Boot</h4>
+        <p>Хүлээн авсан нэвтрэх түлхүүрийг оруулна. Формат: <code style="color:var(--accent);font-family:monospace">STARK-JARVIS-XXXX</code></p>
+        <p style="margin-top:6px;color:var(--text2);font-size:13px">✓ Key баталгаажвал <strong>~3 секундын Neural Boot Animation</strong> эхэлнэ. Дэлгэц дүүрэн 70+ нод/хэлхээтэй мэдрэлийн сүлжээ зурагдаж, Arc Reactor цөм дэлгэцийн төв дунд гарч ирнэ. Дуусмагц Wizard руу автоматаар шилжинэ.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Профайл тохируулах</h4>
+        <p><strong>Нэрээ</strong> болон <strong>CallSign</strong> (хочоо) оруулна. CallSign нь систем таг дуудах нэр — "Boss", өөрийн нэр эсвэл дурын хочоо оруулж болно.<br>
+        <strong>Зорилгоо</strong> бичнэ үү (жишээ: "HSK 4 шалгалт өгөх", "Фриланс бизнес хийх").</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Theme сонгох — Live Preview</h4>
+        <p>5 өнгөний сэдвээс нэгийг сонгоно. Дараа нь хүссэн үедээ өөрчилж болно.</p>
+        <p style="margin-top:6px;color:var(--text2);font-size:13px">✦ <strong>Шинэ:</strong> Тема карт дээр hover хийхэд тухайн темагаар апп-ын layout ямар харагдахыг харуулсан <strong>Mini-Layout Live Preview</strong> (top bar, left/center/right panel) нэн даруй гарна. Тема сонгосны дараа арын фон тухайн өнгийн glow-оор шинэчлэгдэнэ.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>AI Token оруулах (заавал биш)</h4>
+        <p>AI A.C.E.-тэй ярихын тулд GitHub Models token эсвэл Proxy URL оруулна. Байхгүй бол "SKIP" дарна уу — дараа Profile хуудаснаас нэмж болно.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Telegram Sync — 2 алхам (заавал биш)</h4>
+        <p style="margin-bottom:8px">Telegram ботоо холбовол утсаасаа Coach мэдэгдэл хүлээн авах, HSK drill хийх боломжтой болно.</p>
+        <div style="background:rgba(0,136,204,.07);border:1px solid rgba(0,136,204,.18);border-radius:6px;padding:12px 14px;font-size:13px;line-height:1.8">
+          <strong style="color:rgba(100,180,255,.9);font-size:10px;letter-spacing:.12em">АЛХАМ 1:</strong><br>
+          Telegram нээж <strong>@ThreeOSBot</strong>-г хайгаад <strong>/start</strong> дарна уу<br><br>
+          <strong style="color:rgba(100,180,255,.9);font-size:10px;letter-spacing:.12em">АЛХАМ 2:</strong><br>
+          Апп-ын дэлгэц дээр харагдах холболтын кодыг (жишээ: <code style="color:var(--gold);font-family:monospace">THREE-AB12CD34</code>) хуулж бот руу илгэгдэнэ<br><br>
+          <strong style="color:var(--green);font-size:10px;letter-spacing:.12em">АВТОМАТ ХОЛБОЛТ:</strong><br>
+          Бот код хүлээн авмагц систем автоматаар таньж, дэлгэцийн статус <span style="color:var(--green)">"✓ CONNECTED — Telegram linked!"</span> болж шинэчлэгдэнэ
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout ok">
+    <span class="callout-icon">🚀</span>
+    <div>Тохируулалт дуусмагц <strong>First Mission</strong> гарна — нэг Хятад үг цээжлэх жижиг даалгавар. Хариулаад систем boot болно!</div>
+  </div>
+</div>
+
+<!-- ═══════════════ CALLSIGN ═══════════════ -->
+<div class="section" id="callsign">
+  <div class="section-label">ТОХИРУУЛГА</div>
+  <h2>CallSign болон Зорилго тохируулах</h2>
+  <p>Setup дуусснаас хойш ч Profile хуудаснаас CallSign, нэр, зорилгоо өөрчилж болно.</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">🏷️</span>
+    <div>
+      <strong>CallSign гэж юу вэ?</strong><br>
+      Систем таг дуудах нэр. "Boss", "Stark", "Bileg" — хүссэн зүйлээ бичнэ.<br>
+      Terminal-д харагдах prefix болон AI-ийн мэндчилгээнд ашиглагдана.
+    </div>
+  </div>
+
+  <p>Terminal-д шууд <strong>A.C.E.-аас хүсэх</strong> ч болно:</p>
+  <div class="code-block">
+    <span class="cmd">Bileg@THREE_OS:~$</span> Миний callSign-г "Stark" болго<br>
+    <span class="ok">A.C.E.:</span> CallSign шинэчлэгдлээ. Одооноос "Stark" гэж хандана.
+  </div>
+</div>
+
+<!-- ═══════════════ TERMINAL ═══════════════ -->
+<div class="section" id="terminal">
+  <div class="section-label">ГҮЙЦЭТГЭЛТ</div>
+  <h2>Терминал — A.C.E. AI-тай ярих</h2>
+  <p>Дэлгэцийн доод хэсэгт байрлах <strong>терминал</strong> нь системийн гол интерфэйс. Энд текст бичиж <kbd>Enter</kbd> дарахад A.C.E. хариулна.</p>
+
+  <div class="screen-mock">
+    <div class="bar">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <span style="margin-left:8px;color:rgba(0,229,255,.4)">TERMINAL — A.C.E. INTERFACE</span>
+    </div>
+    <div style="text-align:left;padding:8px">
+      <span style="color:var(--accent)">ONLINE</span> &nbsp; <span style="color:var(--green)">AI READY</span> &nbsp; <span style="color:#ff8c00">SHANGHAI</span><br><br>
+      <span style="color:rgba(0,229,255,.6)">&gt;&gt; T.H.R.E.E. OS v28.0 — A.C.E. CORE ACTIVE</span><br>
+      <span style="color:rgba(0,229,255,.6)">&gt;&gt; Welcome back, Boss. A.C.E. is online.</span><br><br>
+      <span style="color:var(--text2)">Boss@THREE_OS:~$ </span><span style="color:#fff">Өнөөдөр юу хийх вэ?</span><br>
+      <span style="color:rgba(0,229,255,.35)">[A.C.E.]</span> <span style="color:var(--text2)">Boss, өнөөдрийн score 40/100 байна. Дасгал болон 汉字 хийгдэж...</span>
+    </div>
+  </div>
+
+  <h3>Хэрхэн ашиглах</h3>
+  <ul style="color:var(--text2);font-size:13px;line-height:2;padding-left:20px;">
+    <li>Терминалын доод мөрөнд курсор байна — шууд бичиж эхэлнэ</li>
+    <li><kbd>Enter</kbd> — мессеж илгээх</li>
+    <li><kbd>/</kbd> — команд гэдгийг заана (жишээ: <code style="color:var(--accent);font-family:monospace">/theme</code>)</li>
+    <li><strong>Монгол хэлээр</strong> чөлөөтэй яриг — A.C.E. монголоор хариулна</li>
+  </ul>
+
+  <h3>A.C.E.-тэй ямар зүйл ярьж болох вэ?</h3>
+  <table class="cmd-table">
+    <tr><th>Жишээ хүсэлт</th><th>A.C.E. юу хийх вэ</th></tr>
+    <tr><td>"Маргааш хуваарь зохио"</td><td>Цаг бүрт хуваарилсан timeline карт гаргана</td></tr>
+    <tr><td>"今天 гэдэг юу вэ?"</td><td>Пиньин, утга, жишээ өгүүлбэр монголоор өгнө</td></tr>
+    <tr><td>"Ус уусаа бүртгэ"</td><td>Routine-д ус нэмнэ</td></tr>
+    <tr><td>"Өнөөдрийн score хэд вэ?"</td><td>Progress карт харуулна</td></tr>
+    <tr><td>"Шинэ mission нэм: LFS дизайн"</td><td>Kanban-д шинэ карт нэмнэ</td></tr>
+    <tr><td>"Улаан өнгө болго"</td><td>Системийн өнгө шинэчлэгдэнэ</td></tr>
+    <tr><td>"HSK Study layout болго"</td><td>Layout 2 идэвхждэг</td></tr>
+  </table>
+
+  <div class="callout info">
+    <span class="callout-icon">🎙️</span>
+    <div>
+      <strong>Дуугаар ярих:</strong> Терминалын баруун талын 🎙 товч дарж Монгол хэлээр ярьж оролт хийж болно. Ярьж дуусмагц автоматаар илгэгдэнэ.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ROUTINE ═══════════════ -->
+<div class="section" id="routine">
+  <div class="section-label">ФУНКЦ</div>
+  <h2>📋 Routine Tracker</h2>
+  <p>Дэлгэцийн зүүн хэсэгт байрлах <strong>Routine</strong> хуудас. Өдөр бүрийн зорилтуудаа тэмдэглэнэ.</p>
+
+  <h3>Routine-ийн зүйлс</h3>
+  <table class="cmd-table">
+    <tr><th>Зүйл</th><th>Дүрс</th><th>Хэрхэн бүртгэх</th></tr>
+    <tr><td>Дасгал хийсэн</td><td>💪</td><td>Switch дарах эсвэл "дасгал хийлээ" гэж AI-д хэлэх</td></tr>
+    <tr><td>汉字 (Хятад үг)</td><td>🈳</td><td>Switch дарах эсвэл HSK drill дуусмагц авт. бүртгэгдэнэ</td></tr>
+    <tr><td>Ном/нийтлэл уншсан</td><td>📖</td><td>Switch дарах</td></tr>
+    <tr><td>Journal бичсэн</td><td>📝</td><td>Switch дарах</td></tr>
+    <tr><td>Ус уусан</td><td>💧</td><td>+ товч дарах (стакан тус бүр = 250ml)</td></tr>
+  </table>
+
+  <h3>Score тооцоолол</h3>
+  <div class="code-block">
+    Дасгал   = 20 оноо<br>
+    汉字      = 20 оноо<br>
+    Унших    = 15 оноо<br>
+    Journal  = 10 оноо<br>
+    Ус (8 стакан) = 25 оноо дээд тал<br>
+    <span class="cmt">─────────────────────</span><br>
+    <span class="ok">Нийт = 100 оноо</span>
+  </div>
+
+  <h3>Streak (дараалсан хоnog)</h3>
+  <p style="color:var(--text2);font-size:13px;">Хэрэв өдөр бүр тэмдэглэвэл 🔥 streak тоолуур нэмэгдэнэ. Нэг өдөр алгасвал тоолуур 0-ээс эхэлнэ.</p>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div>Routine тэмдэглэхийг огт дурсамжгүй байвал Telegram bot-оор өдрийн анхааруулга тохируулж болно — <a href="#setup" style="color:var(--accent)">Telegram Sync</a> хэсэг харна уу.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ HSK ═══════════════ -->
+<div class="section" id="hsk">
+  <div class="section-label">ФУНКЦ</div>
+  <h2>🈳 HSK / Хятад хэл</h2>
+  <p><strong>INTEL</strong> товч дарахад HSK Command Center нээгдэнэ. Хятад үгийн сан, дасгал, ахиц харах боломжтой.</p>
+
+  <h3>Drill (дасгал)</h3>
+  <p style="color:var(--text2);font-size:13px;">Terminal дотор <code style="color:var(--accent);font-family:monospace">/drill</code> гэж бичиж HSK-ийн хурдан шалгалт эхлүүлж болно.</p>
+
+  <div class="code-block">
+    <span class="cmd">Boss@THREE_OS:~$</span> /drill<br>
+    <span class="ok">A.C.E.:</span> HSK4 Drill Mode идэвхжлээ. /drill stop гэж бичвэл зогсоно.<br>
+    <span class="ok">[DRILL 1/300]</span> 学习 (xué xí) — монголоор?<br>
+    <span class="cmd">Boss@THREE_OS:~$</span> суралцах<br>
+    <span class="ok">A.C.E.:</span> ✓ Зөв! "学习" = "суралцах"
+  </div>
+
+  <h3>Telegram-аас drill хийх</h3>
+  <p style="color:var(--text2);font-size:13px;">Telegram bot холбосон бол утаснаасаа <code style="color:var(--accent);font-family:monospace">/drill</code> командаар хэзээ ч HSK drill хийж болно. Үр дүн нь компьютерийн аппд синк болно.</p>
+
+  <div class="callout info">
+    <span class="callout-icon">📅</span>
+    <div>HSK шалгалтын огноо: <strong>2026 оны 6-р сарын 28</strong>. A.C.E. өдөр тутмын дэвшлийг хянаж сануулна.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ THEMES ═══════════════ -->
+<div class="section" id="themes">
+  <div class="section-label">ДИЗАЙН</div>
+  <h2>🎨 Өнгө / Theme солих</h2>
+  <p>3 аргаар theme солих боломжтой:</p>
+
+  <h3>1. AI-д хэлэх (хамгийн хялбар)</h3>
+  <div class="code-block">
+    <span class="cmd">Boss@THREE_OS:~$</span> улаан болго<br>
+    <span class="ok">A.C.E.:</span> Red Alert theme идэвхжлээ ✓
+  </div>
+  <p style="font-size:13px;color:var(--text2);">Дурын өнгийг нэрлэж болно: <strong>улаан, ногоон, цэнхэр, нил, шар, цагаан, хар</strong></p>
+
+  <h3>2. /theme команд</h3>
+  <div class="code-block">
+    <span class="cmd">Boss@THREE_OS:~$</span> /theme list<br>
+    <span class="ok">&nbsp;&nbsp;stark-cyan</span> — CYAN EDGE<br>
+    <span class="ok">&nbsp;&nbsp;amber</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— AMBER PROTOCOL<br>
+    <span class="ok">&nbsp;&nbsp;matrix</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— MATRIX GREEN<br>
+    <span class="ok">&nbsp;&nbsp;red-alert</span>&nbsp;&nbsp;&nbsp;— RED ALERT<br>
+    <span class="ok">&nbsp;&nbsp;void</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— VOID PURPLE<br><br>
+    <span class="cmd">Boss@THREE_OS:~$</span> /theme matrix<br>
+    <span class="ok">A.C.E.:</span> Theme "MATRIX GREEN" активжлаа ✓
+  </div>
+
+  <h3>3. Customizer (⚙ товч)</h3>
+  <p style="font-size:13px;color:var(--text2);">Дэлгэцийн баруун доод булангийн <strong>⚙</strong> товч дарахад нарийн тохируулгын самбар нээгдэнэ. Энд opacity, widget дараалал, Coach Level болон Mood тохиргоо хийнэ.</p>
+
+  <div class="callout info" style="margin-top:24px">
+    <span class="callout-icon">💡</span>
+    <div>
+      <strong>Уншихад тухтай байдлын тухай</strong><br>
+      T.H.R.E.E. OS-ийн бүх сэдвүүд (Themes) нь урт хугацаанд код бичих, ажиллахад нүд чилээхгүй байх үүднээс <strong>өндөр контрасттай, неон гэрэлтсэн тод үсгийн кодчлолтой</strong> хийгдсэн. <code style="font-family:monospace;color:var(--accent)">--text-b: #daeeff</code> өнгийн тод цагаан текст болон <code style="font-family:monospace;color:var(--accent)">neon-glow</code> эффект нь арын харанхуй фонтой тод ялгаатай байхаар тусгайлан тохируулагдсан байна.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ HYPER CUSTOMIZATION ═══════════════ -->
+<div class="section" id="hyper-custom">
+  <div class="section-label">ДИЗАЙН</div>
+  <h2>⚙ Hyper-Customization</h2>
+  <p>Дэлгэцийн баруун доод булангийн <strong>⚙</strong> товч дарахад нээгдэх <strong>Quick Settings самбар</strong>-аас системийг live-аар тохируулж болно.</p>
+
+  <h3>1. Фонт солих</h3>
+  <p style="color:var(--text2);font-size:13px;margin-bottom:10px">Dropdown-оос гурван өөр монospace/sans фонтын аль нэгийг сонгоно. Өөрчлөлт апп-ын бүх текст дээр нэн даруй хэрэгждэг.</p>
+  <table class="cmd-table" style="margin-bottom:0">
+    <tr><th>Фонт</th><th>Тэмдэглэгдэх байдал</th></tr>
+    <tr><td>JetBrains Mono</td><td>Хар хэн хуудастай монospace — кодчиллын хамгийн эхний сонголт</td></tr>
+    <tr><td>Fira Code</td><td>Ligature дэмжилттэй — → == >= зэрэг дохиолол нэгдэнэ</td></tr>
+    <tr><td>Inter</td><td>Орчин үеийн sans-serif — уншихад хамгийн тухтай</td></tr>
+    <tr><td>Rajdhani</td><td>Sci-fi гарчгийн фонт — T.H.R.E.E. OS-ийн уламжлалт фонт</td></tr>
+  </table>
+
+  <h3>2. Үсгийн хэмжээ (Global Scaling)</h3>
+  <p style="color:var(--text2);font-size:13px">Слайдерийг 11px–18px хооронд гулсуулахад апп-ын <strong>бүх виджетийн текст</strong> — HSK countdown, telemetry тоо, чат мессеж, panel гарчиг — пропорционалиар томорч жижигрэнэ. Нэг CSS variable (<code style="font-family:monospace;color:var(--accent)">--main-font-size</code>) тохируулахаар ажилладаг.</p>
+
+  <div class="screen-mock">
+    <div class="bar">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <span style="margin-left:8px;color:rgba(0,229,255,.4)">⚙ QUICK SETTINGS</span>
+    </div>
+    <div style="text-align:left;padding:10px;font-size:12px;line-height:2">
+      <span style="color:var(--text2)">TYPOGRAPHY</span><br>
+      <span style="color:rgba(0,229,255,.5)">[ JetBrains Mono ▾ ]</span>
+      &nbsp;&nbsp;
+      <span style="color:rgba(0,229,255,.5)">FONT SIZE — 13px ▶────●──── 18px</span><br>
+      <span style="color:var(--text2)">CHAT INPUT POSITION</span><br>
+      <span style="color:var(--accent)">[⬇ BOTTOM]</span>
+      <span style="color:rgba(0,229,255,.35)"> [⬆ TOP] [✦ FLOAT]</span>
+    </div>
+  </div>
+
+  <h3>3. Чатны байрлал (Input Position)</h3>
+  <p style="color:var(--text2);font-size:13px;margin-bottom:12px">Чат мессеж бичих оролтыг 3 байрлалаас сонгоно:</p>
+
+  <table class="cmd-table">
+    <tr><th>Горим</th><th>Тайлбар</th></tr>
+    <tr>
+      <td><strong style="color:var(--accent)">⬇ BOTTOM</strong></td>
+      <td>Уламжлалт байрлал. Чат цонхны хамгийн доор — Discord, Slack шиг.</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--accent)">⬆ TOP</strong></td>
+      <td>Терминал хэлбэр. Оролт дээр, хариулт доор — хакер terminal шиг.</td>
+    </tr>
+    <tr>
+      <td><strong style="color:var(--gold)">✦ FLOAT</strong></td>
+      <td>Чат цонхноос салж, <strong>дэлгэцийн хаана ч чирж</strong> (draggable) тавьж болдог бие даасан хөвөгч виджет. Mouse-аар toolbar-г атгаж дэлгэцийн дурын хэсэгт тавина.</td>
+    </tr>
+  </table>
+
+  <div class="callout ok" style="margin-top:20px">
+    <span class="callout-icon">🎨</span>
+    <div>
+      <strong>Layout Mood — өдрийн тохиргоо хадгалах</strong><br>
+      "Mood нэр" талбарт нэр оруулаад <strong>SAVE MOOD</strong> товч дарахад тухайн үеийн бүх тохиргоо (opacity, widget дараалал, coach level, фонт) нэрлэж хадгалагдана. Хожим нэрийн жагсаалтаас <strong>▶ нэр</strong> дарж нэн даруй сэргээж болно — ажлын өдөр, амрах өдрийн өөр тохиргоог хооронд шилжүүлэх боломжтой.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ LAYOUTS ═══════════════ -->
+<div class="section" id="layouts">
+  <div class="section-label">ДИЗАЙН</div>
+  <h2>📐 Layout солих</h2>
+  <p>3 layout байна — өдрийн хэрэглээнд тааруулж сонгоно:</p>
+
+  <table class="cmd-table">
+    <tr><th>Layout</th><th>Нэр</th><th>Тайлбар</th></tr>
+    <tr><td>/layout 1</td><td>DEV FOCUS</td><td>Цөөн widget — code хийхэд тохиромжтой</td></tr>
+    <tr><td>/layout 2</td><td>HSK STUDY</td><td>HSK widget томруу — суралцахад тохиромжтой</td></tr>
+    <tr><td>/layout 3</td><td>FULL DASHBOARD</td><td>Бүх widget харагдана (default)</td></tr>
+  </table>
+
+  <div class="code-block">
+    <span class="cmd">Boss@THREE_OS:~$</span> /layout 2<br>
+    <span class="ok">A.C.E.:</span> Layout 2: HSK STUDY идэвхжлээ ✓<br><br>
+    <span class="cmt">эсвэл AI-д хэлэх:</span><br>
+    <span class="cmd">Boss@THREE_OS:~$</span> HSK study горим болго<br>
+    <span class="ok">A.C.E.:</span> Layout HSK Study болгов ✓
+  </div>
+</div>
+
+<!-- ═══════════════ WIDGETS ═══════════════ -->
+<div class="section" id="widgets">
+  <div class="section-label">ФУНКЦ</div>
+  <h2>🧩 Widget-үүд</h2>
+  <p>Дэлгэцийн баруун хэсэгт байрлах мэдээллийн самбарууд.</p>
+
+  <table class="cmd-table">
+    <tr><th>Widget</th><th>Юу харуулдаг</th></tr>
+    <tr><td>MISSIONS</td><td>Идэвхтэй зорилтуудын жагсаалт</td></tr>
+    <tr><td>FX RATES</td><td>USD/MNT/CNY валютын ханш (шууд)</td></tr>
+    <tr><td>INTEL FEED</td><td>Технологийн мэдээ (BBC/NYT RSS)</td></tr>
+    <tr><td>HSK TRACKER</td><td>Хятад үгийн ахиц, шалгалтын тоолуур</td></tr>
+    <tr><td>GYM</td><td>Дасгалын статистик</td></tr>
+    <tr><td>ROUTE</td><td>Маршрутын мэдээлэл</td></tr>
+  </table>
+
+  <h3>Widget нэмэх / хасах</h3>
+  <div class="code-block">
+    <span class="cmd">Boss@THREE_OS:~$</span> /widget list<br>
+    <span class="cmt">── Жагсаалт гарна ──</span><br><br>
+    <span class="cmd">Boss@THREE_OS:~$</span> /widget add hsk<br>
+    <span class="ok">A.C.E.:</span> HSK Tracker идэвхжлээ ✓<br><br>
+    <span class="cmd">Boss@THREE_OS:~$</span> /widget rm fx<br>
+    <span class="ok">A.C.E.:</span> FX Rates унтраав ✓
+  </div>
+</div>
+
+<!-- ═══════════════ DRAG ═══════════════ -->
+<div class="section" id="drag">
+  <div class="section-label">ФУНКЦ</div>
+  <h2>🖱️ Drag Mode — Widget чирэх</h2>
+  <p>Widget-уудыг чөлөөтэй байрлуулах горим.</p>
+
+  <div class="code-block">
+    <span class="cmd">Boss@THREE_OS:~$</span> /drag<br>
+    <span class="ok">&gt;&gt; DRAG MODE: widgets are now free-floating.</span>
+  </div>
+
+  <ul style="color:var(--text2);font-size:13px;line-height:2;padding-left:20px;margin-top:12px;">
+    <li>Drag mode идэвхжсэний дараа widget-ийн <strong>header хэсгийг чирж</strong> байрлалыг өөрчилнэ</li>
+    <li>Хэд хэдэн widget давхардуулан тавьж болно</li>
+    <li>Дахин <code style="color:var(--accent);font-family:monospace">/drag</code> → хэвийн байрлалд буцна</li>
+  </ul>
+</div>
+
+<!-- ═══════════════ VOICE ═══════════════ -->
+<div class="section" id="voice">
+  <div class="section-label">ФУНКЦ</div>
+  <h2>🎙️ Дуу хоолойн оролт</h2>
+  <p>Терминалын баруун талд байрлах <strong>🎙</strong> товч дарж дуу хоолойгоо ашиглаж болно.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>🎙 товч дарах</h4>
+        <p>Товч улаанаар анивчих болно — бичлэг эхэлсэн гэсэн үг.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Монголоор ярих</h4>
+        <p>"Өнөөдрийн хуваарь зохио" гэх мэтчилэн чөлөөтэй ярина.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num"></div>
+      <div class="step-body">
+        <h4>Автоматаар илгэгдэнэ</h4>
+        <p>Яриж дуусмагц A.C.E. хариулна.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
+    <div>Voice input ашиглахын тулд микрофоны зөвшөөрөл шаардлагатай. Анх дарахад "Mic ашиглах уу?" гэж асуух бол <strong>"Allow"</strong> дарна.</div>
+  </div>
+</div>
+
+<!-- ═══════════════ COMMANDS ═══════════════ -->
+<div class="section" id="commands">
+  <div class="section-label">КОМАНДЫН ЛАВЛАХ</div>
+  <h2>⌨️ Бүх командын жагсаалт</h2>
+  <p>Терминалд <kbd>/</kbd> дарж эхэлсэн текст бол "команд" — шууд үйлдэл хийнэ.</p>
+
+  <h3>🎨 Дизайн & Customization</h3>
+  <table class="cmd-table">
+    <tr><th>Команд</th><th>Тайлбар</th></tr>
+    <tr><td>/theme list</td><td>Бүх theme-ийн жагсаалт харах</td></tr>
+    <tr><td>/theme &lt;нэр&gt;</td><td>Theme солих. Жишээ: <code style="font-family:monospace">/theme matrix</code></td></tr>
+    <tr><td>/layout list</td><td>Бүх layout харах</td></tr>
+    <tr><td>/layout 1</td><td>Dev Focus layout</td></tr>
+    <tr><td>/layout 2</td><td>HSK Study layout</td></tr>
+    <tr><td>/layout 3</td><td>Full Dashboard layout</td></tr>
+    <tr><td>/drag</td><td>Widget чирэх горим асах/унтрах</td></tr>
+    <tr><td>/guide</td><td>Гарын авлага нээх</td></tr>
+  </table>
+
+  <h3>⚙ Hyper-Customization (Quick Settings)</h3>
+  <p style="font-size:13px;color:var(--text2);margin-bottom:10px">Доорх тохиргоонуудыг ⚙ товчоор нээгдэх самбараас хийнэ. Команд байхгүй — GUI замаар тохируулна.</p>
+  <table class="cmd-table">
+    <tr><th>Тохиргоо</th><th>Боломж</th></tr>
+    <tr><td>Font Family</td><td>JetBrains Mono / Fira Code / Inter / Rajdhani сонгох</td></tr>
+    <tr><td>Font Size</td><td>11px–18px слайдер — бүх виджет пропорционалиар томордог</td></tr>
+    <tr><td>Chat Input: Bottom</td><td>Уламжлалт байрлал — чат цонхны доор</td></tr>
+    <tr><td>Chat Input: Top</td><td>Терминал хэлбэр — оролт дээр, хариулт доор</td></tr>
+    <tr><td>Chat Input: Float</td><td>Чирдэг хөвөгч виджет — хаана ч тавих боломжтой</td></tr>
+    <tr><td>Save Mood</td><td>Одоогийн бүх тохиргоог нэрлэж хадгалах</td></tr>
+    <tr><td>Load Mood</td><td>Хадгалсан тохиргоог нэг товшилтоор сэргээх</td></tr>
+    <tr><td>Coach Level 1–4</td><td>🌿 Зөөлөн / ⚡ Тэнцвэртэй / 🔥 Чанд / 💀 Goggins</td></tr>
+  </table>
+
+  <h3>📋 Widget</h3>
+  <table class="cmd-table">
+    <tr><th>Команд</th><th>Тайлбар</th></tr>
+    <tr><td>/widget list</td><td>Widget-ийн жагсаалт + статус</td></tr>
+    <tr><td>/widget add &lt;id&gt;</td><td>Widget нэмэх. id: missions, fx, intel, hsk, gym, route</td></tr>
+    <tr><td>/widget rm &lt;id&gt;</td><td>Widget хасах</td></tr>
+    <tr><td>/widget reset</td><td>Default байрлалд буцаах</td></tr>
+  </table>
+
+  <h3>🈳 HSK</h3>
+  <table class="cmd-table">
+    <tr><th>Команд</th><th>Тайлбар</th></tr>
+    <tr><td>/drill</td><td>HSK4 drill шалгалт эхлүүлэх</td></tr>
+    <tr><td>/drill stop</td><td>Drill зогсоох, үр дүн харах</td></tr>
+  </table>
+
+  <h3>📌 Task Matrix</h3>
+  <table class="cmd-table">
+    <tr><th>Команд</th><th>Тайлбар</th></tr>
+    <tr><td>/matrix</td><td>Task Matrix (Kanban) нээх</td></tr>
+    <tr><td>/matrix add &lt;нэр&gt;</td><td>Шинэ карт нэмэх. Жишээ: <code style="font-family:monospace">/matrix add LFS design</code></td></tr>
+    <tr><td>/plans</td><td>Хадгалсан хуваариудын жагсаалт</td></tr>
+  </table>
+
+  <h3>👤 Акаунт</h3>
+  <table class="cmd-table">
+    <tr><th>Команд</th><th>Тайлбар</th></tr>
+    <tr><td>/stats</td><td>Өнөөдрийн AI хэрэглээ харах (20 msg/өдөр)</td></tr>
+    <tr><td>/upgrade</td><td>Pro tier мэдээлэл + referral code</td></tr>
+    <tr><td>/referral</td><td>Найз урих холбоос авах</td></tr>
+  </table>
+
+  <div class="callout tip">
+    <span class="callout-icon">💡</span>
+    <div>Командыг санахгүй бол зүгээр л <strong>Монгол хэлээр хэлнэ</strong> — A.C.E. ойлгож хийнэ. Жишээ: "Widget-ийн жагсаалт харуул", "Matrix нээ", "Theme солих".</div>
+  </div>
+</div>
+
+<!-- ═══════════════ FAQ ═══════════════ -->
+<div class="section" id="faq">
+  <div class="section-label">ДЭМЖЛЭГ</div>
+  <h2>❓ Түгээмэл асуулт</h2>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">
+      A.C.E. "API key шаардлагатай" гэж хариулна. Яах вэ?
+      <span class="arrow">▶</span>
+    </div>
+    <div class="faq-a">
+      AI функц ашиглахын тулд API token шаардлагатай.<br><br>
+      <strong>Алхам:</strong><br>
+      1. Дэлгэцийн дээд баруун талын <strong>PROFILE</strong> товч дарна<br>
+      2. "AI Token" хэсэгт <strong>GitHub Models token</strong> эсвэл Proxy URL оруулна<br>
+      3. Хадгалаад дахин terminal ашиглана<br><br>
+      GitHub Models token үнэгүй авах: <a href="https://github.com/marketplace/models" target="_blank" style="color:var(--accent)">github.com/marketplace/models</a>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">
+      "Өнөөдрийн 20 лимит дуусав" гэсэн мессеж гарна.
+      <span class="arrow">▶</span>
+    </div>
+    <div class="faq-a">
+      Free tier дээр өдөрт 20 AI хүсэлт хийж болно. Маргааш 00:00 цагаас дахин шинэчлэгдэнэ.<br><br>
+      Хэрэв илүү хэрэгтэй бол: <code style="color:var(--accent);font-family:monospace">/upgrade</code> гэж бичиж Pro tier мэдээлэл авна.
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">
+      Mac дээр "malicious software" гэсэн анхааруулга гарна.
+      <span class="arrow">▶</span>
+    </div>
+    <div class="faq-a">
+      Аппыг Apple-ийн гарын үсэглэсэн certificate-гүйгээр тараасантай холбоотой. Аюулгүй.<br><br>
+      <strong>Шийдэл:</strong> System Settings → Privacy & Security → "Open Anyway"<br>
+      Нэг удаа зөвшөөрвөл дахин гарахгүй.
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">
+      Routine-ийн мэдээлэл алга болчихлоо.
+      <span class="arrow">▶</span>
+    </div>
+    <div class="faq-a">
+      Routine өдрийн огноогоор хадгалагддаг. Шинэ өдөр болоход шинэ хоосон routine гарна — энэ зөв.<br><br>
+      Өмнөх өдрийн мэдээллийг харахын тулд TRACK хуудас руу орно.
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">
+      INTEL / PROFILE товч дарахад хар дэлгэц гарна.
+      <span class="arrow">▶</span>
+    </div>
+    <div class="faq-a">
+      Хамгийн сүүлийн хувилбар татаж суулгасан эсэхийг шалгана уу (v28.0+).<br>
+      Хуучин хувилбарт энэ асуудал байсан бөгөөд шинэ хувилбарт засварлагдсан.
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">
+      Утсан дээр HSK drill ажиллахгүй байна.
+      <span class="arrow">▶</span>
+    </div>
+    <div class="faq-a">
+      Утсаар HSK drill хийхийн тулд Telegram bot холбох хэрэгтэй:<br>
+      1. PROFILE хуудаснаас Telegram bot token оруулна<br>
+      2. Telegram дээр ботоо нээж <code style="color:var(--accent);font-family:monospace">/drill</code> бичнэ<br>
+      Үр дүн нь компьютерийн апптай синк болно.
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">
+      Setup wizard дахин гаргахыг хүсч байна.
+      <span class="arrow">▶</span>
+    </div>
+    <div class="faq-a">
+      Terminal-д дараах командыг бичнэ:<br>
+      <div class="code-block" style="margin-top:8px;">
+        <span class="warn">⚠ Анхааруулга: Бүх тохируулга устна</span><br><br>
+        <span class="cmt">Mac terminal-д:</span><br>
+        rm ~/Library/Preferences/three-os-setup.json
+      </div>
+      Дараа нь аппыг хаагаад дахин нээнэ.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ UPGRADE ═══════════════ -->
+<div class="section" id="upgrade">
+  <div class="section-label">PRO TIER</div>
+  <h2>⚡ Pro Tier</h2>
+
+  <table class="cmd-table">
+    <tr><th>Онцлог</th><th>Free</th><th>Pro</th></tr>
+    <tr><td>AI хүсэлт</td><td>20/өдөр</td><td>Unlimited</td></tr>
+    <tr><td>Layout</td><td>1</td><td>3</td></tr>
+    <tr><td>Theme</td><td>Стандарт</td><td>Бүгд + custom</td></tr>
+    <tr><td>Telegram sync</td><td>–</td><td>✓</td></tr>
+    <tr><td>Priority дэмжлэг</td><td>–</td><td>✓</td></tr>
+    <tr><td>Үнэ</td><td>Үнэгүй</td><td>₮25,000/сар</td></tr>
+  </table>
+
+  <h3>Referral — Найз урьж үнэгүй авах</h3>
+  <div class="code-block">
+    <span class="cmd">Boss@THREE_OS:~$</span> /referral<br>
+    <span class="ok">&nbsp;&nbsp;📎 Чиний код: THREE-A1B2C3</span><br>
+    <span class="ok">&nbsp;&nbsp;3 найз урьсан → 1 сар Pro үнэгүй</span>
+  </div>
+
+  <div class="callout ok">
+    <span class="callout-icon">🎁</span>
+    <div>Эхний 50 хэрэглэгч <strong>Founding Member</strong> болж бүх Pro feature-ийг үүрд үнэгүй ашиглах эрх авна.</div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div style="margin-top:60px;padding:24px 0;border-top:1px solid var(--border);text-align:center;">
+  <div style="font-family:'Courier New',monospace;font-size:10px;color:rgba(0,229,255,.25);letter-spacing:.2em;">
+    T.H.R.E.E. OS v28.0 — Tactical High-performance & Real-time Efficiency Engine<br>
+    Developed by Bileg · A.C.E. Core Active
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+// Tab switching
+function switchTab(btn, id) {
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const section = btn.closest('.section') || document;
+  section.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+}
+
+// FAQ toggle
+function toggleFaq(el) {
+  const item = el.parentElement;
+  item.classList.toggle('open');
+}
+
+// Sidebar active state on scroll
+const sections = document.querySelectorAll('.section[id]');
+const links    = document.querySelectorAll('.sidebar a');
+
+function updateActive() {
+  let current = '';
+  sections.forEach(s => {
+    const top = s.getBoundingClientRect().top;
+    if (top <= 80) current = s.id;
+  });
+  links.forEach(a => {
+    a.classList.toggle('active', a.getAttribute('href') === '#' + current);
+  });
+}
+window.addEventListener('scroll', updateActive, { passive:true });
+updateActive();
+
+// ── NAVIGATION (Sprint 32: Universal Nav Mesh) ───────────────────
+function goHome() {
+  if (window.jarvisAPI?.loadPage) {
+    window.jarvisAPI.loadPage('index.html');
+  } else {
+    window.location.href = 'index.html';
+  }
+}
+function goBack() {
+  // Try nav history from localStorage first
+  try {
+    const hist = JSON.parse(localStorage.getItem('_jarvisNavHistory') || '[]');
+    const prev = hist[hist.length - 1];
+    if (prev && prev !== 'core' && window.jarvisAPI?.loadPage) {
+      hist.pop();
+      localStorage.setItem('_jarvisNavHistory', JSON.stringify(hist));
+      const navMap = { intel:'chat.html', track:'tracker.html', profile:'profile.html', guide:'guide.html' };
+      if (navMap[prev]) { window.jarvisAPI.loadPage(navMap[prev]); return; }
+    }
+  } catch {}
+  // Fallback to HOME
+  goHome();
+}
+
+// Hide back button if not in Electron and no history
+(function() {
+  const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+  const hasHistory = history.length > 1;
+  if (!isElectron && !hasHistory) {
+    const btn = document.getElementById('back-btn');
+    if (btn) btn.style.display = 'none';
+  }
+})();
+</script>
+</body>
+</html>

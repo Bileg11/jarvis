@@ -22,4 +22,19 @@ contextBridge.exposeInMainWorld('jarvisAPI', {
 
   // ── Platform info ───────────────────────────────────────────────
   platform: process.platform,
+
+  // ── Persistent setup flag (survives reinstall) ──────────────────
+  getSetupFlag: () => ipcRenderer.invoke('get-setup-flag'),
+  setSetupFlag: (data) => ipcRenderer.invoke('set-setup-flag', data),
+
+  // ── Page navigation (asar-safe, replaces iframe) ─────────────────
+  loadPage: (page) => ipcRenderer.invoke('load-page', page),
+
+  // ── Open external URL in system browser (sprint 30: calendar export)
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+
+  // ── Sprint 34: Direct Telegram (no Cloud Functions needed) ──────
+  telegramSend:       (msg, chatId) => ipcRenderer.invoke('telegram-send', { msg, chatId }),
+  telegramGetUpdates: (offset)      => ipcRenderer.invoke('telegram-get-updates', { offset }),
+  telegramSetToken:   (token)       => ipcRenderer.invoke('telegram-set-token', token),
 });

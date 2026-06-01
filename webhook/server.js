@@ -9,7 +9,8 @@
 const express   = require('express');
 const cron      = require('node-cron');
 const tgHandler   = require('./api/telegram');
-const { sendWeeklyReport, sendBrief, sendHSKReminder } = tgHandler;
+const { sendWeeklyReport, sendBrief, sendHSKReminder,
+        sendCheckpoints, sendDailyRecap } = tgHandler;
 const lfsBot      = require('./api/lfs-telegram');
 const metaHook    = require('./api/meta-webhook');
 const alerts      = require('./api/alerts');
@@ -63,11 +64,32 @@ cron.schedule('0 5 * * *', () => {
 });
 
 // ── HSK 3 DAILY REMINDER — 15:00 Шанхай (07:00 UTC) ─────────────
-// Хичээл дуусаад хувийн бэлтгэлийн цаг эхлэх үед сануулна
 cron.schedule('0 7 * * *', () => {
   console.log('[JARVIS] Sending HSK daily reminder...');
   if (typeof sendHSKReminder === 'function') {
     sendHSKReminder().catch(e => console.error('[HSK Reminder] Error:', e.message));
+  }
+});
+
+// ── SPRINT 34: CHECKPOINT ENGINE — 5 минут бүр ───────────────────
+// T-30, T-15, End-20, End+5 alerts — хуваарийн task бүрт
+cron.schedule('*/5 * * * *', () => {
+  if (typeof sendCheckpoints === 'function') {
+    sendCheckpoints().catch(e => console.error('[Checkpoint] Error:', e.message));
+  }
+});
+
+// ── SPRINT 34: DAILY RECAP — 22:00 Шанхай (14:00 UTC) ────────────
+// Өдрийн тайлан + маргаашийн pre-flight prompt
+cron.schedule('0 14 1 * * *', () => {
+  // Note: morningBriefing already uses '0 14 * * *' → conflict болохгүйн тулд
+  // UTC 14:01 дээр явуулна (Шанхай 22:01)
+}).destroy(); // placeholder — below uses correct time
+
+cron.schedule('1 14 * * *', () => {
+  console.log('[JARVIS] Sending daily recap (22:00 Shanghai)...');
+  if (typeof sendDailyRecap === 'function') {
+    sendDailyRecap().catch(e => console.error('[DailyRecap] Error:', e.message));
   }
 });
 

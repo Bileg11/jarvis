@@ -1558,6 +1558,156 @@ async function handleText(msg, ctx = {}) {
   }
 
   // ── Help ──────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  // SPRINT 34 — JUNE CHALLENGE & LIFE PLAN COMMANDS
+  // Одоо байгаа командуудтай зөрчилдөхгүйгээр нэмэгдлээ
+  // ══════════════════════════════════════════════════════════════
+
+  // /challenge — June Challenge scoreboard
+  if (text === '/challenge' || text === '/ch') {
+    try {
+      const today   = todaySH();
+      const [bSnap, mSnap] = await Promise.all([
+        dbPersonal.doc(`challenge/june2026/daily/${today}`).get().catch(() => null),
+        dbPersonal.doc(`challenge/june2026/streaks/${uid}`).get().catch(() => null),
+      ]);
+      const scores  = bSnap?.exists  ? bSnap.data()  : {};
+      const streak  = mSnap?.exists  ? mSnap.data()  : {};
+      const bScore  = scores.bileg   || {};
+      const mScore  = scores.marlaa  || {};
+
+      const CHALLENGE_START = new Date('2026-06-01');
+      const daysIn = Math.floor((Date.now() - CHALLENGE_START) / 86400000);
+      const daysLeft = Math.max(0, 183 - daysIn);
+
+      let msg = `🏆 *JUNE CHALLENGE — ${today}*\n`;
+      msg += `\`${'━'.repeat(20)}\`\n\n`;
+      msg += `⚡ *BILEG*\n`;
+      msg += `  Өнөөдөр: *${bScore.pct || 0}%*  🔥 ${streak.current || 0} хоног\n`;
+      msg += `  Нийт: ${streak.total_days || 0}/183 хоног\n\n`;
+      msg += `🌸 *МАРЛАА*\n`;
+      msg += `  Өнөөдөр: *${mScore.pct || 0}%*\n\n`;
+      msg += `📅 Үлдсэн: *${daysLeft}* хоног\n`;
+      msg += `\n_/score — өнөөдрийн дэлгэрэнгүй_`;
+      await tgSend(msg);
+    } catch (e) {
+      await tgSend(`❌ Challenge алдаа: ${e.message}`);
+    }
+    return;
+  }
+
+  // /plan — өнөөдрийн life plan харах (Marlaa)
+  if (text === '/plan' || text === '/today') {
+    try {
+      const today = todaySH();
+      const snap  = await dbPersonal.doc(`users/${uid}/plans/${today}`).get();
+      if (!snap.exists || !snap.data()?.confirmed?.length) {
+        await tgSend(
+          '📋 Өнөөдрийн хуваарь байхгүй байна.\n\n' +
+          'Апп дээрээс *Pre-flight* дарж хуваарь үүсгэнэ үү.\n' +
+          'Эсвэл: `/preflight gym class shower`'
+        );
+        return;
+      }
+      const plan = snap.data().confirmed;
+      const done = plan.filter(t => t.done).length;
+      const pct  = Math.round(done / plan.length * 100);
+
+      let msg = `📋 *Өнөөдрийн план — ${pct}%*\n\`${'─'.repeat(18)}\`\n\n`;
+      plan.forEach(t => {
+        const icon = t.done ? '✅' : '⏳';
+        msg += `${icon} ${t.start} ${t.icon} *${t.label}* (${t.mins}м)\n`;
+      });
+      msg += `\n_/done [ажил] — дуусгах_`;
+      await tgSend(msg);
+    } catch (e) {
+      await tgSend(`❌ Алдаа: ${e.message}`);
+    }
+    return;
+  }
+
+  // /done [task_id] — life plan task дуусгах (string ID)
+  // ТАЙЛБАР: Одоо байгаа /done [n] нь тооны аргумент авдаг.
+  // Шинэ /done [gym] нь текстийн аргумент авдаг — зөрчилдөхгүй.
+  const lifeDoneMatch = raw.match(/^\/done\s+([a-z_\-]+)$/i);
+  if (lifeDoneMatch) {
+    const taskId = lifeDoneMatch[1].toLowerCase();
+    try {
+      const today = todaySH();
+      const snap  = await dbPersonal.doc(`users/${uid}/plans/${today}`).get();
+      if (!snap.exists) {
+        await tgSend(`⚠️ Өнөөдрийн хуваарь байхгүй.`);
+        return;
+      }
+      const plan = snap.data().confirmed || [];
+      const idx  = plan.findIndex(t =>
+        t.id === taskId ||
+        t.id === 'custom_' + taskId ||
+        t.label?.toLowerCase().includes(taskId)
+      );
+      if (idx < 0) {
+        await tgSend(`⚠️ "${taskId}" хуваарьт олдсонгүй.\n\n/plan — хуваарь харах`);
+        return;
+      }
+      plan[idx].done = true;
+      await dbPersonal.doc(`users/${uid}/plans/${today}`).set(
+        { confirmed: plan }, { merge: true }
+      );
+      const done = plan.filter(t => t.done).length;
+      const pct  = Math.round(done / plan.length * 100);
+
+      // Challenge score шинэчлэх
+      await _updateChallengeScore(uid, 'marlaa', pct, done, plan.length);
+
+      const task = plan[idx];
+      await tgSend(
+        `✅ *${task.icon} ${task.label}* — баталгаажлаа!\n\n` +
+        `Хуваарь: *${done}/${plan.length}* дуусгасан (${pct}%)\n` +
+        `${pct >= 70 ? '🔥 Streak аюулгүй!' : '⏳ Үргэлжлүүл...'}`
+      );
+    } catch (e) {
+      await tgSend(`❌ Алдаа: ${e.message}`);
+    }
+    return;
+  }
+
+  // /preflight [task1 task2 ...] — маргаашийн хуваарийн draft үүсгэх
+  if (text.startsWith('/preflight ') || text === '/preflight') {
+    const taskStr  = raw.replace(/^\/preflight\s*/i, '').trim();
+    const taskIds  = taskStr ? taskStr.split(/[\s,]+/).filter(Boolean) : [];
+    const KNOWN_TASKS = {
+      gym:'🏋 Gym', shower:'🚿 Шүршүүр', class:'📚 Хичээл',
+      commute:'🚇 Зорчих', lunch:'🍱 Хоол', haircut:'✂ Үсчин',
+      study:'📝 Судалгаа', makeup:'💄 Грим', sleep_prep:'🌙 Унтах бэлтгэл',
+    };
+    if (!taskIds.length) {
+      const list = Object.entries(KNOWN_TASKS).map(([k,v]) => `\`${k}\` ${v}`).join('  ');
+      await tgSend(
+        '✦ *Pre-flight Interview*\n\n' +
+        'Маргаашийн ажлуудыг жагсаана уу:\n' +
+        '`/preflight gym class shower`\n\n' +
+        `*Боломжит ажлууд:*\n${list}`
+      );
+      return;
+    }
+    const tomorrow = new Date(Date.now() + 86400000)
+      .toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+    const plan = taskIds.map(id => {
+      const label = KNOWN_TASKS[id.toLowerCase()] || ('📌 ' + id);
+      return { id: id.toLowerCase(), label: label.slice(2), icon: label[0], done: false };
+    });
+    await dbPersonal.doc(`users/${uid}/plans/${tomorrow}`).set({
+      confirmed: plan, preflight_done: true, created_at: new Date().toISOString(),
+    }, { merge: true });
+    const list = plan.map(t => `• ${t.icon} ${t.label}`).join('\n');
+    await tgSend(
+      `✦ *${tomorrow}-ийн хуваарь бэлэн болсон!*\n\n${list}\n\n` +
+      `_Апп дээр цагийн нарийвчлалтай хуваарь харагдана._\n` +
+      `/plan — маргааш харах`
+    );
+    return;
+  }
+
   if (text === '/help') {
     await tgSend(
       `🤖 *J.A.R.V.I.S v2.2 — Хувийн Bot*\n\n` +
@@ -1588,7 +1738,12 @@ async function handleText(msg, ctx = {}) {
       `/hook [сэдэв] — Reels 3 hook + 30с скрипт\n\n` +
       `🎙 *Voice*\n` +
       `Дуут зурвас → орлого/calendar/task автоматаар\n` +
-      `HSK ханзаар өгүүлбэр → оноо авах 🎯`
+      `HSK ханзаар өгүүлбэр → оноо авах 🎯\n\n` +
+      `🏆 *June Challenge (Sprint 34)*\n` +
+      `/challenge — Bileg & Марлаа scoreboard\n` +
+      `/plan — өнөөдрийн life plan\n` +
+      `/done [gym] — life plan task дуусгах\n` +
+      `/preflight [tasks] — маргаашийн хуваарь`
     );
     return;
   }
@@ -1633,6 +1788,125 @@ async function handleText(msg, ctx = {}) {
     await tgSend(`❌ Алдаа: ${e.message.slice(0, 80)}`);
   }
 }
+
+// ── SPRINT 34: Challenge score шинэчлэх ─────────────────────────
+async function _updateChallengeScore(uid, role, pct, done, total) {
+  const today = todaySH();
+  try {
+    await dbPersonal.doc(`challenge/june2026/daily/${today}`).set(
+      { [role]: { pct, done, total, uid, updatedAt: new Date().toISOString() } },
+      { merge: true }
+    );
+    // Streak logic
+    const streakRef  = dbPersonal.doc(`challenge/june2026/streaks/${uid}`);
+    const streakSnap = await streakRef.get();
+    const st = streakSnap.exists ? streakSnap.data() : { current: 0, best: 0, total_days: 0, last_date: '' };
+    const yesterday  = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+    const newCurrent = pct >= 50 ? (st.last_date === yesterday ? (st.current||0)+1 : 1) : 0;
+    await streakRef.set({
+      current: newCurrent, best: Math.max(newCurrent, st.best||0),
+      total_days: (st.total_days||0) + (st.last_date !== today ? 1 : 0),
+      last_date: today, role, updatedAt: new Date().toISOString(),
+    }, { merge: false });
+  } catch {}
+}
+
+// ── SPRINT 34: Checkpoint мессеж явуулах (server.js cron дуудна) ─
+async function sendCheckpoints() {
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const today   = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const nowMin  = now.getHours() * 60 + now.getMinutes();
+
+  try {
+    const usersSnap = await dbPersonal.collection('users').get();
+    for (const userDoc of usersSnap.docs) {
+      const uid    = userDoc.id;
+      const chatId = (await dbPersonal.doc(`users/${uid}/integrations/telegram`).get()
+        .catch(() => null))?.data()?.chat_id;
+      if (!chatId) continue;
+
+      const planSnap = await dbPersonal.doc(`users/${uid}/plans/${today}`).get();
+      if (!planSnap.exists) continue;
+      const plan = planSnap.data()?.confirmed || [];
+
+      for (let i = 0; i < plan.length; i++) {
+        const t = plan[i];
+        if (t.done) continue;
+        const startMin = parseInt(t.start?.split(':')[0]||0)*60 + parseInt(t.start?.split(':')[1]||0);
+        const endMin   = parseInt(t.end?.split(':')[0]||0)*60   + parseInt(t.end?.split(':')[1]||0);
+        const key      = `jarvis_cp_${today}_${uid}_${i}`;
+
+        const checks = [
+          { offset: startMin - 30, type: 't30',  msg: `⏰ T-30 мин\n\n${t.icon} *${t.label}* эхлэхэд 30 минут үлдлээ!\n\nГарах бэлтгэлээ хийцгээ.` },
+          { offset: startMin - 15, type: 't15',  msg: `⏰ T-15 мин\n\n${t.icon} *${t.label}*-д 15 минут!\nХувцас, хэрэгсэлээ бэлт.` },
+          { offset: endMin - 20,   type: 'end20', msg: `⏱ 20 минут үлдлээ\n\n${t.icon} *${t.label}* дуусахад 20 минут үлдлээ.` },
+          { offset: endMin + 5,    type: 'end5',  msg: `✋ Дууссан уу?\n\n${t.icon} *${t.label}* дуусах цагаасаа 5 минут өнгөрлөө.\n\nДуусчихсан бол: \`/done ${t.id}\`` },
+        ];
+
+        for (const cp of checks) {
+          if (Math.abs(nowMin - cp.offset) <= 2 && nowMin >= cp.offset) {
+            const sentKey = `${key}_${cp.type}`;
+            const sentRef = dbPersonal.doc(`checkpoint_sent/${sentKey}`);
+            const already = (await sentRef.get().catch(() => null))?.exists;
+            if (already) continue;
+            await tgCall('sendMessage', { chat_id: chatId, text: cp.msg, parse_mode: 'Markdown' });
+            await sentRef.set({ sentAt: new Date().toISOString() });
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[Checkpoint] Error:', e.message);
+  }
+}
+
+// 22:00 daily recap (server.js cron дуудна)
+async function sendDailyRecap() {
+  const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const today = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  try {
+    const usersSnap = await dbPersonal.collection('users').get();
+    for (const userDoc of usersSnap.docs) {
+      const uid    = userDoc.id;
+      const chatId = (await dbPersonal.doc(`users/${uid}/integrations/telegram`).get()
+        .catch(() => null))?.data()?.chat_id;
+      if (!chatId) continue;
+
+      const [routineSnap, planSnap] = await Promise.all([
+        dbPersonal.doc(`users/${uid}/routines/${today}`).get(),
+        dbPersonal.doc(`users/${uid}/plans/${today}`).get(),
+      ]);
+      const r    = routineSnap.exists ? routineSnap.data() : {};
+      const plan = planSnap.exists ? (planSnap.data()?.confirmed || []) : [];
+      const done = plan.filter(t => t.done).length;
+      const pct  = plan.length ? Math.round(done / plan.length * 100) : 0;
+
+      const roleSnap = await dbPersonal.doc(`users/${uid}/config/profile`).get().catch(() => null);
+      const role = roleSnap?.exists ? (roleSnap.data()?.role || 'bileg') : 'bileg';
+
+      let msg = `🌙 *22:00 Өдрийн Тайлан — ${today}*\n\`${'─'.repeat(18)}\`\n\n`;
+      if (role === 'bileg') {
+        const score = Math.min(100, Math.round(
+          (r.exercise?20:0)+(r.hanzi?20:0)+(r.read?15:0)+(r.journal?10:0)
+        ));
+        msg += `📊 Score: *${score}/100*\n`;
+        msg += `${r.exercise?'✅':'❌'} Дасгал  ${r.hanzi?'✅':'❌'} 汉字  ${r.read?'✅':'❌'} Уншилт  ${r.journal?'✅':'❌'} Journal\n\n`;
+        await _updateChallengeScore(uid, 'bileg', score, 0, 4);
+      } else {
+        msg += `📋 Хуваарь: *${done}/${plan.length}* (${pct}%)\n`;
+        if (plan.length) msg += plan.slice(0,4).map(t=>`${t.done?'✅':'❌'} ${t.icon} ${t.label}`).join('\n') + '\n';
+        await _updateChallengeScore(uid, 'marlaa', pct, done, plan.length);
+      }
+      msg += `\n💬 *Маргааш Pre-flight:*\n\`/preflight gym class shower\`\n_- эсвэл апп дээрх Pre-flight товч_`;
+      await tgCall('sendMessage', { chat_id: chatId, text: msg, parse_mode: 'Markdown' });
+    }
+  } catch (e) {
+    console.error('[DailyRecap] Error:', e.message);
+  }
+}
+
+module.exports.sendCheckpoints  = sendCheckpoints;
+module.exports.sendDailyRecap   = sendDailyRecap;
 
 // ── WEBHOOK HANDLER ───────────────────────────────────────────────
 // Server startup-д Билэгийн профайлыг seed хийнэ

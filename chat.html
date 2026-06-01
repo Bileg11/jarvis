@@ -125,6 +125,20 @@
     text-transform: uppercase;
   }
 
+  /* Sprint 32: Global Nav Mesh */
+  .global-nav-mesh {
+    display: flex; align-items: center; gap: 4px; margin-right: 8px;
+  }
+  .gnm-btn {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: .04em;
+    color: var(--dim); background: rgba(0,229,255,.04);
+    border: 1px solid rgba(0,229,255,.15); border-radius: 2px;
+    padding: 3px 8px; cursor: pointer; transition: all .2s;
+  }
+  .gnm-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 8px rgba(0,229,255,.3); }
+  .gnm-btn.home { border-color: rgba(0,255,136,.15); }
+  .gnm-btn.home:hover { border-color: var(--green, #00ff88); color: var(--green, #00ff88); box-shadow: 0 0 8px rgba(0,255,136,.3); }
+
   .bar-status { display: flex; align-items: center; gap: 14px; }
   .bs-item { display: flex; align-items: center; gap: 5px; }
   .bs-dot {
@@ -365,6 +379,63 @@
   .typing-dot:nth-child(2) { animation-delay: .18s; }
   .typing-dot:nth-child(3) { animation-delay: .36s; }
   @keyframes tdot { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-5px)} }
+
+  /* ── SPRINT 31: GLOBAL FONT SCALING ──────────────────────────── */
+  :root {
+    --main-font-family: 'JetBrains Mono', 'SF Pro Mono', monospace;
+    --main-font-size: 13px;
+    --chat-input-order: 1; /* 0=top, 1=bottom, 99=floating */
+  }
+
+  /* ── SPRINT 31: CHAT INPUT POSITION ──────────────────────────── */
+  .chat-panel {
+    display: flex; flex-direction: column;
+  }
+  /* Messages area always gets flex:1 */
+  #messages { flex: 1; }
+  /* Input bar order — CSS var controls top/bottom */
+  #input-bar { order: var(--chat-input-order, 1); flex-shrink: 0; }
+  /* Spectrum analyzer stays near top always */
+  .spectrum-wrap { order: 0; flex-shrink: 0; }
+  /* Panel header always first */
+  .panel-hdr-row { order: -1; flex-shrink: 0; }
+
+  /* Top mode: remove top border, add bottom border */
+  body.input-top #input-bar {
+    border-top: none; border-bottom: 1px solid var(--border);
+  }
+
+  /* Floating input widget */
+  #floating-input {
+    display: none; position: fixed; z-index: 8888;
+    width: clamp(280px, 36vw, 480px);
+    background: rgba(0,8,22,.94);
+    border: 1px solid rgba(0,229,255,.35);
+    border-radius: 4px;
+    box-shadow: 0 4px 32px rgba(0,0,0,.7), 0 0 20px rgba(0,229,255,.12);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    user-select: none;
+  }
+  #floating-input.visible { display: block; }
+  .float-handle {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 10px; cursor: grab; background: rgba(0,229,255,.04);
+    border-bottom: 1px solid rgba(0,229,255,.1);
+    border-radius: 4px 4px 0 0;
+  }
+  .float-handle:active { cursor: grabbing; }
+  .float-handle-label {
+    font-family: 'Orbitron', monospace; font-size: 7.5px;
+    letter-spacing: .16em; color: rgba(0,229,255,.4);
+  }
+  .float-handle-close {
+    background: none; border: none; color: rgba(0,229,255,.3);
+    font-size: 12px; cursor: pointer; padding: 0 2px; line-height: 1;
+    transition: color .15s;
+  }
+  .float-handle-close:hover { color: var(--accent); }
+  .float-body { padding: 8px 10px; }
 
   .input-area { flex-shrink: 0; padding: 7px 10px; border-top: 1px solid var(--border); }
   .input-wrap {
@@ -651,6 +722,125 @@
 
   /* ── MISC ────────────────────────────────────────────────── */
   .glitch-text { font-family: 'Orbitron', monospace; }
+
+  /* ══════════════════════════════════════════════════════════
+     SPRINT 30 — SCHEDULE CARD (FINALIZE_PLAN)
+  ══════════════════════════════════════════════════════════ */
+  .schedule-card {
+    width: 100%; margin-top: 8px;
+    background: rgba(0,8,22,.88); border: 1px solid rgba(0,229,255,.18);
+    border-radius: 3px; overflow: hidden;
+    animation: cardIn .3s ease;
+  }
+  .schedule-hdr {
+    padding: 8px 12px; background: rgba(0,229,255,.06);
+    border-bottom: 1px solid rgba(0,229,255,.1);
+    font-family: 'Orbitron', monospace; font-size: 9px;
+    letter-spacing: .16em; color: var(--accent);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .schedule-date { font-size: 8px; opacity: .55; }
+  .schedule-timeline { padding: 8px 0; }
+  .sched-row {
+    display: flex; align-items: flex-start; gap: 8px;
+    padding: 5px 12px; border-bottom: 1px solid rgba(0,229,255,.04);
+    transition: background .12s;
+  }
+  .sched-row:last-child { border-bottom: none; }
+  .sched-row:hover { background: rgba(0,229,255,.04); }
+  .sched-time {
+    font-family: 'Orbitron', monospace; font-size: 9px;
+    color: var(--accent); opacity: .7; flex-shrink: 0; width: 90px;
+  }
+  .sched-act {
+    flex: 1; font-size: 11px; color: var(--text-b); line-height: 1.3;
+    font-family: 'Rajdhani', sans-serif;
+  }
+  .sched-type {
+    font-size: 8px; padding: 1px 5px; border-radius: 2px; flex-shrink: 0;
+    font-family: 'Orbitron', monospace; letter-spacing: .06em;
+  }
+  .sched-type.activity { background:rgba(0,229,255,.12); color:var(--accent); }
+  .sched-type.study    { background:rgba(255,200,0,.12);  color:#ffcb00; }
+  .sched-type.meal     { background:rgba(0,255,100,.12);  color:#00ff77; }
+  .sched-type.buffer   { background:rgba(255,255,255,.06);color:rgba(255,255,255,.4); }
+  .sched-type.travel   { background:rgba(255,120,0,.12);  color:#ff8c30; }
+  .sched-type.sleep    { background:rgba(100,100,255,.12);color:#8090ff; }
+  .sched-actions {
+    display: flex; gap: 6px; padding: 8px 12px;
+    border-top: 1px solid rgba(0,229,255,.08);
+  }
+  .sched-btn {
+    flex: 1; padding: 6px; border-radius: 2px;
+    font-family: 'Orbitron', monospace; font-size: 8px; letter-spacing: .1em;
+    cursor: pointer; transition: all .15s; border: 1px solid;
+  }
+  .sched-btn.gcal {
+    background: rgba(66,133,244,.1); border-color: rgba(66,133,244,.3);
+    color: #4285f4;
+  }
+  .sched-btn.gcal:hover { background: rgba(66,133,244,.22); }
+  .sched-btn.ics {
+    background: rgba(0,229,255,.08); border-color: rgba(0,229,255,.2);
+    color: var(--accent);
+  }
+  .sched-btn.ics:hover { background: rgba(0,229,255,.18); }
+
+  /* ══════════════════════════════════════════════════════════
+     SPRINT 29 — RESPONSIVE LAYOUT (chat.html)
+  ══════════════════════════════════════════════════════════ */
+  /* Fluid columns */
+  :root {
+    --col-l: clamp(200px, 16vw, 260px);
+    --col-r: clamp(240px, 19vw, 320px);
+  }
+  /* 4K */
+  @media (min-width: 2200px) {
+    :root { --col-l: 320px; --col-r: 370px; --bar-h: 52px; }
+  }
+  /* iPad landscape — hide right col */
+  @media (max-width: 1023px) {
+    :root { --col-l: 200px; --col-r: 0px; }
+    .os-grid { grid-template-columns: 200px 1fr !important; }
+    .col-right { display: none !important; }
+  }
+  /* Tablet / iPad portrait — single column */
+  @media (max-width: 767px) {
+    :root { --bar-h: 50px; }
+    html, body { overflow-y: auto; height: auto; min-height: 100vh; }
+    .os-bar { padding: 0 10px; height: var(--bar-h); }
+    .bar-status { display: none; }
+    .os-grid {
+      position: relative !important;
+      display: flex !important;
+      flex-direction: column !important;
+      height: auto !important;
+      min-height: calc(100dvh - var(--bar-h));
+      margin-top: var(--bar-h);
+      overflow: visible !important;
+      grid-template-columns: unset !important;
+    }
+    .col-left {
+      flex: 0 0 auto;
+      width: 100% !important;
+      max-height: 240px;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .col-right { display: none !important; }
+    .col-center {
+      flex: 1;
+      min-height: 60vh;
+      overflow: hidden;
+    }
+    .chat-output { flex: 1; min-height: 50vh; }
+  }
+  /* Phone */
+  @media (max-width: 480px) {
+    .bar-title { font-size: 10px; letter-spacing: 1.5px; }
+    .chat-input { font-size: 16px; } /* prevent iOS zoom */
+  }
   </style>
 </head>
 <body>
@@ -667,6 +857,12 @@
 
   <!-- OS TOP BAR -->
   <header class="os-bar">
+    <!-- Sprint 32: Universal Global Nav Mesh -->
+    <div class="global-nav-mesh">
+      <button class="gnm-btn" id="gnm-back" onclick="_gnmBack()" title="Өмнөх хуудас">← BACK</button>
+      <button class="gnm-btn home" onclick="_gnmHome()" title="CORE нүүр хуудас">🏠 HOME</button>
+    </div>
+
     <div class="bar-brand">
       <div>
         <div class="bar-title">JARVIS OS</div>
@@ -1182,33 +1378,61 @@
   }
 
   // ═══════════════════════════════════════════════════════════
-  //  FIRESTORE — LOAD PROGRESS
+  //  FIRESTORE — LOAD PROGRESS (Cache-first, нэг удаа татна)
   // ═══════════════════════════════════════════════════════════
-  async function loadProgress(uid) {
-    try {
-      const snap = await window._db.collection(`users/${uid}/vocabulary`).get();
-      if (snap.empty) { setSyncStatus('Vocabulary хоосон — /seed_hsk', true); return; }
+  let _progressLoaded = false; // Session дотор нэг удаа л Firestore-с татна
 
-      _allWords = snap.docs.map(d => ({id:d.id,...d.data()}));
-      const prog = {};
-      for (let l=1;l<=6;l++) prog[l]={total:0,mastered:0,dist:{1:0,2:0,3:0,4:0,5:0}};
-      _allWords.forEach(w => {
-        const l=w.hsk_level||3, ml=w.mastery_level||1;
-        if (prog[l]) { prog[l].total++; prog[l].dist[ml]++; if(ml===5) prog[l].mastered++; }
-      });
-      for (let l=1;l<=6;l++) prog[l].pct = prog[l].total ? Math.round(prog[l].mastered/prog[l].total*100):0;
-      _progress = prog;
-      let active = 6;
-      for (let l=1;l<=6;l++) { if(prog[l].total>0 && prog[l].pct<80){active=l;break;} }
-      _progress._active = active;
-      const tot = _allWords.length;
-      const mas = _allWords.filter(w=>(w.mastery_level||1)===5).length;
-      setSyncStatus(`${mas}/${tot} цээжилсэн`, false);
+  async function loadProgress(uid, forceRefresh = false) {
+    // Memory cache — аль хэдийн татсан, forceRefresh биш бол skip
+    if (_progressLoaded && !forceRefresh) {
+      _computeProgress();
+      updateDailyProgress();
+      return;
+    }
+    try {
+      // Cache-first: Firestore SDK local cache ашиглана — network read гаргахгүй
+      const snap = await window._db.collection(`users/${uid}/vocabulary`).get({ source: 'cache' });
+      if (snap.empty && !_progressLoaded) {
+        // Cache хоосон — нэг удаа server-аас татна
+        const serverSnap = await window._db.collection(`users/${uid}/vocabulary`).get();
+        if (serverSnap.empty) { setSyncStatus('Vocabulary хоосон — /seed_hsk', true); return; }
+        _allWords = serverSnap.docs.map(d => ({id:d.id,...d.data()}));
+      } else if (!snap.empty) {
+        _allWords = snap.docs.map(d => ({id:d.id,...d.data()}));
+      }
+      _progressLoaded = true;
+      _computeProgress();
       updateDailyProgress();
     } catch(e) {
+      // Cache miss — server-аас нэг удаа татна (зөвхөн error үед)
+      if (!_progressLoaded) {
+        try {
+          const snap = await window._db.collection(`users/${uid}/vocabulary`).get();
+          if (!snap.empty) { _allWords = snap.docs.map(d => ({id:d.id,...d.data()})); _progressLoaded = true; }
+        } catch {}
+      }
+      _computeProgress();
+      updateDailyProgress();
       console.warn('[HSK] loadProgress:', e.message);
-      setSyncStatus('Sync алдаа', true);
+      setSyncStatus(_progressLoaded ? `${_allWords.length} үг (кэш)` : 'Sync алдаа', !_progressLoaded);
     }
+  }
+
+  function _computeProgress() {
+    const prog = {};
+    for (let l=1;l<=6;l++) prog[l]={total:0,mastered:0,dist:{1:0,2:0,3:0,4:0,5:0}};
+    _allWords.forEach(w => {
+      const l=w.hsk_level||3, ml=w.mastery_level||1;
+      if (prog[l]) { prog[l].total++; prog[l].dist[ml]++; if(ml===5) prog[l].mastered++; }
+    });
+    for (let l=1;l<=6;l++) prog[l].pct = prog[l].total ? Math.round(prog[l].mastered/prog[l].total*100):0;
+    _progress = prog;
+    let active = 6;
+    for (let l=1;l<=6;l++) { if(prog[l].total>0 && prog[l].pct<80){active=l;break;} }
+    _progress._active = active;
+    const tot = _allWords.length;
+    const mas = _allWords.filter(w=>(w.mastery_level||1)===5).length;
+    setSyncStatus(`${mas}/${tot} цээжилсэн`, false);
   }
 
   function setSyncStatus(msg, stale) {
@@ -1239,17 +1463,18 @@
 
   function setupSync(uid) {
     if (_syncUnsub) _syncUnsub();
+    // ── onSnapshot: зөвхөн Telegram drill sync болоход ажиллана ──
+    // forceRefresh=true → cache биш server-аас татна (Telegram-аас шинэ өгөгдөл ирсэн)
     _syncUnsub = window._db.doc(`users/${uid}/hsk/session`).onSnapshot(async snap => {
       if (snap.exists && snap.data().updatedAt) {
-        await loadProgress(uid);
+        await loadProgress(uid, true); // force server refresh — TG-с шинэ дата ирсэн
         renderSidebar(); renderChart(); updateDailyProgress();
         setSyncStatus(`TG sync · ${new Date(snap.data().updatedAt).toLocaleTimeString()}`, false);
         addNotif('SYNC', 'Telegram drill synced');
       }
     }, ()=>{});
-    setInterval(async ()=>{
-      await loadProgress(uid); renderSidebar(); renderChart(); updateDailyProgress();
-    }, 90000);
+    // ── 90s interval УСТГАСАН ── (was: 300 reads/interval × 40x/цаг = 12K reads/цаг)
+    // Telegram sync ирэхэд л автоматаар refresh болно
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1514,9 +1739,130 @@
     startSpectrum();
     const reply=await sendChatMessage(text);
     typing.remove();stopSpectrum();
-    addMsg('bot',reply);
+    const msgRow=addMsg('bot',reply);
+    // Sprint 30: Detect FINALIZE_PLAN and render schedule card
+    _tryRenderScheduleCard(reply, msgRow);
     sendBtn.disabled=false;setAIState('idle');
     inputEl.focus();
+  }
+
+  // ── SPRINT 30: FINALIZE_PLAN → Schedule Card ─────────────────
+  function _parsePlan(text) {
+    // Find ```json ... ``` block containing action:FINALIZE_PLAN
+    const m = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (!m) return null;
+    try {
+      const obj = JSON.parse(m[1]);
+      if (obj.action === 'FINALIZE_PLAN' && obj.timeline) return obj;
+    } catch {}
+    return null;
+  }
+
+  function _tryRenderScheduleCard(text, msgRow) {
+    const plan = _parsePlan(text);
+    if (!plan || !msgRow) return;
+    const card = _buildScheduleCard(plan);
+    msgRow.querySelector('.msg-bubble')?.appendChild(card);
+  }
+
+  function _buildScheduleCard(plan) {
+    const TYPE_LABELS = {
+      activity:'ACT', study:'HSK', meal:'MEAL', buffer:'BUFFER',
+      travel:'MOVE', sleep:'SLEEP'
+    };
+    const rows = (plan.timeline || []).map(e => {
+      const t = (e.type || 'activity').toLowerCase();
+      const lbl = TYPE_LABELS[t] || t.toUpperCase();
+      return `<div class="sched-row">
+        <span class="sched-time">${e.startTime||''}–${e.endTime||''}</span>
+        <span class="sched-act">${(e.activity||'').replace(/</g,'&lt;')}</span>
+        <span class="sched-type ${t}">${lbl}</span>
+      </div>`;
+    }).join('');
+
+    const dateStr = plan.date || new Date().toISOString().split('T')[0];
+    const label   = (plan.label || 'MISSION SCHEDULE').replace(/</g,'&lt;');
+
+    // Unique card id for calendar export functions
+    const cid = 'sc-' + Date.now();
+    const card = document.createElement('div');
+    card.className = 'schedule-card';
+    card.id = cid;
+    card.innerHTML = `
+      <div class="schedule-hdr">
+        <span>⬡ ${label}</span>
+        <span class="schedule-date">${dateStr}</span>
+      </div>
+      <div class="schedule-timeline">${rows}</div>
+      <div class="sched-actions">
+        <button class="sched-btn gcal" onclick="_exportGcal(${cid}._plan)">📅 Google Calendar</button>
+        <button class="sched-btn ics"  onclick="_exportIcs(${cid}._plan)">⬇ Apple (.ics)</button>
+      </div>`;
+    // Attach plan data directly on DOM element
+    card._plan = plan;
+    // Fix onclick references (can't use cid.plan in onclick string safely)
+    card.querySelectorAll('.sched-btn').forEach(btn => {
+      if (btn.classList.contains('gcal')) {
+        btn.onclick = () => _exportGcal(plan);
+      } else if (btn.classList.contains('ics')) {
+        btn.onclick = () => _exportIcs(plan);
+      }
+    });
+    return card;
+  }
+
+  // Google Calendar URL export — opens in browser
+  function _exportGcal(plan) {
+    if (!plan || !plan.timeline || !plan.timeline.length) return;
+    const dateStr = (plan.date || new Date().toISOString().split('T')[0]).replace(/-/g,'');
+    const first   = plan.timeline[0];
+    const last    = plan.timeline[plan.timeline.length - 1];
+    const startDT = dateStr + 'T' + (first.startTime || '08:00').replace(':','') + '00';
+    const endDT   = dateStr + 'T' + (last.endTime   || '22:00').replace(':','') + '00';
+
+    const details = plan.timeline.map(e =>
+      `${e.startTime}-${e.endTime}: ${e.activity}`
+    ).join('\\n');
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text:   plan.label || 'T.H.R.E.E. OS Mission Day',
+      dates:  `${startDT}/${endDT}`,
+      details,
+      location: 'Shanghai',
+    });
+    const url = `https://calendar.google.com/calendar/render?${params.toString()}`;
+    // Open via Electron shell or fallback to window.open
+    if (window.jarvisAPI?.openExternal) window.jarvisAPI.openExternal(url);
+    else window.open(url, '_blank');
+  }
+
+  // Apple Calendar .ics file generation + download
+  function _exportIcs(plan) {
+    if (!plan || !plan.timeline || !plan.timeline.length) return;
+    const dateStr = (plan.date || new Date().toISOString().split('T')[0]).replace(/-/g,'');
+    const lines   = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//THREE-OS//Bileg//EN'];
+
+    plan.timeline.forEach((e, i) => {
+      const startDT = dateStr + 'T' + (e.startTime || '08:00').replace(':','') + '00';
+      const endDT   = dateStr + 'T' + (e.endTime   || '09:00').replace(':','') + '00';
+      const uid     = `three-os-${Date.now()}-${i}@jarvis.mn`;
+      lines.push('BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTART:${startDT}`,
+        `DTEND:${endDT}`,
+        `SUMMARY:${(e.activity || '').replace(/,/g,'\\,')}`,
+        `CATEGORIES:${(e.type || 'activity').toUpperCase()}`,
+        'END:VEVENT');
+    });
+    lines.push('END:VCALENDAR');
+
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `${(plan.label || 'mission').replace(/\s+/g,'-')}.ics`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
   }
   function setAIState(state){
     const dot=document.getElementById('ai-dot');
@@ -1721,6 +2067,158 @@
       }
     }
   });
+  // ══════════════════════════════════════════════════════════════
+  // SPRINT 31 — CHAT INPUT POSITION + FLOATING WIDGET
+  // ══════════════════════════════════════════════════════════════
+
+  (function _initInputPosition() {
+    const pos = localStorage.getItem('jarvis_input_pos') || 'bottom';
+    _applyChatInputPos(pos);
+    // Also restore font settings
+    const family = localStorage.getItem('jarvis_font_family');
+    const size   = localStorage.getItem('jarvis_font_size');
+    if (family) document.documentElement.style.setProperty('--main-font-family', family);
+    if (size)   document.documentElement.style.setProperty('--main-font-size', size + (size.includes('px') ? '' : 'px'));
+  })();
+
+  function _applyChatInputPos(pos) {
+    const inputBar = document.getElementById('input-bar');
+    if (!pos) return;
+    document.body.classList.remove('input-top', 'input-bottom', 'input-floating');
+
+    if (pos === 'floating') {
+      document.body.classList.add('input-floating');
+      if (inputBar) inputBar.style.display = 'none';
+      _showFloatingInput();
+    } else if (pos === 'top') {
+      document.body.classList.add('input-top');
+      if (inputBar) { inputBar.style.display = ''; inputBar.style.order = '0'; }
+      document.documentElement.style.setProperty('--chat-input-order', '0');
+      _hideFloatingInput();
+    } else { // bottom (default)
+      document.body.classList.add('input-bottom');
+      if (inputBar) { inputBar.style.display = ''; inputBar.style.order = '1'; }
+      document.documentElement.style.setProperty('--chat-input-order', '1');
+      _hideFloatingInput();
+    }
+  }
+
+  // ── Floating Input ─────────────────────────────────────────────
+  let _floatEl = null;
+  let _isDragging = false, _dragOX = 0, _dragOY = 0;
+
+  function _showFloatingInput() {
+    if (_floatEl && document.body.contains(_floatEl)) {
+      _floatEl.classList.add('visible'); return;
+    }
+    _floatEl = document.createElement('div');
+    _floatEl.id = 'floating-input';
+    _floatEl.className = 'visible';
+    _floatEl.innerHTML = `
+      <div class="float-handle" id="float-handle">
+        <span class="float-handle-label">✦ A.C.E. COMMS — DRAG TO MOVE</span>
+        <button class="float-handle-close" onclick="_hideFloatingInput()" title="Хаах">✕</button>
+      </div>
+      <div class="float-body">
+        <div class="input-wrap" style="border-radius:2px">
+          <span class="input-prompt">›</span>
+          <textarea id="float-chat-input" rows="1"
+            style="flex:1;background:none;border:none;outline:none;color:var(--text-b);font-family:var(--main-font-family);font-size:13px;font-weight:500;resize:none;line-height:1.4;max-height:80px"
+            placeholder="INPUT COMMAND TO JARVIS..."
+            onkeydown="_floatKey(event)"
+            oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+          <button class="send-btn" onclick="_floatSend()" title="Send">
+            <svg viewBox="0 0 24 24" width="13" height="13"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>`;
+
+    // Default position: bottom-center
+    _floatEl.style.cssText += ';bottom:28px;left:50%;transform:translateX(-50%);top:auto;right:auto';
+    document.body.appendChild(_floatEl);
+
+    // Drag logic
+    const handle = document.getElementById('float-handle');
+    handle?.addEventListener('mousedown', e => {
+      _isDragging = true;
+      const rect = _floatEl.getBoundingClientRect();
+      _dragOX = e.clientX - rect.left;
+      _dragOY = e.clientY - rect.top;
+      _floatEl.style.transform = 'none'; // detach center-calc
+    });
+    document.addEventListener('mousemove', e => {
+      if (!_isDragging || !_floatEl) return;
+      _floatEl.style.left   = (e.clientX - _dragOX) + 'px';
+      _floatEl.style.top    = (e.clientY - _dragOY) + 'px';
+      _floatEl.style.bottom = 'auto';
+    });
+    document.addEventListener('mouseup', () => { _isDragging = false; });
+  }
+
+  function _hideFloatingInput() {
+    if (_floatEl) { _floatEl.classList.remove('visible'); }
+  }
+
+  function _floatKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _floatSend(); }
+  }
+
+  async function _floatSend() {
+    const inp = document.getElementById('float-chat-input');
+    if (!inp) return;
+    const text = inp.value.trim();
+    if (!text) return;
+    inp.value = ''; inp.style.height = 'auto';
+    // Reuse existing send pipeline (inputEl, send)
+    if (typeof inputEl !== 'undefined' && typeof send === 'function') {
+      inputEl.value = text;
+      send();
+    } else if (typeof sendChatMessage === 'function') {
+      const msgsEl = document.getElementById('messages');
+      const userRow = document.createElement('div');
+      userRow.className = 'msg-row user';
+      userRow.innerHTML = `<div class="msg-av">S</div><div class="msg-bubble">${text.replace(/</g,'&lt;')}</div>`;
+      msgsEl?.appendChild(userRow);
+      const reply = await sendChatMessage(text);
+      const botRow = document.createElement('div');
+      botRow.className = 'msg-row bot';
+      botRow.innerHTML = `<div class="msg-av">J</div><div class="msg-bubble">${reply.replace(/</g,'&lt;')}</div>`;
+      msgsEl?.appendChild(botRow);
+      msgsEl?.scrollTo(0, msgsEl.scrollHeight);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // SPRINT 32 — UNIVERSAL GLOBAL NAV MESH
+  // ══════════════════════════════════════════════════════════════
+  function _gnmHome() {
+    if (window.jarvisAPI?.loadPage) {
+      window.jarvisAPI.loadPage('index.html');
+    } else {
+      window.location.href = 'index.html';
+    }
+  }
+  function _gnmBack() {
+    // Read nav history from localStorage (set by index.html navTo)
+    try {
+      const hist = JSON.parse(localStorage.getItem('_jarvisNavHistory') || '[]');
+      const prev = hist.pop();
+      if (prev && prev !== 'core' && window.jarvisAPI?.loadPage) {
+        localStorage.setItem('_jarvisNavHistory', JSON.stringify(hist));
+        const navMap = { intel:'chat.html', track:'tracker.html', profile:'profile.html', guide:'guide.html' };
+        if (navMap[prev]) { window.jarvisAPI.loadPage(navMap[prev]); return; }
+      }
+    } catch {}
+    _gnmHome(); // fallback to HOME
+  }
+  // Init: show BACK only if there's history
+  (function _initGnm() {
+    try {
+      const hist = JSON.parse(localStorage.getItem('_jarvisNavHistory') || '[]');
+      const backBtn = document.getElementById('gnm-back');
+      if (backBtn && hist.length === 0) backBtn.style.opacity = '.35';
+    } catch {}
+  })();
   </script>
 </body>
 </html>

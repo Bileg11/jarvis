@@ -1,9 +1,9 @@
-// ── JARVIS OS — Dynamic Theme System (Sprint 23) ──────────────────
+// ── T.H.R.E.E. OS — Dynamic Theme System ──────────────────────────
 'use strict';
 
 const JARVIS_THEMES = {
   'stark-cyan': {
-    label: 'STARK CYAN',
+    label: 'CYAN EDGE',
     reactor: { r:0, g:229, b:255 },
     vars: {
       '--accent':   '#00e5ff', '--accent2':  '#00b4cc',
@@ -70,6 +70,32 @@ const JARVIS_THEMES = {
       '--neon':     '0 0 8px rgba(168,85,247,.6),0 0 22px rgba(168,85,247,.2)',
       '--neon-a':   '0 0 8px rgba(255,140,0,.6)',
       '--neon-g':   '0 0 8px rgba(0,255,136,.6)',
+    }
+  },
+
+  // ── MARLAA BLOSSOM — Зөөлөн, пастел, хувийн ────────────────────
+  'marlaa': {
+    label: '🌸 MARLAA — BLOSSOM',
+    reactor: { r:249, g:168, b:197 },
+    vars: {
+      '--accent':   '#f9a8c5',   // cherry blossom pink
+      '--accent2':  '#e879a8',   // deeper rose
+      '--bg':       '#060810',   // deep midnight navy
+      '--glass':    'rgba(14,8,28,0.88)',
+      '--glass2':   'rgba(20,10,38,0.70)',
+      '--border':   'rgba(249,168,197,0.16)',
+      '--border-h': 'rgba(249,168,197,0.50)',
+      '--text':     '#e8cfe0',   // warm blush text
+      '--text-b':   '#fce4f0',   // near-white blush
+      '--dim':      '#1e0a28',
+      '--green':    '#86efac',   // soft sage
+      '--amber':    '#fbbf24',   // warm gold
+      '--red':      '#fca5a5',   // soft coral
+      '--yellow':   '#fde68a',   // cream yellow
+      '--neon':     '0 0 8px rgba(249,168,197,.5),0 0 20px rgba(249,168,197,.15)',
+      '--neon-a':   '0 0 8px rgba(251,191,36,.5)',
+      '--neon-g':   '0 0 8px rgba(134,239,172,.5)',
+      '--neon-r':   '0 0 8px rgba(252,165,165,.5)',
     }
   },
 };
