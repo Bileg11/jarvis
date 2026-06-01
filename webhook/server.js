@@ -10,7 +10,7 @@ const express   = require('express');
 const cron      = require('node-cron');
 const tgHandler   = require('./api/telegram');
 const { sendWeeklyReport, sendBrief, sendHSKReminder,
-        sendCheckpoints, sendDailyRecap } = tgHandler;
+        sendCheckpoints, sendDailyRecap, processOutbox } = tgHandler;
 const lfsBot      = require('./api/lfs-telegram');
 const metaHook    = require('./api/meta-webhook');
 const alerts      = require('./api/alerts');
@@ -102,6 +102,13 @@ cron.schedule('0 7 * * *', () => {
   console.log('[JARVIS] Sending HSK daily reminder...');
   if (typeof sendHSKReminder === 'function') {
     sendHSKReminder().catch(e => console.error('[HSK Reminder] Error:', e.message));
+  }
+});
+
+// ── GAP-12: OUTBOX PROCESSOR — 2 минут бүр ───────────────────────
+cron.schedule('*/2 * * * *', () => {
+  if (typeof processOutbox === 'function') {
+    processOutbox().catch(e => console.error('[Outbox] Cron error:', e.message));
   }
 });
 

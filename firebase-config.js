@@ -225,16 +225,21 @@ async function _loadUserProfile(uid) {
 
 async function _saveUserProfile(uid, patch) {
   if (!uid || !_db) return;
-  const ref = _db.doc(`users/${uid}/config/profile`);
-  // Optimistic local update
+  // GAP-02: хоёр замд синхрончлон бичнэ
+  const cfgRef  = _db.doc(`users/${uid}/config/profile`);
+  const metaRef = _db.doc(`users/${uid}/meta/profile`);
   try {
-    const cur = JSON.parse(localStorage.getItem('jarvis_user_profile') || '{}');
+    const cur    = JSON.parse(localStorage.getItem('jarvis_user_profile') || '{}');
     const merged = _fsMerge(cur, patch);
     localStorage.setItem('jarvis_user_profile', JSON.stringify(merged));
     document.dispatchEvent(new CustomEvent('jarvis:profile', { detail: merged }));
   } catch {}
-  // Async Firestore
-  ref.set(patch, { merge: true }).catch(e => console.warn('[Profile]', e.code));
+  // config/profile — роль, тема (primary)
+  cfgRef.set(patch, { merge: true }).catch(e => console.warn('[Profile/cfg]', e.code));
+  // meta/profile — role field-г telegram.js-д ч харагдуулна
+  if (patch.role) {
+    metaRef.set({ role: patch.role }, { merge: true }).catch(() => {});
+  }
 }
 
 _auth.onAuthStateChanged(async user => {

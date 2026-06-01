@@ -105,13 +105,29 @@ async function findUserByChatId(chatId) {
     if (!snap.exists) return null;
     const { uid } = snap.data();
     if (!uid) return null;
-    const pSnap = await dbPersonal.doc(`users/${uid}/meta/profile`).get();
-    const profile = pSnap.exists ? pSnap.data() : {};
+    // GAP-02: meta/profile + config/profile хоёуланг нэгтгэж уншина
+    const [metaSnap, cfgSnap] = await Promise.all([
+      dbPersonal.doc(`users/${uid}/meta/profile`).get(),
+      dbPersonal.doc(`users/${uid}/config/profile`).get(),
+    ]);
+    const profile = {
+      ...(cfgSnap.exists ? cfgSnap.data() : {}),
+      ...(metaSnap.exists ? metaSnap.data() : {}),
+    };
     return { uid, chatId: String(chatId), ...profile };
   } catch (e) {
     console.error('[Routing] findUserByChatId error:', e.message);
     return null;
   }
+}
+
+// GAP-07: telegram_lookup-аас идэвхтэй TG хэрэглэгчид олох
+// collection('users').get() бүгдийг татдагаас хамаагүй хэмнэлттэй
+async function _getTelegramUsers() {
+  const snaps = await dbPersonal.collection('telegram_lookup').get();
+  return snaps.docs
+    .map(d => ({ uid: d.data().uid, chatId: d.id }))
+    .filter(u => u.uid);
 }
 
 // Билэгийн анхдагч профайлыг Firestore-д автоматаар үүсгэх
@@ -266,12 +282,16 @@ async function getScore(uid = UID) {
 }
 
 async function getStreak(key, uid = UID) {
-  let s = 0;
+  // GAP-06: getAll() — 30 sequential read → 1 batched RPC call
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const refs = [];
   for (let i = 0; i < 30; i++) {
-    const d  = new Date(now); d.setDate(d.getDate() - i);
-    const ds = d.toLocaleDateString('sv');
-    const snap = await dbPersonal.doc(`users/${uid}/routines/${ds}`).get();
+    const d = new Date(now); d.setDate(d.getDate() - i);
+    refs.push(dbPersonal.doc(`users/${uid}/routines/${d.toLocaleDateString('sv')}`));
+  }
+  const snaps = await dbPersonal.getAll(...refs);
+  let s = 0;
+  for (const snap of snaps) {
     if (!snap.exists || !snap.data()[key]) break;
     s++;
   }
@@ -1835,13 +1855,9 @@ async function sendCheckpoints() {
   const nowMin  = now.getHours() * 60 + now.getMinutes();
 
   try {
-    const usersSnap = await dbPersonal.collection('users').get();
-    for (const userDoc of usersSnap.docs) {
-      const uid    = userDoc.id;
-      const chatId = (await dbPersonal.doc(`users/${uid}/integrations/telegram`).get()
-        .catch(() => null))?.data()?.chat_id;
-      if (!chatId) continue;
-
+    // GAP-07: telegram_lookup-аас татна — collection('users').get() биш
+    const tgUsers = await _getTelegramUsers();
+    for (const { uid, chatId } of tgUsers) {
       const planSnap = await dbPersonal.doc(`users/${uid}/plans/${today}`).get();
       if (!planSnap.exists) continue;
       const plan = planSnap.data()?.confirmed || [];
@@ -1883,13 +1899,9 @@ async function sendDailyRecap() {
   const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   const today = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
   try {
-    const usersSnap = await dbPersonal.collection('users').get();
-    for (const userDoc of usersSnap.docs) {
-      const uid    = userDoc.id;
-      const chatId = (await dbPersonal.doc(`users/${uid}/integrations/telegram`).get()
-        .catch(() => null))?.data()?.chat_id;
-      if (!chatId) continue;
-
+    // GAP-07: telegram_lookup-аас татна
+    const tgUsers = await _getTelegramUsers();
+    for (const { uid, chatId } of tgUsers) {
       const [routineSnap, planSnap, logSnap, roleSnap] = await Promise.all([
         dbPersonal.doc(`users/${uid}/routines/${today}`).get(),
         dbPersonal.doc(`users/${uid}/plans/${today}`).get(),
@@ -1924,8 +1936,43 @@ async function sendDailyRecap() {
   }
 }
 
+// ── GAP-12: TELEGRAM OUTBOX PROCESSOR ───────────────────────────────
+// users/${uid}/telegram_outbox дотор sent:false мессежүүдийг
+// Telegram-д явуулж sent:true болгоно. Cron: */2 min
+async function processOutbox() {
+  try {
+    const tgUsers = await _getTelegramUsers();
+    for (const { uid, chatId } of tgUsers) {
+      const outSnap = await dbPersonal
+        .collection(`users/${uid}/telegram_outbox`)
+        .where('sent', '==', false)
+        .orderBy('created_at')
+        .limit(5)
+        .get()
+        .catch(() => null);
+      if (!outSnap || outSnap.empty) continue;
+
+      for (const doc of outSnap.docs) {
+        const { message } = doc.data();
+        if (message) {
+          await tgCall('sendMessage', {
+            chat_id:    chatId,
+            text:       message,
+            parse_mode: 'HTML',
+          }).catch(() => {});
+        }
+        await doc.ref.update({ sent: true, sent_at: new Date().toISOString() })
+          .catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.error('[Outbox] Error:', e.message);
+  }
+}
+
 module.exports.sendCheckpoints  = sendCheckpoints;
 module.exports.sendDailyRecap   = sendDailyRecap;
+module.exports.processOutbox    = processOutbox;
 
 // ── WEBHOOK HANDLER ───────────────────────────────────────────────
 // Server startup-д Билэгийн профайлыг seed хийнэ
