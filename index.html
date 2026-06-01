@@ -3553,6 +3553,42 @@ async function termSend() {
     return;
   }
 
+  // /challenge — June Challenge scoreboard (Sprint 34)
+  if (text === '/challenge' || text === '/ch') {
+    addTermLine('user', text);
+    try {
+      const CHALLENGE_START = new Date('2026-06-01');
+      const daysIn   = Math.floor((Date.now() - CHALLENGE_START) / 86400000);
+      const daysLeft = Math.max(0, 183 - daysIn);
+      const bScore   = _challengeCheckBileg?.() || { pct:0, done:0, total:4 };
+      const mScore   = _challengeCheckMarlaa?.() || { pct:0 };
+      const streak   = parseInt(localStorage.getItem('jarvis_ch_streak_bileg') || '0');
+      addTermLine('ok',  `>> 🏆 JUNE CHALLENGE — Day ${daysIn}/183 (${daysLeft} өдөр үлдсэн)`);
+      addTermLine('ok',  `>> ⚡ BILEG  : ${bScore.pct}%  (${bScore.done}/${bScore.total}) 🔥 streak`);
+      addTermLine('sys', `>> 🌸 МАРЛАА: ${mScore.pct}%`);
+      addTermLine('sys', `>> Challenge widget дээр дэлгэрэнгүй харагдана (top-right)`);
+      _challengeRender?.();
+    } catch(e) {
+      addTermLine('warn', `>> Challenge: ${e.message}`);
+    }
+    return;
+  }
+
+  // /plan — өнөөдрийн life plan (Sprint 34)
+  if (text === '/plan') {
+    addTermLine('user', text);
+    const today = new Date().toISOString().slice(0,10);
+    const plan  = window._llCurrentPlan || JSON.parse(localStorage.getItem('jarvis_plan_' + today) || 'null')?.confirmed;
+    if (!plan?.length) {
+      addTermLine('warn', '>> Өнөөдрийн хуваарь байхгүй. Pre-flight дарж үүсгэнэ үү.');
+      return;
+    }
+    const done = plan.filter(t=>t.done).length;
+    addTermLine('ok',  `>> 📋 ӨНӨӨДРИЙН ПЛАН — ${done}/${plan.length} дуусгасан`);
+    plan.forEach(t => addTermLine(t.done ? 'ok' : 'sys', `>>   ${t.done?'✓':'○'} ${t.start} ${t.icon} ${t.label} (${t.mins}м)`));
+    return;
+  }
+
   // /status — live diagnostic + AI weekly audit
   if (text === '/status') {
     addTermLine('user', '/status');
