@@ -2970,6 +2970,7 @@ function addTermLine(type, text, noScroll) {
   else prompt.textContent = 'S >';
   const txt = document.createElement('span');
   txt.className = 'term-text';
+  if (text) txt.textContent = text;   // ← FIX: text param was never set!
   line.appendChild(prompt);
   line.appendChild(txt);
   out.appendChild(line);
@@ -8344,6 +8345,10 @@ let _tgPollInterval = null;
 let _tgOffset = parseInt(localStorage.getItem('jarvis_tg_offset') || '0');
 
 function _listenTelegramInbox() {
+  // GAP-11: Хоёр дахин дуудагдахаас сэргийлэх global flag
+  if (window._tgInboxListening) return;
+  window._tgInboxListening = true;
+
   // Electron IPC path (direct polling)
   if (window.jarvisAPI?.telegramGetUpdates) {
     if (_tgPollInterval) return; // already polling

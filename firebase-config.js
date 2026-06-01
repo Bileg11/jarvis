@@ -702,7 +702,9 @@ window.DB = {
       // Streak logic
       const streakSnap = await streakRef.get().catch(() => null);
       const streakData = streakSnap?.exists ? streakSnap.data() : { current: 0, best: 0, total_days: 0, last_date: '' };
-      const yesterday  = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+      // GAP-10: UTC → Asia/Shanghai timezone
+      const yesterday  = new Date(Date.now() - 86400000)
+        .toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
       const isStreak   = streakData.last_date === yesterday && scoreData.pct >= 50;
       const isBroken   = streakData.last_date && streakData.last_date !== yesterday && streakData.last_date !== date;
 
@@ -712,6 +714,7 @@ window.DB = {
       const newBest    = Math.max(newCurrent, streakData.best || 0);
       const newTotal   = (streakData.total_days || 0) + (streakData.last_date !== date ? 1 : 0);
 
+      // GAP-03: merge: true — Electron/Railway race condition сэргийлэх
       await streakRef.set({
         current:    newCurrent,
         best:       newBest,
@@ -719,7 +722,7 @@ window.DB = {
         last_date:  date,
         role,
         updatedAt:  new Date().toISOString(),
-      }, { merge: false });
+      }, { merge: true });
 
       // Streak broken notification
       if (isBroken && streakData.current >= 3) {

@@ -203,9 +203,10 @@ async function getChatHistory(uid = UID) {
 
 async function saveChatHistory(msgs, uid = UID) {
   try {
-    // Хадгалахдаа шинэ format ашиглана, web-ийн DB.saveChatHistory()-тэй compatible
+    // GAP-14: Web-ийн MAX_MSGS*4=48 лимиттэй тэнцүү хадгална
+    // slice(-10) нь web-ийн урт түүхийг устгаж байсан
     await dbPersonal.doc(`users/${uid}/meta/chat`).set({
-      history:   msgs.slice(-10),
+      history:   msgs.slice(-48),
       updatedAt: new Date().toISOString(),
     });
   } catch {}
@@ -259,10 +260,8 @@ async function getScore(uid = UID) {
   ]);
   const rt    = r.exists ? r.data() : {};
   const water = l.exists ? (l.data().water?.total_ml || 0) : 0;
-  const score = Math.min(100, Math.round(
-    (water / 2000 * 25) + (rt.exercise ? 20 : 0) + (rt.hanzi ? 20 : 0) +
-    (rt.read ? 15 : 0) + (rt.journal ? 10 : 0)
-  ));
+  // GAP-04: Нэгдсэн scoring helper ашиглана
+  const score = _calcBilegScore(rt, water);
   return { score, routine: rt, water };
 }
 
@@ -1172,13 +1171,64 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
-  const doneMatch = raw.match(/^\/done\s+(\d+)/i);
+  // GAP-08 + GAP-01: Нэгдсэн /done handler
+  // Life plan (string ID) эхлээд шалгана, тоо бол legacy task руу unfall
+  const doneMatch = raw.match(/^\/done\s+(\S+)/i);
   if (doneMatch) {
-    const n    = parseInt(doneMatch[1]);
-    const done = await doneTask(n, uid);
-    if (!done) { await tgSend('⚠️ Тийм дугаартай task байхгүй байна.'); return; }
-    const remaining = await getTasks(uid);
-    await tgSend(`✅ *Дууслаа:* ${done}\n\nҮлдсэн: *${remaining.length}*`);
+    const arg   = doneMatch[1].trim();
+    const today = todaySH();
+
+    // 1) Life plan lookup (Sprint 34)
+    try {
+      const snap = await dbPersonal.doc(`users/${uid}/plans/${today}`).get();
+      if (snap.exists) {
+        const plan     = snap.data().confirmed || [];
+        const argLower = arg.toLowerCase();
+        const idx      = plan.findIndex(t =>
+          t.id === argLower ||
+          t.id === 'custom_' + argLower ||
+          t.label?.toLowerCase().includes(argLower)
+        );
+        if (idx >= 0) {
+          plan[idx].done = true;
+          await dbPersonal.doc(`users/${uid}/plans/${today}`).set(
+            { confirmed: plan }, { merge: true }
+          );
+          // GAP-01: Electron UI-д real-time push
+          await dbPersonal.doc(`users/${uid}/telegram_inbox/${Date.now()}`).set({
+            type: 'done', taskId: arg,
+            text: `/done ${arg}`,
+            timestamp: new Date().toISOString(),
+            processed: false,
+          });
+          const doneCnt = plan.filter(t => t.done).length;
+          const pct     = Math.round(doneCnt / plan.length * 100);
+          await _updateChallengeScore(uid, 'marlaa', pct, doneCnt, plan.length);
+          const task = plan[idx];
+          await tgSend(
+            `✅ *${task.icon} ${task.label}* — баталгаажлаа!\n\n` +
+            `Хуваарь: *${doneCnt}/${plan.length}* дуусгасан (${pct}%)\n` +
+            `${pct >= 70 ? '🔥 Streak аюулгүй!' : '⏳ Үргэлжлүүл...'}`
+          );
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('[done-plan]', e.message);
+    }
+
+    // 2) Legacy numeric task fallback
+    const n = parseInt(arg, 10);
+    if (!isNaN(n) && String(n) === arg) {
+      const done = await doneTask(n, uid);
+      if (!done) { await tgSend('⚠️ Тийм дугаартай task байхгүй байна.'); return; }
+      const remaining = await getTasks(uid);
+      await tgSend(`✅ *Дууслаа:* ${done}\n\nҮлдсэн: *${remaining.length}*`);
+      return;
+    }
+
+    // 3) Not found anywhere
+    await tgSend(`⚠️ "${arg}" хуваарьт олдсонгүй.\n/plan — хуваарь харах`);
     return;
   }
 
@@ -1626,51 +1676,6 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
-  // /done [task_id] — life plan task дуусгах (string ID)
-  // ТАЙЛБАР: Одоо байгаа /done [n] нь тооны аргумент авдаг.
-  // Шинэ /done [gym] нь текстийн аргумент авдаг — зөрчилдөхгүй.
-  const lifeDoneMatch = raw.match(/^\/done\s+([a-z_\-]+)$/i);
-  if (lifeDoneMatch) {
-    const taskId = lifeDoneMatch[1].toLowerCase();
-    try {
-      const today = todaySH();
-      const snap  = await dbPersonal.doc(`users/${uid}/plans/${today}`).get();
-      if (!snap.exists) {
-        await tgSend(`⚠️ Өнөөдрийн хуваарь байхгүй.`);
-        return;
-      }
-      const plan = snap.data().confirmed || [];
-      const idx  = plan.findIndex(t =>
-        t.id === taskId ||
-        t.id === 'custom_' + taskId ||
-        t.label?.toLowerCase().includes(taskId)
-      );
-      if (idx < 0) {
-        await tgSend(`⚠️ "${taskId}" хуваарьт олдсонгүй.\n\n/plan — хуваарь харах`);
-        return;
-      }
-      plan[idx].done = true;
-      await dbPersonal.doc(`users/${uid}/plans/${today}`).set(
-        { confirmed: plan }, { merge: true }
-      );
-      const done = plan.filter(t => t.done).length;
-      const pct  = Math.round(done / plan.length * 100);
-
-      // Challenge score шинэчлэх
-      await _updateChallengeScore(uid, 'marlaa', pct, done, plan.length);
-
-      const task = plan[idx];
-      await tgSend(
-        `✅ *${task.icon} ${task.label}* — баталгаажлаа!\n\n` +
-        `Хуваарь: *${done}/${plan.length}* дуусгасан (${pct}%)\n` +
-        `${pct >= 70 ? '🔥 Streak аюулгүй!' : '⏳ Үргэлжлүүл...'}`
-      );
-    } catch (e) {
-      await tgSend(`❌ Алдаа: ${e.message}`);
-    }
-    return;
-  }
-
   // /preflight [task1 task2 ...] — маргаашийн хуваарийн draft үүсгэх
   if (text.startsWith('/preflight ') || text === '/preflight') {
     const taskStr  = raw.replace(/^\/preflight\s*/i, '').trim();
@@ -1789,6 +1794,17 @@ async function handleText(msg, ctx = {}) {
   }
 }
 
+// ── GAP-04: Нэгдсэн scoring helper (web UI-тай ижил томьёо) ─────
+function _calcBilegScore(routine, water_ml) {
+  return Math.min(100, Math.round(
+    Math.min(25, (water_ml / 2000) * 25) +
+    (routine.exercise ? 20 : 0) +
+    (routine.hanzi    ? 20 : 0) +
+    (routine.read     ? 15 : 0) +
+    (routine.journal  ? 10 : 0)
+  ));
+}
+
 // ── SPRINT 34: Challenge score шинэчлэх ─────────────────────────
 async function _updateChallengeScore(uid, role, pct, done, total) {
   const today = todaySH();
@@ -1797,17 +1813,18 @@ async function _updateChallengeScore(uid, role, pct, done, total) {
       { [role]: { pct, done, total, uid, updatedAt: new Date().toISOString() } },
       { merge: true }
     );
-    // Streak logic
+    // GAP-03: merge: true — race condition сэргийлэх
     const streakRef  = dbPersonal.doc(`challenge/june2026/streaks/${uid}`);
     const streakSnap = await streakRef.get();
     const st = streakSnap.exists ? streakSnap.data() : { current: 0, best: 0, total_days: 0, last_date: '' };
+    // GAP-10: Asia/Shanghai timezone (telegram.js-д аль хэдийнэ зөв байсан)
     const yesterday  = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
     const newCurrent = pct >= 50 ? (st.last_date === yesterday ? (st.current||0)+1 : 1) : 0;
     await streakRef.set({
       current: newCurrent, best: Math.max(newCurrent, st.best||0),
       total_days: (st.total_days||0) + (st.last_date !== today ? 1 : 0),
       last_date: today, role, updatedAt: new Date().toISOString(),
-    }, { merge: false });
+    }, { merge: true });
   } catch {}
 }
 
@@ -1844,7 +1861,8 @@ async function sendCheckpoints() {
         ];
 
         for (const cp of checks) {
-          if (Math.abs(nowMin - cp.offset) <= 2 && nowMin >= cp.offset) {
+          // GAP-05: window=4 (cron 5min interval-тай тэнцэх)
+          if (Math.abs(nowMin - cp.offset) <= 4 && nowMin >= cp.offset) {
             const sentKey = `${key}_${cp.type}`;
             const sentRef = dbPersonal.doc(`checkpoint_sent/${sentKey}`);
             const already = (await sentRef.get().catch(() => null))?.exists;
@@ -1872,23 +1890,24 @@ async function sendDailyRecap() {
         .catch(() => null))?.data()?.chat_id;
       if (!chatId) continue;
 
-      const [routineSnap, planSnap] = await Promise.all([
+      const [routineSnap, planSnap, logSnap, roleSnap] = await Promise.all([
         dbPersonal.doc(`users/${uid}/routines/${today}`).get(),
         dbPersonal.doc(`users/${uid}/plans/${today}`).get(),
+        dbPersonal.doc(`users/${uid}/logs/${today}`).get(),
+        dbPersonal.doc(`users/${uid}/config/profile`).get().catch(() => null),
       ]);
-      const r    = routineSnap.exists ? routineSnap.data() : {};
-      const plan = planSnap.exists ? (planSnap.data()?.confirmed || []) : [];
+      const r        = routineSnap.exists ? routineSnap.data() : {};
+      const plan     = planSnap.exists ? (planSnap.data()?.confirmed || []) : [];
+      const water_ml = logSnap?.exists ? (logSnap.data()?.water?.total_ml || 0) : 0;
       const done = plan.filter(t => t.done).length;
       const pct  = plan.length ? Math.round(done / plan.length * 100) : 0;
 
-      const roleSnap = await dbPersonal.doc(`users/${uid}/config/profile`).get().catch(() => null);
       const role = roleSnap?.exists ? (roleSnap.data()?.role || 'bileg') : 'bileg';
 
       let msg = `🌙 *22:00 Өдрийн Тайлан — ${today}*\n\`${'─'.repeat(18)}\`\n\n`;
       if (role === 'bileg') {
-        const score = Math.min(100, Math.round(
-          (r.exercise?20:0)+(r.hanzi?20:0)+(r.read?15:0)+(r.journal?10:0)
-        ));
+        // GAP-04: Нэгдсэн scoring (_calcBilegScore — web UI-тай ижил)
+        const score = _calcBilegScore(r, water_ml);
         msg += `📊 Score: *${score}/100*\n`;
         msg += `${r.exercise?'✅':'❌'} Дасгал  ${r.hanzi?'✅':'❌'} 汉字  ${r.read?'✅':'❌'} Уншилт  ${r.journal?'✅':'❌'} Journal\n\n`;
         await _updateChallengeScore(uid, 'bileg', score, 0, 4);

@@ -27,6 +27,12 @@ app.get('/', (req, res) => res.send('JARVIS webhook running ✅'));
 // gemini.js: fetch(`${proxy}/chat`, ...) → GitHub Models relay
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 app.post('/chat', async (req, res) => {
+  // GAP-09: Secret header auth
+  const CHAT_SECRET = process.env.CHAT_SECRET;
+  if (CHAT_SECRET && req.headers['x-jarvis-secret'] !== CHAT_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const GH_TOKEN = process.env.SYSTEM_USE_TOKEN || process.env.META_BOT_TOKEN;
   if (!GH_TOKEN) return res.status(500).json({ error: 'SYSTEM_USE_TOKEN тохируулаагүй' });
 
