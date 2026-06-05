@@ -762,6 +762,12 @@ window._applyWorkspace = function(ws) {
     _custVisible = { ...ws.layoutVis };
     _applyWidgetVisibility();
   }
+
+  // Sprint 36: Glow-Up challenge task config (remote wins if present)
+  if (ws.glowupTasks && Array.isArray(ws.glowupTasks) && ws.glowupTasks.length) {
+    localStorage.setItem('jarvis_glowup_tasks', JSON.stringify(ws.glowupTasks));
+    if (typeof _challengeRender === 'function') _challengeRender();
+  }
 };
 
 // Render coach level section inside customizer panel (called on open + after mood apply)

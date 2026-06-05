@@ -1658,10 +1658,35 @@ async function handleText(msg, ctx = {}) {
       msg += `🌸 *МАРЛАА*\n`;
       msg += `  Өнөөдөр: *${mScore.pct || 0}%*\n\n`;
       msg += `📅 Үлдсэн: *${daysLeft}* хоног\n`;
-      msg += `\n_/score — өнөөдрийн дэлгэрэнгүй_`;
+      msg += `\n_/glow — Glow-Up checklist · /score — дэлгэрэнгүй_`;
       await tgSend(msg);
     } catch (e) {
       await tgSend(`❌ Challenge алдаа: ${e.message}`);
+    }
+    return;
+  }
+
+  // /glow — Glow-Up challenge checklist (Sprint 36)
+  if (text === '/glow' || text === '/glowup') {
+    try {
+      const cfg   = await getGlowupConfig(uid);
+      const today = todaySH();
+      const dSnap = await dbPersonal.doc(`challenge/june2026/daily/${today}`).get().catch(() => null);
+      const myRole = (await dbPersonal.doc(`users/${uid}/config/profile`).get().catch(()=>null))?.data()?.role || 'bileg';
+      const myPct  = dSnap?.exists ? (dSnap.data()?.[myRole]?.pct || 0) : 0;
+
+      let msg = `🔥 *GLOW-UP CHALLENGE — ${today}*\n`;
+      msg += `Өнөөдрийн оноо: *${myPct}%*\n`;
+      msg += `\`${'━'.repeat(20)}\`\n\n`;
+      cfg.forEach(cat => {
+        msg += `${cat.icon} *${cat.title}*\n`;
+        (cat.tasks || []).forEach(t => { msg += `  ☐ ${t}\n`; });
+        msg += '\n';
+      });
+      msg += `_Апп дээрх 🔥 widget дарж тэмдэглэ. Бот өдөрт 3 удаа сануулна._`;
+      await tgSend(msg);
+    } catch (e) {
+      await tgSend(`❌ Glow-Up алдаа: ${e.message}`);
     }
     return;
   }
@@ -1970,6 +1995,81 @@ async function processOutbox() {
   }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// SPRINT 36 — GLOW-UP CHALLENGE BOT (proactive category reminders)
+// ══════════════════════════════════════════════════════════════════
+
+// Categories mirror the app defaults (index.html GLOWUP_DEFAULT)
+const GLOWUP_CATS = {
+  glowup:  { icon:'🌅', title:'Glow-Up',     tasks:['Эрт босох (7:00)','2L ус уух','Эрт унтах (23:00)'] },
+  workout: { icon:'💪', title:'Дасгал',      tasks:['Workout / дасгал','10,000 алхам'] },
+  study:   { icon:'📚', title:'Хичээл',      tasks:['Хятад хэл (HSK)','30 мин унших'] },
+  learn:   { icon:'🧠', title:'Шинэ мэдлэг', tasks:['1 шинэ зүйл сурах','Podcast / видео'] },
+  beauty:  { icon:'✨', title:'Гоо сайхан',  tasks:['Арьс арчилгаа','Цэвэрхэн, гоё харагдах'] },
+};
+
+// Proactive nudge messages per category (time-of-day aware)
+const GLOWUP_NUDGES = {
+  morning: {
+    cats: ['glowup', 'workout'],
+    intro: '🌅 *Өглөөний Glow-Up!*\n\nӨнөөдрийг хүчтэй эхэл, Boss:',
+    cta:   'Хийсэн даалгавраа `/glow` дээр тэмдэглэ. 💪',
+  },
+  midday: {
+    cats: ['study', 'workout'],
+    intro: '⚡ *Өдрийн зорилт*\n\nХагас өдөр өнгөрлөө. Дараах зүйлсээ битгий март:',
+    cta:   'HSK хичээл + дасгал — challenge-ийн гол оноо. 🔥',
+  },
+  evening: {
+    cats: ['learn', 'beauty', 'glowup'],
+    intro: '🌙 *Оройн дугуй*\n\nӨдрөө дүгнэхийн өмнө:',
+    cta:   'Бүгдийг тэмдэглэ → `/glow`. Маргааш бас ялалт! ✨',
+  },
+};
+
+// Load user's custom glowup config from Firestore (workspace), fallback to default
+async function getGlowupConfig(uid) {
+  try {
+    const snap = await dbPersonal.doc(`users/${uid}/config/workspace`).get();
+    if (snap.exists && Array.isArray(snap.data()?.glowupTasks) && snap.data().glowupTasks.length) {
+      return snap.data().glowupTasks;
+    }
+  } catch {}
+  // Fallback: default categories as array
+  return Object.entries(GLOWUP_CATS).map(([id, c]) => ({ id, ...c }));
+}
+
+// Send a proactive Glow-Up nudge for a time slot to all linked users
+async function sendGlowupNudge(slot) {
+  const nudge = GLOWUP_NUDGES[slot];
+  if (!nudge) return;
+  try {
+    const usersSnap = await dbPersonal.collection('users').get();
+    for (const userDoc of usersSnap.docs) {
+      const uid    = userDoc.id;
+      const chatId = (await dbPersonal.doc(`users/${uid}/integrations/telegram`).get()
+        .catch(() => null))?.data()?.chat_id;
+      if (!chatId) continue;
+
+      const cfg = await getGlowupConfig(uid);
+      let msg = nudge.intro + '\n\n';
+      nudge.cats.forEach(catId => {
+        const cat = cfg.find(c => c.id === catId) || GLOWUP_CATS[catId];
+        if (!cat) return;
+        const tasks = cat.tasks || GLOWUP_CATS[catId]?.tasks || [];
+        msg += `${cat.icon} *${cat.title}*\n`;
+        tasks.forEach(t => { msg += `  ☐ ${t}\n`; });
+        msg += '\n';
+      });
+      msg += '_' + nudge.cta + '_';
+      await tgCall('sendMessage', { chat_id: chatId, text: msg, parse_mode: 'Markdown' });
+    }
+  } catch (e) {
+    console.error(`[GlowupNudge:${slot}]`, e.message);
+  }
+}
+
+module.exports.sendGlowupNudge  = sendGlowupNudge;
 module.exports.sendCheckpoints  = sendCheckpoints;
 module.exports.sendDailyRecap   = sendDailyRecap;
 module.exports.processOutbox    = processOutbox;

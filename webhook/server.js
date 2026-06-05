@@ -11,7 +11,8 @@ const cron      = require('node-cron');
 const tgHandler   = require('./api/telegram');
 const alerts      = require('./api/alerts');
 const { sendWeeklyReport, sendBrief, sendHSKReminder,
-        sendCheckpoints, sendDailyRecap, processOutbox } = tgHandler;
+        sendCheckpoints, sendDailyRecap, processOutbox,
+        sendGlowupNudge } = tgHandler;
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -129,6 +130,23 @@ cron.schedule('0 7 * * *', () => {
   if (typeof sendHSKReminder === 'function') {
     sendHSKReminder().catch(e => console.error('[HSK Reminder] Error:', e.message));
   }
+});
+
+// ══ SPRINT 36: GLOW-UP CHALLENGE — өдөрт 3 удаа proactive сануулга ══
+// Морнинг 07:00 Шанхай (23:00 UTC) — Glow-Up + дасгал
+cron.schedule('0 23 * * *', () => {
+  console.log('[JARVIS] Glow-Up morning nudge...');
+  if (typeof sendGlowupNudge === 'function') sendGlowupNudge('morning').catch(e => console.error('[Glow:morning]', e.message));
+});
+// Өдөр 13:00 Шанхай (05:00 UTC) — хичээл + дасгал
+cron.schedule('0 5 * * *', () => {
+  console.log('[JARVIS] Glow-Up midday nudge...');
+  if (typeof sendGlowupNudge === 'function') sendGlowupNudge('midday').catch(e => console.error('[Glow:midday]', e.message));
+});
+// Орой 21:00 Шанхай (13:00 UTC) — шинэ мэдлэг + гоо сайхан + дүгнэлт
+cron.schedule('0 13 * * *', () => {
+  console.log('[JARVIS] Glow-Up evening nudge...');
+  if (typeof sendGlowupNudge === 'function') sendGlowupNudge('evening').catch(e => console.error('[Glow:evening]', e.message));
 });
 
 // ── GAP-12: OUTBOX PROCESSOR — 2 минут бүр ───────────────────────
