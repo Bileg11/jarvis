@@ -9117,37 +9117,40 @@ async function _fvWorldSummary() {
   document.getElementById('fv-empty')?.style.setProperty('display', 'none');
   const loading = _fvAddMsg('ace', '<span style="opacity:.6">🌐 Дэлхийн мэдээ татаж байна… <span style="opacity:.5">(15с timeout)</span></span>');
 
-  // 1. Fetch world feeds + FX. Хятадаас BBC блоклогддог тул эхлээд
-  //    Railway proxy (US) ашиглана, дараа нь local Electron IPC fallback.
+  // 1. Fetch world feeds + FX. Хятадаас BBC блоклогддог тул Railway (US)
+  //    proxy дамжуулна. Default Railway URL — proxy тохируулаагүй ч ажиллана.
   let world = null, fx = null;
-  const proxy = (localStorage.getItem('jarvis_proxy_url') || '').replace(/\/$/, '');
+  const RAILWAY = 'https://jarvis-production-5842.up.railway.app';
+  const proxy = (localStorage.getItem('jarvis_proxy_url') || RAILWAY).replace(/\/$/, '');
 
   // FX (parallel, timeout-той)
   const fxP = window.jarvisAPI?.fetchFX
     ? _withTimeout(window.jarvisAPI.fetchFX(), 10000).catch(() => null)
     : Promise.resolve(null);
 
-  // World: proxy эхлээд (15с timeout). GET — Content-Type header хасна
-  // (preflight OPTIONS гарахгүй → CORS энгийн)
-  if (proxy) {
+  // ── A. PRIMARY: Electron main process (Node fetch → Railway).
+  //    CORS байхгүй, VPN хамаарахгүй — хамгийн найдвартай.
+  if (window.jarvisAPI?.fetchWorldProxy) {
+    try { world = await _withTimeout(window.jarvisAPI.fetchWorldProxy(proxy), 16000); }
+    catch (e) { console.warn('[World] IPC proxy failed:', e.message); }
+  }
+  // ── B. FALLBACK: browser fetch to Railway (preview/web mode)
+  if (!world?.ok) {
     try {
       const r = await _fetchTimeout(`${proxy}/world`, {}, 15000);
       if (r.ok) world = await r.json();
-    } catch (e) { console.warn('[World] proxy failed:', e.message); }
+    } catch (e) { console.warn('[World] browser fetch failed:', e.message); }
   }
-  // Fallback: local Electron IPC (VPN TUN mode-д ажиллана, 12с timeout)
+  // ── C. LAST RESORT: local BBC fetch (VPN TUN mode only)
   if (!world?.ok && window.jarvisAPI?.fetchWorld) {
     try { world = await _withTimeout(window.jarvisAPI.fetchWorld(), 12000); }
-    catch (e) { console.warn('[World] local failed:', e.message); }
+    catch (e) { console.warn('[World] local BBC failed:', e.message); }
   }
   try { fx = await fxP; } catch {}
 
   // 2. No data → clear diagnostic
   if (!world?.ok) {
-    const hint = proxy
-      ? `Railway (${proxy.replace(/^https?:\/\//,'').slice(0,30)}) болон BBC-д хүрч чадсангүй. VPN node-оо солиод үзнэ үү.`
-      : 'Proxy URL тохируулаагүй байна. Profile → Proxy URL оруулбал найдвартай ажиллана.';
-    if (loading) loading.innerHTML = `⚡ Дэлхийн мэдээ татаж чадсангүй.<br><span style="font-size:11px;opacity:.6">${hint}</span><br><span class="fv-quick-btn" style="display:inline-block;margin-top:8px" onclick="_fvWorldSummary()">↻ Дахин оролдох</span>`;
+    if (loading) loading.innerHTML = `⚡ Дэлхийн мэдээ татаж чадсангүй.<br><span style="font-size:11px;opacity:.6">Railway сервер хариулсангүй. VPN-ийн node-оо солиод дахин үзнэ үү.</span><br><span class="fv-quick-btn" style="display:inline-block;margin-top:8px" onclick="_fvWorldSummary()">↻ Дахин оролдох</span>`;
     return;
   }
 

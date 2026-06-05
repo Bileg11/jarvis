@@ -254,6 +254,20 @@ ipcMain.handle('fetch-world', async () => {
   return { ok: total > 0, categories: out, ts: Date.now() };
 });
 
+// ── Sprint 36: World via Railway proxy (Node fetch — CORS-гүй, найдвартай)
+// Renderer browser fetch CORS-д баригдвал энэ IPC ашиглана.
+// Railway US-д тул Хятадаас хүрдэг (BBC шиг block биш).
+const RAILWAY_DEFAULT = 'https://jarvis-production-5842.up.railway.app';
+ipcMain.handle('fetch-world-proxy', async (_, proxyUrl) => {
+  const base = (proxyUrl || RAILWAY_DEFAULT).replace(/\/$/, '');
+  try {
+    const body = await _fetchUrl(`${base}/world`, 15000);
+    return JSON.parse(body);
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+});
+
 // ── WINDOW ───────────────────────────────────────────────────────
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -274,6 +288,9 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.png'),
     show: false,
   });
+
+  // Sprint 36: clear renderer cache on launch so code updates always load fresh
+  mainWindow.webContents.session.clearCache().catch(() => {});
 
   mainWindow.loadFile('index.html');
 

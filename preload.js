@@ -23,6 +23,9 @@ contextBridge.exposeInMainWorld('jarvisAPI', {
   // ── Sprint 35: World feed (categorized — Focus Chat summary) ────
   fetchWorld: () => ipcRenderer.invoke('fetch-world'),
 
+  // ── Sprint 36: World via Railway proxy (Node — CORS-гүй, найдвартай)
+  fetchWorldProxy: (proxyUrl) => ipcRenderer.invoke('fetch-world-proxy', proxyUrl),
+
   // ── Platform info ───────────────────────────────────────────────
   platform: process.platform,
 
