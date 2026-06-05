@@ -9082,52 +9082,72 @@ async function _fvSend() {
     return;
   }
 
-  // ── Default: AI chat ────────────────────────────────────────────
+  // ── Default: AI chat (20с timeout) ──────────────────────────────
   const thinking = _fvAddMsg('ace', '<span style="opacity:.5">⟳ боловсруулж байна…</span>');
   try {
     if (typeof sendChatMessage === 'function') {
-      const reply = await sendChatMessage(text);
+      const reply = await _withTimeout(sendChatMessage(text), 20000);
       if (thinking) thinking.innerHTML = _fvEscape(reply || '...').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
     } else {
       if (thinking) thinking.innerHTML = '⚙️ AI тохиргоогүй байна. Profile-д Token оруулна уу.';
     }
   } catch (e) {
-    if (thinking) thinking.innerHTML = '⚡ Алдаа: ' + _fvEscape(e.message || 'unknown');
+    if (thinking) thinking.innerHTML = '⚡ Хариу удлаа (timeout). Дахин оролдоно уу. <span style="font-size:10px;opacity:.5">' + _fvEscape(e.message || '') + '</span>';
   }
 }
 
 // ── World Summary: fetch news + FX → AI summarize → render card ───
+// Fetch with timeout (AbortController) — мөнхөд гацахаас сэргийлнэ
+function _fetchTimeout(url, opts = {}, ms = 15000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal })
+    .finally(() => clearTimeout(t));
+}
+
+// Promise + timeout race (IPC дуудлагад)
+function _withTimeout(promise, ms = 12000) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms)),
+  ]);
+}
+
 async function _fvWorldSummary() {
   document.getElementById('fv-empty')?.style.setProperty('display', 'none');
-  const loading = _fvAddMsg('ace', '<span style="opacity:.6">🌐 Дэлхийн мэдээ татаж байна…</span>');
+  const loading = _fvAddMsg('ace', '<span style="opacity:.6">🌐 Дэлхийн мэдээ татаж байна… <span style="opacity:.5">(15с timeout)</span></span>');
 
   // 1. Fetch world feeds + FX. Хятадаас BBC блоклогддог тул эхлээд
   //    Railway proxy (US) ашиглана, дараа нь local Electron IPC fallback.
   let world = null, fx = null;
   const proxy = (localStorage.getItem('jarvis_proxy_url') || '').replace(/\/$/, '');
 
-  // FX (parallel, аль аргаар ч болно)
-  const fxP = window.jarvisAPI?.fetchFX?.() || Promise.resolve(null);
+  // FX (parallel, timeout-той)
+  const fxP = window.jarvisAPI?.fetchFX
+    ? _withTimeout(window.jarvisAPI.fetchFX(), 10000).catch(() => null)
+    : Promise.resolve(null);
 
-  // World: proxy эхлээд
+  // World: proxy эхлээд (15с timeout). GET — Content-Type header хасна
+  // (preflight OPTIONS гарахгүй → CORS энгийн)
   if (proxy) {
     try {
-      const r = await fetch(`${proxy}/world`, { headers: { 'Content-Type': 'application/json' } });
+      const r = await _fetchTimeout(`${proxy}/world`, {}, 15000);
       if (r.ok) world = await r.json();
-    } catch {}
+    } catch (e) { console.warn('[World] proxy failed:', e.message); }
   }
-  // Fallback: local Electron IPC (VPN TUN mode-д ажиллана)
+  // Fallback: local Electron IPC (VPN TUN mode-д ажиллана, 12с timeout)
   if (!world?.ok && window.jarvisAPI?.fetchWorld) {
-    try { world = await window.jarvisAPI.fetchWorld(); } catch {}
+    try { world = await _withTimeout(window.jarvisAPI.fetchWorld(), 12000); }
+    catch (e) { console.warn('[World] local failed:', e.message); }
   }
   try { fx = await fxP; } catch {}
 
   // 2. No data → clear diagnostic
   if (!world?.ok) {
     const hint = proxy
-      ? 'Railway сервер болон BBC аль алинд хүрч чадсангүй.'
+      ? `Railway (${proxy.replace(/^https?:\/\//,'').slice(0,30)}) болон BBC-д хүрч чадсангүй. VPN node-оо солиод үзнэ үү.`
       : 'Proxy URL тохируулаагүй байна. Profile → Proxy URL оруулбал найдвартай ажиллана.';
-    if (loading) loading.innerHTML = `⚡ Дэлхийн мэдээ татаж чадсангүй.<br><span style="font-size:11px;opacity:.6">${hint}</span>`;
+    if (loading) loading.innerHTML = `⚡ Дэлхийн мэдээ татаж чадсангүй.<br><span style="font-size:11px;opacity:.6">${hint}</span><br><span class="fv-quick-btn" style="display:inline-block;margin-top:8px" onclick="_fvWorldSummary()">↻ Дахин оролдох</span>`;
     return;
   }
 
@@ -9166,15 +9186,15 @@ async function _fvWorldSummary() {
 
   if (loading) loading.innerHTML = `Өнөөдрийн дэлхийн товч мэдээ, Boss:${cardHTML}`;
 
-  // 4. AI summary (optional, if configured) — append below card
+  // 4. AI summary (optional, if configured) — append below card (20с timeout)
   if (typeof sendChatMessage === 'function' && headlinesForAI.length) {
     const sumBubble = _fvAddMsg('ace', '<span style="opacity:.5">⟳ A.C.E. дүгнэж байна…</span>');
     try {
       const prompt = `Доорх бол өнөөдрийн дэлхийн жинхэнэ гарчгууд. Эдгээрийг Монголоор 3-4 өгүүлбэрт нэгтгэн, хамгийн чухал зүйлийг онцолж дүгнэ. Шинэ мэдээ зохиож болохгүй — зөвхөн доорхид тулгуурла:\n\n${headlinesForAI.join('\n')}`;
-      const reply = await sendChatMessage(prompt);
+      const reply = await _withTimeout(sendChatMessage(prompt), 20000);
       if (sumBubble) sumBubble.innerHTML = '💡 <b>A.C.E. дүгнэлт:</b><br>' + _fvEscape(reply || '...').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
     } catch {
-      if (sumBubble) sumBubble.remove();
+      if (sumBubble) sumBubble.innerHTML = '<span style="opacity:.5">💡 Мэдээ дээр харагдаж байна (AI дүгнэлт алгассан).</span>';
     }
   }
 }

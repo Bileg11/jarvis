@@ -107,6 +107,7 @@ app.get('/world', async (req, res) => {
 app.options('/world', (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.sendStatus(204);
 });
 
