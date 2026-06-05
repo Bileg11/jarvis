@@ -247,12 +247,12 @@ async function sendChatMessage(userText) {
     return `⚡ Өнөөдрийн ${FREE_DAILY_LIMIT} хүсэлтийн лимит дуусав, Boss. Маргааш шинэчлэгдэнэ. (/upgrade гэж бичвэл Pro tier-ийн мэдээлэл харна)`;
   }
 
-  const r     = (typeof loadRoutine   === 'function') ? loadRoutine()   : {};
-  const tlog  = (typeof loadTodayLog  === 'function') ? loadTodayLog()  : {};
-  const score = (typeof getDailyScore === 'function') ? getDailyScore() : 0;
-  const water = tlog?.water?.total_ml || 0;
-
-  const ctx        = `[Өнөөдрийн байдал: Score ${score}/100 | Ус ${water}ml | дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'}]`;
+  // Sprint 38: app.js функц дуудахгүй — localStorage-аас шууд (гацахаас сэргийлнэ)
+  let ctx = '';
+  try {
+    const r = JSON.parse(localStorage.getItem('jarvis_r') || '{}');
+    ctx = `[Өнөөдөр: дасгал ${r.exercise?'✓':'✗'} | 汉字 ${r.hanzi?'✓':'✗'} | ус ${r.water||0}/8]`;
+  } catch { ctx = ''; }
   const coreMemory = (localStorage.getItem('jarvis_core_memory') || '').trim();
   const sysBase    = _getSystemInstruction();
 
