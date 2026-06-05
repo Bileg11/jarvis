@@ -262,7 +262,7 @@ const DEFAULT_MISSIONS = [
     label: 'LFS Shanghai',
     icon: '🚀',
     val: 0, max: 100, unit: 'хэрэглэгч',
-    context: 'Монгол аялагчдад зориулсан VIP платформ — bileg11.github.io',
+    context: 'Монгол аялагчдад зориулсан VIP платформ — lfsshanghai.com',
     weekly: 5,       // target per week
     step: 1,
   },

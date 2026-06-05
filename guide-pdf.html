@@ -1,0 +1,1768 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>T.H.R.E.E. OS — Бүрэн Гарын Авлага</title>
+<style>
+
+/* ═══════════════════════════════════════
+   PRINT / PDF SETUP
+═══════════════════════════════════════ */
+@page {
+  size: A4;
+  margin: 0;
+}
+@page :first {
+  margin: 0;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #000814;
+  --bg2:     #040d1a;
+  --bg3:     #071828;
+  --accent:  #00e5ff;
+  --accent2: #0099bb;
+  --gold:    #d4af37;
+  --gold2:   #f0cc55;
+  --green:   #00e676;
+  --amber:   #ff9800;
+  --red:     #ff3c50;
+  --text:    #c8dcea;
+  --text2:   #8ab8d4;
+  --dim:     rgba(180,210,230,.45);
+  --border:  rgba(0,229,255,.15);
+  --border2: rgba(0,229,255,.08);
+  --glass:   rgba(0,15,35,.85);
+  --mono:    'Courier New', Courier, monospace;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', -apple-system, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.75;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* ── PAGE CONTAINERS ── */
+.page {
+  width: 210mm;
+  min-height: 297mm;
+  position: relative;
+  overflow: hidden;
+  page-break-after: always;
+  break-after: page;
+}
+.page:last-child { page-break-after: avoid; break-after: avoid; }
+
+/* ── GRID BG ── */
+.grid-bg {
+  position: absolute; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,.018) 1px, transparent 1px);
+  background-size: 12mm 12mm;
+}
+
+/* ── GLOW BLOBS ── */
+.blob {
+  position: absolute; border-radius: 50%;
+  filter: blur(60px); pointer-events: none; z-index: 0;
+}
+.blob-cyan  { background: rgba(0,229,255,.12); }
+.blob-blue  { background: rgba(0,80,180,.10);  }
+.blob-gold  { background: rgba(212,175,55,.08); }
+
+/* ── CONTENT WRAPPER ── */
+.content {
+  position: relative; z-index: 1;
+}
+
+/* ══════════════════════════════════════
+   PAGE 1 — COVER
+══════════════════════════════════════ */
+.cover {
+  background: linear-gradient(160deg, #000814 0%, #000d22 40%, #001428 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 20mm;
+}
+
+.cover-hex {
+  font-size: 64px; line-height: 1;
+  margin-bottom: 10mm;
+  filter: drop-shadow(0 0 20px rgba(0,229,255,.6));
+}
+
+.cover-brand {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: .4em;
+  color: var(--accent2); margin-bottom: 6mm;
+  text-transform: uppercase;
+}
+
+.cover-title {
+  font-family: var(--mono);
+  font-size: 38px; font-weight: 900; letter-spacing: .12em;
+  color: var(--accent);
+  text-shadow: 0 0 30px rgba(0,229,255,.7), 0 0 60px rgba(0,229,255,.3);
+  line-height: 1.1; margin-bottom: 3mm;
+}
+
+.cover-sub {
+  font-family: var(--mono);
+  font-size: 11px; letter-spacing: .3em;
+  color: var(--text2); margin-bottom: 16mm;
+}
+
+.cover-divider {
+  width: 80mm; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  margin: 0 auto 10mm;
+}
+
+.cover-tagline {
+  font-size: 16px; color: var(--gold);
+  letter-spacing: .05em; font-style: italic;
+  margin-bottom: 4mm;
+  font-family: 'Segoe UI', Georgia, serif;
+}
+.cover-tagline-mn {
+  font-size: 13px; color: var(--text2); margin-bottom: 16mm;
+}
+
+.cover-badges {
+  display: flex; gap: 6mm; justify-content: center;
+  flex-wrap: wrap; margin-bottom: 20mm;
+}
+.cover-badge {
+  border: 1px solid rgba(0,229,255,.3);
+  border-radius: 2mm; padding: 2mm 5mm;
+  font-family: var(--mono); font-size: 9px;
+  color: var(--accent2); letter-spacing: .15em;
+  background: rgba(0,229,255,.05);
+}
+
+.cover-footer {
+  position: absolute; bottom: 12mm; left: 0; right: 0;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 0 20mm;
+}
+.cover-footer-l { text-align: left; }
+.cover-footer-r { text-align: right; }
+.cover-footer-label {
+  font-family: var(--mono); font-size: 8px; color: var(--dim);
+  letter-spacing: .15em; line-height: 1.8;
+}
+.cover-footer-val {
+  font-family: var(--mono); font-size: 9px; color: var(--text2);
+  letter-spacing: .1em;
+}
+
+.cover-ace-intro {
+  background: rgba(0,229,255,.04);
+  border: 1px solid rgba(0,229,255,.15);
+  border-radius: 3mm; padding: 6mm 10mm;
+  max-width: 140mm; margin: 0 auto;
+}
+.cover-ace-intro p {
+  font-size: 12px; color: var(--text);
+  line-height: 1.8;
+}
+.cover-ace-intro .ace-name {
+  color: var(--accent); font-family: var(--mono);
+  font-weight: 700; letter-spacing: .1em;
+}
+
+/* ══════════════════════════════════════
+   INNER PAGES COMMON
+══════════════════════════════════════ */
+.inner {
+  background: var(--bg);
+  padding: 18mm 18mm 16mm;
+}
+
+/* ── PAGE HEADER ── */
+.page-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10mm;
+  padding-bottom: 4mm;
+  border-bottom: 1px solid var(--border);
+}
+.page-header-brand {
+  font-family: var(--mono); font-size: 8px;
+  color: var(--accent2); letter-spacing: .25em;
+}
+.page-header-title {
+  font-family: var(--mono); font-size: 9px;
+  color: var(--dim); letter-spacing: .15em;
+}
+.page-num {
+  font-family: var(--mono); font-size: 8px;
+  color: var(--dim); letter-spacing: .1em;
+  width: 8mm; text-align: right;
+}
+
+/* ── SECTION ── */
+.section-title {
+  font-family: var(--mono);
+  font-size: 16px; font-weight: 700;
+  color: var(--accent); letter-spacing: .15em;
+  margin-bottom: 6mm;
+  display: flex; align-items: center; gap: 3mm;
+}
+.section-title .icon { font-size: 18px; }
+.section-title::after {
+  content: '';
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--border), transparent);
+  margin-left: 4mm;
+}
+
+.section-sub {
+  font-family: var(--mono);
+  font-size: 10px; font-weight: 700;
+  color: var(--gold); letter-spacing: .2em;
+  margin: 6mm 0 3mm;
+  text-transform: uppercase;
+}
+
+p {
+  color: var(--text); font-size: 12.5px;
+  line-height: 1.8; margin-bottom: 4mm;
+}
+p strong { color: var(--text2); font-weight: 600; }
+p em { color: var(--gold); font-style: normal; font-weight: 500; }
+
+/* ── CALLOUT BOXES ── */
+.box {
+  border-radius: 2mm; padding: 5mm 7mm;
+  margin: 5mm 0; font-size: 12px; line-height: 1.8;
+}
+.box-cyan  { background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.2); }
+.box-gold  { background:rgba(212,175,55,.06); border:1px solid rgba(212,175,55,.2); }
+.box-green { background:rgba(0,230,118,.06); border:1px solid rgba(0,230,118,.2); }
+.box-amber { background:rgba(255,152,0,.06); border:1px solid rgba(255,152,0,.2); }
+.box-red   { background:rgba(255,60,80,.06); border:1px solid rgba(255,60,80,.2); }
+
+.box .box-label {
+  font-family: var(--mono); font-size: 9px; font-weight: 700;
+  letter-spacing: .2em; margin-bottom: 2mm;
+}
+.box-cyan  .box-label { color: var(--accent); }
+.box-gold  .box-label { color: var(--gold); }
+.box-green .box-label { color: var(--green); }
+.box-amber .box-label { color: var(--amber); }
+.box-red   .box-label { color: var(--red); }
+
+.box p { margin-bottom: 0; }
+
+/* ── STEP FLOW ── */
+.steps { display: flex; flex-direction: column; gap: 4mm; }
+.step {
+  display: flex; gap: 4mm; align-items: flex-start;
+}
+.step-num {
+  flex-shrink: 0;
+  width: 8mm; height: 8mm;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 9px;
+  color: var(--accent); font-weight: 700;
+  background: rgba(0,229,255,.06);
+}
+.step-body { flex: 1; padding-top: 0.5mm; }
+.step-title { color: var(--text2); font-weight: 600; font-size: 12.5px; margin-bottom: 1mm; }
+.step-desc  { color: var(--text); font-size: 12px; line-height: 1.7; }
+
+/* ── COMMAND TABLE ── */
+.cmd-table {
+  width: 100%; border-collapse: collapse;
+  margin: 5mm 0;
+}
+.cmd-table th {
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: .2em;
+  color: var(--accent2); text-align: left;
+  padding: 2.5mm 4mm;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,229,255,.04);
+}
+.cmd-table td {
+  padding: 2.5mm 4mm;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border2);
+  vertical-align: top;
+}
+.cmd-table tr:last-child td { border-bottom: none; }
+.cmd-name {
+  font-family: var(--mono); font-size: 11px;
+  color: var(--accent); font-weight: 700;
+  white-space: nowrap;
+}
+.cmd-desc { color: var(--text); }
+.cmd-ex   { color: var(--dim); font-size: 11px; font-style: italic; }
+
+/* ── FEATURE GRID ── */
+.feat-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 4mm; margin: 5mm 0;
+}
+.feat-card {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 2mm; padding: 4mm 5mm;
+}
+.feat-icon { font-size: 18px; margin-bottom: 2mm; }
+.feat-name {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--accent); letter-spacing: .12em;
+  font-weight: 700; margin-bottom: 2mm;
+}
+.feat-desc { font-size: 11.5px; color: var(--text); line-height: 1.65; }
+
+/* ── NAME DECODE BOX ── */
+.decode {
+  background: var(--bg3);
+  border: 1px solid rgba(0,229,255,.2);
+  border-radius: 3mm; padding: 6mm 8mm;
+  margin: 5mm 0;
+}
+.decode-row {
+  display: flex; align-items: baseline; gap: 4mm;
+  padding: 2mm 0;
+  border-bottom: 1px solid var(--border2);
+}
+.decode-row:last-child { border-bottom: none; }
+.decode-letter {
+  font-family: var(--mono); font-size: 24px; font-weight: 900;
+  color: var(--accent); width: 12mm; flex-shrink: 0; text-align: center;
+  text-shadow: 0 0 15px rgba(0,229,255,.5);
+}
+.decode-word {
+  font-family: var(--mono); font-size: 13px; font-weight: 700;
+  color: var(--gold); width: 42mm; flex-shrink: 0;
+}
+.decode-meaning { font-size: 12px; color: var(--text); flex: 1; line-height: 1.6; }
+
+/* ── ERROR TABLE ── */
+.err-table { width: 100%; border-collapse: collapse; margin: 4mm 0; }
+.err-table th {
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: .2em;
+  color: var(--red); padding: 2.5mm 4mm; text-align: left;
+  border-bottom: 1px solid rgba(255,60,80,.2);
+  background: rgba(255,60,80,.04);
+}
+.err-table td {
+  padding: 3mm 4mm; font-size: 12px;
+  border-bottom: 1px solid rgba(255,60,80,.08);
+  vertical-align: top;
+}
+.err-symptom { color: var(--amber); font-weight: 500; }
+.err-fix     { color: var(--text); }
+
+/* ── PLAN TABLE ── */
+.plan-table { width: 100%; border-collapse: collapse; margin: 5mm 0; }
+.plan-table th {
+  font-family: var(--mono); font-size: 8.5px; letter-spacing: .2em;
+  color: var(--gold); padding: 2.5mm 4mm; text-align: left;
+  border-bottom: 1px solid rgba(212,175,55,.25);
+  background: rgba(212,175,55,.05);
+}
+.plan-table td {
+  padding: 3mm 4mm; font-size: 12px;
+  border-bottom: 1px solid rgba(212,175,55,.08);
+  vertical-align: top;
+}
+.plan-name  { color: var(--gold); font-weight: 700; }
+.plan-price { color: var(--accent); font-family: var(--mono); font-weight: 700; }
+.plan-feat  { color: var(--text); }
+
+/* ── TOC ── */
+.toc-row {
+  display: flex; align-items: baseline;
+  padding: 2.5mm 0;
+  border-bottom: 1px solid var(--border2);
+}
+.toc-num {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--accent2); width: 10mm; flex-shrink: 0;
+}
+.toc-title {
+  flex: 1; font-size: 12.5px; color: var(--text);
+}
+.toc-dots {
+  flex: 1; border-bottom: 1px dotted var(--border);
+  margin: 0 3mm; height: 4mm;
+}
+.toc-page {
+  font-family: var(--mono); font-size: 10px;
+  color: var(--dim); width: 8mm; text-align: right;
+}
+
+/* ── QUOTE ── */
+.quote {
+  border-left: 3px solid var(--gold);
+  padding: 4mm 6mm; margin: 5mm 0;
+  background: rgba(212,175,55,.04);
+  font-style: italic;
+}
+.quote p { color: var(--gold2); font-size: 13px; margin-bottom: 1mm; }
+.quote .quote-src { color: var(--dim); font-size: 10px; font-style: normal; }
+
+/* ── DIVIDER ── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  margin: 7mm 0;
+}
+
+/* ── TWO-COL LAYOUT ── */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 6mm; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; }
+
+/* ── PAGE FOOTER ── */
+.page-footer {
+  position: absolute; bottom: 8mm; left: 18mm; right: 18mm;
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid var(--border2); padding-top: 3mm;
+}
+.page-footer-brand {
+  font-family: var(--mono); font-size: 8px; color: var(--dim); letter-spacing: .2em;
+}
+.page-footer-pg {
+  font-family: var(--mono); font-size: 8px; color: var(--dim); letter-spacing: .1em;
+}
+
+/* ── SCREEN ONLY (hide on print) ── */
+.print-btn {
+  position: fixed; top: 20px; right: 20px; z-index: 9999;
+  background: #00e5ff; color: #000814;
+  border: none; border-radius: 4px;
+  padding: 10px 20px; font-weight: 700; font-size: 13px;
+  cursor: pointer; letter-spacing: .08em;
+  box-shadow: 0 4px 20px rgba(0,229,255,.4);
+  font-family: 'Courier New', monospace;
+  transition: all .2s;
+}
+.print-btn:hover { background: #00b4cc; transform: translateY(-1px); }
+
+@media print {
+  .print-btn { display: none !important; }
+  body { background: var(--bg) !important; }
+}
+
+</style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">⬇ PDF ХЭЛБЭРЭЭР ХАДГАЛАХ</button>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 1 — COVER
+══════════════════════════════════════════════════════════ -->
+<div class="page cover">
+  <div class="grid-bg"></div>
+  <div class="blob blob-cyan" style="width:120mm;height:120mm;top:-20mm;right:-20mm;"></div>
+  <div class="blob blob-blue" style="width:100mm;height:100mm;bottom:0;left:-10mm;"></div>
+  <div class="blob blob-gold" style="width:80mm;height:80mm;bottom:30mm;right:10mm;"></div>
+
+  <div class="content" style="text-align:center;width:100%;">
+    <div class="cover-hex">⬡</div>
+    <div class="cover-brand">MONGOLIAN PERSONAL AI OPERATING SYSTEM</div>
+    <div class="cover-title">T.H.R.E.E. OS</div>
+    <div class="cover-sub">POWERED BY A.C.E. CORE — AUTONOMOUS CALIBRATION ENGINE</div>
+    <div class="cover-divider"></div>
+
+    <div class="cover-tagline">"Цагийг захирагч хэрэгсэл"</div>
+    <div class="cover-tagline-mn">Монгол хэрэглэгчдэд зориулсан хувийн хиймэл оюуны систем</div>
+
+    <div class="cover-badges">
+      <div class="cover-badge">AI POWERED</div>
+      <div class="cover-badge">МОНГОЛ ХЭЛТЭЙ</div>
+      <div class="cover-badge">WINDOWS / MAC / MOBILE</div>
+      <div class="cover-badge">HSK TRAINER</div>
+      <div class="cover-badge">PERSONAL ASSISTANT</div>
+    </div>
+
+    <div class="cover-ace-intro">
+      <p>Та энэ гарын авлагыг уншиж байгаа гэдэг нь <span class="ace-name">T.H.R.E.E. OS</span>-ийн нэгэн хэрэглэгч болсон хэрэг. Код мэдэх шаардлагагүй. Техникийн мэдлэг хэрэггүй. Зөвхөн Монгол хэлээр ярьж чаддаг бол хангалттай — <span class="ace-name">A.C.E.</span> тантай хамт ажиллана.</p>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <div class="cover-footer-l">
+      <div class="cover-footer-label">ХУВИЛБАР</div>
+      <div class="cover-footer-val">v1.0.0 — Sprint 28</div>
+      <div class="cover-footer-label" style="margin-top:2mm;">ПЛАТФОРМ</div>
+      <div class="cover-footer-val">macOS · Windows · Mobile PWA</div>
+    </div>
+    <div class="cover-footer-r">
+      <div class="cover-footer-label">ХЭВЛЭГДСЭН</div>
+      <div class="cover-footer-val">2026</div>
+      <div class="cover-footer-label" style="margin-top:2mm;">ЗОХИОГЧ</div>
+      <div class="cover-footer-val">Bileg — Shanghai</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 2 — TABLE OF CONTENTS
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">ГАРЧГИЙН ХУУДАС</div>
+      <div class="page-num">02</div>
+    </div>
+
+    <div class="section-title"><span class="icon">◎</span> АГУУЛГА</div>
+
+    <div style="margin: 6mm 0;">
+      <div class="toc-row">
+        <div class="toc-num">01</div>
+        <div class="toc-title">T.H.R.E.E. нэрийн утга — Энэ юу гэсэн үг вэ?</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">03</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">02</div>
+        <div class="toc-title">A.C.E. Core — Таны хувийн AI-ийн тухай</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">04</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">03</div>
+        <div class="toc-title">Систем хаанаас ирсэн бэ? — Зохиогчийн тухай</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">05</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">04</div>
+        <div class="toc-title">Суулгах заавар — Mac, Windows, Утас</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">06</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">05</div>
+        <div class="toc-title">Анхны тохиргоо — A.C.E.-тэй танилцах</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">07</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">06</div>
+        <div class="toc-title">Үндсэн функцүүд — Юу хийж чадах вэ?</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">08</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">07</div>
+        <div class="toc-title">Terminal — Командын гарын авлага</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">10</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">08</div>
+        <div class="toc-title">AI чат — A.C.E.-тэй зөв харилцах арга</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">11</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">09</div>
+        <div class="toc-title">Дизайн — Өнгө, Layout, Widget тохиргоо</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">12</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">10</div>
+        <div class="toc-title">HSK Хятад хэлний сургалт</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">13</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">11</div>
+        <div class="toc-title">Алдаа гарвал яах — Асуудал шийдэх заавар</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">14</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">12</div>
+        <div class="toc-title">Багцаа ахиулах — Pro болох арга</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">15</div>
+      </div>
+      <div class="toc-row">
+        <div class="toc-num">13</div>
+        <div class="toc-title">Түгээмэл асуулт хариулт (FAQ)</div>
+        <div class="toc-dots"></div>
+        <div class="toc-page">16</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="box box-cyan">
+      <div class="box-label">⬡ ХЭРХЭН УНШВАЛ ДЭЭ</div>
+      <p>Энэ гарын авлагыг эхнээс нь дарааллан уншихыг зөвлөж байна. Гэхдээ та аль хэсгийг хамгийн их хэрэгтэй байгаагаа шууд нээж болно. Код, техникийн ойлголт огт шаардлагагүй — зөвхөн Монгол хэлэнд л найдна уу.</p>
+    </div>
+
+    <div class="quote" style="margin-top:8mm;">
+      <p>"Хамгийн хүчирхэг технологи бол хүн ойлгохгүй байгаа юм биш — харин хэн ч ашиглаж чаддаг юм."</p>
+      <div class="quote-src">— T.H.R.E.E. OS Үндэслэн байгуулагч, Bileg</div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 02</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 3 — T.H.R.E.E. NAME ORIGIN
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">НЭРИЙН УТГА — БҮЛЭГ 01</div>
+      <div class="page-num">03</div>
+    </div>
+
+    <div class="section-title"><span class="icon">⬡</span> T.H.R.E.E. ГЭДЭГ НЬ ЮУ ВЭ?</div>
+
+    <p>Олон хүн "Three" гэдэг нь зүгээр нэг гурав гэсэн тоо гэж бодно. Гэвч энд том утга нуугдаж байна. <em>T.H.R.E.E.</em> бол таван үгийн эхний үсгүүдээр бүрдсэн нэр — товчилсон үгийг <strong>acronym</strong> гэнэ.</p>
+
+    <div class="decode">
+      <div class="decode-row">
+        <div class="decode-letter">T</div>
+        <div class="decode-word">TACTICAL</div>
+        <div class="decode-meaning"><strong>Тактикийн</strong> — Зорилгодоо хүрэхийн тулд ухаалаг, зориудын алхам хийх чадвар. Буруу замд цаг алдахгүй, зөв зүгт нэг алхам бүр тооцсон.</div>
+      </div>
+      <div class="decode-row">
+        <div class="decode-letter">H</div>
+        <div class="decode-word">HIGH-PERFORMANCE</div>
+        <div class="decode-meaning"><strong>Өндөр гүйцэтгэлтэй</strong> — Хэрэглэгч болон систем хоёулаа хамгийн өндөр түвшинд ажиллах. Дундаж гэж байхгүй — хамгийн дээд.</div>
+      </div>
+      <div class="decode-row">
+        <div class="decode-letter">R</div>
+        <div class="decode-word">REAL-TIME</div>
+        <div class="decode-meaning"><strong>Бодит цагийн</strong> — Мэдээлэл, хариу, шийдэл — бүгд одоо, яг энэ мөчид. Хоцрогдол байхгүй, хүлээлт байхгүй.</div>
+      </div>
+      <div class="decode-row">
+        <div class="decode-letter">E</div>
+        <div class="decode-word">EFFICIENCY</div>
+        <div class="decode-meaning"><strong>Үр ашигтай</strong> — Цаг, эрчим хүч, анхаарлыг хамгийн зөв зарцуулах. 10 цаг зарцуулж хийдэг зүйлийг 2 цагт хийх.</div>
+      </div>
+      <div class="decode-row">
+        <div class="decode-letter" style="font-size:20px;">E</div>
+        <div class="decode-word">ENGINE</div>
+        <div class="decode-meaning"><strong>Хөдөлгүүр</strong> — Систем нь зүгээр нэг хэрэгсэл биш, харин таны амьдралын <em>хөдөлгүүр</em>. Зогсоход биш, урагшлуулахад зориулагдсан.</div>
+      </div>
+    </div>
+
+    <div class="box box-gold" style="margin-top:6mm;">
+      <div class="box-label">✦ НЭРИЙН ГАРАЛ ҮҮСЭЛ</div>
+      <p>Зохиогч энэ нэрийг сонгохдоо маш удаан бодсон. Техникийн систем дотроо хүн мэдрэх тийм нэрийг хайсан. "THREE" — гурав гэдэг тоо олон соёлд тусгай утга агуулдаг: гурвал хүч, гурван хэмжээс, гурван шат. Гэхдээ гол нь — эдгээр таван үгийн утга нийлэхэд яг өөрийнх нь амьдралын гүн ухааныг илэрхийлж байсан юм.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-sub">НЭРИЙГ МОНГОЛООР ХЭЛВЭЛ...</div>
+    <p>Хэрэв бид T.H.R.E.E. OS-ийг Монголоор товч тайлбарлавал:</p>
+
+    <div class="box box-cyan">
+      <div class="box-label">◈ МОНГОЛ ТАЙЛБАР</div>
+      <p><strong>"Тактикийн өндөр гүйцэтгэлтэй, бодит цагийн үр ашигт хөдөлгүүр систем"</strong> — энэ бол таны гар дээр байгаа программ. Нарийн хэлбэл: таны өдөр тутмын амьдралыг зохион байгуулж, хятад хэл сургаж, AI-тай ярилцаж, хуваарь гаргаж өгдөг, бүгдийг нэг дор хийдэг хувийн систем.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 03</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 4 — A.C.E. NAME ORIGIN
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">A.C.E. CORE — БҮЛЭГ 02</div>
+      <div class="page-num">04</div>
+    </div>
+
+    <div class="section-title"><span class="icon">◈</span> A.C.E. CORE ГЭДЭГ НЬ ЮУ ВЭ?</div>
+
+    <p>T.H.R.E.E. OS дотор ярилцдаг AI-г <em>A.C.E.</em> гэнэ. Энэ бол зүгээр нэг chatbot биш — тантай Монголоор ярьж, "Boss" гэж дуудаж, тань руу шууд ханддаг хувийн туслах юм. Нэрийн утгыг задалъя:</p>
+
+    <div class="decode">
+      <div class="decode-row">
+        <div class="decode-letter">A</div>
+        <div class="decode-word">AUTONOMOUS</div>
+        <div class="decode-meaning"><strong>Бие даасан</strong> — Хэрэглэгч тус бүрт заасан зааврыг хүлээж суухгүйгээр, бие дааж шийдвэр гаргаж, хариу өгдөг. Таны сэтгэлгээний хэв маягт дасна.</div>
+      </div>
+      <div class="decode-row">
+        <div class="decode-letter">C</div>
+        <div class="decode-word">CALIBRATION</div>
+        <div class="decode-meaning"><strong>Тохируулга, тааруулалт</strong> — A.C.E. таныг судалж, таны зорилго, хуваарь, HSK дэвшлийг байнга "тохируулж" байдаг. Өнөөдрийн чи ≠ сарын өмнөх чи.</div>
+      </div>
+      <div class="decode-row">
+        <div class="decode-letter">E</div>
+        <div class="decode-word">ENGINE</div>
+        <div class="decode-meaning"><strong>Цөм хөдөлгүүр</strong> — T.H.R.E.E. OS-ийн зүрх. Бүх мэдэгдэл, хариулт, шинжилгээ энэхүү "цөм"-өөс гардаг. Систем ажиллаж байгаа цагт A.C.E. таныг дагаад байна.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-sub">A.C.E.-ИЙН ОНЦЛОГ ШИНЖҮҮД</div>
+
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">🇲🇳</div>
+        <div class="feat-name">МОНГОЛ ХЭЛ</div>
+        <div class="feat-desc">A.C.E. зөвхөн Монголоор ярьдаг. Та Монголоор асуувал Монголоор хариулна. Орчуулагч хэрэггүй.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎯</div>
+        <div class="feat-name">ШУУД, ТОВЧ</div>
+        <div class="feat-desc">Урт, уйдмаар тайлбар өгдөггүй. Асуултад хамгийн шууд, хамгийн хэрэгтэй хариуг өгнө.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">😎</div>
+        <div class="feat-name">"BOSS" ГЭДЭГ</div>
+        <div class="feat-desc">A.C.E. танд хандахдаа "Boss" гэнэ. Энэ бол хүндэтгэлийн болон найрсаг хослол.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🧠</div>
+        <div class="feat-name">САНАХ ОЙ</div>
+        <div class="feat-desc">Өдрийн ярианы 12 мессежийг санадаг. Контекст алдагдахгүй — дундуур нь асуугаад болно.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📋</div>
+        <div class="feat-name">MISSION НЭРШИЛ</div>
+        <div class="feat-desc">A.C.E. операцийг "Mission", хадгалахыг "Sync", протоколыг "Protocol" гэж нэрлэдэг — цэрэг хэлтэй.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-name">ХУРДАН ХАРИУ</div>
+        <div class="feat-desc">Секундын дотор хариулдаг. Интернет холболт хэрэгтэй ч хариу нь шуурхай.</div>
+      </div>
+    </div>
+
+    <div class="box box-amber" style="margin-top:4mm;">
+      <div class="box-label">⚠ АНХААР</div>
+      <p>A.C.E. бол <strong>Gemini AI</strong> дээр ажилладаг. Энэ нь Google-ийн хиймэл оюун. Гэхдээ T.H.R.E.E. OS-д тохиргоо хийсэн тул Монгол хэлээр, таны зорилгод тааруулан ярьдаг болгосон.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 04</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 5 — ORIGIN STORY
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="blob blob-gold" style="width:90mm;height:90mm;top:20mm;right:-10mm;"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">ЗОХИОГЧИЙН ТУХАЙ — БҮЛЭГ 03</div>
+      <div class="page-num">05</div>
+    </div>
+
+    <div class="section-title"><span class="icon">✦</span> СИСТЕМ ХААНААС ИРСЭН БЭ?</div>
+
+    <div class="quote">
+      <p>"Би AI-г өөрийн амьдралд ажиллуулж чадвал — бусад хүнд ч ажиллуулж болно гэж бодсон."</p>
+      <div class="quote-src">— Bileg, T.H.R.E.E. OS-ийн зохиогч</div>
+    </div>
+
+    <p><strong>Bileg</strong> — 18 настай Монгол залуу. Шанхай, Хятадад амьдарч, хятад хэл сурч, кодчилол судалж байна. Олон хүн технологийг ашиглах биш, <em>технологид захирагддаг</em> гэдгийг ажиглаад — энэ байдлыг өөрчлөх хэрэгсэл хийхийг хүссэн.</p>
+
+    <p>T.H.R.E.E. OS-ийг хийж эхэлснийхээ жинхэнэ шалтгаан нь энгийн: <strong>өөртөө л хэрэгтэй байсан учраас.</strong> Хятад хэлний шалгалт ойртож байсан, өдрийн хуваарь замбараагүй болсон, AI-ийн тусламж авхыг хүссэн ч бүгдийг нэг дор хийдэг хэрэгсэл байхгүй байсан.</p>
+
+    <div class="divider"></div>
+
+    <div class="section-sub">ХӨГЖҮҮЛЭЛТИЙН ШУГАМ</div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">Анхны санаа — Зөвхөн терминал</div>
+          <div class="step-desc">Эхэндээ зөвхөн командын мөртэй энгийн програм байсан. "Терминал шиг харагддаг ч хүн бүр ашиглаж чаддаг" гэсэн концепцоос эхэлсэн.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">A.C.E.-ийн нэмэлт — AI чат</div>
+          <div class="step-desc">Gemini AI-г Монгол хэлэнд тааруулж, "Boss" дуудлагатай, шууд хариулттай болгох тохиргоо хийсэн. Энэ нь T.H.R.E.E. OS-ийн гол давуу тал болсон.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">HSK Trainer — Хятад хэлний модуль</div>
+          <div class="step-desc">Биелэ өөрөө 2026 оны 6 сарын 28-нд HSK шалгалт өгнө. Тиймээс хятад үгийн drill, дэвшлийн хяналт системд нэмсэн.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">Sprint 28 — Одоогийн хувилбар</div>
+          <div class="step-desc">28 дахь "sprint" буюу хөгжүүлэлтийн ээлж дуусч, та энэ гарын авлагыг уншиж байна. Тогтмол шинэчлэгддэг — дараагийн ээлжүүд удаан хүлээлгүй ирнэ.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="box box-green">
+      <div class="box-label">◉ МОНГОЛД ЮУ БАЙХГҮЙ БАЙСАН БЭ?</div>
+      <p>Монгол хэлээр ярьдаг хувийн AI туслах байхгүй байсан. Хятад хэл сурах, өдрийн хуваарь хяналт, системийн мэдээлэл — бүгдийг нэг дор хийдэг хэрэгсэл байхгүй байсан. T.H.R.E.E. OS тэр цоорхойг дүүргэхээр хийгдсэн.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 05</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 6 — INSTALLATION
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">СУУЛГАХ ЗААВАР — БҮЛЭГ 04</div>
+      <div class="page-num">06</div>
+    </div>
+
+    <div class="section-title"><span class="icon">⬇</span> СУУЛГАХ ЗААВАР</div>
+
+    <div class="two-col">
+      <!-- MAC -->
+      <div>
+        <div class="section-sub" style="margin-top:0;">🍎 APPLE MAC ДЭЭР</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">Файл татаж авах</div>
+              <div class="step-desc">Зохиогчаас <strong>JARVIS OS-1.0.0.dmg</strong> файлыг авна. Татаж авахад <em>Downloads</em> хавтаст хадгалагдана.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">DMG нээх</div>
+              <div class="step-desc">Файл дээр давхар товшино. Шинэ цонх нээгдэж <strong>JARVIS OS</strong> дүрс харагдана.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">Applications руу чирнэ</div>
+              <div class="step-desc">JARVIS OS дүрсийг <em>Applications</em> хавтас руу чирнэ. Суулгалт дуусна.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-title">Анхны нээлт — аюулгүй байдлын сануулга</div>
+              <div class="step-desc">Mac "нотлогдоогүй зохиогч" гэж сануулж магадгүй. <strong>System Settings → Privacy & Security → Open Anyway</strong> дарна.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WINDOWS -->
+      <div>
+        <div class="section-sub" style="margin-top:0;">🪟 WINDOWS ДЭЭР</div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-body">
+              <div class="step-title">EXE файл татах</div>
+              <div class="step-desc">Windows хувилбарыг зохиогчаас авна. <strong>.exe</strong> файл байна.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-body">
+              <div class="step-title">SmartScreen сануулга</div>
+              <div class="step-desc">Windows Defender "тодорхойгүй програм" гэж сануулна. <strong>More info → Run anyway</strong> дарна. Аюулгүй.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-body">
+              <div class="step-title">Суулгах</div>
+              <div class="step-desc">Суулгагч дэлгэц гарна. "Next" дараад дуусгана. Desktop дээр дүрс гарна.</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <div class="step-body">
+              <div class="step-title">Нээх</div>
+              <div class="step-desc">Desktop дэхь <strong>JARVIS OS</strong> дүрс дээр давхар товшино.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-sub">📱 УТАСНЫ ДЭЛГЭЦ ДЭЭР (PWA)</div>
+    <div class="two-col">
+      <div class="box box-cyan">
+        <div class="box-label">iPhone / iPad (Safari)</div>
+        <p>1. Safari-д зохиогчийн хаягийг нээнэ<br>
+        2. Доор байх <strong>⬆ Share</strong> товч дарна<br>
+        3. <strong>"Add to Home Screen"</strong> сонгоно<br>
+        4. "Add" дарна → Дэлгэц дээр гарна</p>
+      </div>
+      <div class="box box-cyan">
+        <div class="box-label">Android (Chrome)</div>
+        <p>1. Chrome-д хаягийг нээнэ<br>
+        2. Баруун дээр <strong>⋮</strong> цэс дарна<br>
+        3. <strong>"Add to Home screen"</strong> сонгоно<br>
+        4. "Add" дарна → Дэлгэц дээр гарна</p>
+      </div>
+    </div>
+
+    <div class="box box-amber" style="margin-top:4mm;">
+      <div class="box-label">⚠ ИНТЕРНЕТ ШААРДЛАГАТАЙ</div>
+      <p>T.H.R.E.E. OS-ийн AI хариулт, цаг агаар, мэдлэгийн синхрончлол интернет холболт шаарддаг. Офлайн горимд зарим функц хязгаарлагдана.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 06</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 7 — FIRST SETUP
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">АНХНЫ ТОХИРГОО — БҮЛЭГ 05</div>
+      <div class="page-num">07</div>
+    </div>
+
+    <div class="section-title"><span class="icon">◉</span> АНХНЫ ТОХИРГОО — A.C.E.-ТЭЙ ТАНИЛЦАХ</div>
+
+    <p>T.H.R.E.E. OS-ийг анхны удаа нээхэд <em>тохиргооны мастер</em> гарна. Энэ нь таны мэдээллийг цуглуулж, A.C.E.-г тань мэдэхэд тусалдаг. Дараах алхмуудыг гүйцэтгэнэ:</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <div class="step-title">⬡ T.H.R.E.E. OS тавтай морил</div>
+          <div class="step-desc">Нэрийн утга, системийн тухай танилцуулга. <strong>"INITIALIZE T.H.R.E.E. OS"</strong> товч дарна.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <div class="step-title">◈ Таны профайл тохиргоо</div>
+          <div class="step-desc">Нэр, дасгалын цаг, HSK түвшин, унтах цаг оруулна. Эдгээр мэдээлэл A.C.E.-д таны амьдралын хэв маягийг ойлгуулна.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <div class="step-title">⬡ Өнөөдрийн зорилго</div>
+          <div class="step-desc">Дасгал, хятад хэл, унших, өдрийн тэмдэглэл — аль нь чухал болохоо тохируулна. Хожим өөрчлөж болно.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <div class="step-title">🔔 Мэдэгдлийн тохиргоо</div>
+          <div class="step-desc">Телеграм холбоос эсвэл дотор системийн сануулга идэвхжүүлэх боломж. Алгасаж болно.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <div class="step-title">🎓 WOW Эхний Mission — HSK шалгалт</div>
+          <div class="step-desc">Таны хятад хэлний суурь мэдлэгийг A.C.E. үнэлнэ. 8 үг харуулна — та Монголоор утгыг бичнэ. Дараа нь A.C.E. таны дэвшлийн суурь болгон ашиглана.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="box box-green">
+      <div class="box-label">✓ ТОХИРГОО ХАДГАЛАГДАХ ГА?</div>
+      <p>Тийм! Таны тохиргоо <strong>Firebase Cloud</strong> дэлхийн серверт хадгалагдана. Та компьютер солибол, шинэчлэл хийвэл — тохиргоо хэвээр үлдэнэ. Нэмж хэлбэл, app-г устгаад дахин суулгасан ч анхны тохиргоо асуухгүй — мартаагүй байна!</p>
+    </div>
+
+    <div class="box box-amber" style="margin-top:4mm;">
+      <div class="box-label">⚠ ХЭРЭВ ТОХИРГООНЫ ДЭЛГЭЦ ДАХИН ГАРВАЛ...</div>
+      <p>Энэ нь маш ховор тохиолддог. Шалтгаан: интернет таслагдаж байх үед тохиргоо хадгалагдаагүй байж болно. Тохиргоог дахин гүйцэтгэхэд 3 минут л орно.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 07</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 8 — FEATURES OVERVIEW
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">ҮНДСЭН ФУНКЦҮҮД — БҮЛЭГ 06</div>
+      <div class="page-num">08</div>
+    </div>
+
+    <div class="section-title"><span class="icon">◎</span> ЮУ ХИЙЖ ЧАДАХ ВЭ?</div>
+
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">💬</div>
+        <div class="feat-name">AI ЧАТ — A.C.E. CORE</div>
+        <div class="feat-desc">Монголоор чөлөөтэй ярина. Хуваарь гаргуулах, асуулт тавих, зөвлөгөө авах — бүгдийг хийнэ. INTEL товч дарна уу.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📅</div>
+        <div class="feat-name">ROUTINE TRACKER</div>
+        <div class="feat-desc">Өдрийн зорилгуудаа тэмдэглэнэ: дасгал, ус ууx, хятад хэл, унших. Score тооцдог — 100 оноо зорьж б.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🀄</div>
+        <div class="feat-name">HSK ХЯТАД ХЭЛ</div>
+        <div class="feat-desc">Пиньин, Монгол утга, жишээ өгүүлбэрийн хамт үг сурна. Шалгалтын хүртэлх хоногийг тоолдог.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📋</div>
+        <div class="feat-name">TASK MATRIX</div>
+        <div class="feat-desc">Даалгаврыг Todo / In Progress / Done гурван баганад зохион байгуулна. /matrix командаар нэвтэрнэ.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">💻</div>
+        <div class="feat-name">SYSTEM MONITOR</div>
+        <div class="feat-desc">CPU, RAM, батарей, системийн uptime бодит цагт харагдана. Таны компьютерийн "эрүүл мэнд".</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📰</div>
+        <div class="feat-name">INTEL FEED</div>
+        <div class="feat-desc">BBC Tech мэдээ, бизнес зөвлөгөө, сэдэглэх мессежүүд — бодит цагт шинэчлэгддэг мэдлэгийн тэжээл.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">💱</div>
+        <div class="feat-name">ВАЛЮТЫН ХАНШ</div>
+        <div class="feat-desc">USD/MNT, USD/CNY, CNY/MNT ханш бодит цагт. Монгол-Хятадын бизнес хийдэг хүнд хэрэгтэй.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎨</div>
+        <div class="feat-name">THEME & LAYOUT</div>
+        <div class="feat-desc">5 өнгөний схем, 3 layout сонгох боломж. A.C.E.-д хэлэхэд өнгө солино — "цайвар болго" гэхэд хангалттай.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-sub">🖱 DRAG MODE — WIDGET ЗОХИОН БАЙГУУЛАЛТ</div>
+    <p>Терминалд <strong>/drag on</strong> бичихэд систем дэлгэц дээрх бүх "widget" буюу мэдээллийн хайрцгуудыг чирч байрлуулах боломж олгоно. Хаана байхыг чинь өөрөө шийднэ. <strong>/drag off</strong> бичихэд тогтоно.</p>
+
+    <div class="box box-cyan">
+      <div class="box-label">🎙 ДУУТ ОРОЛТ</div>
+      <p>AI чат дотор микрофоны дүрс дарахад таны хоолойг Монголоор сонсож бичнэ. Гар дээр бичилгүй ярьж асуух боломж — хэрэглэхэд хялбар!</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 08</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 9 — NAVIGATION GUIDE
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">ХЭРХЭН ЯВАХ — БҮЛЭГ 06 (үргэлжлэл)</div>
+      <div class="page-num">09</div>
+    </div>
+
+    <div class="section-title"><span class="icon">⌂</span> ДЭЛГЭЦИЙГ ХЭРХЭН АШИГЛАХ ВЭ?</div>
+
+    <div class="box box-gold" style="margin-bottom:6mm;">
+      <div class="box-label">◈ ДЭЭД МӨРИЙН 5 ТОВЧ</div>
+      <p>Дэлгэцийн дээр <strong>⌂ CORE · ⬡ INTEL · ◎ TRACK · ◈ PROFILE · ? GUIDE</strong> товчнууд байна. Тус бүрийн хуудас руу шилжихэд ашиглана.</p>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-sub" style="margin-top:0;">⌂ CORE ХУУДАС</div>
+        <p>Үндсэн хуудас. Систем мэдэгдэл, валютын ханш, мэдээний тэжээл, цаг, батарей, CPU — бүгд энд харагдана. Зүүн, дунд, баруун гэсэн 3 баганатай.</p>
+
+        <div class="section-sub">⬡ INTEL ХУУДАС</div>
+        <p>A.C.E. AI чат нь энд байна. Монголоор асуулт тавих, хуваарь гаргуулах, хятад үг тайлбарлуулах — бүгдийг хийнэ.</p>
+      </div>
+      <div>
+        <div class="section-sub" style="margin-top:0;">◎ TRACK ХУУДАС</div>
+        <p>Өдрийн зорилго хяналт. Дасгал хийсэн үү, ус ууж байна уу, хятад хэл, ном уншсан уу — тэмдэглэж, оноо авна.</p>
+
+        <div class="section-sub">◈ PROFILE ХУУДАС</div>
+        <p>Таны тохиргоо, layout, HSK дэвшил, профайл мэдээлэл — бүгдийг энд өөрчилнэ.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-title" style="margin-top:2mm;"><span class="icon">⌨</span> ТЕРМИНАЛ — ГАРЫН АВЛАГА</div>
+
+    <p>Дэлгэцийн доод хэсэгт харанхуй дөрвөлжин байна — энэ бол <em>терминал</em> буюу командын мөр. Энд бичсэн командаар системийг удирдана. <strong>/</strong> тэмдгээр эхэлдэг бичилтүүд бол команд.</p>
+
+    <div class="box box-cyan">
+      <div class="box-label">💡 ЖИШЭЭ</div>
+      <p>Терминалд <strong>/status</strong> бичиж Enter дарахад өнөөдрийн оноо, HSK шалгалтын хоног харагдана.<br>
+      <strong>/drill</strong> бичихэд хятад үгийн шалгалт эхэлнэ.<br>
+      Эсвэл зүгээр л Монголоор ярина: <em>"Маргааш gym, библиотек, хятад хэл хийх хуваарь гарга"</em></p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 09</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 10 — COMMAND REFERENCE
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">КОМАНДЫН ЛАВЛАХ — БҮЛЭГ 07</div>
+      <div class="page-num">10</div>
+    </div>
+
+    <div class="section-title"><span class="icon">⌨</span> БҮРЭН КОМАНДЫН ЖАГСААЛТ</div>
+
+    <p>Терминалд дараах командуудыг бичиж Enter дарна. Жижиг-том үсэг хамаарахгүй.</p>
+
+    <table class="cmd-table">
+      <thead>
+        <tr>
+          <th>КОМАНД</th>
+          <th>ЮУ ХИЙДЭГ ВЭ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="cmd-name">/status</div></td>
+          <td><div class="cmd-desc">Өнөөдрийн score, streak, HSK шалгалтын хоног, системийн uptime харуулна</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/matrix</div></td>
+          <td><div class="cmd-desc">Stark Task Matrix нээнэ — Todo / In Progress / Done даалгаварын самбар</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/matrix add [даалгавар]</div></td>
+          <td><div class="cmd-desc">Шинэ даалгавар нэмнэ. Жишээ: /matrix add Gym хийх</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/drill</div></td>
+          <td><div class="cmd-desc">HSK4 хятад үгийн drill эхэлнэ — Монголоор утгыг оруулна</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/drill stop</div></td>
+          <td><div class="cmd-desc">Drill дуусгана</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/plans</div></td>
+          <td><div class="cmd-desc">Cloud-д хадгалагдсан хуваарийн жагсаалт харуулна</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/theme list</div></td>
+          <td><div class="cmd-desc">Бүх боломжит theme-ийн жагсаалт</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/theme [нэр]</div></td>
+          <td><div class="cmd-desc">Theme солино. Нэрүүд: stark-cyan, amber, matrix, red-alert, void</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/layout [1/2/3]</div></td>
+          <td><div class="cmd-desc">Дэлгэцийн зохион байгуулалт солино. 1=Compact, 2=Standard, 3=Wide</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/widget list</div></td>
+          <td><div class="cmd-desc">Widget-үүдийн жагсаалт + идэвхжүүлэх/идэвхгүйжүүлэх</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/drag on</div></td>
+          <td><div class="cmd-desc">Widget-үүдийг чирч байрлуулах горим идэвхжинэ</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/drag off</div></td>
+          <td><div class="cmd-desc">Widget байрлалыг тогтооно</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/stats</div></td>
+          <td><div class="cmd-desc">AI мессежийн тоолуур харуулна — өнөөдрийн хязгаар хэдэн үлдсэн болохыг хянана</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/upgrade</div></td>
+          <td><div class="cmd-desc">Pro багц мэдээлэл, үнэ, шинэ функцүүд харуулна</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/referral</div></td>
+          <td><div class="cmd-desc">Найздаа зөвлөж урамшуулал авах линк харуулна</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/guide</div></td>
+          <td><div class="cmd-desc">Энэхүү гарын авлага нээнэ</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/clear</div></td>
+          <td><div class="cmd-desc">Терминалын бичвэрийг цэвэрлэнэ</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/help</div></td>
+          <td><div class="cmd-desc">Бүх командын товч жагсаалт терминалд харуулна</div></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="box box-gold" style="margin-top:4mm;">
+      <div class="box-label">💡 ЗӨВЛӨГӨӨ</div>
+      <p>Команд бичихгүйгээр ч болно — зүгээр л Монголоор ярина. "Миний өнөөдрийн оноо хэд вэ?" гэхэд A.C.E. мэдэж хариулна. Командууд нь хурдан хандах шаардлагатай үед л хэрэглэнэ.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 10</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 11 — AI CHAT GUIDE
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">AI ЧАТ — БҮЛЭГ 08</div>
+      <div class="page-num">11</div>
+    </div>
+
+    <div class="section-title"><span class="icon">💬</span> A.C.E.-ТЭЙ ЗӨВ ХАРИЛЦАХ АРГА</div>
+
+    <p>A.C.E. бол хиймэл оюун тул зарим зүйлийг тодорхой хэлэх нь илүү сайн хариулт авахад тусалдаг. Энгийн дүрмүүд:</p>
+
+    <div class="two-col" style="margin:5mm 0;">
+      <div>
+        <div class="section-sub" style="margin-top:0;color:var(--green);">✓ ЗӨВ АРГА</div>
+        <div class="box box-green" style="margin-bottom:3mm;">
+          <p>"Маргааш 8 цагт gym, 10 цагт HSK drill, 2 цагт библиотек — хуваарь гарга"</p>
+        </div>
+        <div class="box box-green" style="margin-bottom:3mm;">
+          <p>"学习 гэдэг үгийг пиньин, утга, жишээтэй тайлбарла"</p>
+        </div>
+        <div class="box box-green">
+          <p>"Өнөөдрийн мессежийн тоолуур хэд вэ?"</p>
+        </div>
+      </div>
+      <div>
+        <div class="section-sub" style="margin-top:0;color:var(--red);">✗ МУУ АРГА</div>
+        <div class="box box-red" style="margin-bottom:3mm;">
+          <p>"Ямар нэг зүйл хий" — юу хийхийг ойлгохгүй байна.</p>
+        </div>
+        <div class="box box-red" style="margin-bottom:3mm;">
+          <p>"Хятад хэл" гэхэд л хангалтгүй — ямар үг, ямар түвшин?</p>
+        </div>
+        <div class="box box-red">
+          <p>Маш урт, ойлгомжгүй асуулт — хариулт сарниж болно.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-sub">ХУВААРЬ ГАРГАХ ЖИШЭЭ</div>
+    <div class="box box-cyan">
+      <div class="box-label">ТЕРМИНАЛД БИЧИХ</div>
+      <p style="font-family:var(--mono);font-size:12px;color:var(--accent2);">"Маргааш gym 7 цагт, HSK drill 10 цагт, найзтайгаа уулзах 3 цагт байна. Эдгээрийн хооронд унших, амрах цагийг нэмж бүрэн хуваарь гарга."</p>
+    </div>
+
+    <div class="section-sub" style="margin-top:5mm;">ӨДРИЙН ХЯЗГААР</div>
+    <div class="two-col">
+      <div class="box box-amber">
+        <div class="box-label">⚠ ҮНЭГҮЙ БАГЦ</div>
+        <p>Өдөрт <strong>20 мессеж</strong> хязгаар. /stats командаар хэдэн үлдсэнийг харна. Шөнө 12 цагт шинэчлэгдэнэ.</p>
+      </div>
+      <div class="box box-gold">
+        <div class="box-label">✦ PRO БАГЦ</div>
+        <p>Хязгааргүй мессеж, дэвшилтэт функцүүд. /upgrade командаар дэлгэрэнгүй мэдээлэл авна.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 11</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 12 — DESIGN CUSTOMIZATION
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">ДИЗАЙН — БҮЛЭГ 09</div>
+      <div class="page-num">12</div>
+    </div>
+
+    <div class="section-title"><span class="icon">🎨</span> ӨНГӨ, LAYOUT, WIDGET ТОХИРГОО</div>
+
+    <div class="section-sub" style="margin-top:0;">THEME — ӨНГИЙН СХЕМ</div>
+    <p>T.H.R.E.E. OS-д 5 өнгийн схем байна. Командаар эсвэл A.C.E.-д Монголоор хэлэхэд ч солино:</p>
+
+    <table class="cmd-table" style="margin-bottom:5mm;">
+      <thead>
+        <tr><th>THEME НЭР</th><th>ОНЦЛОГ</th><th>ЗОХИМЖТОЙ ҮЙЛДЭЛ</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="cmd-name" style="color:var(--accent);">stark-cyan</div></td>
+          <td><div class="cmd-desc">Цэнхэр гэрэл — үндсэн tema</div></td>
+          <td><div class="cmd-ex">Ихэнх ажилд</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name" style="color:var(--amber);">amber</div></td>
+          <td><div class="cmd-desc">Шаргал-улбар — дулаан мэдрэмж</div></td>
+          <td><div class="cmd-ex">Орой бичиж суухад</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name" style="color:var(--green);">matrix</div></td>
+          <td><div class="cmd-desc">Ногоон — хакер мэдрэмж</div></td>
+          <td><div class="cmd-ex">Кодчилохдоо</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name" style="color:var(--red);">red-alert</div></td>
+          <td><div class="cmd-desc">Улаан — анхаарал татах</div></td>
+          <td><div class="cmd-ex">Яаралтай ажил хийхэд</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name" style="color:var(--dim);">void</div></td>
+          <td><div class="cmd-desc">Хар — хамгийн бүдэг</div></td>
+          <td><div class="cmd-ex">Шөнийн харанхуйд</div></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="box box-cyan" style="margin-bottom:5mm;">
+      <div class="box-label">💡 A.C.E.-Д МОНГОЛООР ХЭЛЖ БОЛНО</div>
+      <p>"/theme amber" командын оронд A.C.E.-д "өнгийг шаргал болго" гэхэд ч солино. "Харанхуй болго", "ногоон болго" гэх мэт.</p>
+    </div>
+
+    <div class="section-sub">LAYOUT — ДЭЛГЭЦИЙН БАЙРЛАЛ</div>
+
+    <table class="cmd-table" style="margin-bottom:5mm;">
+      <thead>
+        <tr><th>LAYOUT</th><th>ТАЙЛБАР</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="cmd-name">/layout 1 — Compact</div></td>
+          <td><div class="cmd-desc">Жижиг дэлгэц, утас дээр тохиромжтой. Зай хэмнэнэ.</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/layout 2 — Standard</div></td>
+          <td><div class="cmd-desc">Үндсэн байрлал. 3 баганатай тэнцвэртэй харагдал.</div></td>
+        </tr>
+        <tr>
+          <td><div class="cmd-name">/layout 3 — Wide</div></td>
+          <td><div class="cmd-desc">Том дэлгэц, том монитор дээр тохиромжтой. Дунд хэсэг өргөн.</div></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="section-sub">WIDGET — МЭДЭЭЛЛИЙН ХАЙРЦАГ</div>
+    <p><strong>/widget list</strong> командаар бүх widget-ийн жагсаалт харна. Widget тус бүрийг идэвхжүүлж/идэвхгүйжүүлэх боломжтой. <strong>/drag on</strong> горимд дурын байрлалд чирч тавих боломжтой.</p>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 12</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 13 — HSK TRAINING
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">HSK ХЯТАД ХЭЛ — БҮЛЭГ 10</div>
+      <div class="page-num">13</div>
+    </div>
+
+    <div class="section-title"><span class="icon">🀄</span> HSK ХЯТАД ХЭЛНИЙ СУРГАЛТ</div>
+
+    <div class="box box-gold" style="margin-bottom:5mm;">
+      <div class="box-label">✦ HSK ГЭДЭГ НЬ ЮУ ВЭ?</div>
+      <p><strong>HSK</strong> (汉语水平考试) — Хятадын албан ёсны хятад хэлний шалгалт. 1-6 түвшин байдаг. HSK4 нь 1200 үг шаарддаг бөгөөд Хятадад ажиллах, суралцах хамгийн бага шаардлагат түвшин. T.H.R.E.E. OS-д <strong>2026 оны 6-р сарын 28</strong> шалгалтыг бэлдэх модуль суулгасан байна.</p>
+    </div>
+
+    <div class="section-sub" style="margin-top:0;">HSK МОДУЛИЙН ФУНКЦҮҮД</div>
+
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-icon">📖</div>
+        <div class="feat-name">ҮГ ТАЙЛБАР</div>
+        <div class="feat-desc">A.C.E.-д хятад үг асуухад пиньин (дуудлага), Монгол утга, жишээ өгүүлбэр авна. "学习 гэдэг үгийг тайлбарла" гэхэд л хангалттай.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">🎯</div>
+        <div class="feat-name">DRILL ШАЛГАЛТ</div>
+        <div class="feat-desc">/drill командаар үгийн шалгалт эхэлнэ. Хятад үг харуулахад Монголоор утгыг бичнэ. Зөв/буруу тоолно.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">📊</div>
+        <div class="feat-name">ДЭВШЛИЙН ХЯНАЛТ</div>
+        <div class="feat-desc">Хэдэн үг сурсан, дэвшил хувиар харуулна. Streak — тасралтгүй сурсан хоногийн тоо.</div>
+      </div>
+      <div class="feat-card">
+        <div class="feat-icon">⏱</div>
+        <div class="feat-name">ШАЛГАЛТЫН ТООЛУУР</div>
+        <div class="feat-desc">2026/06/28 хүртэл хэдэн хоног үлдснийг терминал, PROFILE хуудасны дэлгэцэнд байнга харуулна.</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-sub">ХЭРХЭН ХЯТАД ҮГ СУРАХ ВЭ — ЖИШЭЭ</div>
+
+    <div class="box box-cyan">
+      <div class="box-label">1. A.C.E.-ЭЭС ҮГ АСУУХ</div>
+      <p style="font-family:var(--mono);color:var(--accent2);font-size:12px;">Та: "努力 гэдэг үгийг пиньин, утга, жишээтэй тайлбарла"</p>
+      <p style="margin-top:2mm;">A.C.E.: <em>nǔ lì — хичээх, чармайх. Жишээ: 我每天努力学习 (Би өдөр бүр хичээнгүйлэн сурдаг)</em></p>
+    </div>
+
+    <div class="box box-cyan" style="margin-top:3mm;">
+      <div class="box-label">2. DRILL ГОРИМ АШИГЛАХ</div>
+      <p style="font-family:var(--mono);color:var(--accent2);font-size:12px;">Терминалд: /drill</p>
+      <p style="margin-top:2mm;">Систем: <em>学习 — утгыг Монголоор бичнэ үү</em><br>Та: "суралцах"<br>Систем: <em>✓ Зөв! Дараагийн үг...</em></p>
+    </div>
+
+    <div class="box box-amber" style="margin-top:3mm;">
+      <div class="box-label">⚡ ЗӨВЛӨГӨӨ</div>
+      <p>Өдөрт 20-30 минут drill хийхэд сард 600 гаруй үг сурна. Шалгалтаас өмнө 3 сар байвал HSK4 дүүргэх нь бодитой.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 13</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 14 — TROUBLESHOOTING
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">АЛДАА ЗАСАХ — БҮЛЭГ 11</div>
+      <div class="page-num">14</div>
+    </div>
+
+    <div class="section-title"><span class="icon">🛠</span> АЛДАА ГАРВАЛ ЯААД ЗАА?</div>
+
+    <p>Доорх хүснэгт хамгийн түгээмэл тохиолддог асуудлуудыг болон тэдгээрийн шийдлийг агуулна:</p>
+
+    <table class="err-table">
+      <thead>
+        <tr>
+          <th style="width:40%;">ШИНЖ ТЭМДЭГ</th>
+          <th>ШИЙДЭЛ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="err-symptom">App нээгдэхгүй байна (Mac)</div></td>
+          <td><div class="err-fix"><strong>System Settings → Privacy & Security</strong> хэсэгт доош гүйлгэж "JARVIS OS was blocked" сануулгыг олоод <strong>"Open Anyway"</strong> дарна.</div></td>
+        </tr>
+        <tr>
+          <td><div class="err-symptom">App нээгдэхгүй байна (Windows)</div></td>
+          <td><div class="err-fix">Файл дээр хулганы баруун товч дараад <strong>"Run as administrator"</strong> сонгоно. Эсвэл Windows Defender-ийн сануулгад <strong>"More info → Run anyway"</strong> дарна.</div></td>
+        </tr>
+        <tr>
+          <td><div class="err-symptom">A.C.E. хариулахгүй байна</div></td>
+          <td><div class="err-fix">Интернет холболт шалгана. Холболт байвал хуудасыг дахин ачаална (F5 эсвэл ⌘R). Мессежийн хязгаар дүүрсэн бол /stats командаар шалгана.</div></td>
+        </tr>
+        <tr>
+          <td><div class="err-symptom">"Өдрийн хязгаар дүүрлээ" гарна</div></td>
+          <td><div class="err-fix">Үнэгүй багцын 20 мессеж дүүрсэн. Шөнийн 12 цагт автоматаар шинэчлэгдэнэ. Pro болоход хязгааргүй болно.</div></td>
+        </tr>
+        <tr>
+          <td><div class="err-symptom">Дэлгэц хар, юу ч харагдахгүй</div></td>
+          <td><div class="err-fix">App-г хааж дахин нээнэ. Ажиллахгүй бол компьютерийг дахин эхлүүлнэ. Дотоод cache цэвэрлэгдэнэ.</div></td>
+        </tr>
+        <tr>
+          <td><div class="err-symptom">Тохиргоо алга болсон</div></td>
+          <td><div class="err-fix">Интернет тасарсан үед хадгалагдаагүй байж болно. Интернет нэгдэж дахин нээхэд Cloud-аас сэргэнэ. Хэрэв гарахгүй бол анхны тохиргоог дахин хийнэ — 3 минут л орно.</div></td>
+        </tr>
+        <tr>
+          <td><div class="err-symptom">Дуут оролт ажиллахгүй</div></td>
+          <td><div class="err-fix">Browser/App-д микрофон зөвшөөрөл өгсөн эсэхийг шалгана. Mac: System Settings → Privacy → Microphone. Windows: Settings → Privacy → Microphone.</div></td>
+        </tr>
+        <tr>
+          <td><div class="err-symptom">HSK дэвшил харагдахгүй</div></td>
+          <td><div class="err-fix">PROFILE хуудас руу орж дахин шалгана. Интернет холболт шаардлагатай — Cloud-аас татдаг.</div></td>
+        </tr>
+        <tr>
+          <td><div class="err-symptom">Widget байрлал хадгалагдахгүй</div></td>
+          <td><div class="err-fix">/drag off командаар drag горимыг заавал дуусгана. Дуусгаагүй бол хадгалагдахгүй.</div></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="box box-cyan" style="margin-top:4mm;">
+      <div class="box-label">📞 ТУСЛАМЖ АВАХ</div>
+      <p>Асуудал шийдэгдэхгүй бол зохиогч <strong>Bileg</strong>-тэй холбогдоно уу. Telegram: @bileg_os · Холбоо барих мэдээллийг зохиогчаас авна.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 14</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 15 — UPGRADE / PLANS
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="blob blob-gold" style="width:100mm;height:100mm;top:30mm;right:-10mm;"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">БАГЦАА АХИУЛАХ — БҮЛЭГ 12</div>
+      <div class="page-num">15</div>
+    </div>
+
+    <div class="section-title"><span class="icon">✦</span> БАГЦАА АХИУЛАХ — PRO БОЛОХ</div>
+
+    <p>T.H.R.E.E. OS үнэгүй хэрэглэж болно. Гэхдээ Pro болохоор илүү их хийж чадна:</p>
+
+    <table class="plan-table" style="margin-bottom:6mm;">
+      <thead>
+        <tr>
+          <th>ФУНКЦ</th>
+          <th style="text-align:center;">ҮНЭГҮЙ</th>
+          <th style="text-align:center;">PRO</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><div class="plan-feat">AI мессеж (өдөрт)</div></td>
+          <td style="text-align:center;color:var(--amber);">20</td>
+          <td style="text-align:center;color:var(--green);">Хязгааргүй</td>
+        </tr>
+        <tr>
+          <td><div class="plan-feat">Ярианы санах ойн урт</div></td>
+          <td style="text-align:center;color:var(--amber);">12 мессеж</td>
+          <td style="text-align:center;color:var(--green);">50 мессеж</td>
+        </tr>
+        <tr>
+          <td><div class="plan-feat">Хуваарийн Cloud хадгалалт</div></td>
+          <td style="text-align:center;color:var(--green);">✓</td>
+          <td style="text-align:center;color:var(--green);">✓ + дэвшилтэт</td>
+        </tr>
+        <tr>
+          <td><div class="plan-feat">HSK drill, дэвшлийн хяналт</div></td>
+          <td style="text-align:center;color:var(--green);">✓</td>
+          <td style="text-align:center;color:var(--green);">✓ + нарийн статистик</td>
+        </tr>
+        <tr>
+          <td><div class="plan-feat">Telegram streak сануулга</div></td>
+          <td style="text-align:center;color:var(--dim);">—</td>
+          <td style="text-align:center;color:var(--green);">✓</td>
+        </tr>
+        <tr>
+          <td><div class="plan-feat">Дэвшилтэт AI шинжилгээ</div></td>
+          <td style="text-align:center;color:var(--dim);">—</td>
+          <td style="text-align:center;color:var(--green);">✓</td>
+        </tr>
+        <tr>
+          <td><div class="plan-feat">Тэргүүлэх дэмжлэг</div></td>
+          <td style="text-align:center;color:var(--dim);">—</td>
+          <td style="text-align:center;color:var(--green);">✓</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="box box-gold" style="margin-bottom:5mm;">
+      <div class="box-label">✦ PRO ҮНЭ</div>
+      <p style="font-size:20px;color:var(--gold2);font-family:var(--mono);font-weight:700;margin-bottom:2mm;">₮25,000 / сар</p>
+      <p>Монгол залуучуудад хүртээмжтэй үнэ. Хоног бүр 833 төгрөг — нэг аяга цай. Зохиогчтой шууд холбогдож Pro идэвхжүүлнэ.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-sub">НАЙЗДАА ЗӨВЛӨЖ УРАМШУУЛАЛ АВ</div>
+    <div class="box box-cyan">
+      <div class="box-label">◈ REFERRAL ХӨТӨЛБӨР</div>
+      <p>T.H.R.E.E. OS-ийг найздаа зөвлөх бүрт тусгай урамшуулал авна. <strong>/referral</strong> командаар линкийг гарга, найздаа илгээ. Найз Pro болоход чи мөн ашиг хүртнэ.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 15</div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════
+     PAGE 16 — FAQ
+══════════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="grid-bg"></div>
+  <div class="content">
+    <div class="page-header">
+      <div class="page-header-brand">T.H.R.E.E. OS</div>
+      <div class="page-header-title">ТҮГЭЭМЭЛ АСУУЛТ — БҮЛЭГ 13</div>
+      <div class="page-num">16</div>
+    </div>
+
+    <div class="section-title"><span class="icon">?</span> ТҮГЭЭМЭЛ АСУУЛТ ХАРИУЛТ</div>
+
+    <div class="box box-cyan" style="margin-bottom:3mm;">
+      <div class="box-label">❓ T.H.R.E.E. OS ба ердийн chatbot-ын ялгаа юу вэ?</div>
+      <p>Ердийн chatbot (ChatGPT, Gemini гэх мэт) нь зөвхөн ярилцдаг. T.H.R.E.E. OS нь тантай ярилцааад баруй таны өдрийн хуваарь, хятад үг, системийн дэлгэц, дасгалын хяналт — бүгдийг нэг дор хийж чадна. Монгол хэл дээр. Нэг систем дотор.</p>
+    </div>
+
+    <div class="box box-cyan" style="margin-bottom:3mm;">
+      <div class="box-label">❓ Миний мэдээлэл хаана хадгалагддаг вэ? Аюулгүй юу?</div>
+      <p>Таны тохиргоо, хуваарь, HSK дэвшил Google Firebase Cloud-д хадгалагдана. Нэвтрэх нууц үг шаарддаггүй — зөвхөн таны төхөөрөмжийн ID-р таниулдаг. Гуравдагч этгээд харах боломжгүй.</p>
+    </div>
+
+    <div class="box box-cyan" style="margin-bottom:3mm;">
+      <div class="box-label">❓ Интернетгүй үед ажиллах уу?</div>
+      <p>Зарим функц ажиллана — дэлгэц, widget харагдал, хадгалсан хуваарийн эх хувь. Гэхдээ AI чат, шинэ хуваарь хадгалах, HSK шинэчлэлт интернет шаарддаг.</p>
+    </div>
+
+    <div class="box box-cyan" style="margin-bottom:3mm;">
+      <div class="box-label">❓ Монгол хэлнээс гадна өөр хэлээр ярьж болох уу?</div>
+      <p>A.C.E. Монгол хэлд тохируулагдсан боловч Англи болон Хятад хэлийг ч ойлгодог. Гэхдээ хамгийн сайн хариулт Монголоор асуух үед гардаг.</p>
+    </div>
+
+    <div class="box box-cyan" style="margin-bottom:3mm;">
+      <div class="box-label">❓ Хэдэн төхөөрөмж дээр ашиглаж болох вэ?</div>
+      <p>Хэдэн ч төхөөрөмж дээр — Mac, Windows, iPhone, Android. Нэг л бүртгэл байна, тохиргоо бүгд синхрончлогдоно. Компьютер дээр эхлүүлж, утасны дэлгэц дээр үргэлжлүүлж болно.</p>
+    </div>
+
+    <div class="box box-cyan" style="margin-bottom:3mm;">
+      <div class="box-label">❓ Хэр байнга шинэчлэгддэг вэ?</div>
+      <p>T.H.R.E.E. OS "Sprint" буюу хөгжүүлэлтийн ээлжээр шинэчлэгддэг — 1-2 долоо хоногт нэг удаа шинэ функц нэмэгддэг. Шинэчлэлт автоматаар ирнэ.</p>
+    </div>
+
+    <div class="box box-cyan">
+      <div class="box-label">❓ Хэрэв A.C.E. буруу хариулт өгвөл яах вэ?</div>
+      <p>A.C.E. бол AI тул үргэлж 100% зөв биш. Чухал шийдвэр гаргахад нэмэлт эх сурвалж ашиглана уу. "Энэ хариулт буруу байна, дахин бодоод хэлж өг" гэхэд A.C.E. дахин оролдоно.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <div style="text-align:center;padding:6mm 0;">
+      <div style="font-family:var(--mono);font-size:30px;color:var(--accent);margin-bottom:3mm;text-shadow:0 0 20px rgba(0,229,255,.5);">⬡</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--accent2);letter-spacing:.3em;margin-bottom:2mm;">T.H.R.E.E. OS — БҮРЭН ГАРЫН АВЛАГА</div>
+      <div style="font-size:12px;color:var(--dim);">Зохиогч: Bileg · Shanghai, 2026 · v1.0.0 Sprint 28</div>
+      <div style="margin-top:3mm;font-size:11px;color:var(--dim);">Энэ баримт бичиг нь T.H.R.E.E. OS хэрэглэгчдэд зориулсан бөгөөд чөлөөтэй тараах боломжтой.</div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <div class="page-footer-brand">T.H.R.E.E. OS · БҮРЭН ГАРЫН АВЛАГА</div>
+    <div class="page-footer-pg">ХУУДАС 16</div>
+  </div>
+</div>
+
+<script>
+// Auto-trigger print dialog message on load
+window.addEventListener('load', () => {
+  const btn = document.querySelector('.print-btn');
+  if (btn) {
+    // subtle pulse to draw attention
+    let i = 0;
+    const pulse = setInterval(() => {
+      btn.style.transform = i % 2 === 0 ? 'translateY(-2px) scale(1.03)' : 'translateY(0) scale(1)';
+      if (++i > 5) clearInterval(pulse);
+    }, 400);
+  }
+});
+</script>
+</body>
+</html>

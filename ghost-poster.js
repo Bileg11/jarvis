@@ -76,7 +76,7 @@ async function generateContent(query, snippets, isMongolia) {
 Мэдээлэл: ${snippets || 'Шанхай хот.'}
 
 CAPTION:
-[3-4 өгүүлбэр, Монгол, inspire+inform, 4-6 emoji, "👉 bileg11.github.io" CTA]
+[3-4 өгүүлбэр, Монгол, inspire+inform, 4-6 emoji, "👉 lfsshanghai.com" CTA]
 
 HASHTAGS:
 [18-22 hashtag Монгол+Англи+Хятад, зайгаар]
@@ -189,7 +189,7 @@ async function main() {
     const { query, snippets, isMongolia } = await getTrend();
     console.log(`[Ghost] Fresh topic: ${query}`);
     const gen = await generateContent(query, snippets, isMongolia);
-    caption  = gen.caption  || 'Шанхай хот — Монгол аялагчдын мөрөөдлийн газар! 🌆\n\n👉 bileg11.github.io';
+    caption  = gen.caption  || 'Шанхай хот — Монгол аялагчдын мөрөөдлийн газар! 🌆\n\n👉 lfsshanghai.com';
     hashtags = gen.hashtags || '#Шанхай #Shanghai #LFSShanghai #МонголАялал';
   }
 

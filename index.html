@@ -1704,6 +1704,199 @@ body.user-marlaa {
 }
 #telegram-outbox-badge.has-pending { display: flex; }
 
+/* ══════════════════════════════════════════════════════════════════
+   SPRINT 35 — FOCUS CHAT VIEW (clean chat-centric mode)
+   Одоогийн Command Core view-тэй зэрэгцэн оршино. Settings-ээс сольно.
+══════════════════════════════════════════════════════════════════ */
+#focus-view {
+  position: fixed; inset: 0; z-index: 150;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(0,40,80,.25) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(0,20,50,.20) 0%, transparent 50%),
+    var(--bg);
+  display: none; flex-direction: column;
+  overflow: hidden;
+}
+#focus-view.active { display: flex; }
+
+/* Top bar */
+.fv-bar {
+  height: var(--bar-h); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 18px 0 82px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,3,8,.85);
+}
+.fv-brand {
+  font-family: var(--hud); font-size: 12px; letter-spacing: .2em;
+  color: var(--accent); text-shadow: var(--neon);
+  display: flex; align-items: center; gap: 8px;
+}
+.fv-bar-actions { display: flex; align-items: center; gap: 8px; }
+.fv-bar-btn {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .05em;
+  color: var(--text); background: rgba(0,229,255,.05);
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 4px 10px; cursor: pointer; transition: all .18s;
+}
+.fv-bar-btn:hover { border-color: var(--accent); color: var(--accent); box-shadow: var(--neon); }
+.fv-clock { font-family: var(--hud); font-size: 13px; color: var(--accent); letter-spacing: .12em; text-shadow: var(--neon); }
+
+/* Floating card canvas */
+.fv-canvas {
+  position: absolute; inset: var(--bar-h) 0 0 0;
+  pointer-events: none; z-index: 5;
+}
+.fv-card {
+  position: absolute; pointer-events: all;
+  min-width: 180px; max-width: 320px;
+  background: rgba(0,8,22,.94); backdrop-filter: blur(12px);
+  border: 1px solid var(--border-h); border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6), 0 0 24px rgba(0,229,255,.08);
+  animation: fv-card-in .25s cubic-bezier(.22,1,.36,1);
+  overflow: hidden;
+}
+@keyframes fv-card-in { from { opacity:0; transform:translateY(12px) scale(.97); } to { opacity:1; transform:none; } }
+.fv-card-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; cursor: grab; user-select: none;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(90deg, rgba(0,229,255,.06), transparent);
+  font-family: var(--hud); font-size: 9px; letter-spacing: .12em; color: var(--accent);
+}
+.fv-card-hdr:active { cursor: grabbing; }
+.fv-card-close {
+  background: none; border: none; color: var(--text); cursor: pointer;
+  font-size: 12px; line-height: 1; padding: 0 2px; transition: color .15s;
+}
+.fv-card-close:hover { color: var(--red); }
+.fv-card-body { padding: 10px 12px; font-family: var(--mono); font-size: 11px; color: var(--text-b); }
+
+/* Card variants */
+.fv-clock-big { font-family: var(--hud); font-size: 30px; color: var(--accent); text-shadow: var(--neon); text-align: center; letter-spacing: .06em; }
+.fv-clock-date { font-family: var(--mono); font-size: 10px; color: var(--text); text-align: center; margin-top: 4px; opacity: .7; }
+
+.fv-pomo-time { font-family: var(--hud); font-size: 34px; color: var(--accent); text-align: center; text-shadow: var(--neon); }
+.fv-pomo-time.break { color: var(--green); text-shadow: var(--neon-g); }
+.fv-pomo-btns { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
+.fv-pomo-btn {
+  font-family: var(--mono); font-size: 9px; padding: 4px 12px; cursor: pointer;
+  background: rgba(0,229,255,.08); border: 1px solid var(--border); border-radius: 3px;
+  color: var(--accent); transition: all .15s;
+}
+.fv-pomo-btn:hover { background: rgba(0,229,255,.18); }
+.fv-pomo-label { text-align: center; font-family: var(--mono); font-size: 8px; color: var(--text); opacity: .6; margin-top: 5px; letter-spacing: .1em; }
+
+.fv-hsk-hanzi { font-family: 'Orbitron', serif; font-size: 30px; color: var(--accent); text-align: center; text-shadow: var(--neon); }
+.fv-hsk-pinyin { font-family: var(--mono); font-size: 11px; color: var(--text); text-align: center; margin: 3px 0; }
+.fv-hsk-mean { font-family: var(--mono); font-size: 12px; color: var(--text-b); text-align: center; }
+.fv-hsk-next { display:block; width:100%; margin-top:8px; font-family:var(--mono); font-size:9px; padding:5px; cursor:pointer; background:rgba(0,229,255,.08); border:1px solid var(--border); border-radius:3px; color:var(--accent); }
+
+.fv-status-row { display:flex; justify-content:space-between; padding:3px 0; font-size:10px; }
+.fv-status-row .k { color: var(--text); opacity: .65; }
+.fv-status-row .v { color: var(--accent); }
+
+/* Center chat */
+.fv-chat-wrap {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: flex-end;
+  padding: 20px; min-height: 0; position: relative; z-index: 10;
+}
+.fv-messages {
+  width: 100%; max-width: 720px; flex: 1;
+  overflow-y: auto; display: flex; flex-direction: column; gap: 12px;
+  padding: 20px 4px; margin-bottom: 12px;
+}
+.fv-messages::-webkit-scrollbar { width: 3px; }
+.fv-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.fv-msg { display: flex; gap: 10px; animation: fv-card-in .2s ease; }
+.fv-msg.user { flex-direction: row-reverse; }
+.fv-msg-av {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--hud); font-size: 11px;
+  border: 1px solid var(--border-h);
+}
+.fv-msg.user .fv-msg-av { background: rgba(0,229,255,.1); color: var(--accent); }
+.fv-msg.ace .fv-msg-av  { background: rgba(0,229,255,.05); color: var(--accent); text-shadow: var(--neon); }
+.fv-msg-bubble {
+  max-width: 78%; padding: 10px 14px; border-radius: 12px;
+  font-family: var(--body); font-size: 14px; line-height: 1.55;
+  color: var(--text-b);
+}
+.fv-msg.user .fv-msg-bubble { background: rgba(0,229,255,.12); border: 1px solid rgba(0,229,255,.2); border-top-right-radius: 3px; }
+.fv-msg.ace .fv-msg-bubble  { background: rgba(0,12,28,.8); border: 1px solid var(--border); border-top-left-radius: 3px; }
+.fv-msg-bubble b { color: var(--accent); }
+
+/* World summary card inside chat */
+.fv-world-card {
+  width: 100%; background: rgba(0,12,28,.85);
+  border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: 8px; padding: 12px 14px; margin-top: 4px;
+}
+.fv-world-sec { margin-bottom: 10px; }
+.fv-world-sec:last-child { margin-bottom: 0; }
+.fv-world-sec-title {
+  font-family: var(--hud); font-size: 9px; letter-spacing: .12em;
+  color: var(--accent); margin-bottom: 5px; display: flex; align-items: center; gap: 5px;
+}
+.fv-world-item { font-family: var(--mono); font-size: 11px; color: var(--text-b); line-height: 1.5; padding: 2px 0 2px 10px; border-left: 1px solid var(--dim); margin-bottom: 2px; }
+
+/* Input bar */
+.fv-input-row {
+  width: 100%; max-width: 720px;
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(0,8,22,.9); border: 1px solid var(--border-h);
+  border-radius: 12px; padding: 8px 10px;
+  box-shadow: 0 4px 24px rgba(0,0,0,.4);
+}
+.fv-input-row:focus-within { border-color: var(--accent); box-shadow: 0 0 16px rgba(0,229,255,.15); }
+.fv-input {
+  flex: 1; background: none; border: none; outline: none;
+  font-family: var(--body); font-size: 14px; color: var(--text-b);
+}
+.fv-input::placeholder { color: rgba(0,229,255,.3); }
+.fv-send-btn {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px;
+  background: var(--accent); border: none; color: #000; cursor: pointer;
+  font-size: 15px; display: flex; align-items: center; justify-content: center;
+  transition: all .15s;
+}
+.fv-send-btn:hover { opacity: .85; }
+
+/* Quick actions */
+.fv-quick {
+  width: 100%; max-width: 720px;
+  display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; justify-content: center;
+}
+.fv-quick-btn {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .03em;
+  color: var(--text); background: rgba(0,229,255,.04);
+  border: 1px solid var(--border); border-radius: 16px;
+  padding: 5px 12px; cursor: pointer; transition: all .15s;
+  display: flex; align-items: center; gap: 5px;
+}
+.fv-quick-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,.1); }
+
+/* Empty state */
+.fv-empty {
+  text-align: center; color: var(--text); opacity: .5;
+  font-family: var(--mono); font-size: 12px; line-height: 1.8;
+  margin: auto 0;
+}
+.fv-empty-logo { font-family: var(--hud); font-size: 22px; color: var(--accent); text-shadow: var(--neon); letter-spacing: .14em; margin-bottom: 10px; }
+
+/* View mode toggle in customizer */
+.cust-view-row { display: flex; gap: 6px; margin-top: 6px; }
+.cust-view-btn {
+  flex: 1; font-family: var(--mono); font-size: 9px; letter-spacing: .04em;
+  color: var(--text); background: rgba(0,229,255,.04);
+  border: 1px solid var(--border); border-radius: 3px;
+  padding: 8px 6px; cursor: pointer; transition: all .15s; text-align: center;
+}
+.cust-view-btn.view-active { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,.12); box-shadow: 0 0 8px rgba(0,229,255,.2); }
+.cust-view-btn .vb-icon { font-size: 16px; display: block; margin-bottom: 3px; }
+
 /* ── Universal Scale indicator (debug, hidden by default) */
 #scale-indicator {
   position: fixed; bottom: 6px; left: 8px; z-index: 9999;
@@ -1782,8 +1975,14 @@ body.user-marlaa {
   padding: 16px; display: none;
   box-shadow: 0 0 30px rgba(0,229,255,.1), 0 8px 32px rgba(0,0,0,.6);
   transform: translateZ(0);
+  /* Sprint 35: panel хэт урт болоход доороос дээшээ хальж гарахаас сэргийлэх */
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 #customizer-panel.open { display: block; }
+#customizer-panel::-webkit-scrollbar { width: 4px; }
+#customizer-panel::-webkit-scrollbar-thumb { background: var(--border-h); border-radius: 2px; }
 .cust-hdr {
   font-family: var(--hud); font-size: 9px; letter-spacing: .2em;
   color: var(--accent); opacity: .7; margin-bottom: 14px;
@@ -2326,6 +2525,7 @@ body.user-marlaa {
     <button class="os-nav-btn"        id="nav-profile" onclick="navTo('profile')">◈ PROFILE</button>
     <button class="os-nav-btn os-nav-guide" id="nav-guide" onclick="navTo('guide')" title="Хэрэглэгчийн гарын авлага">? GUIDE</button>
     <button class="os-nav-btn" onclick="openLM()" title="Layout Manager — хадгалсан layouts" style="border-color:rgba(168,85,247,.3);color:rgba(168,85,247,.7)">🎨 LAYOUTS</button>
+    <button class="os-nav-btn" onclick="_setViewMode('focus')" title="Focus Chat горим руу шилжих" style="border-color:rgba(0,229,255,.4);color:var(--accent)">⬡ FOCUS</button>
   </div>
 </div>
 
@@ -2637,6 +2837,48 @@ body.user-marlaa {
 
 <!-- Sprint 28: Free-floating widget canvas (absolute positioned draggable widgets live here) -->
 <div id="widget-canvas"></div>
+
+<!-- Sprint 35: FOCUS CHAT VIEW (toggle from Settings) -->
+<div id="focus-view">
+  <div class="fv-bar">
+    <div class="fv-brand">⬡ A.C.E. FOCUS</div>
+    <div class="fv-bar-actions">
+      <span class="fv-clock" id="fv-clock">--:--</span>
+      <button class="fv-bar-btn" onclick="_fvSpawnCard('clock')" title="Цаг">🕐</button>
+      <button class="fv-bar-btn" onclick="_fvSpawnCard('pomodoro')" title="Pomodoro">🍅</button>
+      <button class="fv-bar-btn" onclick="_fvSpawnCard('status')" title="Status">📊</button>
+      <button class="fv-bar-btn" onclick="_setViewMode('command')" title="Command Core view руу буцах">⊞ CORE</button>
+    </div>
+  </div>
+
+  <!-- Floating cards canvas -->
+  <div class="fv-canvas" id="fv-canvas"></div>
+
+  <!-- Center chat -->
+  <div class="fv-chat-wrap">
+    <div class="fv-messages" id="fv-messages">
+      <div class="fv-empty" id="fv-empty">
+        <div class="fv-empty-logo">A.C.E. FOCUS</div>
+        Зүгээр л асуу. Хэрэгтэй зүйл цонх болж гарч ирнэ.<br>
+        <span style="font-size:10px;opacity:.7">"Өнөөдөр дэлхийд юу болов?" гэж асуугаад үз</span>
+      </div>
+    </div>
+
+    <div class="fv-input-row">
+      <input class="fv-input" id="fv-input" type="text"
+        placeholder="Асуу эсвэл хүсэлт бич…" autocomplete="off" spellcheck="false">
+      <button class="fv-send-btn" id="fv-send" onclick="_fvSend()">➤</button>
+    </div>
+
+    <div class="fv-quick">
+      <button class="fv-quick-btn" onclick="_fvWorldSummary()">🌐 Дэлхийн мэдээ</button>
+      <button class="fv-quick-btn" onclick="_fvSpawnCard('pomodoro')">🍅 Pomodoro</button>
+      <button class="fv-quick-btn" onclick="_fvSpawnCard('hsk')">📚 HSK үг</button>
+      <button class="fv-quick-btn" onclick="_fvSpawnCard('clock')">🕐 Цаг</button>
+      <button class="fv-quick-btn" onclick="_fvSpawnCard('status')">📊 Статус</button>
+    </div>
+  </div>
+</div>
 
 <!-- Sprint 33: ACE Proactive Notification Container -->
 <div id="ace-notif-container"></div>
@@ -5534,6 +5776,18 @@ function _injectCustomizerUI() {
     <div class="cust-hdr">⚙ SYSTEM CUSTOMIZER</div>
 
     <div class="cust-section">
+      <span class="cust-label">VIEW MODE</span>
+      <div class="cust-view-row" id="cust-view-row">
+        <button class="cust-view-btn" data-view="command" onclick="_setViewMode('command')">
+          <span class="vb-icon">⊞</span>Command Core
+        </button>
+        <button class="cust-view-btn" data-view="focus" onclick="_setViewMode('focus')">
+          <span class="vb-icon">⬡</span>Focus Chat
+        </button>
+      </div>
+    </div>
+
+    <div class="cust-section">
       <span class="cust-label">PANEL OPACITY — <span id="cust-opacity-val">85%</span></span>
       <input class="cust-slider" id="cust-opacity-slider" type="range" min="10" max="100" value="85"
         oninput="_custOpacity=+this.value;document.getElementById('cust-opacity-val').textContent=this.value+'%';_applyOpacity(+this.value);">
@@ -5624,7 +5878,7 @@ const MODULE_REGISTRY = [
   { id:'countdown',   label:'HSK Countdown',    icon:'⏳', cat:'study',      defaultOn:false, widgetId:null },
   { id:'habit',       label:'Habit Streaks',    icon:'🔥', cat:'health',     defaultOn:false, widgetId:null },
   { id:'music',       label:'Music Status',     icon:'🎵', cat:'life',       defaultOn:false, widgetId:null },
-  { id:'focus',       label:'Focus Mode',       icon:'🧠', cat:'focus',      defaultOn:false, widgetId:null },
+  { id:'focus',       label:'Deep Work Timer',  icon:'🧠', cat:'focus',      defaultOn:false, widgetId:null },
   { id:'news',        label:'News Flash',       icon:'📰', cat:'intel',      defaultOn:false, widgetId:null },
   { id:'lfs-book',    label:'LFS Bookings',     icon:'🏨', cat:'dev',        defaultOn:false, widgetId:null },
 ];
@@ -6323,6 +6577,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sprint 34 boot
   _challengeInit();
   _startOverdueWatcher();
+
+  // Sprint 35 boot — Focus View
+  _fvInit();
 
   // Start checkpoint engine if today's plan exists
   const _todayKey = 'jarvis_plan_' + new Date().toISOString().slice(0,10);
@@ -8420,6 +8677,374 @@ const _origPfFinalize = typeof _pfFinalize !== 'undefined' ? _pfFinalize : null;
 const __pfFinalizeOrig = window._pfFinalize;
 // Note: _pfFinalize is defined earlier in this file; we patch the plan-ready moment
 // by adding the call inside _pfFinalize's last section (already done in function body below)
+
+// ══════════════════════════════════════════════════════════════════
+// SPRINT 35 — FOCUS CHAT VIEW ENGINE
+// Clean chat-centric mode. Toggle from Settings (jarvis_view_mode).
+// ══════════════════════════════════════════════════════════════════
+
+let _fvClockTimer = null;
+
+function _fvInit() {
+  // Restore saved view mode
+  const mode = localStorage.getItem('jarvis_view_mode') || 'command';
+  _setViewMode(mode, true);
+
+  // Wire input Enter key
+  const inp = document.getElementById('fv-input');
+  if (inp) inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); _fvSend(); }
+  });
+}
+
+function _setViewMode(mode, isBoot) {
+  localStorage.setItem('jarvis_view_mode', mode);
+  const focusEl = document.getElementById('focus-view');
+  const osGrid  = document.querySelector('.os-grid');
+  const osBar   = document.querySelector('.os-bar');
+
+  if (mode === 'focus') {
+    focusEl?.classList.add('active');
+    if (osGrid) osGrid.style.visibility = 'hidden';
+    if (osBar)  osBar.style.visibility  = 'hidden';
+    _fvStartClock();
+    setTimeout(() => document.getElementById('fv-input')?.focus(), 100);
+  } else {
+    focusEl?.classList.remove('active');
+    if (osGrid) osGrid.style.visibility = '';
+    if (osBar)  osBar.style.visibility  = '';
+    if (_fvClockTimer) { clearInterval(_fvClockTimer); _fvClockTimer = null; }
+  }
+
+  // Update toggle buttons
+  document.querySelectorAll('.cust-view-btn').forEach(b =>
+    b.classList.toggle('view-active', b.dataset.view === mode));
+
+  if (!isBoot) showToast(mode === 'focus' ? '⬡ Focus Chat идэвхжлээ' : '⊞ Command Core идэвхжлээ');
+}
+
+function _fvStartClock() {
+  const tick = () => {
+    const el = document.getElementById('fv-clock');
+    if (el) el.textContent = new Date().toLocaleTimeString('en-GB', {
+      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai'
+    });
+  };
+  tick();
+  if (!_fvClockTimer) _fvClockTimer = setInterval(tick, 1000);
+}
+
+// ── Chat message rendering ────────────────────────────────────────
+function _fvAddMsg(role, html) {
+  const wrap  = document.getElementById('fv-messages');
+  const empty = document.getElementById('fv-empty');
+  if (empty) empty.style.display = 'none';
+  if (!wrap) return null;
+  const row = document.createElement('div');
+  row.className = 'fv-msg ' + role;
+  row.innerHTML = `
+    <div class="fv-msg-av">${role === 'user' ? '◈' : 'A'}</div>
+    <div class="fv-msg-bubble">${html}</div>`;
+  wrap.appendChild(row);
+  wrap.scrollTop = wrap.scrollHeight;
+  return row.querySelector('.fv-msg-bubble');
+}
+
+function _fvEscape(s) { return String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+// ── Send handler with intent detection ────────────────────────────
+async function _fvSend() {
+  const inp  = document.getElementById('fv-input');
+  const text = inp?.value.trim();
+  if (!text) return;
+  inp.value = '';
+  _fvAddMsg('user', _fvEscape(text));
+
+  const lower = text.toLowerCase();
+
+  // ── Intent: world summary ───────────────────────────────────────
+  if (/дэлхий|мэдээ|юу болов|юу болж|news|world|trump|трамп|ханш|дайн|war/.test(lower)) {
+    _fvWorldSummary();
+    return;
+  }
+  // ── Intent: pomodoro ────────────────────────────────────────────
+  if (/pomodoro|помодор|цаг хэмж|таймер|timer/.test(lower)) {
+    _fvSpawnCard('pomodoro');
+    _fvAddMsg('ace', '🍅 Pomodoro таймер гаргалаа. START дарж 25 минутын focus session эхлүүл.');
+    return;
+  }
+  // ── Intent: HSK word ────────────────────────────────────────────
+  if (/hsk|ханз|汉字|шинэ үг|үг заа/.test(lower)) {
+    _fvSpawnCard('hsk');
+    _fvAddMsg('ace', '📚 HSK үгийн карт гаргалаа. NEXT дарж дараагийн үг рүү шилж.');
+    return;
+  }
+  // ── Intent: clock / time ────────────────────────────────────────
+  if (/^(цаг|хэдэн цаг|time|clock)$/.test(lower)) {
+    _fvSpawnCard('clock');
+    return;
+  }
+  // ── Intent: status ──────────────────────────────────────────────
+  if (/статус|status|score|оноо|би яаж/.test(lower)) {
+    _fvSpawnCard('status');
+    _fvAddMsg('ace', '📊 Өнөөдрийн статус цонх гаргалаа.');
+    return;
+  }
+
+  // ── Default: AI chat ────────────────────────────────────────────
+  const thinking = _fvAddMsg('ace', '<span style="opacity:.5">⟳ боловсруулж байна…</span>');
+  try {
+    if (typeof sendChatMessage === 'function') {
+      const reply = await sendChatMessage(text);
+      if (thinking) thinking.innerHTML = _fvEscape(reply || '...').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    } else {
+      if (thinking) thinking.innerHTML = '⚙️ AI тохиргоогүй байна. Profile-д Token оруулна уу.';
+    }
+  } catch (e) {
+    if (thinking) thinking.innerHTML = '⚡ Алдаа: ' + _fvEscape(e.message || 'unknown');
+  }
+}
+
+// ── World Summary: fetch news + FX → AI summarize → render card ───
+async function _fvWorldSummary() {
+  document.getElementById('fv-empty')?.style.setProperty('display', 'none');
+  const loading = _fvAddMsg('ace', '<span style="opacity:.6">🌐 Дэлхийн мэдээ татаж байна…</span>');
+
+  // 1. Fetch world feeds + FX. Хятадаас BBC блоклогддог тул эхлээд
+  //    Railway proxy (US) ашиглана, дараа нь local Electron IPC fallback.
+  let world = null, fx = null;
+  const proxy = (localStorage.getItem('jarvis_proxy_url') || '').replace(/\/$/, '');
+
+  // FX (parallel, аль аргаар ч болно)
+  const fxP = window.jarvisAPI?.fetchFX?.() || Promise.resolve(null);
+
+  // World: proxy эхлээд
+  if (proxy) {
+    try {
+      const r = await fetch(`${proxy}/world`, { headers: { 'Content-Type': 'application/json' } });
+      if (r.ok) world = await r.json();
+    } catch {}
+  }
+  // Fallback: local Electron IPC (VPN TUN mode-д ажиллана)
+  if (!world?.ok && window.jarvisAPI?.fetchWorld) {
+    try { world = await window.jarvisAPI.fetchWorld(); } catch {}
+  }
+  try { fx = await fxP; } catch {}
+
+  // 2. No data → clear diagnostic
+  if (!world?.ok) {
+    const hint = proxy
+      ? 'Railway сервер болон BBC аль алинд хүрч чадсангүй.'
+      : 'Proxy URL тохируулаагүй байна. Profile → Proxy URL оруулбал найдвартай ажиллана.';
+    if (loading) loading.innerHTML = `⚡ Дэлхийн мэдээ татаж чадсангүй.<br><span style="font-size:11px;opacity:.6">${hint}</span>`;
+    return;
+  }
+
+  // 3. Render structured news card
+  const cats = world.categories || {};
+  const SECTIONS = [
+    { key:'politics',      icon:'🏛', title:'УЛС ТӨР · АНУ (Trump)' },
+    { key:'world',         icon:'🌍', title:'ДЭЛХИЙ · Дайн/Зөрчил' },
+    { key:'business',      icon:'📈', title:'ЗАХ ЗЭЭЛ · Бизнес' },
+    { key:'ai',            icon:'🤖', title:'AI · ТЕХНОЛОГИ' },
+    { key:'entertainment', icon:'🎬', title:'СОЁЛ · Алдартнууд' },
+  ];
+
+  let cardHTML = '<div class="fv-world-card">';
+  let headlinesForAI = [];
+  SECTIONS.forEach(sec => {
+    const items = cats[sec.key] || [];
+    if (!items.length) return;
+    cardHTML += `<div class="fv-world-sec">
+      <div class="fv-world-sec-title">${sec.icon} ${sec.title}</div>`;
+    items.slice(0, 3).forEach(it => {
+      cardHTML += `<div class="fv-world-item">${_fvEscape(it.title)}</div>`;
+      headlinesForAI.push(`[${sec.title}] ${it.title}`);
+    });
+    cardHTML += '</div>';
+  });
+
+  // FX line
+  if (fx?.ok) {
+    cardHTML += `<div class="fv-world-sec">
+      <div class="fv-world-sec-title">💱 ВАЛЮТЫН ХАНШ</div>
+      <div class="fv-world-item">USD/CNY: ${fx.usdCny} · USD/MNT: ${fx.usdMnt} · CNY/MNT: ${fx.cnyMnt}</div>
+    </div>`;
+  }
+  cardHTML += '</div>';
+
+  if (loading) loading.innerHTML = `Өнөөдрийн дэлхийн товч мэдээ, Boss:${cardHTML}`;
+
+  // 4. AI summary (optional, if configured) — append below card
+  if (typeof sendChatMessage === 'function' && headlinesForAI.length) {
+    const sumBubble = _fvAddMsg('ace', '<span style="opacity:.5">⟳ A.C.E. дүгнэж байна…</span>');
+    try {
+      const prompt = `Доорх бол өнөөдрийн дэлхийн жинхэнэ гарчгууд. Эдгээрийг Монголоор 3-4 өгүүлбэрт нэгтгэн, хамгийн чухал зүйлийг онцолж дүгнэ. Шинэ мэдээ зохиож болохгүй — зөвхөн доорхид тулгуурла:\n\n${headlinesForAI.join('\n')}`;
+      const reply = await sendChatMessage(prompt);
+      if (sumBubble) sumBubble.innerHTML = '💡 <b>A.C.E. дүгнэлт:</b><br>' + _fvEscape(reply || '...').replace(/\*\*(.+?)\*\*/g,'<b>$1</b>');
+    } catch {
+      if (sumBubble) sumBubble.remove();
+    }
+  }
+}
+
+// ── Floating cards ────────────────────────────────────────────────
+const _fvCardState = {}; // track open cards by type
+
+function _fvSpawnCard(type) {
+  // Toggle: if already open, focus/return
+  if (_fvCardState[type] && document.getElementById('fv-card-' + type)) {
+    return;
+  }
+  const canvas = document.getElementById('fv-canvas');
+  if (!canvas) return;
+
+  const card = document.createElement('div');
+  card.className = 'fv-card';
+  card.id = 'fv-card-' + type;
+  // Stagger position — spread horizontally so cards don't overlap
+  const count = Object.keys(_fvCardState).filter(k => _fvCardState[k]).length;
+  card.style.left = (30 + count * 200) + 'px';
+  card.style.top  = (30 + (count % 2) * 40) + 'px';
+
+  const TITLES = { clock:'🕐 ЦАГ', pomodoro:'🍅 POMODORO', hsk:'📚 HSK ҮГ', status:'📊 СТАТУС' };
+  card.innerHTML = `
+    <div class="fv-card-hdr" data-card="${type}">
+      <span>${TITLES[type] || type}</span>
+      <button class="fv-card-close" onclick="_fvCloseCard('${type}')">✕</button>
+    </div>
+    <div class="fv-card-body" id="fv-card-body-${type}"></div>`;
+  canvas.appendChild(card);
+  _fvCardState[type] = true;
+
+  _fvRenderCard(type);
+  _fvMakeDraggable(card, card.querySelector('.fv-card-hdr'));
+}
+
+function _fvCloseCard(type) {
+  const card = document.getElementById('fv-card-' + type);
+  if (card) card.remove();
+  _fvCardState[type] = false;
+  if (type === 'clock'   && _fvCardClockTimer) { clearInterval(_fvCardClockTimer); _fvCardClockTimer = null; }
+  if (type === 'pomodoro' && _fvPomoTimer)     { clearInterval(_fvPomoTimer); _fvPomoTimer = null; }
+}
+
+let _fvCardClockTimer = null;
+let _fvPomoTimer = null;
+let _fvPomoSec = 25 * 60;
+let _fvPomoRunning = false;
+let _fvPomoBreak = false;
+let _fvHskIdx = 0;
+
+function _fvRenderCard(type) {
+  const body = document.getElementById('fv-card-body-' + type);
+  if (!body) return;
+
+  if (type === 'clock') {
+    const upd = () => {
+      const now = new Date();
+      const t = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Asia/Shanghai' });
+      const d = now.toLocaleDateString('mn', { weekday:'long', month:'long', day:'numeric', timeZone:'Asia/Shanghai' });
+      body.innerHTML = `<div class="fv-clock-big">${t}</div><div class="fv-clock-date">🇨🇳 Shanghai · ${d}</div>`;
+    };
+    upd();
+    if (_fvCardClockTimer) clearInterval(_fvCardClockTimer);
+    _fvCardClockTimer = setInterval(upd, 1000);
+
+  } else if (type === 'pomodoro') {
+    _fvRenderPomo();
+
+  } else if (type === 'hsk') {
+    _fvRenderHskCard();
+
+  } else if (type === 'status') {
+    const r = (() => { try { return JSON.parse(localStorage.getItem('jarvis_r') || '{}'); } catch { return {}; } })();
+    const score = Math.round((r.exercise?20:0)+(r.hanzi?20:0)+(r.read?15:0)+(r.journal?10:0)+Math.min(25,(r.water||0)/8*25));
+    const HSK = new Date('2026-06-28'); const days = Math.max(0, Math.floor((HSK - new Date())/86400000));
+    body.innerHTML = `
+      <div class="fv-status-row"><span class="k">Score</span><span class="v">${score}/100</span></div>
+      <div class="fv-status-row"><span class="k">💪 Workout</span><span class="v">${r.exercise?'✓':'—'}</span></div>
+      <div class="fv-status-row"><span class="k">汉 HSK</span><span class="v">${r.hanzi?'✓':'—'}</span></div>
+      <div class="fv-status-row"><span class="k">💧 Ус</span><span class="v">${r.water||0}/8</span></div>
+      <div class="fv-status-row"><span class="k">📅 HSK шалгалт</span><span class="v">${days} хоног</span></div>`;
+  }
+}
+
+function _fvRenderPomo() {
+  const body = document.getElementById('fv-card-body-pomodoro');
+  if (!body) return;
+  const m = String(Math.floor(_fvPomoSec/60)).padStart(2,'0');
+  const s = String(_fvPomoSec%60).padStart(2,'0');
+  body.innerHTML = `
+    <div class="fv-pomo-time ${_fvPomoBreak?'break':''}">${m}:${s}</div>
+    <div class="fv-pomo-label">${_fvPomoBreak ? 'АМРАЛТ' : 'FOCUS SESSION'}</div>
+    <div class="fv-pomo-btns">
+      <button class="fv-pomo-btn" onclick="_fvPomoToggle()">${_fvPomoRunning ? '⏸ ЗОГС' : '▶ START'}</button>
+      <button class="fv-pomo-btn" onclick="_fvPomoReset()">↺ RESET</button>
+    </div>`;
+}
+
+function _fvPomoToggle() {
+  _fvPomoRunning = !_fvPomoRunning;
+  if (_fvPomoRunning) {
+    if (_fvPomoTimer) clearInterval(_fvPomoTimer);
+    _fvPomoTimer = setInterval(() => {
+      _fvPomoSec--;
+      if (_fvPomoSec <= 0) {
+        // Switch focus/break
+        _fvPomoBreak = !_fvPomoBreak;
+        _fvPomoSec = _fvPomoBreak ? 5*60 : 25*60;
+        _fvAddMsg('ace', _fvPomoBreak ? '🍅 25 минут дууслаа! 5 минут амар.' : '⚡ Амралт дууслаа — дахин focus!');
+        showToast(_fvPomoBreak ? '☕ Амралтын цаг' : '🔥 Focus цаг');
+      }
+      _fvRenderPomo();
+    }, 1000);
+  } else {
+    if (_fvPomoTimer) { clearInterval(_fvPomoTimer); _fvPomoTimer = null; }
+  }
+  _fvRenderPomo();
+}
+
+function _fvPomoReset() {
+  _fvPomoRunning = false; _fvPomoBreak = false; _fvPomoSec = 25*60;
+  if (_fvPomoTimer) { clearInterval(_fvPomoTimer); _fvPomoTimer = null; }
+  _fvRenderPomo();
+}
+
+function _fvRenderHskCard() {
+  const body = document.getElementById('fv-card-body-hsk');
+  if (!body) return;
+  const bank = (typeof HSK4_BANK !== 'undefined' && HSK4_BANK.length) ? HSK4_BANK
+             : (typeof HSK4_WORDS !== 'undefined' ? HSK4_WORDS.map(w => ({ h:w.h, p:w.p, m:w.m })) : []);
+  if (!bank.length) { body.innerHTML = 'Үгийн сан ачаалагдсангүй.'; return; }
+  const w = bank[_fvHskIdx % bank.length];
+  body.innerHTML = `
+    <div class="fv-hsk-hanzi">${w.h}</div>
+    <div class="fv-hsk-pinyin">${w.p}</div>
+    <div class="fv-hsk-mean">${w.m}</div>
+    <button class="fv-hsk-next" onclick="_fvHskNext()">→ Дараагийн үг</button>`;
+}
+
+function _fvHskNext() { _fvHskIdx++; _fvRenderHskCard(); }
+
+// ── Card dragging ─────────────────────────────────────────────────
+function _fvMakeDraggable(card, handle) {
+  if (!handle) return;
+  let sx, sy, ox, oy, dragging = false;
+  handle.addEventListener('mousedown', e => {
+    if (e.target.classList.contains('fv-card-close')) return;
+    dragging = true;
+    sx = e.clientX; sy = e.clientY;
+    ox = card.offsetLeft; oy = card.offsetTop;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    card.style.left = (ox + e.clientX - sx) + 'px';
+    card.style.top  = (oy + e.clientY - sy) + 'px';
+  });
+  document.addEventListener('mouseup', () => { dragging = false; });
+}
 
 // Toast helper (if not already defined)
 if (typeof showToast === 'undefined') {

@@ -227,6 +227,33 @@ ipcMain.handle('fetch-news', async () => {
   return { ok: false, items: [] };
 });
 
+// ── SPRINT 35: WORLD FEED — олон ангиллын мэдээ (Focus Chat) ─────
+// Trump/Politics, World/War, Business/Markets, AI/Tech, Entertainment
+const WORLD_FEEDS = {
+  politics:      ['https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml'],
+  world:         ['https://feeds.bbci.co.uk/news/world/rss.xml'],
+  business:      ['https://feeds.bbci.co.uk/news/business/rss.xml'],
+  ai:            ['https://feeds.bbci.co.uk/news/technology/rss.xml',
+                  'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml'],
+  entertainment: ['https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml'],
+};
+
+ipcMain.handle('fetch-world', async () => {
+  const out = {};
+  await Promise.all(Object.entries(WORLD_FEEDS).map(async ([cat, urls]) => {
+    for (const url of urls) {
+      try {
+        const xml   = await _fetchUrl(url, 9000);
+        const items = _parseRSSItems(xml, 4);
+        if (items.length) { out[cat] = items; return; }
+      } catch {}
+    }
+    out[cat] = [];
+  }));
+  const total = Object.values(out).reduce((n, arr) => n + (arr?.length || 0), 0);
+  return { ok: total > 0, categories: out, ts: Date.now() };
+});
+
 // ── WINDOW ───────────────────────────────────────────────────────
 function createWindow() {
   mainWindow = new BrowserWindow({

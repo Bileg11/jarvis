@@ -15,8 +15,8 @@ const UID      = process.env.USER_UID;
 module.exports = async (req, res) => {
   // CORS — GitHub Pages-аас дуудахад шаардлагатай
   const origin = req.headers.origin || '';
-  const allowed = ['https://bileg11.github.io', 'http://localhost'];
-  res.setHeader('Access-Control-Allow-Origin', allowed.some(o => origin.startsWith(o)) ? origin : 'https://bileg11.github.io');
+  const allowed = ['https://lfsshanghai.com', 'http://localhost'];
+  res.setHeader('Access-Control-Allow-Origin', allowed.some(o => origin.startsWith(o)) ? origin : 'https://lfsshanghai.com');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 

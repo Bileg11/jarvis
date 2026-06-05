@@ -46,7 +46,7 @@ const BILEG_SYSTEM = { parts: [{ text:
   `━━ ХЭРЭГЛЭГЧИЙН ПРОФАЙЛ ━━\n` +
   `• Нэр: Билэг, 18 настай Монгол залуу\n` +
   `• Байршил: Шанхай, ганцаараа амьдардаг\n` +
-  `• Бизнес: LFS Shanghai (bileg11.github.io) — Монгол аялагчдад VIP туслалцаа\n` +
+  `• Бизнес: LFS Shanghai (lfsshanghai.com) — Монгол аялагчдад VIP туслалцаа\n` +
   `• Tech: React, Firebase, Node.js, Railway\n` +
   `• Зорилго: AI-г бүрэн ашиглах, LFS бизнес болгох\n\n` +
 

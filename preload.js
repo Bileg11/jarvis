@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld('jarvisAPI', {
   // ── Live RSS news feed (BBC Tech, cached) ───────────────────────
   fetchNews: () => ipcRenderer.invoke('fetch-news'),
 
+  // ── Sprint 35: World feed (categorized — Focus Chat summary) ────
+  fetchWorld: () => ipcRenderer.invoke('fetch-world'),
+
   // ── Platform info ───────────────────────────────────────────────
   platform: process.platform,
 

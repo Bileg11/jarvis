@@ -334,7 +334,7 @@ SKIP ХИЙХГҮЙ (заавал хариулах):
 Оюутны зөвлөгөө: 20,000₮ нэг удаа — Alipay, WeChat Pay, SIM, метро, VPN, аппууд, виз (X1/X2)
 Группийн болон олон өдрийн захиалгад хөнгөлөлт боломжтой.
 
-ЗАХИАЛГА: https://bileg11.github.io/booking/ — 24 цагт хариу өгнө.
+ЗАХИАЛГА: https://lfsshanghai.com/booking/ — 24 цагт хариу өгнө.
 ЭМНЭЛЭГ: 光明中医院 — Шанхайн шилдэг, VIP тасаг, дараалалгүй, хариу тухайн өдрөө.
 ТӨЛБӨР: Монгол банкны дансаар (₮) эсвэл Шанхайд юаниар.`;
 
@@ -462,7 +462,7 @@ async function sendWithButtons(recipientId, text, platform, accessToken) {
               template_type: 'button',
               text: text.slice(0, 640),
               buttons: [
-                { type: 'web_url',  url: 'https://bileg11.github.io/booking/', title: 'Захиалга өгөх' },
+                { type: 'web_url',  url: 'https://lfsshanghai.com/booking/', title: 'Захиалга өгөх' },
                 { type: 'postback', payload: 'CONNECT_AGENT', title: 'Ажилтан дуудах' },
               ],
             },
@@ -610,7 +610,7 @@ async function processMessage(senderId, text, mid, platform, accessToken) {
     await markReplied(mid);
     await saveChatHistory(senderId, text, cleanReply);
     // Захиалгын линк харуулсан бол бүртгэнэ
-    if (cleanReply.includes('bileg11.github.io/booking')) trackDaily('booking');
+    if (cleanReply.includes('lfsshanghai.com/booking')) trackDaily('booking');
   }
 }
 

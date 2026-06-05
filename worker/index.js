@@ -5,10 +5,10 @@
  *   GITHUB_TOKEN  — GitHub PAT (gpt-4o-mini via GitHub Models)
  *   TAVILY_KEY    — Tavily search API key
  *
- * CORS: зөвхөн bileg11.github.io-оос л хүсэлт зөвшөөрнө
+ * CORS: зөвхөн lfsshanghai.com-оос л хүсэлт зөвшөөрнө
  */
 
-const ALLOWED_ORIGIN = 'https://bileg11.github.io';
+const ALLOWED_ORIGIN = 'https://lfsshanghai.com';
 const CHAT_URL       = 'https://models.inference.ai.azure.com/chat/completions';
 const TAVILY_URL     = 'https://api.tavily.com/search';
 

@@ -9,12 +9,9 @@
 const express   = require('express');
 const cron      = require('node-cron');
 const tgHandler   = require('./api/telegram');
+const alerts      = require('./api/alerts');
 const { sendWeeklyReport, sendBrief, sendHSKReminder,
         sendCheckpoints, sendDailyRecap, processOutbox } = tgHandler;
-const lfsBot      = require('./api/lfs-telegram');
-const metaHook    = require('./api/meta-webhook');
-const alerts      = require('./api/alerts');
-const bookingHook = require('./api/booking');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -57,33 +54,67 @@ app.options('/chat', (req, res) => {
   res.sendStatus(204);
 });
 
+// ── SPRINT 35: WORLD NEWS PROXY — Focus Chat дэлхийн мэдээ ─────────
+// Хятадаас BBC блоклогддог тул Railway (US) дамжуулж татна.
+// Electron: fetch(`${proxy}/world`) → categorized headlines + FX
+const WORLD_FEEDS = {
+  politics:      'https://feeds.bbci.co.uk/news/world/us_and_canada/rss.xml',
+  world:         'https://feeds.bbci.co.uk/news/world/rss.xml',
+  business:      'https://feeds.bbci.co.uk/news/business/rss.xml',
+  ai:            'https://feeds.bbci.co.uk/news/technology/rss.xml',
+  entertainment: 'https://feeds.bbci.co.uk/news/entertainment_and_arts/rss.xml',
+};
+
+function _parseRSS(xml, limit = 4) {
+  const items = [];
+  const rx = /<item[^>]*>([\s\S]*?)<\/item>/g;
+  let m;
+  while ((m = rx.exec(xml)) !== null && items.length < limit) {
+    const tm = m[1].match(/<title[^>]*>([\s\S]*?)<\/title>/);
+    let title = tm ? tm[1] : '';
+    title = title.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/, '$1').replace(/<[^>]+>/g, '').trim();
+    if (title) items.push({ title });
+  }
+  return items;
+}
+
+let _worldCache = { ts: 0, data: null };
+app.get('/world', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+  // 15-минутын cache (RSS их дуудахаас сэргийлэх)
+  if (_worldCache.data && Date.now() - _worldCache.ts < 15 * 60 * 1000) {
+    return res.json(_worldCache.data);
+  }
+  try {
+    const categories = {};
+    await Promise.all(Object.entries(WORLD_FEEDS).map(async ([cat, url]) => {
+      try {
+        const r   = await fetch(url, { headers: { 'User-Agent': 'THREE-OS/35' } });
+        const xml = await r.text();
+        categories[cat] = _parseRSS(xml, 4);
+      } catch { categories[cat] = []; }
+    }));
+    const total = Object.values(categories).reduce((n, a) => n + a.length, 0);
+    const data = { ok: total > 0, categories, ts: Date.now() };
+    _worldCache = { ts: Date.now(), data };
+    res.json(data);
+  } catch (e) {
+    res.status(502).json({ ok: false, error: e.message });
+  }
+});
+
+app.options('/world', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.sendStatus(204);
+});
+
 // Telegram — хувийн JARVIS
 app.post('/api/telegram', tgHandler);
 
-// LFS Shanghai Bot
-app.post('/api/lfs-telegram', lfsBot);
-
-// Meta (IG DM + FB Messenger)
-app.get ('/api/meta-webhook', metaHook.verify);
-app.post('/api/meta-webhook', metaHook.handle);
-
-// LFS Booking form
-app.post('/api/booking', bookingHook);
 
 app.listen(PORT, () => console.log(`[JARVIS] Server running on port ${PORT}`));
 
-// ── MORNING BRIEF — өдөр бүр 07:30 (UTC+8 = 23:30 UTC өмнөх өдөр) ─
-// Railway UTC: 23:30 = Шанхайн 07:30
-cron.schedule('30 23 * * *', () => {
-  console.log('[JARVIS] Sending morning brief...');
-  metaHook.sendMorningBrief();
-});
-
-// ── DAILY EXECUTIVE REPORT — өдөр бүр 22:00 (UTC+8 = 14:00 UTC) ──
-cron.schedule('0 14 * * *', () => {
-  console.log('[JARVIS] Sending daily report...');
-  metaHook.sendDailyReport();
-});
 
 // ── WEEKLY REPORT — Даваа гарагийн 07:30 (UTC+8 = Ням 23:30 UTC) ─
 cron.schedule('30 23 * * 0', () => {
@@ -91,11 +122,6 @@ cron.schedule('30 23 * * 0', () => {
   sendWeeklyReport().catch(e => console.error('[Weekly] Error:', e.message));
 });
 
-// ── SPRINT 4: MARKETING CONTENT AI — 13:00 Шанхай (05:00 UTC) ────
-cron.schedule('0 5 * * *', () => {
-  console.log('[JARVIS] Generating marketing content ideas...');
-  lfsBot.generateMarketingIdeas().catch(e => console.error('[Marketing] Error:', e.message));
-});
 
 // ── HSK 3 DAILY REMINDER — 15:00 Шанхай (07:00 UTC) ─────────────
 cron.schedule('0 7 * * *', () => {
@@ -135,20 +161,8 @@ cron.schedule('1 14 * * *', () => {
 });
 
 // ── PROACTIVE ALERTS ──────────────────────────────────────────────
-// 12:00 Шанхай (04:00 UTC) — LFS идэвхгүй байдал шалгана
-cron.schedule('0 4 * * *', () => {
-  console.log('[JARVIS] Checking LFS activity...');
-  alerts.checkLFSActivity();
-});
-
 // 20:00 Шанхай (12:00 UTC) — Routine хийгдсэн эсэх шалгана
 cron.schedule('0 12 * * *', () => {
   console.log('[JARVIS] Checking evening routine...');
   alerts.checkEveningRoutine();
-});
-
-// 10:00 Шанхай (02:00 UTC) — Instagram post давтамж шалгана
-cron.schedule('0 2 * * *', () => {
-  console.log('[JARVIS] Checking post frequency...');
-  alerts.checkPostFrequency();
 });

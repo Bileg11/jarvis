@@ -67,7 +67,7 @@ async function generateWeeklyPosts(topics) {
 ${topicList}
 
 Формат (яг ингэж):
-POST1_CAPTION: [3-4 өгүүлбэр Монголоор, 3-4 emoji, "👉 bileg11.github.io" CTA]
+POST1_CAPTION: [3-4 өгүүлбэр Монголоор, 3-4 emoji, "👉 lfsshanghai.com" CTA]
 POST1_HASHTAGS: [15-18 hashtag Монгол+Англи, зайгаар]
 POST2_CAPTION: ...
 POST2_HASHTAGS: ...
@@ -136,7 +136,7 @@ async function main() {
     const key  = `${s.date}-${s.slot}`;
     queue[key] = {
       topic:    s.topic,
-      caption:  post.caption || `Шанхай хот — Монгол аялагчдын мөрөөдлийн газар! 🌆\n👉 bileg11.github.io`,
+      caption:  post.caption || `Шанхай хот — Монгол аялагчдын мөрөөдлийн газар! 🌆\n👉 lfsshanghai.com`,
       hashtags: post.hashtags || '#Шанхай #Shanghai #LFSShanghai',
       used:     false,
       createdAt: new Date().toISOString(),

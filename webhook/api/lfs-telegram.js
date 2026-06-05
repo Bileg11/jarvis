@@ -22,7 +22,7 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY;
 
 // ── LFS BRAND VOICE ───────────────────────────────────────────────
 const LFS_BRAND = `
-Брэнд: LFS Shanghai (bileg11.github.io)
+Брэнд: LFS Shanghai (lfsshanghai.com)
 Үйлчилгээ:
   - Монгол аялагчдад Шанхайн VIP туслалцаа
   - Эмнэлгийн орчуулга, эмнэлэгт дагалдах
@@ -42,7 +42,7 @@ const LFS_BRAND = `
   - Хятад хэлний хаалт, гадаад орчинд төөрөх зэргийг хэрхэн давах
   - Урт, цэгтэй өгүүлбэр — богино мессеж биш
 
-CTA (заавал оруулах): "👉 bileg11.github.io руу орж үнэгүй зөвлөгөө авна уу"
+CTA (заавал оруулах): "👉 lfsshanghai.com руу орж үнэгүй зөвлөгөө авна уу"
 Emoji: байх ёстой, хэт олон биш (3-5 ширхэг)
 Хэл: Монгол (зарим Хятад үг нэмж болно)
 `;
@@ -169,7 +169,7 @@ async function fetchNewImage(query = 'shanghai') {
 async function generateCaption(hint = '', format = 'single') {
   if (!GH_TOKEN) return {
     caption: hint || 'LFS Shanghai 🌆', hashtags: '#LFSShanghai #Shanghai',
-    fullCaption: `${hint || 'LFS Shanghai 🌆'}\n\n👉 bileg11.github.io`, format,
+    fullCaption: `${hint || 'LFS Shanghai 🌆'}\n\n👉 lfsshanghai.com`, format,
   };
 
   const fGuide = FORMAT_GUIDE[format] || FORMAT_GUIDE.single;
@@ -181,7 +181,7 @@ async function generateCaption(hint = '', format = 'single') {
     `Дараах зүйлсийг бэлд:\n` +
     `HOOK: (1-2 мөр, 40 тэмдэгтийн дотор — анхаарал татах, асуулт эсвэл bold мэдэгдэл)\n` +
     `CAPTION: (130-180 тэмдэгт, цэгтэй гүйцэд өгүүлбэрүүд, emoji, бодит туршлагаас)\n` +
-    `CTA: (нэг мөр, заавал "👉 bileg11.github.io" оруулах)\n` +
+    `CTA: (нэг мөр, заавал "👉 lfsshanghai.com" оруулах)\n` +
     `HASHTAGS: (15 хамааралтай hashtag: Монгол, Шанхай, эмнэлэг, аялал гэх мэт)\n` +
     (format === 'carousel' ? `SLIDES: (5 слайдын гарчиг, тус бүр товч)\n` : '') +
     (format === 'reel'     ? `SCRIPT: (15 секундын товч script, 3 хэсэг)\n` : '');
@@ -203,7 +203,7 @@ async function generateCaption(hint = '', format = 'single') {
     const hook     = raw.match(/HOOK:\s*([\s\S]*?)(?=CAPTION:|$)/i)?.[1]?.trim() || '';
     const caption  = raw.match(/CAPTION:\s*([\s\S]*?)(?=CTA:|$)/i)?.[1]?.trim() || '';
     const cta      = raw.match(/CTA:\s*([\s\S]*?)(?=HASHTAGS:|$)/i)?.[1]?.trim()
-                     || '👉 bileg11.github.io руу орж үнэгүй зөвлөгөө авна уу';
+                     || '👉 lfsshanghai.com руу орж үнэгүй зөвлөгөө авна уу';
     const hashtags = raw.match(/HASHTAGS:\s*([\s\S]*?)(?=SLIDES:|SCRIPT:|$)/i)?.[1]?.trim()
                      || '#LFSShanghai #Шанхай #МонголАялал';
     const extra    = raw.match(/(?:SLIDES|SCRIPT):\s*([\s\S]*?)$/i)?.[1]?.trim() || '';
@@ -216,7 +216,7 @@ async function generateCaption(hint = '', format = 'single') {
     console.error('[Caption] Error:', e.message);
     return {
       hook: '', caption: hint || 'LFS Shanghai 🌆',
-      hashtags: '#LFSShanghai #Шанхай', fullCaption: `${hint || 'LFS Shanghai'}\n\n👉 bileg11.github.io`,
+      hashtags: '#LFSShanghai #Шанхай', fullCaption: `${hint || 'LFS Shanghai'}\n\n👉 lfsshanghai.com`,
       extra: '', format,
     };
   }
@@ -260,7 +260,7 @@ async function generateWeekPlan() {
     `    "title": "Постын нэр",\n` +
     `    "hook": "Анхны 1-2 мөр (40 тэмдэгт, маш хүчтэй)",\n` +
     `    "caption": "130-180 тэмдэгт, цэгтэй өгүүлбэр, emoji бүхий",\n` +
-    `    "cta": "👉 bileg11.github.io ... (нэг мөр)",\n` +
+    `    "cta": "👉 lfsshanghai.com ... (нэг мөр)",\n` +
     `    "hashtags": "#LFSShanghai #tag1 #tag2 ...(15 hashtag)",\n` +
     `    "imageSearch": "pexels/unsplash-д хайх keyword (English, тодорхой)",\n` +
     `    "extra": "carousel слайдуудын гарчиг эсвэл reel script (format=single бол хоосон)"\n` +
@@ -528,7 +528,7 @@ async function handleCallback(cb) {
     if (cmd === 'ai_caption') {
       await tgSend('🤖 Caption үүсгэж байна...');
       const gen      = await generateCaption('', 'single');
-      const caption  = gen.fullCaption || 'LFS Shanghai 🌆\n\n👉 bileg11.github.io';
+      const caption  = gen.fullCaption || 'LFS Shanghai 🌆\n\n👉 lfsshanghai.com';
       const hashtags = gen.hashtags   || '#LFSShanghai #Шанхай';
       const draft = await tgCall('sendPhoto', {
         chat_id: TG_CHAT, photo: ms.fileId || ms.photoUrl,
@@ -853,7 +853,7 @@ async function generateMarketingIdeas() {
     `    "format": "single|carousel|reel",\n` +
     `    "hook": "Анхны 1-2 мөр (маш хүчтэй, 40 тэмдэгт)",\n` +
     `    "caption": "130-180 тэмдэгт, цэгтэй өгүүлбэр, emoji",\n` +
-    `    "cta": "👉 bileg11.github.io мөр",\n` +
+    `    "cta": "👉 lfsshanghai.com мөр",\n` +
     `    "hashtags": "#LFSShanghai #tag (15 ширхэг)",\n` +
     `    "imageSearch": "Pexels хайх keyword (English)",\n` +
     `    "angle": "Ямар өнцгөөс авсан"\n` +

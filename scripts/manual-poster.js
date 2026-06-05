@@ -62,7 +62,7 @@ async function generateCaption(userHint = '') {
 ${userHint ? `Хэрэглэгчийн тэмдэглэл: "${userHint}"` : 'Шанхайн LFS брэндтэй холбоотой пост бич.'}
 
 CAPTION:
-[3-4 өгүүлбэр, Монгол хэлээр, 4-6 emoji, "👉 bileg11.github.io" CTA]
+[3-4 өгүүлбэр, Монгол хэлээр, 4-6 emoji, "👉 lfsshanghai.com" CTA]
 
 HASHTAGS:
 [18-22 hashtag Монгол+Англи+Хятад, зайгаар тусгаарласан]
