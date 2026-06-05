@@ -269,32 +269,43 @@ async function sendChatMessage(userText) {
   try {
     const ep      = _chatEndpoint();
     const apiMsgs = _getApiHistory(); // truncated window — token хэмнэнэ
+    const reqBody = {
+      model: CHAT_MODEL,
+      messages: [ { role: 'system', content: systemText }, ...apiMsgs ],
+      max_tokens: 800,
+      temperature: 0.9
+    };
 
-    const res = await fetch(ep.url, {
-      method: 'POST', signal: ctrl.signal, headers: ep.headers,
-      body: JSON.stringify({
-        model: CHAT_MODEL,
-        messages: [
-          { role: 'system', content: systemText },
-          ...apiMsgs
-        ],
-        max_tokens: 800,   // 2048 → 800 (хангалттай, -60% output cost)
-        temperature: 0.9
-      })
-    });
-    clearTimeout(timer);
+    let json, status = 200;
 
-    if (!res.ok) {
-      const errBody = await res.json().catch(() => ({}));
-      const msg = errBody?.error?.message || '';
-      console.warn('[Chat] gpt-4o-mini', res.status, msg);
-      _chatHistory.pop();
-      if (res.status === 401) return '🔑 Token буруу байна. Профайл → тохиргоо шалгана уу.';
-      if (res.status === 429) return '⏳ Хүсэлт хэт олон байна. 1 минут хүлээгээд дахин туршина уу.';
-      return `❌ Алдаа ${res.status}. Профайл → Token шалгана уу.`;
+    // Electron бол Node дамжуулна (VPN/CORS тойрно), эс бөгөөс browser fetch
+    if (typeof window !== 'undefined' && window.jarvisAPI?.chatCompletion) {
+      const r = await window.jarvisAPI.chatCompletion(ep.url, ep.headers, reqBody);
+      clearTimeout(timer);
+      if (!r.ok) {
+        _chatHistory.pop();
+        if (r.status === 401) return '🔑 Token буруу байна. Профайл → тохиргоо шалгана уу.';
+        if (r.status === 429) return '⏳ Хүсэлт хэт олон байна. Дахин туршина уу.';
+        return `❌ Сүлжээ/сервер алдаа${r.error ? ' ('+r.error+')' : r.status ? ' ('+r.status+')' : ''}. VPN node солиод үзнэ үү.`;
+      }
+      json = r.data;
+    } else {
+      const res = await fetch(ep.url, {
+        method: 'POST', signal: ctrl.signal, headers: ep.headers,
+        body: JSON.stringify(reqBody)
+      });
+      clearTimeout(timer);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        console.warn('[Chat] gpt-4o-mini', res.status, errBody?.error?.message || '');
+        _chatHistory.pop();
+        if (res.status === 401) return '🔑 Token буруу байна. Профайл → тохиргоо шалгана уу.';
+        if (res.status === 429) return '⏳ Хүсэлт хэт олон байна. 1 минут хүлээгээд дахин туршина уу.';
+        return `❌ Алдаа ${res.status}. Профайл → Token шалгана уу.`;
+      }
+      json = await res.json();
     }
 
-    const json  = await res.json();
     const reply = json.choices?.[0]?.message?.content?.trim() || '...';
 
     _chatHistory.push({ role: 'assistant', content: reply });

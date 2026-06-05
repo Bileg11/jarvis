@@ -26,6 +26,9 @@ contextBridge.exposeInMainWorld('jarvisAPI', {
   // ── Sprint 36: World via Railway proxy (Node — CORS-гүй, найдвартай)
   fetchWorldProxy: (proxyUrl) => ipcRenderer.invoke('fetch-world-proxy', proxyUrl),
 
+  // ── Sprint 38: AI chat via Node (VPN тойрно)
+  chatCompletion: (url, headers, body) => ipcRenderer.invoke('chat-completion', { url, headers, body }),
+
   // ── Platform info ───────────────────────────────────────────────
   platform: process.platform,
 

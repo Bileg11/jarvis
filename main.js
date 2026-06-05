@@ -254,6 +254,33 @@ ipcMain.handle('fetch-world', async () => {
   return { ok: total > 0, categories: out, ts: Date.now() };
 });
 
+// ── Sprint 38: AI chat via Node (VPN/CORS тойрно) ────────────────
+// Renderer browser fetch VPN-д гацвал энэ IPC ашиглана. Node https POST.
+ipcMain.handle('chat-completion', async (_, { url, headers, body }) => {
+  return new Promise((resolve) => {
+    try {
+      const u = new URL(url);
+      const data = typeof body === 'string' ? body : JSON.stringify(body);
+      const opts = {
+        hostname: u.hostname, path: u.pathname + u.search, method: 'POST',
+        headers: { ...(headers||{}), 'Content-Length': Buffer.byteLength(data) },
+        timeout: 25000,
+      };
+      const req = https.request(opts, (res) => {
+        let buf = '';
+        res.on('data', d => buf += d);
+        res.on('end', () => {
+          try { resolve({ ok: res.statusCode < 400, status: res.statusCode, data: JSON.parse(buf) }); }
+          catch { resolve({ ok: false, status: res.statusCode, error: 'parse', raw: buf.slice(0,200) }); }
+        });
+      });
+      req.on('error', e => resolve({ ok: false, error: e.message }));
+      req.on('timeout', () => { req.destroy(); resolve({ ok: false, error: 'timeout' }); });
+      req.write(data); req.end();
+    } catch (e) { resolve({ ok: false, error: e.message }); }
+  });
+});
+
 // ── Sprint 36: World via Railway proxy (Node fetch — CORS-гүй, найдвартай)
 // Renderer browser fetch CORS-д баригдвал энэ IPC ашиглана.
 // Railway US-д тул Хятадаас хүрдэг (BBC шиг block биш).
@@ -291,6 +318,15 @@ function createWindow() {
 
   // Sprint 36: clear renderer cache on launch so code updates always load fresh
   mainWindow.webContents.session.clearCache().catch(() => {});
+
+  // Sprint 38 DEBUG: renderer console + crash/hang-г terminal log руу дамжуулах
+  mainWindow.webContents.on('console-message', (_e, level, message) => {
+    const tag = ['LOG','WARN','ERR'][level] || 'LOG';
+    if (level >= 1) console.log(`[renderer:${tag}] ${message}`);
+  });
+  mainWindow.webContents.on('render-process-gone', (_e, d) => console.log('[renderer GONE]', d.reason));
+  mainWindow.webContents.on('unresponsive', () => console.log('[renderer UNRESPONSIVE — freeze!]'));
+  mainWindow.webContents.on('responsive', () => console.log('[renderer responsive again]'));
 
   mainWindow.loadFile('index.html');
 
