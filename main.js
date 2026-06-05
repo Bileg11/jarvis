@@ -321,8 +321,7 @@ function createWindow() {
 
   // Sprint 38 DEBUG: renderer console + crash/hang-г terminal log руу дамжуулах
   mainWindow.webContents.on('console-message', (_e, level, message) => {
-    const tag = ['LOG','WARN','ERR'][level] || 'LOG';
-    if (level >= 1) console.log(`[renderer:${tag}] ${message}`);
+    if (level >= 2) console.log(`[renderer:ERR] ${String(message).slice(0,200)}`);
   });
   mainWindow.webContents.on('render-process-gone', (_e, d) => console.log('[renderer GONE]', d.reason));
   mainWindow.webContents.on('unresponsive', () => console.log('[renderer UNRESPONSIVE — freeze!]'));
