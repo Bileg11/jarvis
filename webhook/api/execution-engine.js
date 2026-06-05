@@ -230,4 +230,125 @@ async function completeWindow(uid, taskId, dateK) {
   return { ok: true, award, label: w.label };
 }
 
-module.exports = { tickEngine, completeWindow, sendTg, getUserChatId, todayKey };
+// ══════════════════════════════════════════════════════════════════
+// SETUP & MANAGEMENT (Telegram командуудаас дуудагдана)
+// ══════════════════════════════════════════════════════════════════
+
+// Sprint config анх үүсгэх (calibration горимоор эхэлнэ)
+async function setupSprint(uid, name) {
+  const cfgRef = dbPersonal.doc('sprint/config');
+  const cfg    = await cfgRef.get();
+  const data   = cfg.exists ? cfg.data() : {};
+  const caps   = data.intensity_cap || {};
+  caps[uid]    = caps[uid] || 1;  // calibration → cap = Level 1
+  await cfgRef.set({
+    paused: false, paused_until: null,
+    day_boundary_hour: NIGHT_END,
+    night_start: NIGHT_START, night_end: NIGHT_END,
+    intensity_cap: caps,
+    end_date: '2026-06-30',
+  }, { merge: true });
+
+  await dbPersonal.doc(`sprint_users/${uid}`).set({
+    name: name || uid,
+    sprint_xp: 0, daily_penalty: 0,
+    daily_reset_date: todayKey(),
+  }, { merge: true });
+  return { ok: true };
+}
+
+// Window нэмэх. start/end "HH:MM" (Shanghai). Өнөөдрийн schedule-д.
+async function addWindow(uid, { time, taskId, label, proofType, xp }, dateK) {
+  dateK = dateK || todayKey();
+  const m = String(time).match(/^(\d{1,2}):(\d{2})-(\d{1,2}):(\d{2})$/);
+  if (!m) return { ok: false, error: 'time format: HH:MM-HH:MM' };
+  const [, h1, m1, h2, m2] = m;
+  const pad = n => String(n).padStart(2, '0');
+  const start = `${dateK}T${pad(h1)}:${m1}:00+08:00`;
+  const end   = `${dateK}T${pad(h2)}:${m2}:00+08:00`;
+
+  const ref  = dbPersonal.doc(`schedules/${dateK}`);
+  const snap = await ref.get();
+  const data = snap.exists ? snap.data() : {};
+  const windows = data.windows || [];
+  windows.push({
+    id: taskId + '_' + Date.now(),
+    task_id: taskId,
+    label: label || taskId,
+    user_id: uid,
+    start, end,
+    status: 'PENDING',
+    proof_type: proofType || 'SOCIAL_PROOF',
+    xp: xp || 20,
+    multiplier: 1,
+    escalation_level: 1,
+    penalty_accrued: 0,
+  });
+  await ref.set({
+    is_calibrated: true,
+    coop_pool_xp: data.coop_pool_xp || 500,
+    windows,
+  }, { merge: true });
+  return { ok: true, count: windows.filter(w => w.user_id === uid).length };
+}
+
+// Өдрийн стандарт template (HSK + Gym + Business) — хурдан эхлэх
+async function quickstartDay(uid, dateK) {
+  dateK = dateK || todayKey();
+  const tmpl = [
+    { time: '09:00-10:30', taskId: 'hsk',      label: '📚 HSK Drill блок',    proofType: 'HARD_METRIC',  xp: 20 },
+    { time: '15:00-16:30', taskId: 'business', label: '💼 Business / LFS OBT', proofType: 'SOCIAL_PROOF', xp: 20 },
+    { time: '18:00-19:30', taskId: 'gym',      label: '💪 Gym / Дасгал',      proofType: 'SOCIAL_PROOF', xp: 20 },
+  ];
+  for (const t of tmpl) await addWindow(uid, t, dateK);
+  return { ok: true, count: tmpl.length };
+}
+
+// Sprint status (өнөөдрийн window + XP + penalty)
+async function getSprintStatus(uid, dateK) {
+  dateK = dateK || todayKey();
+  const [uSnap, sSnap, cSnap] = await Promise.all([
+    dbPersonal.doc(`sprint_users/${uid}`).get(),
+    dbPersonal.doc(`schedules/${dateK}`).get(),
+    dbPersonal.doc('sprint/config').get(),
+  ]);
+  const u   = uSnap.exists ? uSnap.data() : {};
+  const cfg = cSnap.exists ? cSnap.data() : {};
+  const windows = (sSnap.exists ? (sSnap.data().windows || []) : [])
+    .filter(w => w.user_id === uid);
+  return {
+    xp: u.sprint_xp || 0,
+    daily_penalty: u.daily_penalty || 0,
+    intensity_cap: (cfg.intensity_cap || {})[uid] || 1,
+    paused: !!cfg.paused,
+    coop_pool: sSnap.exists ? (sSnap.data().coop_pool_xp || 0) : 0,
+    windows,
+  };
+}
+
+// Sprint-level PAUSE (Kill Switch)
+async function pauseSprint(hours) {
+  const until = new Date(Date.now() + (hours || 24) * 3600000).toISOString();
+  await dbPersonal.doc('sprint/config').set({ paused: true, paused_until: until }, { merge: true });
+  return { ok: true, until };
+}
+async function resumeSprint() {
+  await dbPersonal.doc('sprint/config').set({ paused: false, paused_until: null }, { merge: true });
+  return { ok: true };
+}
+
+// Intensity cap өөрчлөх (Level 1/2/3). Calibration дуусгахад 3 болгоно.
+async function setIntensityCap(uid, level) {
+  const ref = dbPersonal.doc('sprint/config');
+  const c   = await ref.get();
+  const caps = (c.exists ? c.data().intensity_cap : {}) || {};
+  caps[uid] = Math.max(1, Math.min(3, level));
+  await ref.set({ intensity_cap: caps }, { merge: true });
+  return { ok: true, level: caps[uid] };
+}
+
+module.exports = {
+  tickEngine, completeWindow, sendTg, getUserChatId, todayKey,
+  setupSprint, addWindow, quickstartDay, getSprintStatus,
+  pauseSprint, resumeSprint, setIntensityCap,
+};

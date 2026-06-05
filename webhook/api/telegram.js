@@ -1710,6 +1710,107 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
+  // ══════════════════════════════════════════════════════════════
+  // SPRINT 37 — RUTHLESS EXECUTION ENGINE COMMANDS
+  // ══════════════════════════════════════════════════════════════
+  const _eng = () => require('./execution-engine');
+
+  // /sprint setup — анх тохируулах (calibration горим)
+  if (text === '/sprint setup') {
+    const name = (await dbPersonal.doc(`users/${uid}/config/profile`).get().catch(()=>null))?.data()?.name
+              || (uid === UID ? 'Bileg' : 'User');
+    await _eng().setupSprint(uid, name);
+    await tgSend(
+      `⚙️ *SPRINT ТОХИРУУЛАГДЛАА* — ${name}\n\n` +
+      `📅 Дуусах: 2026-06-30\n` +
+      `🟢 Calibration горим (Level 1 cap)\n\n` +
+      `Дараагийн алхам:\n` +
+      `• \`/sprint quickstart\` — өдрийн стандарт 3 цонх (HSK/Business/Gym)\n` +
+      `• эсвэл \`/window 09:00-10:30 hsk HSK Drill\` — гараар нэмэх\n` +
+      `• \`/sprint\` — статус харах`
+    );
+    return;
+  }
+
+  // /sprint quickstart — өдрийн template window үүсгэх
+  if (text === '/sprint quickstart' || text === '/sprint qs') {
+    const r = await _eng().quickstartDay(uid);
+    await tgSend(
+      `🚀 *Өдрийн ${r.count} цонх үүслээ:*\n` +
+      `📚 09:00-10:30 HSK Drill\n` +
+      `💼 15:00-16:30 Business / LFS\n` +
+      `💪 18:00-19:30 Gym\n\n` +
+      `Engine идэвхтэй. Цонх нээгдэхэд сануулна. \`/sprint\` — статус.`
+    );
+    return;
+  }
+
+  // /window HH:MM-HH:MM taskid Label — window нэмэх
+  if (raw.startsWith('/window ')) {
+    const parts = raw.slice(8).trim().split(/\s+/);
+    const time   = parts[0];
+    const taskId = (parts[1] || '').toLowerCase();
+    const label  = parts.slice(2).join(' ') || taskId;
+    if (!time || !taskId) {
+      await tgSend('Хэлбэр: `/window 09:00-10:30 hsk HSK Drill`');
+      return;
+    }
+    const r = await _eng().addWindow(uid, { time, taskId, label });
+    if (r.ok) await tgSend(`✅ Цонх нэмэгдлээ: *${label}* (${time})\nӨнөөдөр нийт ${r.count} цонх. \`/sprint\``);
+    else await tgSend(`❌ ${r.error}`);
+    return;
+  }
+
+  // /sprint — статус
+  if (text === '/sprint' || text === '/s') {
+    const st = await _eng().getSprintStatus(uid);
+    const END = new Date('2026-06-30'); const left = Math.max(0, Math.ceil((END - Date.now())/86400000));
+    let msg = `🔥 *EXECUTION SPRINT*\n\`${'━'.repeat(20)}\`\n`;
+    msg += `⚡ XP: *${st.xp}*  |  Өнөөдрийн торгууль: ${st.daily_penalty} (floor -40)\n`;
+    msg += `🎚 Intensity cap: Level ${st.intensity_cap}${st.intensity_cap===1?' (calibration)':''}\n`;
+    msg += `🤝 Co-op pool: ${st.coop_pool} XP  |  📅 ${left} хоног үлдсэн\n`;
+    if (st.paused) msg += `\n⏸ *ПАУЗТАЙ* (kill switch идэвхтэй)\n`;
+    msg += `\n*Өнөөдрийн цонхнууд:*\n`;
+    if (!st.windows.length) msg += `_Цонх алга. /sprint quickstart дарна уу._`;
+    else st.windows.forEach(w => {
+      const icon = { COMPLETED:'✅', ELAPSED:'🔴', ACTIVE:'🟢', PENDING:'⚪', INTERCEPTED:'⏸' }[w.status] || '⚪';
+      const t = w.start.slice(11,16) + '-' + w.end.slice(11,16);
+      msg += `${icon} ${t} ${w.label}${w.status==='ELAPSED'?` (-${w.penalty_accrued})`:''}\n`;
+    });
+    msg += `\n_Дуусгах: /done [taskid] · Pause: /pause · Хатуу: /ruthless_`;
+    await tgSend(msg);
+    return;
+  }
+
+  // /pause [hours] — Sprint Kill Switch
+  if (text === '/pause' || raw.startsWith('/pause ')) {
+    const hrs = parseInt(raw.slice(6)) || 24;
+    const r = await _eng().pauseSprint(hrs);
+    // Partner-д мэдэгдэх
+    const partnerName = uid === UID ? 'Bileg' : 'Хамтрагч';
+    await tgSend(`⏸ *SPRINT ПАУЗ* — ${hrs} цаг.\nБүх дарамт зогслоо. Амраарай, эрүүл мэнд чухал. 🤍\n_Сэргээх: /resume_`);
+    return;
+  }
+  if (text === '/resume') {
+    await _eng().resumeSprint();
+    await tgSend(`▶️ *SPRINT СЭРГЭЛЭЭ.* Дахин тулалдъя! 🔥\n\`/sprint\` — статус.`);
+    return;
+  }
+
+  // /ruthless — calibration дуусгаж Level 3 cap идэвхжүүлэх
+  if (text === '/ruthless') {
+    await _eng().setIntensityCap(uid, 3);
+    await tgSend(
+      `💀 *SCORCHED EARTH ИДЭВХЖЛЭЭ — Level 3 cap*\n\n` +
+      `Calibration дууслаа. Одооноос:\n` +
+      `🔴 Цонх хаагдвал -1 XP/мин (floor -40)\n` +
+      `📞 15+ мин → Pushover Critical Alert\n` +
+      `🌙 Шөнө 23:00-06:45 = Deep Sleep (аюулгүй)\n\n` +
+      `Ухрах зам байхгүй. 24 хоног. 100%. 🔥`
+    );
+    return;
+  }
+
   // /plan — өнөөдрийн life plan харах (Marlaa)
   if (text === '/plan' || text === '/today') {
     try {
@@ -1810,9 +1911,17 @@ async function handleText(msg, ctx = {}) {
       `HSK ханзаар өгүүлбэр → оноо авах 🎯\n\n` +
       `🏆 *June Challenge (Sprint 34)*\n` +
       `/challenge — Bileg & Марлаа scoreboard\n` +
+      `/glow — Glow-Up checklist\n` +
       `/plan — өнөөдрийн life plan\n` +
-      `/done [gym] — life plan task дуусгах\n` +
-      `/preflight [tasks] — маргаашийн хуваарь`
+      `/preflight [tasks] — маргаашийн хуваарь\n\n` +
+      `🔥 *Execution Sprint (Sprint 37)*\n` +
+      `/sprint setup — анх тохируулах\n` +
+      `/sprint quickstart — өдрийн 3 цонх\n` +
+      `/window 09:00-10:30 hsk HSK — цонх нэмэх\n` +
+      `/sprint — статус + XP\n` +
+      `/done [taskid] — цонх дуусгаж XP авах\n` +
+      `/ruthless — Level 3 (Scorched Earth)\n` +
+      `/pause [hrs] · /resume — kill switch`
     );
     return;
   }
