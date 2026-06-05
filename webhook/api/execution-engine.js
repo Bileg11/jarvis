@@ -71,6 +71,56 @@ async function sendTg(chatId, text, extra = {}) {
   } catch (e) { console.error('[Engine TG]', e.message); return null; }
 }
 
+// editMessageText — нэг мессежийг шинэчилнэ (Flood ban-аас сэргийлнэ)
+async function editTg(chatId, msgId, text, extra = {}) {
+  if (!TG_TOKEN || !chatId || !msgId) return null;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, message_id: msgId, text, parse_mode: 'Markdown', ...extra }),
+    });
+    return await r.json();
+  } catch (e) { return null; }
+}
+
+// Pushover Critical Alert (priority 2 — DND нэвт гарна, баталгаажтал давтана)
+const PUSHOVER_APP = process.env.PUSHOVER_APP_TOKEN;
+async function sendPushover(userToken, title, message) {
+  if (!PUSHOVER_APP || !userToken) return false;
+  try {
+    const r = await fetch('https://api.pushover.net/1/messages.json', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token: PUSHOVER_APP, user: userToken,
+        title, message,
+        priority: 2,        // Emergency — DND нэвт
+        retry: 60,          // 60 сек тутам давтана
+        expire: 600,        // 10 мин хүртэл
+        sound: 'siren',
+      }),
+    });
+    const j = await r.json();
+    return j.status === 1;
+  } catch (e) { console.error('[Pushover]', e.message); return false; }
+}
+
+// Хамтрагчийн uid (sprint_users-аас нөгөө хүн)
+async function getPartnerUid(uid) {
+  try {
+    const snap = await dbPersonal.collection('sprint_users').get();
+    const other = snap.docs.find(d => d.id !== uid);
+    return other ? other.id : null;
+  } catch { return null; }
+}
+async function getUserPushToken(uid) {
+  try {
+    const s = await dbPersonal.doc(`sprint_users/${uid}`).get();
+    return s.exists ? (s.data().pushover_token || null) : null;
+  } catch { return null; }
+}
+
 // ── Daily reset (06:45 хил давах үед нэг удаа) ────────────────────
 async function maybeDailyReset(uid) {
   const ref  = dbPersonal.doc(`sprint_users/${uid}`);
@@ -124,6 +174,9 @@ async function tickEngine() {
     }
   }
 
+  // Multi-sig downgrade timeout (шөнө 30+ мин хариугүй → auto-escape)
+  if (cfg.pending_downgrade) { try { await checkDowngradeTimeout(); } catch {} }
+
   // 2. Шөнийн хил — Deep Sleep (penalty/escalation зогсоно)
   if (isNightBoundary(now)) {
     // Гэхдээ daily reset-ийг 06:45 хүрэхэд хийх тул энд зөвхөн гарна
@@ -174,24 +227,57 @@ async function tickEngine() {
       if (w.status !== 'ELAPSED') { w.status = 'ELAPSED'; dirty = true; }
     }
 
-    // ELAPSED → penalty -1/мин (end-ээс хойш), floor-той
+    // ELAPSED → penalty + ESCALATION (time × intensity-cap)
     if (w.status === 'ELAPSED') {
-      // Level 1 (Gentle / Calibration) = НИ point deduction (blueprint дүрэм)
       const cap = (cfg.intensity_cap || {})[w.user_id] || 1;
+      // Level 1 (Gentle / Calibration) = penalty байхгүй
       const lostPts = cap >= 2 ? await applyPenalty(w.user_id, 1) : false;
       w.penalty_accrued = (w.penalty_accrued || 0) + (lostPts ? 1 : 0);
       dirty = true;
-      // Phase 2: escalation spam (editMessageText countdown, partner alert, Pushover)
-      // Одоохондоо 5 минут тутамд нэг сануулга
+
       const elapsedMin = Math.floor((nowMs - end.getTime()) / 60000);
-      const lastSpam   = w.last_spam ? new Date(w.last_spam).getTime() : 0;
-      if (nowMs - lastSpam >= 5 * 60000) {
-        w.last_spam = new Date().toISOString();
-        const chatId = await getUserChatId(w.user_id);
-        await sendTg(chatId,
-          `🔴 *${w.label}* — цонх хаагдсан, ${elapsedMin} мин хэтэрлээ!\n` +
-          `Торгууль: -${w.penalty_accrued} XP (өдрийн floor -40)\n` +
-          `Одоо ч болсон хий: \`/done ${w.task_id}\``);
+      const chatId = await getUserChatId(w.user_id);
+
+      // ── ESCALATION PROFILE (time-driven, capped by intensity) ────
+      // 0-5 мин:  countdown (editMessageText, 30s тутам) — бүх level
+      // 5-15 мин: + partner alert (cap≥2, Toxic Coach)
+      // 15+ мин:  + Pushover Critical Alert (cap≥3, Scorched Earth)
+
+      const countdownText =
+        `🔴 *${w.label}* — ЦОНХ ХААГДСАН\n` +
+        `⏱ ${elapsedMin} мин хэтэрлээ` + (cap >= 2 ? ` · -${w.penalty_accrued} XP` : ' (calibration)') + `\n\n` +
+        (cap >= 3 && elapsedMin >= 15 ? '💀 SCORCHED EARTH идэвхтэй\n' :
+         cap >= 2 && elapsedMin >= 5  ? '⚡ Toxic Coch горим\n' : '') +
+        `Одоо ч болсон хий: \`/done ${w.task_id}\``;
+
+      // Countdown — 30s тутам нэг мессеж edit (flood-safe)
+      if (!w.msg_id) {
+        const res = await sendTg(chatId, countdownText);
+        if (res?.result?.message_id) { w.msg_id = res.result.message_id; }
+      } else {
+        await editTg(chatId, w.msg_id, countdownText);
+      }
+
+      // Level 2 (cap≥2): 5-15 мин — partner alert (нэг удаа)
+      if (cap >= 2 && elapsedMin >= 5 && !w.partner_alerted) {
+        w.partner_alerted = true;
+        const partnerUid = await getPartnerUid(w.user_id);
+        const partnerChat = partnerUid ? await getUserChatId(partnerUid) : null;
+        const uname = (await dbPersonal.doc(`sprint_users/${w.user_id}`).get()).data()?.name || 'Хамтрагч';
+        if (partnerChat) await sendTg(partnerChat,
+          `👀 *${uname}* "${w.label}" цонхоо алдаж байна (${elapsedMin} мин).\n` +
+          `Түлхэц өг — \`/poke\` эсвэл шууд бич!`);
+      }
+
+      // Level 3 (cap≥3): 15+ мин — Pushover Critical Alert (нэг удаа)
+      if (cap >= 3 && elapsedMin >= 15 && !w.pushover_sent) {
+        w.pushover_sent = true;
+        const token = await getUserPushToken(w.user_id);
+        const ok = await sendPushover(token,
+          '💀 SCORCHED EARTH',
+          `${w.label} — ${elapsedMin} мин хэтэрлээ! Босоод хий. ${w.penalty_accrued} XP алдсан.`);
+        if (!ok && chatId) await sendTg(chatId,
+          `📞 *CRITICAL ALERT* (Pushover тохируулаагүй)\n${w.label} — ОДОО ХИЙ! 💀`);
       }
     }
   }
@@ -214,22 +300,81 @@ async function completeWindow(uid, taskId, dateK) {
                               x.status !== 'COMPLETED');
   if (!w) return { ok: false, error: 'window not found' };
 
-  // Sequential hygiene multiplier (1.5x) — өмнөх dependency COMPLETED бол
+  // Multipliers
   let mult = w.multiplier || 1;
-  // (Phase 4: dependency chain шалгах) — одоохондоо тогтсон multiplier
+
+  // Hygiene multiplier 1.5x — dependency гинж (Gym→Shower г.м)
+  const DEP = { shower: 'gym', makeup: 'shower' };
+  if (DEP[taskId]) {
+    const dep = windows.find(x => x.task_id === DEP[taskId] && x.user_id === uid && x.status === 'COMPLETED');
+    if (dep) mult *= 1.5;
+  }
+
+  // Comeback 2x — өдөр торгууль идсэн (penalty ≤ -20) атлаа сэргэвэл
+  const us0 = await dbPersonal.doc(`sprint_users/${uid}`).get();
+  const dailyPen = us0.exists ? (us0.data().daily_penalty || 0) : 0;
+  let comeback = false;
+  if (dailyPen <= -20) { mult *= 2; comeback = true; }
+
   const award = Math.round((w.xp || 20) * mult);
 
   w.status = 'COMPLETED';
   w.completed_at = new Date().toISOString();
+
+  // Countdown мессежийг "дууссан" болгож edit (spam зогсоно)
+  if (w.msg_id) {
+    const chatId = await getUserChatId(uid);
+    await editTg(chatId, w.msg_id, `✅ *${w.label}* — ДУУСЛАА! +${award} XP 🔥`);
+  }
   await ref.set({ windows }, { merge: true });
 
   // XP нэмэх
-  const uref = dbPersonal.doc(`sprint_users/${uid}`);
-  const us   = await uref.get();
-  const cur  = us.exists ? (us.data().sprint_xp || 0) : 0;
-  await uref.set({ sprint_xp: cur + award }, { merge: true });
+  const cur = us0.exists ? (us0.data().sprint_xp || 0) : 0;
+  await dbPersonal.doc(`sprint_users/${uid}`).set({ sprint_xp: cur + award }, { merge: true });
 
-  return { ok: true, award, label: w.label };
+  // ── Co-op pool шалгах: хоёулаа өдрийн threshold давсан бол celebrate
+  await _checkCoopProgress(dateK);
+
+  // ── Hype-man: partner-д ялалт мэдэгдэх (өндөр award эсвэл comeback)
+  if (comeback || mult >= 1.5) {
+    const partnerUid = await getPartnerUid(uid);
+    const partnerChat = partnerUid ? await getUserChatId(partnerUid) : null;
+    const uname = us0.data()?.name || 'Хамтрагч';
+    if (partnerChat) await sendTg(partnerChat,
+      comeback
+        ? `🔥 *${uname}* COMEBACK хийлээ! Унасан газраасаа боссон — ${award} XP (2x). Бахарх!`
+        : `⚡ *${uname}* hygiene гинж барьж ${award} XP (1.5x) авлаа. Beast!`);
+  }
+
+  return { ok: true, award, label: w.label, mult, comeback };
+}
+
+// Co-op pool — хоёулаа өдрийн ≥3 цонх дуусгавал pool "нээгдсэн" гэж тэмдэглэх
+async function _checkCoopProgress(dateK) {
+  try {
+    const snap = await dbPersonal.doc(`schedules/${dateK}`).get();
+    if (!snap.exists) return;
+    const windows = snap.data().windows || [];
+    const byUser = {};
+    windows.forEach(w => {
+      byUser[w.user_id] = byUser[w.user_id] || { total: 0, done: 0 };
+      byUser[w.user_id].total++;
+      if (w.status === 'COMPLETED') byUser[w.user_id].done++;
+    });
+    const uids = Object.keys(byUser);
+    if (uids.length < 2) return;
+    // Хоёулаа 100% дуусгасан бол
+    const allDone = uids.every(u => byUser[u].done === byUser[u].total && byUser[u].total > 0);
+    if (allDone && !snap.data().coop_celebrated) {
+      await dbPersonal.doc(`schedules/${dateK}`).set({ coop_celebrated: true }, { merge: true });
+      for (const u of uids) {
+        const chat = await getUserChatId(u);
+        if (chat) await sendTg(chat,
+          `🎉 *CO-OP ЯЛАЛТ!* Та хоёр өнөөдрийн БҮХ цонхоо дуусгалаа!\n` +
+          `Дундын сан өслөө. 6.30-д Монголд хамт тэмдэглэнэ! 🇲🇳🔥`);
+      }
+    }
+  } catch (e) { console.error('[Coop]', e.message); }
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -349,8 +494,63 @@ async function setIntensityCap(uid, level) {
   return { ok: true, level: caps[uid] };
 }
 
+// ── MULTI-SIG DOWNGRADE TREATY ────────────────────────────────────
+// Upgrade unilateral. Downgrade нь partner-ийн зөвшөөрөл шаардана.
+// requestDowngrade → pending хадгална, partner-д товч илгээнэ
+async function requestDowngrade(uid, level) {
+  const partnerUid = await getPartnerUid(uid);
+  if (!partnerUid) {
+    // Хамтрагчгүй бол шууд зөвшөөрнө
+    await setIntensityCap(uid, level);
+    return { ok: true, soloApplied: true, level };
+  }
+  await dbPersonal.doc('sprint/config').set({
+    pending_downgrade: {
+      requester: uid, target_level: level,
+      partner: partnerUid, requested_at: new Date().toISOString(),
+    },
+  }, { merge: true });
+  return { ok: true, partnerUid, level };
+}
+
+// resolveDowngrade — partner approve/deny
+async function resolveDowngrade(approverUid, approve) {
+  const ref = dbPersonal.doc('sprint/config');
+  const c   = await ref.get();
+  const pd  = c.exists ? c.data().pending_downgrade : null;
+  if (!pd || pd.partner !== approverUid) return { ok: false, error: 'no pending request' };
+
+  await ref.set({ pending_downgrade: null }, { merge: true });
+  if (approve) {
+    await setIntensityCap(pd.requester, pd.target_level);
+    return { ok: true, approved: true, requester: pd.requester, level: pd.target_level };
+  } else {
+    // Denied → intensify (Level 3 руу буцаана, social shame)
+    await setIntensityCap(pd.requester, 3);
+    return { ok: true, approved: false, requester: pd.requester };
+  }
+}
+
+// Auto-escape: pending downgrade 30+ мин хариугүй + шөнө бол автоматаар зөвшөөрнө
+async function checkDowngradeTimeout() {
+  const ref = dbPersonal.doc('sprint/config');
+  const c   = await ref.get();
+  const pd  = c.exists ? c.data().pending_downgrade : null;
+  if (!pd) return;
+  const ageMin = (Date.now() - new Date(pd.requested_at).getTime()) / 60000;
+  const isNight = isNightBoundary(shanghaiNow());
+  // Зөвхөн шөнө 30+ мин хариугүй бол auto-escape (өдөр multi-sig хүчинтэй)
+  if (ageMin >= 30 && isNight) {
+    await ref.set({ pending_downgrade: null }, { merge: true });
+    await setIntensityCap(pd.requester, pd.target_level);
+    const chat = await getUserChatId(pd.requester);
+    if (chat) await sendTg(chat, `🌙 Хамтрагч унтаж байна — шөнийн auto-escape: Level ${pd.target_level} болголоо. Амраарай.`);
+  }
+}
+
 module.exports = {
   tickEngine, completeWindow, sendTg, getUserChatId, todayKey,
   setupSprint, addWindow, quickstartDay, getSprintStatus,
   pauseSprint, resumeSprint, setIntensityCap,
+  requestDowngrade, resolveDowngrade, checkDowngradeTimeout, getPartnerUid,
 };

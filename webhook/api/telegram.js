@@ -825,6 +825,32 @@ async function handleCallback(cb) {
     return;
   }
 
+  // Sprint 37: Multi-sig downgrade approve/deny
+  if (cmd === 'dg_yes' || cmd === 'dg_no') {
+    try {
+      const eng = require('./execution-engine');
+      const approverChat = String(cb.message?.chat?.id || cb.from?.id || '');
+      const approver = await findUserByChatId(approverChat) || { uid: UID };
+      const res = await eng.resolveDowngrade(approver.uid, cmd === 'dg_yes');
+      if (!res.ok) { await tgCall('editMessageText', { chat_id: approverChat, message_id: msgId, text: '⚠️ Хүсэлт олдсонгүй (хугацаа дууссан байж магадгүй).' }); return; }
+      await tgCall('editMessageText', {
+        chat_id: approverChat, message_id: msgId,
+        text: res.approved
+          ? `✅ Зөвшөөрлөө — Level ${res.level} болголоо.`
+          : `❌ Татгалзлаа — шахалт Level 3 руу буцлаа. 💀`,
+      });
+      // Requester-д мэдэгдэх
+      const reqChat = await eng.getUserChatId(res.requester);
+      if (reqChat) await tgCall('sendMessage', {
+        chat_id: reqChat, parse_mode: 'Markdown',
+        text: res.approved
+          ? `🤝 Хамтрагч зөвшөөрлөө — Level ${res.level}. Амар.`
+          : `🔥 Хамтрагч ТАТГАЛЗЛАА. Level 3 хэвээр. Зугтах зам алга — хий!`,
+      });
+    } catch (e) { console.error('[dg-callback]', e.message); }
+    return;
+  }
+
   // HSK Reminder + Dashboard кнопкууд
   if (cmd === 'hsk_start_drill') {
     await handleText({ text: '/hsk_drill' }, { uid: UID });
@@ -1806,8 +1832,37 @@ async function handleText(msg, ctx = {}) {
       `🔴 Цонх хаагдвал -1 XP/мин (floor -40)\n` +
       `📞 15+ мин → Pushover Critical Alert\n` +
       `🌙 Шөнө 23:00-06:45 = Deep Sleep (аюулгүй)\n\n` +
-      `Ухрах зам байхгүй. 24 хоног. 100%. 🔥`
+      `Бууруулах бол /downgrade — хамтрагчийн зөвшөөрөл хэрэгтэй. 🔒`
     );
+    return;
+  }
+
+  // /downgrade [level] — Multi-sig: хамтрагчийн зөвшөөрөл шаардана
+  if (text === '/downgrade' || raw.startsWith('/downgrade ')) {
+    const lvl = parseInt(raw.slice(11)) || 1;
+    const r = await _eng().requestDowngrade(uid, lvl);
+    if (r.soloApplied) { await tgSend(`✅ Level ${r.level} болголоо (хамтрагч бүртгэлгүй).`); return; }
+    const partnerChat = await _eng().getUserChatId(r.partnerUid);
+    const myName = (await dbPersonal.doc(`sprint_users/${uid}`).get()).data()?.name || 'Хамтрагч';
+    if (partnerChat) await tgCall('sendMessage', {
+      chat_id: partnerChat, parse_mode: 'Markdown',
+      text: `🔻 *${myName}* шахалтыг Level ${lvl} болгохыг хүсэж байна.\nЗөвшөөрөх үү?`,
+      reply_markup: { inline_keyboard: [[
+        { text: '✅ Зөвшөөрөх', callback_data: 'dg_yes' },
+        { text: '❌ Татгалзах',  callback_data: 'dg_no'  },
+      ]] },
+    });
+    await tgSend(`📨 Хүсэлт хамтрагч руу илгээгдлээ. Зөвшөөрөхийг хүлээж байна…\n_(Шөнө 30 мин хариугүй бол auto-escape)_`);
+    return;
+  }
+
+  // /poke — хамтрагчаа түлхэх
+  if (text === '/poke') {
+    const partnerUid = await _eng().getPartnerUid(uid);
+    const partnerChat = partnerUid ? await _eng().getUserChatId(partnerUid) : null;
+    const myName = (await dbPersonal.doc(`sprint_users/${uid}`).get()).data()?.name || 'Хамтрагч';
+    if (partnerChat) { await tgCall('sendMessage', { chat_id: partnerChat, text: `👊 *${myName}* чамайг түлхэж байна: БОС, ХИЙ! 🔥`, parse_mode: 'Markdown' }); await tgSend('✅ Түлхэц илгээлээ.'); }
+    else await tgSend('Хамтрагч бүртгэлгүй байна.');
     return;
   }
 
