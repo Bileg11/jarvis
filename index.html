@@ -3942,6 +3942,20 @@ async function termSend() {
     return;
   }
 
+  // /sprint — Execution Sprint статус (Firestore-аас)
+  if (text === '/sprint' || text === '/s') {
+    addTermLine('user', text);
+    _sprintStatusTerminal();
+    return;
+  }
+  // /sprint done <taskid> — цонх дуусгах (app-аас)
+  if (text.startsWith('/sprint done ') || text.startsWith('/sdone ')) {
+    addTermLine('user', text);
+    const taskId = text.replace(/^\/(sprint done|sdone)\s+/, '').trim();
+    _sprintDoneTerminal(taskId);
+    return;
+  }
+
   // /status — live diagnostic + AI weekly audit
   if (text === '/status') {
     addTermLine('user', '/status');
@@ -7322,6 +7336,67 @@ function _processTelegramDone(taskId) {
   document.dispatchEvent(new Event('jarvis:routine-updated'));
 }
 window._processTelegramDone = _processTelegramDone;
+
+// ══════════════════════════════════════════════════════════════════
+// SPRINT 37 — EXECUTION SPRINT (App terminal + display)
+// Firestore: sprint_users/{uid}, schedules/{date}
+// ══════════════════════════════════════════════════════════════════
+async function _sprintStatusTerminal() {
+  const uid = window._uid?.();
+  if (!uid || !window._db) { addTermLine('warn', '>> Firestore нэвтрээгүй. Profile-д нэвтэрнэ үү.'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    const [uSnap, sSnap, cSnap] = await Promise.all([
+      window._db.doc(`sprint_users/${uid}`).get(),
+      window._db.doc(`schedules/${today}`).get(),
+      window._db.doc('sprint/config').get(),
+    ]);
+    if (!uSnap.exists) { addTermLine('warn', '>> Sprint тохируулаагүй. Telegram-д /sprint setup бичнэ үү.'); return; }
+    const u   = uSnap.data();
+    const cfg = cSnap.exists ? cSnap.data() : {};
+    const cap = (cfg.intensity_cap || {})[uid] || 1;
+    const windows = (sSnap.exists ? (sSnap.data().windows || []) : []).filter(w => w.user_id === uid);
+    const END = new Date('2026-06-30'); const left = Math.max(0, Math.ceil((END - Date.now())/86400000));
+    addTermLine('ok', `>> 🔥 EXECUTION SPRINT — XP: ${u.sprint_xp||0} · торгууль өнөөдөр: ${u.daily_penalty||0} (floor -40)`);
+    addTermLine('sys', `>> Intensity: Level ${cap}${cap===1?' (calibration)':''} · ${left} хоног үлдсэн${cfg.paused?' · ⏸ ПАУЗТАЙ':''}`);
+    if (!windows.length) { addTermLine('sys', '>> Цонх алга. Telegram: /sprint quickstart'); return; }
+    windows.forEach(w => {
+      const ic = { COMPLETED:'✓', ELAPSED:'🔴', ACTIVE:'🟢', PENDING:'○', INTERCEPTED:'⏸' }[w.status] || '○';
+      addTermLine(w.status==='COMPLETED'?'ok':(w.status==='ELAPSED'?'warn':'sys'),
+        `>>   ${ic} ${w.start.slice(11,16)}-${w.end.slice(11,16)} ${w.label}${w.status==='ELAPSED'?` (-${w.penalty_accrued||0})`:''}`);
+    });
+    addTermLine('sys', '>> Дуусгах: /sprint done <taskid>');
+  } catch (e) { addTermLine('warn', '>> Sprint унших алдаа: ' + e.message); }
+}
+
+async function _sprintDoneTerminal(taskId) {
+  const uid = window._uid?.();
+  if (!uid || !window._db) { addTermLine('warn', '>> Firestore нэвтрээгүй.'); return; }
+  const today = new Date().toISOString().slice(0,10);
+  try {
+    const ref = window._db.doc(`schedules/${today}`);
+    const snap = await ref.get();
+    if (!snap.exists) { addTermLine('warn', '>> Өнөөдрийн хуваарь алга.'); return; }
+    const windows = snap.data().windows || [];
+    const w = windows.find(x => x.task_id === taskId && x.user_id === uid && x.status !== 'COMPLETED');
+    if (!w) { addTermLine('warn', `>> "${taskId}" цонх олдсонгүй.`); return; }
+    // Mark complete + award XP (engine-тэй ижил логик, optimistic)
+    let mult = w.multiplier || 1;
+    const uref = window._db.doc(`sprint_users/${uid}`);
+    const us = await uref.get();
+    const dailyPen = us.exists ? (us.data().daily_penalty||0) : 0;
+    let comeback = false;
+    if (dailyPen <= -20) { mult *= 2; comeback = true; }
+    const award = Math.round((w.xp||20) * mult);
+    w.status = 'COMPLETED'; w.completed_at = new Date().toISOString();
+    await ref.set({ windows }, { merge: true });
+    const cur = us.exists ? (us.data().sprint_xp||0) : 0;
+    await uref.set({ sprint_xp: cur + award }, { merge: true });
+    addTermLine('ok', `>> ✅ ${w.label} — ДУУСЛАА! +${award} XP${comeback?' (COMEBACK 2x! 🔥)':''}`);
+    // Notify Telegram engine via outbox (sync)
+    _queueTelegramOutbox(`✅ <b>${w.label}</b> — app-аас баталгаажлаа! +${award} XP`, 'window_done', null, taskId);
+  } catch (e) { addTermLine('warn', '>> Sprint done алдаа: ' + e.message); }
+}
 
 // ══════════════════════════════════════════════════════════════════
 // SPRINT 34 — USER PROFILE ROUTING
