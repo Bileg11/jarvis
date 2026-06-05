@@ -1856,6 +1856,15 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
+  // /pushover <user_token> — Critical Alert token бүртгэх (Level 3)
+  if (raw.startsWith('/pushover ')) {
+    const token = raw.slice(10).trim();
+    if (token.length < 20) { await tgSend('⚠️ Pushover user key буруу байна. Pushover апп → Settings → User Key.'); return; }
+    await dbPersonal.doc(`sprint_users/${uid}`).set({ pushover_token: token }, { merge: true });
+    await tgSend(`✅ Pushover холбогдлоо. Level 3-д Critical Alert чулуудна. 📞\n_Тест: /sprint quickstart дараад цонх алдаад үз._`);
+    return;
+  }
+
   // /poke — хамтрагчаа түлхэх
   if (text === '/poke') {
     const partnerUid = await _eng().getPartnerUid(uid);
