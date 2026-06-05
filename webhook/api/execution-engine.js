@@ -176,7 +176,9 @@ async function tickEngine() {
 
     // ELAPSED → penalty -1/мин (end-ээс хойш), floor-той
     if (w.status === 'ELAPSED') {
-      const lostPts = await applyPenalty(w.user_id, 1);
+      // Level 1 (Gentle / Calibration) = НИ point deduction (blueprint дүрэм)
+      const cap = (cfg.intensity_cap || {})[w.user_id] || 1;
+      const lostPts = cap >= 2 ? await applyPenalty(w.user_id, 1) : false;
       w.penalty_accrued = (w.penalty_accrued || 0) + (lostPts ? 1 : 0);
       dirty = true;
       // Phase 2: escalation spam (editMessageText countdown, partner alert, Pushover)
