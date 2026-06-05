@@ -13,6 +13,8 @@ const alerts      = require('./api/alerts');
 const { sendWeeklyReport, sendBrief, sendHSKReminder,
         sendCheckpoints, sendDailyRecap, processOutbox,
         sendGlowupNudge } = tgHandler;
+// Sprint 37: Ruthless Execution Engine (persistent 30s loop)
+const execEngine = require('./api/execution-engine');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -116,6 +118,19 @@ app.post('/api/telegram', tgHandler);
 
 
 app.listen(PORT, () => console.log(`[JARVIS] Server running on port ${PORT}`));
+
+// ══ SPRINT 37: RUTHLESS EXECUTION ENGINE — 30 секундын persistent loop ══
+// cron биш — энэ нь sub-minute escalation барих stateful годор.
+// Бүх төлөв Firestore-д тул redeploy-д тэсвэртэй (timestamp-аас сэргэнэ).
+let _engineRunning = false;
+setInterval(async () => {
+  if (_engineRunning) return;           // overlap-аас сэргийлэх
+  _engineRunning = true;
+  try { await execEngine.tickEngine(); }
+  catch (e) { console.error('[ExecEngine] tick error:', e.message); }
+  finally { _engineRunning = false; }
+}, 30 * 1000);
+console.log('[ExecEngine] Ruthless Execution Engine started (30s loop)');
 
 
 // ── WEEKLY REPORT — Даваа гарагийн 07:30 (UTC+8 = Ням 23:30 UTC) ─

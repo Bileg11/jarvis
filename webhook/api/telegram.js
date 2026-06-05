@@ -1198,6 +1198,25 @@ async function handleText(msg, ctx = {}) {
     const arg   = doneMatch[1].trim();
     const today = todaySH();
 
+    // 0) Sprint 37: Execution Engine window completion (XP олгох, penalty зогсоох)
+    try {
+      const execEngine = require('./execution-engine');
+      const res = await execEngine.completeWindow(uid, arg.toLowerCase(), today);
+      if (res.ok) {
+        await tgSend(
+          `✅ *${res.label}* — БАТАЛГААЖЛАА! 🔥\n\n` +
+          `+${res.award} XP олголоо. Цонх хаагдлаа, торгууль зогслоо.\n` +
+          `Дараагийн зорилт руугаа!`
+        );
+        // Electron UI-д real-time push
+        await dbPersonal.doc(`users/${uid}/telegram_inbox/${Date.now()}`).set({
+          type: 'window_done', taskId: arg, text: `/done ${arg}`,
+          timestamp: new Date().toISOString(), processed: false,
+        }).catch(() => {});
+        return;
+      }
+    } catch (e) { console.error('[done-window]', e.message); }
+
     // 1) Life plan lookup (Sprint 34)
     try {
       const snap = await dbPersonal.doc(`users/${uid}/plans/${today}`).get();
