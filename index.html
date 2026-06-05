@@ -2900,6 +2900,7 @@ body.user-marlaa {
       <!-- Skill tabs -->
       <div class="hsk-skill-tabs">
         <div class="hsk-skill-tab active" onclick="_hskTab('drill')" id="hsk-tab-drill">DRILL</div>
+        <div class="hsk-skill-tab" onclick="_hskTab('test')" id="hsk-tab-test">TEST</div>
         <div class="hsk-skill-tab" onclick="_hskTab('stats')" id="hsk-tab-stats">STATS</div>
         <div class="hsk-skill-tab" onclick="_hskTab('schedule')" id="hsk-tab-schedule">PLAN</div>
       </div>
@@ -8124,15 +8125,154 @@ let _hskCurrentTab   = 'drill';
 
 function _hskTab(tab) {
   _hskCurrentTab = tab;
-  ['drill','stats','schedule'].forEach(t => {
+  ['drill','test','stats','schedule'].forEach(t => {
     document.getElementById('hsk-tab-' + t)?.classList.toggle('active', t === tab);
   });
   const content = document.getElementById('hsk-blitz-content');
   if (!content) return;
 
   if (tab === 'drill')    _hskRenderDrill();
+  if (tab === 'test')     _hskRenderSelfTest();
   if (tab === 'stats')    _hskRenderStats();
   if (tab === 'schedule') _hskRenderSchedule();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SPRINT 38 — HSK SELF-TEST (бүх үгээ шалгаж түвшин тогтоох)
+// Бүх үгийг гүйлгэж "Мэднэ/Мэдэхгүй" → review_queue + mastered initialize
+// ══════════════════════════════════════════════════════════════════
+let _hskTestState = null;  // { order:[], idx, known:[], unknown:[] }
+
+function _hskRenderSelfTest() {
+  const content = document.getElementById('hsk-blitz-content');
+  if (!content) return;
+
+  // Эхлэх дэлгэц (тест эхлээгүй)
+  if (!_hskTestState) {
+    const total = HSK4_BANK.length;
+    const tested = _hskProgress?.self_test_done ? _hskProgress.self_test_count : 0;
+    content.innerHTML = `
+      <div style="padding:14px 12px;text-align:center;font-family:var(--mono);font-size:11px">
+        <div style="font-size:22px;margin-bottom:8px">🎯</div>
+        <div style="color:var(--text-b);margin-bottom:6px;line-height:1.5">
+          Мэддэг бүх үгээ шалгаж<br><b style="color:var(--accent)">түвшнээ тогтоо</b>
+        </div>
+        <div style="font-size:9px;color:var(--text);opacity:.6;margin-bottom:12px">
+          ${total} үг · "Мэднэ ✓ / Мэдэхгүй ✗"<br>
+          ${tested ? `Сүүлд: ${tested} үг шалгасан` : 'Хараахан шалгаагүй'}
+        </div>
+        <button onclick="_hskStartSelfTest()" style="font-family:var(--mono);font-size:11px;
+          padding:8px 20px;background:var(--accent);border:none;border-radius:4px;color:#000;
+          font-weight:600;cursor:pointer">▶ ТЕСТ ЭХЛҮҮЛЭХ</button>
+      </div>`;
+    return;
+  }
+
+  // Тест дунд — дүгнэлт эсвэл дараагийн үг
+  if (_hskTestState.idx >= _hskTestState.order.length) {
+    _hskFinishSelfTest();
+    return;
+  }
+
+  const wIdx = _hskTestState.order[_hskTestState.idx];
+  const w = HSK4_BANK[wIdx];
+  const prog = Math.round(_hskTestState.idx / _hskTestState.order.length * 100);
+  content.innerHTML = `
+    <div style="padding:4px 8px">
+      <div style="height:3px;background:var(--dim);border-radius:2px;overflow:hidden;margin-bottom:8px">
+        <div style="height:100%;background:var(--accent);width:${prog}%;transition:width .2s"></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:8px;color:var(--text);opacity:.5;text-align:center">
+        ${_hskTestState.idx + 1} / ${_hskTestState.order.length} · ✓${_hskTestState.known.length} ✗${_hskTestState.unknown.length}
+      </div>
+    </div>
+    <div style="padding:14px 10px;text-align:center">
+      <div style="font-family:'Orbitron',serif;font-size:34px;color:var(--accent);text-shadow:var(--neon)">${w.h}</div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--text);margin:4px 0">${w.p}</div>
+      <div style="font-family:var(--mono);font-size:12px;color:var(--text-b);min-height:16px" id="hsk-test-mean"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 8px 10px">
+      <button onclick="_hskTestMark(false)" style="font-family:var(--mono);font-size:11px;padding:9px;
+        background:rgba(255,45,85,.1);border:1px solid rgba(255,45,85,.3);border-radius:4px;color:var(--red);cursor:pointer">
+        ✗ Мэдэхгүй</button>
+      <button onclick="_hskTestMark(true)" style="font-family:var(--mono);font-size:11px;padding:9px;
+        background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.3);border-radius:4px;color:var(--green);cursor:pointer">
+        ✓ Мэднэ</button>
+    </div>
+    <div style="text-align:center;padding-bottom:8px">
+      <span onclick="document.getElementById('hsk-test-mean').textContent='${(w.m||'').replace(/'/g,'')}'"
+        style="font-family:var(--mono);font-size:9px;color:var(--accent);cursor:pointer;opacity:.6">утга харах 👁</span>
+    </div>`;
+}
+
+function _hskStartSelfTest() {
+  const order = [...Array(HSK4_BANK.length).keys()];
+  for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; }
+  _hskTestState = { order, idx: 0, known: [], unknown: [] };
+  _hskRenderSelfTest();
+}
+
+function _hskTestMark(known) {
+  if (!_hskTestState) return;
+  const wIdx = _hskTestState.order[_hskTestState.idx];
+  const id = HSK4_BANK[wIdx].h;
+  if (known) _hskTestState.known.push(id);
+  else _hskTestState.unknown.push(id);
+  _hskTestState.idx++;
+  _hskRenderSelfTest();
+}
+
+function _hskFinishSelfTest() {
+  const { known, unknown } = _hskTestState;
+  const total = known.length + unknown.length;
+  const pct = total ? Math.round(known.length / total * 100) : 0;
+
+  // review_queue-г шинэчлэх: мэддэг → interval 7хон, мэдэхгүй → өнөөдөр
+  if (_hskProgress) {
+    _hskProgress.mastered_ids = [...new Set([...(_hskProgress.mastered_ids||[]), ...known])];
+    _hskProgress.review_queue = HSK4_BANK.map(w => {
+      const isKnown = known.includes(w.h);
+      return {
+        id: w.h,
+        interval: isKnown ? 7 : 1,
+        ease: 2.5,
+        reps: isKnown ? 2 : 0,
+        nextReview: isKnown ? Date.now() + 7*86400000 : Date.now(),
+      };
+    });
+    _hskProgress.self_test_done = true;
+    _hskProgress.self_test_count = total;
+    _hskProgress.self_test_date = new Date().toISOString().slice(0,10);
+    DB.saveHSKProgress?.(_hskProgress);
+    _hskBuildStudySchedule();
+  }
+
+  const HSK = new Date('2026-06-28'); const days = Math.max(1, Math.floor((HSK-new Date())/86400000));
+  const perDay = Math.ceil(unknown.length / days);
+
+  const content = document.getElementById('hsk-blitz-content');
+  if (content) content.innerHTML = `
+    <div style="padding:14px 12px;font-family:var(--mono);font-size:11px">
+      <div style="text-align:center;font-size:22px;margin-bottom:6px">📊</div>
+      <div style="text-align:center;color:var(--accent);font-family:var(--hud);font-size:16px;margin-bottom:10px">
+        Түвшин: ${pct}%
+      </div>
+      <div style="background:rgba(0,255,136,.06);border:1px solid rgba(0,255,136,.2);border-radius:4px;padding:8px;margin-bottom:6px">
+        ✓ Мэддэг: <b style="color:var(--green)">${known.length}</b> үг
+      </div>
+      <div style="background:rgba(255,45,85,.06);border:1px solid rgba(255,45,85,.2);border-radius:4px;padding:8px;margin-bottom:10px">
+        ✗ Сурах: <b style="color:var(--red)">${unknown.length}</b> үг
+      </div>
+      <div style="text-align:center;color:var(--text-b);line-height:1.6">
+        🎯 Шалгалтад <b style="color:var(--amber)">${days} хоног</b><br>
+        Өдөрт <b style="color:var(--accent)">${perDay} шинэ үг</b> сурвал 100%!<br>
+        <span style="font-size:9px;opacity:.6">Мэдэхгүй үгс DRILL-д өнөөдрөөс гарна</span>
+      </div>
+      <button onclick="_hskTestState=null;_hskTab('drill')" style="width:100%;margin-top:12px;
+        font-family:var(--mono);font-size:11px;padding:9px;background:var(--accent);border:none;
+        border-radius:4px;color:#000;font-weight:600;cursor:pointer">→ DRILL эхлүүлэх</button>
+    </div>`;
+  _hskTestState = null;
 }
 
 function _hskGetDueCards() {

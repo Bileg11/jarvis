@@ -414,6 +414,8 @@
 
   <script>
     const _auth = firebase.auth();
+    // Sprint 38: persistence LOCAL — нэвтэрсэн хэвээр үлдэнэ (дахин нээхэд)
+    _auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -467,14 +469,28 @@
       const btn   = document.getElementById('lm-btn');
       if (!email || !pass) { errEl.textContent = 'Email болон нууц үг оруулна уу'; return; }
       btn.textContent = '...'; btn.disabled = true;
+      errEl.textContent = '';
+      errEl.style.color = '';
       try {
-        await _auth.signInWithEmailAndPassword(email, pass);
+        // Timeout — VPN/сүлжээний улмаас гацахаас сэргийлнэ (20с)
+        await Promise.race([
+          _auth.signInWithEmailAndPassword(email, pass),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('NET_TIMEOUT')), 20000)),
+        ]);
+        errEl.style.color = '#4ade80';
+        errEl.textContent = '✅ Нэвтэрлээ!';
       } catch(e) {
         btn.textContent = 'Нэвтрэх'; btn.disabled = false;
-        errEl.textContent =
-          e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential'
-            ? 'Email эсвэл нууц үг буруу'
-            : 'Алдаа: ' + e.message;
+        errEl.style.color = '';
+        if (e.message === 'NET_TIMEOUT') {
+          errEl.textContent = '⏱ Сүлжээ хүрсэнгүй. VPN-ийн node солиод дахин үзнэ үү (Firebase Auth блоклогдсон байж магадгүй).';
+        } else if (e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+          errEl.textContent = 'Email эсвэл нууц үг буруу';
+        } else if (e.code === 'auth/network-request-failed') {
+          errEl.textContent = '🌐 Сүлжээ алдаа — VPN шалгана уу (Firebase Auth хүрэхгүй байна).';
+        } else {
+          errEl.textContent = 'Алдаа: ' + (e.code || e.message);
+        }
       }
     }
 

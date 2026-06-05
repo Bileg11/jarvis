@@ -4,8 +4,10 @@
 
 const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
 const CHAT_MODEL = 'gpt-4o-mini';
+// Default Railway proxy — proxy тохируулаагүй ч AI үргэлж ажиллана
+const RAILWAY_DEFAULT = 'https://jarvis-production-5842.up.railway.app';
 
-function _getProxyUrl()    { return (localStorage.getItem('jarvis_proxy_url')    || '').replace(/\/$/, ''); }
+function _getProxyUrl()    { return (localStorage.getItem('jarvis_proxy_url')    || RAILWAY_DEFAULT).replace(/\/$/, ''); }
 function _getChatKey()     { return localStorage.getItem('jarvis_chat_key')     || ''; }
 function _getProxySecret() { return localStorage.getItem('jarvis_proxy_secret') || ''; }
 
