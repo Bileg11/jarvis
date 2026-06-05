@@ -228,6 +228,14 @@ function _getApiHistory() {
   return [summary, ...recent];
 }
 
+// Хатуу timeout — fetch/IPC гацвал ч заавал буцна (App гацахаас сэргийлнэ)
+function _hardTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) => setTimeout(() => rej(new Error(label || 'HARD_TIMEOUT')), ms)),
+  ]);
+}
+
 // ── SEND CHAT ─────────────────────────────────────────────────────
 async function sendChatMessage(userText) {
   if (!_isConfigured()) return '⚙️ Профайл хуудсанд Proxy URL эсвэл GitHub Token оруулна уу.';
@@ -280,7 +288,8 @@ async function sendChatMessage(userText) {
 
     // Electron бол Node дамжуулна (VPN/CORS тойрно), эс бөгөөс browser fetch
     if (typeof window !== 'undefined' && window.jarvisAPI?.chatCompletion) {
-      const r = await window.jarvisAPI.chatCompletion(ep.url, ep.headers, reqBody);
+      // Хатуу 15с timeout — IPC гацвал ч буцна
+      const r = await _hardTimeout(window.jarvisAPI.chatCompletion(ep.url, ep.headers, reqBody), 15000, 'IPC_TIMEOUT');
       clearTimeout(timer);
       if (!r.ok) {
         _chatHistory.pop();
@@ -290,10 +299,11 @@ async function sendChatMessage(userText) {
       }
       json = r.data;
     } else {
-      const res = await fetch(ep.url, {
+      // Хатуу 12с timeout — fetch proxy-д гацвал ч заавал буцна (App freeze-аас сэргийлнэ)
+      const res = await _hardTimeout(fetch(ep.url, {
         method: 'POST', signal: ctrl.signal, headers: ep.headers,
         body: JSON.stringify(reqBody)
-      });
+      }), 12000, 'FETCH_TIMEOUT');
       clearTimeout(timer);
       if (!res.ok) {
         const errBody = await res.json().catch(() => ({}));
@@ -318,8 +328,9 @@ async function sendChatMessage(userText) {
   } catch (e) {
     clearTimeout(timer);
     _chatHistory.pop();
-    if (e.name === 'AbortError') return '⏳ Хариу удаашрав (20с). Дахин туршина уу.';
-    return '❌ Холболтын алдаа. Интернэт шалгана уу.';
+    if (e.name === 'AbortError' || /TIMEOUT/.test(e.message || ''))
+      return '⏱ AI сервер хүрэхгүй байна (timeout). VPN node-оо солиод дахин оролдоно уу, Boss.';
+    return '❌ Холболтын алдаа. Интернэт/VPN шалгана уу.';
   }
 }
 
