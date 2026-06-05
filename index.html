@@ -4192,8 +4192,17 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
     termTypeJarvis('⚙️ Профайл хуудсанд Token тохируулна уу, Stark.');
     return;
   }
-  const reply = await sendChatMessage(text);
-  termTypeJarvis(reply || '...');
+  // Timeout-той — гацахаас сэргийлнэ (20с)
+  addTermLine('sys', '>> боловсруулж байна…');
+  try {
+    const reply = await Promise.race([
+      sendChatMessage(text),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000)),
+    ]);
+    termTypeJarvis(reply || '...');
+  } catch (e) {
+    termTypeJarvis('⚡ Хариу удлаа (timeout эсвэл AI тохиргоогүй). Дахин оролдоно уу, Stark.');
+  }
 }
 
 // Wire up input
