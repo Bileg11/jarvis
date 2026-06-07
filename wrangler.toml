@@ -1,0 +1,7 @@
+# JARVIS web — Cloudflare Worker (static assets only)
+# `npx wrangler deploy` нь build-pages.sh-ийн үүсгэсэн _site/ фолдерыг serve хийнэ.
+name = "jarvis"
+compatibility_date = "2025-06-01"
+
+[assets]
+directory = "./_site"
