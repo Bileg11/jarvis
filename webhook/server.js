@@ -37,15 +37,56 @@ app.post('/chat', async (req, res) => {
   if (!GH_TOKEN) return res.status(500).json({ error: 'SYSTEM_USE_TOKEN тохируулаагүй' });
 
   res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+
+  // OpenAI body → Gemini format руу хөрвүүлэн fallback дуудна (rate-limit-д тэсвэртэй)
+  async function tryGemini() {
+    if (!process.env.GEMINI_API_KEY) return null;
+    try {
+      const msgs = req.body?.messages || [];
+      const sys  = msgs.filter(m => m.role === 'system').map(m => m.content).join('\n');
+      const contents = msgs.filter(m => m.role !== 'system')
+        .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content || '' }] }));
+      while (contents.length && contents[0].role === 'model') contents.shift();
+      const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+      const gRes = await fetch(gUrl, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
+          contents,
+          generationConfig: { temperature: req.body?.temperature ?? 0.8, maxOutputTokens: req.body?.max_tokens ?? 800 },
+        }),
+      });
+      const gData = await gRes.json();
+      const text  = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+      if (!text) return null;
+      // app-ийн parser-т зориулж OpenAI хэлбэрт буцаана
+      return { choices: [{ message: { role: 'assistant', content: text } }], _via: 'gemini' };
+    } catch { return null; }
+  }
+
   try {
-    const upstream = await fetch('https://models.inference.ai.azure.com/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
-      body: JSON.stringify(req.body),
-    });
-    const data = await upstream.json();
-    res.status(upstream.status).json(data);
+    let data = null, status = 200;
+    // 1) GitHub Models (gpt-4o-mini)
+    try {
+      const upstream = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
+        body: JSON.stringify(req.body),
+      });
+      data   = await upstream.json();
+      status = upstream.status;
+    } catch { data = null; }
+
+    // 2) GitHub хоосон/алдаатай бол → Gemini fallback
+    const ghContent = data?.choices?.[0]?.message?.content?.trim();
+    if (!ghContent) {
+      const g = await tryGemini();
+      if (g) return res.json(g);
+    }
+    return res.status(status).json(data || { error: 'no response' });
   } catch (e) {
+    const g = await tryGemini();
+    if (g) return res.json(g);
     res.status(502).json({ error: e.message });
   }
 });

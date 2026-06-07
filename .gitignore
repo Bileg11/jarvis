@@ -1,2 +1,17 @@
+# Dependencies
 node_modules/
 functions/node_modules/
+webhook/node_modules/
+scripts/node_modules/
+
+# Build output (Electron — too large for GitHub, 100MB+ files)
+dist/
+build/
+*.dmg
+*.dmg.blockmap
+*.app/
+
+# Logs & temp
+*.log
+.DS_Store
+firebase-debug.log
