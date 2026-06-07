@@ -3273,6 +3273,15 @@ function runBootSequence() {
     // FIX: terminal input-ийг идэвхжүүлж, бэлэн болсныг харуулна
     const _ti = document.getElementById('term-in');
     if (_ti) { _ti.disabled = false; _ti.placeholder = 'Enter command or query...'; _ti.focus(); }
+    // FIX: HSK days-left-ийг boot дээр ШУУД харуулна (_hskBlitzInit-ийн async load-ыг хүлээхгүй)
+    (function(){
+      const _hd = document.getElementById('hsk-days-left');
+      if (_hd) {
+        const _d = Math.max(0, Math.floor((new Date('2026-06-28T09:00:00+08:00') - new Date()) / 86400000));
+        _hd.textContent = _d + ' days';
+        _hd.style.color = _d < 30 ? 'var(--red)' : _d < 60 ? 'var(--amber)' : 'var(--green)';
+      }
+    })();
     startTelemFluctuation();
     // Delay slightly so Firestore sync completes before we render
     setTimeout(()=>{ updateRoutineUI(); }, 800);
