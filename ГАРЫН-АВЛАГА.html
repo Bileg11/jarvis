@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS — Гарын Авлага</title>
+<style>
+  :root{
+    --bg:#070b10; --bg2:#0d141c; --card:#101924; --line:#1c2a38;
+    --cyan:#00e5ff; --cyan-dim:#0093a8; --txt:#dce6f0; --mut:#7d8da0;
+    --warn:#ffb020; --good:#00ff88; --bad:#ff3b5c;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:linear-gradient(180deg,#070b10,#0a1018 40%,#070b10);
+    color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    line-height:1.6; font-size:16px; padding:0 0 80px;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:0 18px}
+
+  /* Header */
+  header{
+    text-align:center; padding:46px 18px 30px;
+    background:radial-gradient(ellipse at top,rgba(0,229,255,.10),transparent 70%);
+    border-bottom:1px solid var(--line);
+  }
+  header .logo{font-size:46px; filter:drop-shadow(0 0 18px rgba(0,229,255,.5))}
+  header h1{
+    margin:10px 0 6px; font-size:26px; letter-spacing:.18em; font-weight:700;
+    background:linear-gradient(90deg,#fff,var(--cyan)); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  header .sub{color:var(--mut); font-size:13px; letter-spacing:.04em}
+  header .stack{
+    display:inline-block; margin-top:14px; padding:6px 14px; font-size:12px;
+    border:1px solid var(--line); border-radius:30px; color:var(--cyan-dim);
+    background:rgba(0,229,255,.04);
+  }
+
+  /* TOC */
+  nav.toc{
+    margin:24px 0; padding:16px 18px; background:var(--card);
+    border:1px solid var(--line); border-radius:14px;
+  }
+  nav.toc b{font-size:11px; letter-spacing:.2em; color:var(--mut); text-transform:uppercase}
+  nav.toc ol{margin:10px 0 0; padding-left:0; list-style:none; counter-reset:t}
+  nav.toc li{counter-increment:t; margin:3px 0}
+  nav.toc a{
+    color:var(--txt); text-decoration:none; display:flex; align-items:center;
+    gap:10px; padding:7px 10px; border-radius:8px; font-size:14.5px;
+  }
+  nav.toc a:before{
+    content:counter(t); flex:0 0 22px; height:22px; display:grid; place-items:center;
+    font-size:11px; color:var(--cyan); border:1px solid var(--cyan-dim);
+    border-radius:6px; background:rgba(0,229,255,.06);
+  }
+  nav.toc a:active{background:rgba(0,229,255,.08)}
+
+  section{
+    margin:26px 0; padding:22px; background:var(--card);
+    border:1px solid var(--line); border-radius:16px;
+    scroll-margin-top:14px;
+  }
+  section h2{
+    margin:0 0 14px; font-size:19px; letter-spacing:.02em; color:#fff;
+    display:flex; align-items:center; gap:10px;
+    padding-bottom:12px; border-bottom:1px solid var(--line);
+  }
+  section h2 .n{
+    flex:0 0 28px; height:28px; display:grid; place-items:center; font-size:13px;
+    color:var(--cyan); border:1px solid var(--cyan-dim); border-radius:8px;
+    background:rgba(0,229,255,.06);
+  }
+  h3{margin:18px 0 8px; font-size:14px; letter-spacing:.06em; color:var(--cyan);
+     text-transform:uppercase}
+
+  table{width:100%; border-collapse:collapse; margin:10px 0; font-size:14.5px}
+  th,td{text-align:left; padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top}
+  th{color:var(--mut); font-size:11px; letter-spacing:.1em; text-transform:uppercase; font-weight:600}
+  tr:last-child td{border-bottom:none}
+  td:first-child{white-space:nowrap}
+
+  code{
+    background:rgba(0,229,255,.08); color:var(--cyan); padding:2px 7px;
+    border-radius:6px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:13px;
+    border:1px solid rgba(0,229,255,.12);
+  }
+  pre{
+    background:#060a0e; border:1px solid var(--line); border-radius:10px;
+    padding:14px; overflow-x:auto; margin:12px 0;
+  }
+  pre code{background:none; border:none; color:var(--good); padding:0}
+
+  ol.steps{counter-reset:s; list-style:none; padding:0; margin:10px 0}
+  ol.steps li{counter-increment:s; position:relative; padding:8px 0 8px 40px; font-size:15px}
+  ol.steps li:before{
+    content:counter(s); position:absolute; left:0; top:7px; width:26px; height:26px;
+    display:grid; place-items:center; font-size:12px; color:#04121a; font-weight:700;
+    background:var(--cyan); border-radius:50%;
+  }
+
+  .note{
+    border-left:3px solid var(--warn); background:rgba(255,176,32,.06);
+    padding:12px 14px; border-radius:0 10px 10px 0; margin:14px 0; font-size:14px;
+  }
+  .note.cyan{border-color:var(--cyan); background:rgba(0,229,255,.05)}
+  .note.bad{border-color:var(--bad); background:rgba(255,59,92,.06)}
+
+  .pill{display:inline-block; padding:1px 9px; border-radius:20px; font-size:12px;
+        border:1px solid var(--line); color:var(--mut); margin:2px 0}
+  .formula{font-size:14px; color:var(--mut); margin:6px 0}
+  .formula b{color:var(--good)}
+
+  footer{text-align:center; color:var(--mut); font-size:12px; margin-top:30px}
+  a.top{
+    position:fixed; bottom:20px; right:16px; width:46px; height:46px; border-radius:50%;
+    background:var(--cyan); color:#04121a; display:grid; place-items:center;
+    text-decoration:none; font-size:20px; box-shadow:0 6px 24px rgba(0,229,255,.4); z-index:50;
+  }
+
+  @media print{
+    body{background:#fff; color:#111}
+    section,nav.toc{border:1px solid #ccc; background:#fff; break-inside:avoid}
+    header{background:#fff} header h1{-webkit-text-fill-color:#0a7d8f}
+    code{background:#eef; color:#06c} a.top{display:none}
+    pre{background:#f5f5f5} pre code{color:#070}
+  }
+</style>
+</head>
+<body>
+
+<header id="top">
+  <div class="logo">🤖</div>
+  <h1>JARVIS</h1>
+  <div class="sub">Ашиглах Гарын Авлага · Шинэчилсэн 2026-06-08</div>
+  <div class="stack">⚡ Gemini 2.0 Flash + GitHub Models · Railway · Firestore</div>
+</header>
+
+<div class="wrap">
+
+  <nav class="toc">
+    <b>Агуулга</b>
+    <ol>
+      <li><a href="#s0">Ерөнхий зураг</a></li>
+      <li><a href="#s1">App (Dashboard)</a></li>
+      <li><a href="#s2">Telegram bot — командууд</a></li>
+      <li><a href="#s3">Challenge — Bileg vs Маралаа</a></li>
+      <li><a href="#s4">Маралааг холбох</a></li>
+      <li><a href="#s5">Шинэ challenge эхлүүлэх</a></li>
+      <li><a href="#s6">Алдаа гарвал</a></li>
+      <li><a href="#s7">Мэдэгдэж буй хязгаар</a></li>
+      <li><a href="#s8">Deploy</a></li>
+    </ol>
+  </nav>
+
+  <section id="s0">
+    <h2><span class="n">0</span>Ерөнхий зураг</h2>
+    <p>3 гадаргуу нэг системд нэгдсэн:</p>
+    <table>
+      <tr><th>Гадаргуу</th><th>Юунд</th><th>Хэн</th></tr>
+      <tr><td>🖥 <b>App</b></td><td>Өдөр тутмын dashboard — widget, HSK, gym, score</td><td>Bileg</td></tr>
+      <tr><td>💬 <b>Telegram bot</b><br><span class="pill">@Bileg_Jarvis_Bot</span></td><td>Хаанаас ч AI чат + командууд</td><td>Bileg + Маралаа</td></tr>
+      <tr><td>🏆 <b>Challenge</b></td><td>Оноо, Proof-Cam, group recap</td><td>Bileg + Маралаа</td></tr>
+    </table>
+    <div class="formula">Backend: <b>Railway</b> · Firestore · repo <code>Bileg11/jarvis</code></div>
+  </section>
+
+  <section id="s1">
+    <h2><span class="n">1</span>App (Dashboard)</h2>
+    <p>Widget-уудаас бүрдсэн команд төв:</p>
+    <table>
+      <tr><th>Widget</th><th>Юу хийдэг</th></tr>
+      <tr><td>🏆 Challenge</td><td>Bileg vs Маралаа оноо</td></tr>
+      <tr><td>📚 HSK / Blitz</td><td>Хятад дасгал, түргэн тест</td></tr>
+      <tr><td>💪 Gym</td><td>Дасгалын лог</td></tr>
+      <tr><td>🎯 Missions</td><td>Өдрийн зорилтууд</td></tr>
+      <tr><td>🧠 Life Logic</td><td>Өдрийн төлөвлөгөө</td></tr>
+      <tr><td>📰 Intel / 💱 FX</td><td>Мэдээ · ханш</td></tr>
+      <tr><td>🗺 Route</td><td>Өдрийн чиглэл/хуваарь</td></tr>
+      <tr><td>💧 Water / Score</td><td>Ус · өдрийн оноо</td></tr>
+      <tr><td>🎙 Voice modules</td><td>Цаг агаар, todo, news, music, habit, countdown…</td></tr>
+      <tr><td>⚙️ Workspace</td><td>Widget өнгө/тунгалаг тохиргоо</td></tr>
+    </table>
+    <div class="formula"><b>Score:</b> Ус(25) + Дасгал(20) + 汉字(20) + Уншилт(15) + Journal(10) = <b>100</b></div>
+    <div class="note">⚠️ <b>App + Маралаа:</b> App нь Firebase Auth (хүн бүр өөрийн эрх). Challenge-ийг Маралаа <b>Telegram-аар</b> хийнэ — app бол нэмэлт dashboard.</div>
+  </section>
+
+  <section id="s2">
+    <h2><span class="n">2</span>Telegram bot — командууд</h2>
+
+    <h3>💬 Чөлөөт яриа</h3>
+    <p>Команд биш текст → AI хариулна. <b>Ямар ч сэдэв</b> (код, амьдрал, орчуулга, зөвлөгөө). Сүүлийн 10 мессежийг санана.</p>
+
+    <h3>💪 Routine</h3>
+    <table>
+      <tr><td><code>/dasgal</code></td><td>Дасгал тэмдэглэх</td></tr>
+      <tr><td><code>/hanzi</code></td><td>汉字 тэмдэглэх</td></tr>
+      <tr><td><code>/nom</code></td><td>Уншилт тэмдэглэх</td></tr>
+      <tr><td><code>/journal [текст]</code></td><td>Тэмдэглэл (хятадаар → HSK шалгана)</td></tr>
+      <tr><td><code>/us [мл]</code></td><td>Ус нэмэх</td></tr>
+      <tr><td><code>/score</code></td><td>Score + streak</td></tr>
+    </table>
+
+    <h3>📚 HSK</h3>
+    <table>
+      <tr><td><code>/hsk_drill [түвшин]</code></td><td>Үг таних drill</td></tr>
+      <tr><td><code>/drill_stop</code></td><td>Drill зогсоох</td></tr>
+      <tr><td><code>/hsk_progress</code></td><td>HSK явц</td></tr>
+      <tr><td><code>/listening</code></td><td>Сонсголын дасгал</td></tr>
+      <tr><td>Дуут зурвас (хятад)</td><td>HSK оноо авах</td></tr>
+    </table>
+
+    <h3>📅 Calendar / Tasks / Санах ой</h3>
+    <p><code>/cal</code> · <code>/events</code> · <code>/task</code> · <code>/tasks</code> · <code>/goal</code> · <code>/focus</code> · <code>/notion</code></p>
+
+    <h3>📊 Тайлан / Контент</h3>
+    <p><code>/brief</code> · <code>/weekly</code> · <code>/hook [сэдэв]</code> Reels скрипт</p>
+
+    <h3>🔥 Execution Sprint</h3>
+    <p><code>/sprint setup</code> · <code>/sprint quickstart</code> · <code>/window</code> · <code>/sprint</code> · <code>/ruthless</code> · <code>/pause</code> · <code>/resume</code></p>
+  </section>
+
+  <section id="s3">
+    <h2><span class="n">3</span>Challenge — Bileg vs Маралаа</h2>
+
+    <h3>Өдөр тутмын урсгал</h3>
+    <table>
+      <tr><td><code>/today gym study skincare</code></td><td><b>Өнөөдрийн</b> хуваарь (апп-гүй)</td></tr>
+      <tr><td><code>/plan</code> · <code>/done [ажил]</code></td><td>Харах · дуусгах</td></tr>
+      <tr><td><code>/glow</code></td><td>Glow-Up checklist</td></tr>
+      <tr><td><code>/glow done [ангилал]</code></td><td>glowup/workout/study/learn/beauty</td></tr>
+      <tr><td><b>[зураг]</b></td><td>Proof-Cam баталгаа</td></tr>
+      <tr><td><code>/msg [текст]</code></td><td>Хамтрагч руу чат</td></tr>
+      <tr><td><code>/challenge</code></td><td>Scoreboard + 📸</td></tr>
+    </table>
+
+    <h3>Оноо тооцоо</h3>
+    <ul>
+      <li><b>Bileg:</b> routine score (/100)</li>
+      <li><b>Маралаа:</b> хуваарь % эсвэл glow-up % — <b>аль өндрийг нь</b></li>
+      <li>🔥 streak (≥50%) + 📸 verified баталгаа</li>
+      <li><b>22:00</b> — хувийн тайлан + группд хамтын дүн</li>
+    </ul>
+
+    <h3>📸 Proof-Cam (Locket маяг)</h3>
+    <ol class="steps">
+      <li>Дасгалаа хийгээд bot-доо <b>зураг + тайлбар</b> илгээ</li>
+      <li>Хамтрагч руу <code>✅ Баталгаажуулах</code> <code>❌ Худал</code> <code>👀 Харсан</code> очно</li>
+      <li>✅ → +1 баталгаа · ❌ → дахин илгээ · 👀 → харсан</li>
+    </ol>
+    <div class="note">🛡 <b>Хуурахаас сэргийлэх:</b> Telegram bot камераар авсан эсэхийг ялгахгүй. Тиймээс <b>хамтрагч өөрөө шалгана</b> (❌ Худал). Найдвартай болгох: өнөөдрийн <b>нууц үг/тоо</b>-г цаасан дээр бичээд зурагтаа оруул — хуучин зураг ажиллахгүй болно.</div>
+  </section>
+
+  <section id="s4">
+    <h2><span class="n">4</span>Маралааг холбох</h2>
+    <ol class="steps">
+      <li>Маралаа Telegram татаж, <b>@Bileg_Jarvis_Bot</b> нээж <b>Start</b> дарна ⚠️</li>
+      <li><code>@userinfobot</code> руу <code>/start</code> → <b>тоон ID</b> → Bileg-д илгээнэ</li>
+      <li>Bileg: <code>/addpartner &lt;id&gt; Маралаа</code></li>
+      <li>✅ Бүртгэгдэж, тавтай морилох мессеж авна</li>
+    </ol>
+    <h3>Хуваалцсан group</h3>
+    <ol class="steps">
+      <li>Group үүсгэ — <code>Bileg vs Maralaa 🏆</code></li>
+      <li><b>bot + Маралаа</b>-г нэм</li>
+      <li>Group дотор Bileg: <code>/setgroup</code></li>
+      <li>✅ Өдөр бүр 22:00-д дүн энд гарна</li>
+    </ol>
+  </section>
+
+  <section id="s5">
+    <h2><span class="n">5</span>Шинэ challenge эхлүүлэх</h2>
+    <p>Систем <b>байнга үргэлжилнэ</b>. June = Challenge #1. Дараагийнх:</p>
+    <pre><code>/newchallenge 2026-07-31 July Glow-Up</code></pre>
+    <ul>
+      <li>Оноо 0-ээс эхэлнэ, өмнөх дата хадгалагдана</li>
+      <li>Бүх команд автоматаар шинэ challenge руу шилжинэ</li>
+      <li>Зөвхөн Bileg (админ)</li>
+    </ul>
+  </section>
+
+  <section id="s6">
+    <h2><span class="n">6</span>Алдаа гарвал</h2>
+    <table>
+      <tr><th>Шинж</th><th>Шийдэл</th></tr>
+      <tr><td>"🤖 хариулж чадсангүй (…)"</td><td>AI лимит/алдаа. Хаалтанд шалтгаан. Түр хүлээ</td></tr>
+      <tr><td>Зураг очихгүй ("chat not found")</td><td>Маралаа bot-оо <b>Start</b> дараагүй</td></tr>
+      <tr><td><code>/challenge</code> Маралаа 0%</td><td><code>/addpartner</code> алга, эсвэл өнөөдөр юу ч тэмдэглээгүй</td></tr>
+      <tr><td>Group-д дүн гарахгүй</td><td><code>/setgroup</code> алга, эсвэл bot group-д байхгүй</td></tr>
+    </table>
+  </section>
+
+  <section id="s7">
+    <h2><span class="n">7</span>Мэдэгдэж буй хязгаар</h2>
+    <ul>
+      <li><b>Voice/HSK drill хариу</b> одоохондоо Bileg рүү л очдог (challenge-д нөлөөгүй)</li>
+      <li><b>App challenge интеграц:</b> Маралаагийн app-аккаунт challenge <code>marlaa</code>-тай шууд холбоогүй → challenge = Telegram</li>
+      <li><b>App challenge widget</b> одоогоор <code>june2026</code>-д бэхлэгдсэн — Challenge #2 эхлэхэд app шинэчлэх хэрэгтэй</li>
+      <li><b>Proof хуурах:</b> 100% таслах техник байхгүй — хүний баталгаажуулалт + нууц үг арга</li>
+    </ul>
+  </section>
+
+  <section id="s8">
+    <h2><span class="n">8</span>Deploy</h2>
+    <pre><code>git add -A
+git commit -m "..."
+git push origin main</code></pre>
+    <div class="note cyan">Railway <b>автоматаар</b> 1-2 минутад шинэчилнэ. App-ийн өөрчлөлт нь Electron-оо <b>restart</b> хийхэд идэвхжинэ.</div>
+  </section>
+
+  <footer>
+    🤖 JARVIS Personal AI System · Bileg · Shanghai<br>
+    Generated with Claude Code
+  </footer>
+
+</div>
+
+<a href="#top" class="top" title="Дээш">↑</a>
+
+</body>
+</html>
