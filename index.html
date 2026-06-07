@@ -3205,6 +3205,7 @@ class ArcReactor {
 // ── GLOBALS ──────────────────────────────────────────────────────
 let _reactor = null;
 let _booted  = false;
+let _bootStarted = false;   // FIX: boot давхар ажиллахаас сэргийлнэ
 let _msgCount= 0;
 let _telemInterval = null;
 let _startTs = Date.now();
@@ -3250,6 +3251,8 @@ function acknowledgeAlarm() {
 
 // ── BOOT SEQUENCE ────────────────────────────────────────────────
 function runBootSequence() {
+  if (_bootStarted) return;   // FIX: зөвхөн нэг удаа ажиллана (давхар дуудлагаас сэргийлнэ)
+  _bootStarted = true;
   _reactor = new ArcReactor('reactor');
   window._reactor = _reactor; // expose for themes.js
   _reactor.triggerFlare(600);
@@ -3267,6 +3270,9 @@ function runBootSequence() {
   setTimeout(()=>{
     document.getElementById('terminal-panel').classList.add('booted');
     _booted = true;
+    // FIX: terminal input-ийг идэвхжүүлж, бэлэн болсныг харуулна
+    const _ti = document.getElementById('term-in');
+    if (_ti) { _ti.disabled = false; _ti.placeholder = 'Enter command or query...'; _ti.focus(); }
     startTelemFluctuation();
     // Delay slightly so Firestore sync completes before we render
     setTimeout(()=>{ updateRoutineUI(); }, 800);
@@ -4193,8 +4199,11 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
     termTypeJarvis('⚙️ Профайл хуудсанд Token тохируулна уу, Stark.');
     return;
   }
-  // Timeout-той — гацахаас сэргийлнэ (20с)
+  // Timeout-той + input түгжиж UX тодорхой болгоно (гацсан мэт харагдахаас сэргийлнэ)
   addTermLine('sys', '>> боловсруулж байна…');
+  inp.disabled = true;
+  const _ph = inp.placeholder;
+  inp.placeholder = '⏳ JARVIS боловсруулж байна...';
   try {
     const reply = await Promise.race([
       sendChatMessage(text),
@@ -4203,6 +4212,10 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
     termTypeJarvis(reply || '...');
   } catch (e) {
     termTypeJarvis('⚡ Хариу удлаа (timeout эсвэл AI тохиргоогүй). Дахин оролдоно уу, Stark.');
+  } finally {
+    inp.disabled = false;
+    inp.placeholder = _ph || 'Enter command or query...';
+    inp.focus();
   }
 }
 
@@ -4246,6 +4259,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const btn  = document.getElementById('term-send');
   if(btn) btn.addEventListener('click', termSend);
   if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); termSend(); } });
+  // FIX: boot дуусаагүй үед input-ийг түгжинэ (чимээгүй гацахаас сэргийлнэ)
+  if (inp && !_booted) { inp.disabled = true; inp.placeholder = '⏳ Систем идэвхжиж байна...'; }
+  // SAFETY: 12с дотор boot хийгдээгүй (ACKNOWLEDGE дараагүй) бол автоматаар идэвхжүүлнэ
+  setTimeout(() => {
+    if (!_booted && !window._onboardingActive && typeof runBootSequence === 'function') {
+      const ov = document.getElementById('boot-alarm');
+      if (ov) ov.style.display = 'none';
+      runBootSequence();
+    }
+  }, 12000);
   // Ctrl+Space: flare + focus
   document.addEventListener('keydown', e=>{
     if(e.ctrlKey && e.code==='Space'){ e.preventDefault();
@@ -4355,15 +4378,30 @@ function _renderWatchdog(procs, totalCpu) {
 }
 
 function _startMockTelem() {
-  const _t = { cpu:{val:42,target:42,min:18,max:78}, mem:{val:62,target:62,min:50,max:82} };
-  const nudge = o => { o.target=Math.max(o.min,Math.min(o.max,o.target+(Math.random()-.5)*4)); o.val+=(o.target-o.val)*.3; return o.val; };
-  setInterval(()=>{
-    const cpu=nudge(_t.cpu), mem=nudge(_t.mem);
-    const setV=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
-    const setW=(id,w)=>{const e=document.getElementById(id);if(e)e.style.width=Math.min(100,w)+'%';};
+  // FIX: өмнө зөвхөн cpu/mem-ийг шинэчилдэг байсан тул t-ops/t-lat/t-uptime "—" хэвээр.
+  // Одоо бүх утгыг mock-оор хөдөлгөж, НЭН ДАРУЙ нэг удаа дуудна.
+  const _t = {
+    cpu: {val:42,target:42,min:18,max:78,step:4},
+    mem: {val:62,target:62,min:50,max:82,step:3},
+    ops: {val:1.2,target:1.2,min:.4,max:3.6,step:.6},
+    lat: {val:24,target:24,min:12,max:64,step:9},
+  };
+  const _bootTs = Date.now();
+  const nudge = o => { o.target=Math.max(o.min,Math.min(o.max,o.target+(Math.random()-.5)*o.step)); o.val+=(o.target-o.val)*.3; return o.val; };
+  const pad = n => String(n).padStart(2,'0');
+  const setV=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  const setW=(id,w)=>{const e=document.getElementById(id);if(e)e.style.width=Math.min(100,w)+'%';};
+  const tick = () => {
+    const cpu=nudge(_t.cpu), mem=nudge(_t.mem), ops=nudge(_t.ops), lat=nudge(_t.lat);
     setV('t-cpu',cpu.toFixed(1)+'%'); setW('t-cpu-bar',cpu);
     setV('t-mem',mem.toFixed(1)+'%'); setW('t-mem-bar',mem);
-  }, 3000);
+    setV('t-ops',ops.toFixed(2)+' k/s'); setW('t-ops-bar',Math.min(100,ops/3.6*100));
+    setV('t-lat',Math.round(lat)+'ms');
+    const up=Math.floor((Date.now()-_bootTs)/1000);
+    setV('t-uptime',`${pad(Math.floor(up/3600))}:${pad(Math.floor(up%3600/60))}:${pad(up%60)}`);
+  };
+  tick();                    // нэн даруй — "—" болохоос сэргийлнэ
+  setInterval(tick, 2000);
 }
 
 // ── LIVE FX RATES (Sprint 24 — Frankfurter API via IPC) ───────────
@@ -4377,8 +4415,26 @@ async function startFXFluctuation() {
     const cached = _parseFXCache();
     if (cached) _renderFX(cached);
 
-    // 2. Fetch fresh if cache expired or missing
-    if (!window.jarvisAPI?.fetchFX) return; // not in Electron
+    // 2. Web fallback — Electron биш бол нийтийн API-аас шууд татна
+    if (!window.jarvisAPI?.fetchFX) {
+      try {
+        const r = await fetch('https://open.er-api.com/v6/latest/USD', { signal: AbortSignal.timeout(6000) });
+        const j = await r.json();
+        const usdMnt = j?.rates?.MNT, usdCny = j?.rates?.CNY;
+        if (usdMnt && usdCny) {
+          const data = { ok:true, ts:Date.now(),
+            usdMnt: String(Math.round(usdMnt)),
+            usdCny: usdCny.toFixed(2),
+            cnyMnt: (usdMnt/usdCny).toFixed(1) };
+          localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+          _renderFX(data);
+          return;
+        }
+      } catch {}
+      // API боломжгүй (Хятад блок г.м) бол ойролцоо статик утга — "—" болохоос сэргийлнэ
+      if (!cached) _renderFX({ cnyMnt:'498', usdMnt:'3570', usdCny:'7.17' });
+      return;
+    }
     const age = cached ? Date.now() - cached.ts : Infinity;
     if (age < CACHE_TTL) return; // still fresh
 
@@ -8082,10 +8138,8 @@ function _sm2Update(card, rating) {
 let _hskProgress = null;
 
 async function _hskBlitzInit() {
-  // Load or create progress
-  _hskProgress = await DB.loadHSKProgress() || _hskDefaultProgress();
-
-  // Update days-left counter
+  // FIX: days-left-ийг Firestore await-аас ӨМНӨ шууд тооцоод харуулна
+  // (өмнө await-ийн дараа байсан тул "— days" удаан харагддаг байсан)
   const HSK_DATE = new Date('2026-06-28T09:00:00+08:00');
   const days = Math.max(0, Math.floor((HSK_DATE - new Date()) / 86400000));
   const daysEl = document.getElementById('hsk-days-left');
@@ -8093,6 +8147,9 @@ async function _hskBlitzInit() {
     daysEl.textContent = days + ' days';
     daysEl.style.color = days < 30 ? 'var(--red)' : days < 60 ? 'var(--amber)' : 'var(--green)';
   }
+
+  // Load or create progress
+  _hskProgress = await DB.loadHSKProgress() || _hskDefaultProgress();
 
   _hskTab('drill');
   _hskBuildStudySchedule();

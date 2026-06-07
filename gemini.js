@@ -463,7 +463,7 @@ async function _buildContextPrefix() {
 
   // Weather (race with 3s timeout)
   try {
-    const wx = await Promise.race([_fetchWeather(), new Promise(r => setTimeout(() => r(null), 3000))]);
+    const wx = await Promise.race([_fetchWeather(), new Promise(r => setTimeout(() => r(null), 1200))]);
     if (wx && wx.temp !== '--') parts.push(`Шанхайн цаг агаар: ${wx.desc}, ${wx.temp}°C, чийглэг ${wx.humidity}%`);
   } catch {}
 
@@ -543,7 +543,7 @@ async function sendChatMessage(userText) {
   try {
     ctxPrefix = await Promise.race([
       _buildContextPrefix(),
-      new Promise(r => setTimeout(() => r(''), 4000))
+      new Promise(r => setTimeout(() => r(''), 1500))
     ]);
   } catch {}
 
