@@ -9406,13 +9406,9 @@ async function _fvSend() {
   const thinking = _fvAddMsg('ace', '<span style="opacity:.5">⟳ боловсруулж байна…</span>');
   try {
     if (typeof sendChatMessage === 'function') {
-      // "X tab/цонх гаргаад ог" → AI-г ЗААВАЛ карт буцаахаар чиглүүлнэ (асуулт асуудаггүй болгоно)
-      let _q = text;
-      if (/\btab\b|цонх|карт/i.test(text)) {
-        _q = text + '\n\n[ЗААВАЛ зөвхөн __jarvis_card JSON-оор хариул, нэмэлт текст бичихгүй: {"__jarvis_card":true,"type":"metric","label":"<гарчиг>","value":"<гол утга>","subtitle":"<товч тайлбар>","color":"#00e5ff"}]';
-      }
-      const reply = await _withTimeout(sendChatMessage(_q), 20000);
-      // FIX: AI-ийн __jarvis_card JSON-ыг түүхий текстээр биш, КАРТ болгож гаргана
+      const reply = await _withTimeout(sendChatMessage(text), 20000);
+      // AI-ийн __jarvis_card JSON-ыг түүхий текстээр биш, КАРТ болгож гаргана.
+      // (AI өөрөө шийднэ: ойлгомжгүй бол асуулт=текст, бэлэн бол карт=JSON)
       const card = (typeof _tryParseCard === 'function') ? _tryParseCard(reply || '') : null;
       if (card && card.__jarvis_card) {
         thinking?.closest('.fv-msg')?.remove();   // "боловсруулж байна" мөрийг арилгана

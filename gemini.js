@@ -273,7 +273,8 @@ async function _sendChatCore(userText) {
 - Progress card: {"__jarvis_card":true,"type":"progress","title":"...","value":N,"max":N,"subtitle":"...","color":"#00e5ff"}
 - Metric card: {"__jarvis_card":true,"type":"metric","label":"...","value":"...","subtitle":"...","color":"#00e5ff"}
 - List card: {"__jarvis_card":true,"type":"list","title":"...","items":["...","..."]}
-Энгийн асуулт, яриа, зөвлөгөөнд JSON БИШ — монголоор хариул.`;
+Энгийн асуулт, яриа, зөвлөгөөнд JSON БИШ — монголоор хариул.
+ЦОНХ/TAB НЭЭХ: Хэрэглэгч "X tab/цонх гаргаад ог" гэж хүсвэл — сэдэв нь ОЙЛГОМЖГҮЙ бол эхлээд тодруулах асуулт асуу (энгийн текстээр, ярилц). Зөвхөн ХАНГАЛТТАЙ мэдээлэлтэй болсон үед __jarvis_card JSON гарга. Ингэж ярилцаад зөв цонх үүснэ.`;
 
   const systemText = coreMemory
     ? `${sysBase}\n\n${ctx}\n\n[ХЭРЭГЛЭГЧИЙН ХУВИЙН КОНТЕКСТ БОЛОН САНАХ ОЙ]:\n${coreMemory}\n\n${cardInstruction}`
