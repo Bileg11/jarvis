@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>HSK4 — Үгийн сан</title>
+<title>HSK3 — Үгийн сан</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -239,8 +239,8 @@
     <div class="header-left">
       <a href="/" class="header-back">← JARVIS</a>
       <div>
-        <div class="header-title">HSK 4 — Үгийн сан</div>
-        <div class="header-sub">Шалгалтын бэлтгэл · Билэг</div>
+        <div class="header-title">HSK 3 — Үгийн сан</div>
+        <div class="header-sub">Шалгалт 2026/06/28 13:30 · Билэг</div>
       </div>
     </div>
     <div class="exam-badge">
@@ -359,7 +359,8 @@
 
 <script>
 // ── Data ──────────────────────────────────────────────────────────
-const EXAM_DATE  = new Date('2026-06-28T09:00:00+08:00');
+const EXAM_DATE     = new Date('2026-06-28T13:30:00+08:00');
+const HSK_MAX_LEVEL = 3; // HSK 3 → level 1-3 шүүнэ
 const LS_WORDS   = 'jarvis_hsk_vault_cache';
 const LS_SESSION = 'jarvis_hsk_session_';
 const LS_STREAK  = 'jarvis_hsk_streak';
@@ -395,7 +396,15 @@ async function _loadFromFirestore() {
   try {
     const snap = await _hskDb.collection(`users/${_hskUid}/vocabulary`).get();
     if (snap.empty) return false;
-    _words = snap.docs.map(d => _mapWord(d.id, d.data()));
+    // Deduplicate (давхар seed-ийн улмаас) + HSK 1-3 шүүлт
+    const seen = new Set();
+    _words = snap.docs
+      .map(d => _mapWord(d.id, d.data()))
+      .filter(w => {
+        if (w.level > HSK_MAX_LEVEL || seen.has(w.h)) return false;
+        seen.add(w.h);
+        return true;
+      });
     localStorage.setItem(LS_WORDS, JSON.stringify(_words));
     return true;
   } catch { return false; }
