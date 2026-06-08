@@ -325,6 +325,12 @@
     </div>
   </div>
 
+  <!-- Today's words (bot morning brief) -->
+  <div id="today-words-wrap" style="display:none;background:rgba(126,184,126,.06);border:1px solid rgba(126,184,126,.2);border-radius:8px;padding:12px 16px;margin-bottom:14px">
+    <div style="font-size:10px;font-weight:600;letter-spacing:.08em;color:#7eb87e;opacity:.8;text-transform:uppercase;margin-bottom:8px">☀ Өглөөний 5 үг (JARVIS bot)</div>
+    <div id="today-words-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+
   <!-- ── TAB: DRILL ── -->
   <div class="tab-panel" id="panel-drill">
     <div class="card">
@@ -495,6 +501,7 @@ async function init() {
   const src = _hskUid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
   document.getElementById('plan-sub') && updatePlan();
   console.log('[HSK] Эх сурвалж:', src);
+  loadTodayWords();
   // Vocab хоосон бол seed banner харуулах
   if (_words.length === 0) {
     const banner = document.getElementById('seed-banner');
@@ -596,9 +603,19 @@ function deleteWord(h) {
   updatePlan();
 }
 
+// ── SRS intervals (bot-тай тохирсон) ─────────────────────────────
+const SRS_DAYS = { 0:0, 1:1, 2:2, 3:4, 4:8, 5:14 };
+
+function _isDue(word) {
+  if (!word.reviewed) return true; // шинэ үг — үргэлж due
+  const interval = SRS_DAYS[Math.min(word.mastery || 0, 5)] * 86400000;
+  return Date.now() - new Date(word.reviewed).getTime() >= interval;
+}
+
 // ── DRILL ─────────────────────────────────────────────────────────
-let _drillQueue = [];
-let _drillIdx   = 0;
+let _drillQueue   = [];
+let _drillDueEnd  = 0; // due үгсийн индексийн төгсгөл
+let _drillIdx     = 0;
 let _drillFlipped = false;
 
 function initDrill() {
@@ -607,11 +624,13 @@ function initDrill() {
     document.getElementById('drill-wrap').innerHTML = '<div class="empty" style="padding:40px 0">Эхлээд үг нэм</div>';
     return;
   }
-  const session = getSession();
-  // Prioritize non-mastered, shuffle
-  const pool = [...words.filter(w=>!w.mastered), ...words.filter(w=>w.mastered)];
-  _drillQueue = pool.sort(() => Math.random()-.5);
-  _drillIdx   = 0;
+  // SRS шүүлт: due → new → бусад
+  const due  = words.filter(w => !w.mastered && _isDue(w)).sort(() => Math.random()-.5);
+  const newW = words.filter(w => !w.mastered && !_isDue(w) && !w.reviewed).sort(() => Math.random()-.5);
+  const rest = words.filter(w => !w.mastered && !_isDue(w) && w.reviewed).sort(() => Math.random()-.5);
+  _drillQueue  = [...due, ...newW, ...rest];
+  _drillDueEnd = due.length;
+  _drillIdx    = 0;
   _drillFlipped = false;
   renderDrillCard();
 }
@@ -638,8 +657,16 @@ function renderDrillCard() {
 
   const w = _drillQueue[_drillIdx];
   _drillFlipped = false;
+  const isDue   = _drillIdx < _drillDueEnd;
+  const nextDay  = w.reviewed ? Math.ceil(((new Date(w.reviewed).getTime() + (SRS_DAYS[Math.min(w.mastery||0,5)]*86400000)) - Date.now()) / 86400000) : 0;
+  const badge    = isDue
+    ? `<span style="font-size:9px;background:rgba(196,112,96,.12);color:var(--red);border:1px solid rgba(196,112,96,.3);border-radius:3px;padding:2px 7px">🔴 ДАВТАХ</span>`
+    : w.reviewed
+      ? `<span style="font-size:9px;color:var(--text);opacity:.35">${nextDay}d дараа</span>`
+      : `<span style="font-size:9px;background:rgba(126,184,126,.1);color:var(--sage,#7eb87e);border:1px solid rgba(126,184,126,.25);border-radius:3px;padding:2px 7px">🆕 ШИНЭ</span>`;
   wrap.innerHTML = `
     <div class="flash-card" onclick="flipCard()" title="Дарж утгыг харах">
+      <div style="height:18px;display:flex;justify-content:center;margin-bottom:4px">${badge}</div>
       <div class="flash-hanzi">${w.h}</div>
       <div class="flash-pinyin" id="fc-pinyin">${w.p || ''}</div>
       <div class="flash-meaning" id="fc-meaning">${w.m}</div>
@@ -649,7 +676,7 @@ function renderDrillCard() {
       <button class="flash-btn flash-btn-skip" onclick="drillUnknown()" style="border-color:var(--red);color:var(--red)">✗ Мэдэхгүй</button>
       <button class="flash-btn flash-btn-know" onclick="drillKnow()">✓ Мэднэ</button>
     </div>
-    <div class="flash-progress">${done + 1} / ${total} · ${session.known} мэдсэн</div>`;
+    <div class="flash-progress">${done + 1} / ${total} · ${session.known} мэдсэн · 🔴${_drillDueEnd} давтах</div>`;
 }
 
 function flipCard() {
@@ -853,6 +880,29 @@ function showToast(msg, ms=2200) {
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ── Today's 5 words (bot morning brief) ──────────────────────────
+async function loadTodayWords() {
+  if (!_hskDb || !_hskUid) return;
+  try {
+    const snap = await _hskDb.doc(`users/${_hskUid}/hsk/today`).get();
+    if (!snap.exists) return;
+    const data  = snap.data();
+    const words = data.words || [];
+    const date  = data.date  || '';
+    if (!words.length) return;
+    const wrap = document.getElementById('today-words-wrap');
+    const list = document.getElementById('today-words-list');
+    if (!wrap || !list) return;
+    wrap.style.display = 'block';
+    list.innerHTML = words.map(w => `
+      <div style="background:rgba(0,0,0,.25);border:1px solid rgba(126,184,126,.2);border-radius:6px;padding:6px 10px;font-size:12px">
+        <span style="font-family:var(--serif,serif);font-size:18px;color:#dde8d8">${w.char}</span>
+        <span style="color:#7eb87e;font-size:10px;margin:0 5px">${w.pinyin}</span>
+        <span style="color:#bcc8b8;opacity:.7">${w.meaning}</span>
+      </div>`).join('');
+  } catch {}
 }
 
 // ── Seed from browser (UID mismatch fix) ─────────────────────────
