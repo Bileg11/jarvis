@@ -1987,6 +1987,71 @@ body.user-marlaa {
 .gu-edit-del { background: rgba(255,45,85,.08); border: 1px solid rgba(255,45,85,.25); color: var(--red); border-radius: 4px; cursor: pointer; padding: 0 8px; font-size: 11px; }
 .gu-add-task { font-family: var(--mono); font-size: 10px; color: var(--accent); background: none; border: 1px dashed var(--border); border-radius: 4px; padding: 5px; width: 100%; cursor: pointer; margin-top: 2px; }
 
+/* ══ CHALLENGE HUD — Tactical Mission Control ══════════════════ */
+#challenge-hud-overlay { position:fixed; inset:0; z-index:2099; background:rgba(0,0,0,.78); display:none; }
+#challenge-hud-overlay.open { display:block; }
+#challenge-hud {
+  position:fixed; inset:12px; z-index:2100;
+  background:rgba(0,4,14,.98); border:1px solid var(--border-h);
+  border-radius:8px; display:none; flex-direction:column;
+  overflow:hidden; box-shadow:0 0 80px rgba(0,229,255,.12), 0 0 0 1px rgba(0,229,255,.06);
+}
+#challenge-hud.open { display:flex; animation:ws-pop .2s ease; }
+.chud-header {
+  padding:10px 16px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.chud-title { font-family:var(--hud); font-size:11px; letter-spacing:.2em; color:var(--accent); text-shadow:var(--neon); }
+.chud-days-badge { font-family:var(--hud); font-size:9px; letter-spacing:.1em; color:var(--text); opacity:.6; margin-left:12px; }
+.chud-close { background:none; border:none; color:var(--text); cursor:pointer; font-size:14px; padding:0; opacity:.7; }
+.chud-close:hover { opacity:1; color:var(--accent); }
+.chud-boss { padding:8px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.chud-boss-label { font-family:var(--hud); font-size:9px; letter-spacing:.12em; color:var(--text); margin-bottom:5px; display:flex; justify-content:space-between; }
+.chud-boss-hp-bar { height:9px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; }
+.chud-boss-hp-fill { height:100%; transition:width .8s ease; border-radius:2px; }
+.chud-boss-hp-fill.hp-danger { background:var(--red); box-shadow:0 0 8px rgba(255,45,85,.5); animation:chud-pulse 1.2s ease-in-out infinite; }
+.chud-boss-hp-fill.hp-warn { background:#f59e0b; }
+.chud-boss-hp-fill.hp-win { background:var(--green); box-shadow:0 0 8px rgba(0,255,136,.5); }
+@keyframes chud-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+.chud-columns { display:flex; flex:1; overflow:hidden; min-height:0; }
+.chud-col { flex:1; border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; padding:10px 12px; }
+.chud-col:last-child { border-right:none; }
+.chud-col::-webkit-scrollbar { width:3px; }
+.chud-col::-webkit-scrollbar-thumb { background:var(--border-h); border-radius:2px; }
+.chud-col-title { font-family:var(--hud); font-size:10px; letter-spacing:.14em; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.chud-status-badge { font-size:8px; letter-spacing:.08em; padding:2px 6px; border-radius:2px; }
+.chud-pct-big { font-family:var(--hud); font-size:34px; line-height:1; margin-bottom:6px; }
+.chud-score-bar { height:3px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; margin-bottom:10px; }
+.chud-score-fill { height:100%; transition:width .5s ease; }
+.chud-routine-item { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.04); font-family:var(--mono); font-size:10px; }
+.chud-check { width:13px; height:13px; border:1px solid var(--border-h); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:8px; }
+.chud-check.done { background:var(--accent); border-color:var(--accent); color:#000; }
+.chud-routine-label { flex:1; }
+.chud-routine-time { font-size:9px; opacity:.45; }
+.chud-meta { display:flex; gap:14px; margin-top:8px; font-family:var(--mono); font-size:10px; color:var(--text); }
+#chud-col-bileg .chud-col-title { color:var(--accent); text-shadow:var(--neon); }
+#chud-col-bileg .chud-pct-big { color:var(--accent); }
+#chud-col-bileg .chud-score-fill { background:var(--accent); }
+#chud-col-bileg .chud-check.done { background:var(--accent); border-color:var(--accent); color:#000; }
+#chud-col-bileg .chud-status-badge { background:rgba(0,229,255,.12); color:var(--accent); }
+#chud-col-marlaa .chud-col-title { color:#f9a8c5; text-shadow:0 0 8px rgba(249,168,197,.5); }
+#chud-col-marlaa .chud-pct-big { color:#f9a8c5; }
+#chud-col-marlaa .chud-score-fill { background:#f9a8c5; }
+#chud-col-marlaa .chud-check.done { background:#f9a8c5; border-color:#f9a8c5; color:#000; }
+#chud-col-marlaa .chud-status-badge { background:rgba(249,168,197,.12); color:#f9a8c5; }
+.chud-bottom { display:flex; border-top:1px solid var(--border); height:130px; flex-shrink:0; }
+.chud-panel { flex:1; border-right:1px solid var(--border); padding:8px 10px; overflow:hidden; display:flex; flex-direction:column; }
+.chud-panel:last-child { border-right:none; }
+.chud-panel-title { font-family:var(--hud); font-size:8px; letter-spacing:.15em; color:var(--accent); margin-bottom:5px; flex-shrink:0; }
+.chud-logs { flex:1; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:1px; }
+.chud-logs::-webkit-scrollbar { width:2px; }
+.chud-log-item { font-family:var(--mono); font-size:9px; color:var(--text); padding:1px 0; }
+.chud-log-time { color:var(--accent); opacity:.65; margin-right:5px; }
+.chud-proofs-grid { display:flex; flex-wrap:wrap; gap:5px; overflow-y:auto; }
+.chud-proof-chip { background:rgba(0,255,136,.08); border:1px solid var(--green); border-radius:3px; padding:3px 7px; font-family:var(--mono); font-size:9px; color:var(--green); }
+.chud-vault-amt { font-family:var(--hud); font-size:20px; color:#fbbf24; margin-bottom:3px; }
+.chud-vault-split { font-family:var(--mono); font-size:9px; color:var(--text); opacity:.6; }
+
 /* ── Universal Scale indicator (debug, hidden by default) */
 #scale-indicator {
   position: fixed; bottom: 6px; left: 8px; z-index: 9999;
@@ -2806,7 +2871,7 @@ body.user-marlaa {
 
     <!-- SPRINT 34: JUNE CHALLENGE DASHBOARD WIDGET (always visible for both users) -->
     <div class="glass hud-br" id="widget-june-challenge">
-      <div class="ch-header" onclick="openGlowup()" style="cursor:pointer" title="Glow-Up checklist нээх">
+      <div class="ch-header" onclick="openChallengeHud()" style="cursor:pointer" title="Tactical Mission Control нээх">
         <span class="ch-title">🔥 GLOW-UP CHALLENGE</span>
         <span class="ch-days" id="ch-days-left">— өдөр</span>
       </div>
@@ -3021,6 +3086,74 @@ body.user-marlaa {
   <div class="gu-actions">
     <button class="gu-btn gu-btn-ghost" onclick="_glowupToggleEdit()" id="gu-edit-btn">✎ Tasks засах</button>
     <button class="gu-btn gu-btn-primary" onclick="closeGlowup()">✓ Болсон</button>
+  </div>
+</div>
+
+<!-- Challenge HUD — Tactical Mission Control -->
+<div id="challenge-hud-overlay" onclick="closeChallengeHud()"></div>
+<div id="challenge-hud">
+  <div class="chud-header">
+    <div>
+      <span class="chud-title">⚡ TACTICAL_OPS // MISSION_CONTROL</span>
+      <span class="chud-days-badge" id="chud-days-left"></span>
+    </div>
+    <button class="chud-close" onclick="closeChallengeHud()">✕</button>
+  </div>
+  <div class="chud-boss">
+    <div class="chud-boss-label">
+      <span>TARGET_BOSS: ЛАЙФСТАЙЛ ЗАЛХУУРАЛ <span style="opacity:.45">(LVL 04)</span></span>
+      <span id="chud-boss-pct-label">HP: —</span>
+    </div>
+    <div class="chud-boss-hp-bar">
+      <div class="chud-boss-hp-fill hp-danger" id="chud-boss-fill" style="width:100%"></div>
+    </div>
+  </div>
+  <div class="chud-columns">
+    <div class="chud-col" id="chud-col-bileg">
+      <div class="chud-col-title">
+        &lt;&lt; BILEG &gt;&gt;
+        <span class="chud-status-badge">[ACTIVE]</span>
+      </div>
+      <div class="chud-pct-big" id="chud-pct-bileg">—</div>
+      <div class="chud-score-bar"><div class="chud-score-fill" id="chud-bar-bileg" style="width:0%"></div></div>
+      <div id="chud-routine-bileg"></div>
+      <div class="chud-meta">
+        <span>🔥 <span id="chud-streak-bileg">0</span> DAYS</span>
+        <span>📸 <span id="chud-proofct-bileg">0</span></span>
+      </div>
+    </div>
+    <div class="chud-col" id="chud-col-marlaa">
+      <div class="chud-col-title">
+        &lt;&lt; МАРАЛАА &gt;&gt;
+        <span class="chud-status-badge">[ACTIVE]</span>
+      </div>
+      <div class="chud-pct-big" id="chud-pct-marlaa">—</div>
+      <div class="chud-score-bar"><div class="chud-score-fill" id="chud-bar-marlaa" style="width:0%"></div></div>
+      <div id="chud-routine-marlaa"></div>
+      <div class="chud-meta">
+        <span>🔥 <span id="chud-streak-marlaa">0</span> DAYS</span>
+        <span>📸 <span id="chud-proofct-marlaa">0</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="chud-bottom">
+    <div class="chud-panel">
+      <div class="chud-panel-title">⬡ STARK_VAULT</div>
+      <div class="chud-vault-amt" id="chud-vault-amt">— MNT</div>
+      <div class="chud-vault-split" id="chud-vault-split"></div>
+    </div>
+    <div class="chud-panel" style="flex:2">
+      <div class="chud-panel-title">▶ LIVE_LOGS // COMM_FEED</div>
+      <div class="chud-logs" id="chud-logs">
+        <div class="chud-log-item" style="opacity:.35">[ AWAITING SIGNAL... ]</div>
+      </div>
+    </div>
+    <div class="chud-panel">
+      <div class="chud-panel-title">📸 PROOF GALLERY</div>
+      <div class="chud-proofs-grid" id="chud-proofs-grid">
+        <div style="font-family:var(--mono);font-size:9px;opacity:.35">[ NO VERIFIED PROOFS ]</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -9721,6 +9854,212 @@ function _fvMakeDraggable(card, handle) {
     card.style.top  = (oy + e.clientY - sy) + 'px';
   });
   document.addEventListener('mouseup', () => { dragging = false; });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CHALLENGE HUD — Tactical Mission Control (SPRINT 37)
+// GLOW-UP widget дарахад нээгдэх бүрэн дэлгэцийн HUD.
+// Firestore onSnapshot-оор live өгөгдөл унших.
+// ══════════════════════════════════════════════════════════════════
+let _chudUnsubs = [];
+let _chudLogs   = [];
+
+function openChallengeHud() {
+  document.getElementById('challenge-hud-overlay')?.classList.add('open');
+  document.getElementById('challenge-hud')?.classList.add('open');
+  _chudLogs = [];
+  _chudStart();
+}
+
+function closeChallengeHud() {
+  document.getElementById('challenge-hud-overlay')?.classList.remove('open');
+  document.getElementById('challenge-hud')?.classList.remove('open');
+  _chudUnsubs.forEach(fn => { try { fn(); } catch {} });
+  _chudUnsubs = [];
+}
+
+function _chudToday() { return new Date().toISOString().slice(0, 10); }
+
+function _chudStart() {
+  const today = _chudToday();
+  if (!window._db) {
+    _chudLog('⚠ Firestore холбогдоогүй — offline mode');
+    _chudRenderScores({}, {});
+    return;
+  }
+  // Динамик challenge id авах
+  window._db.doc('challenge/current').get().then(snap => {
+    const cur    = snap?.exists ? snap.data() : {};
+    const chalId = cur.id   || 'june2026';
+    const endStr = cur.end  || '2026-11-30';
+    _chudSetDaysLeft(endStr);
+
+    // Daily scores (Bileg + Marlaa %)
+    _chudUnsubs.push(
+      window._db.doc(`challenge/${chalId}/daily/${today}`)
+        .onSnapshot(s => {
+          const d = s?.exists ? s.data() : {};
+          _chudRenderScores(d.bileg || {}, d.marlaa || {});
+          _chudLog('📊 Score шинэчлэгдлээ');
+        }, () => {})
+    );
+
+    // Streaks — Bileg
+    const bilegUid = window._auth?.currentUser?.uid;
+    if (bilegUid) {
+      _chudUnsubs.push(
+        window._db.doc(`challenge/${chalId}/streaks/${bilegUid}`)
+          .onSnapshot(s => {
+            document.getElementById('chud-streak-bileg').textContent = s?.exists ? (s.data().current || 0) : 0;
+          }, () => {})
+      );
+      // Bileg routines
+      _chudUnsubs.push(
+        window._db.doc(`users/${bilegUid}/routines/${today}`)
+          .onSnapshot(s => { _chudRenderBilegRoutine(s?.exists ? s.data() : {}); }, () => {})
+      );
+      // Bileg glowup
+      _chudUnsubs.push(
+        window._db.doc(`users/${bilegUid}/glowup/${today}`)
+          .onSnapshot(s => { _chudMergeBilegGlowup(s?.exists ? s.data() : {}); }, () => {})
+      );
+    }
+
+    // Streaks — Marlaa
+    _chudUnsubs.push(
+      window._db.doc(`challenge/${chalId}/streaks/marlaa`)
+        .onSnapshot(s => {
+          document.getElementById('chud-streak-marlaa').textContent = s?.exists ? (s.data().current || 0) : 0;
+        }, () => {})
+    );
+
+    // Marlaa plans
+    _chudUnsubs.push(
+      window._db.doc(`users/marlaa/plans/${today}`)
+        .onSnapshot(s => { _chudRenderMarlaaRoutine(s?.exists ? s.data() : {}); }, () => {})
+    );
+
+    // Proofs
+    _chudUnsubs.push(
+      window._db.doc(`challenge/${chalId}/proofs/${today}`)
+        .onSnapshot(s => {
+          const d = s?.exists ? s.data() : {};
+          _chudRenderProofs(d);
+          const cnt = Object.values(d).filter(p => p.verified).length;
+          if (cnt) _chudLog(`📸 ${cnt} баталгаажсан proof`);
+        }, () => {})
+    );
+
+  }).catch(() => {
+    _chudSetDaysLeft('2026-11-30');
+    _chudRenderScores({}, {});
+    _chudLog('⚠ challenge/current уншиж чадсангүй');
+  });
+}
+
+function _chudSetDaysLeft(endDate) {
+  const left = Math.max(0, Math.ceil((new Date(endDate) - Date.now()) / 86400000));
+  const el = document.getElementById('chud-days-left');
+  if (el) el.textContent = `[ ${left} DAYS LEFT ]`;
+}
+
+function _chudRenderScores(bileg, marlaa) {
+  const bPct = bileg.pct || 0;
+  const mPct = marlaa.pct || 0;
+  const hp   = Math.max(0, 100 - Math.round((bPct + mPct) / 2));
+
+  document.getElementById('chud-pct-bileg').textContent  = bPct + '%';
+  document.getElementById('chud-bar-bileg').style.width  = bPct + '%';
+  document.getElementById('chud-pct-marlaa').textContent = mPct + '%';
+  document.getElementById('chud-bar-marlaa').style.width = mPct + '%';
+  document.getElementById('chud-proofct-bileg').textContent  = bileg.proofs || 0;
+  document.getElementById('chud-proofct-marlaa').textContent = marlaa.proofs || 0;
+
+  const fill  = document.getElementById('chud-boss-fill');
+  const label = document.getElementById('chud-boss-pct-label');
+  if (fill) {
+    fill.style.width = hp + '%';
+    fill.className   = 'chud-boss-hp-fill ' + (hp > 60 ? 'hp-danger' : hp > 30 ? 'hp-warn' : 'hp-win');
+  }
+  if (label) label.textContent = `HP: ${hp}%`;
+}
+
+let _chudBilegRoutineData = {};
+let _chudBilegGlowupData  = {};
+
+function _chudRenderBilegRoutine(data) {
+  _chudBilegRoutineData = data;
+  _chudFlushBilegRoutine();
+}
+function _chudMergeBilegGlowup(data) {
+  _chudBilegGlowupData = data;
+  _chudFlushBilegRoutine();
+}
+function _chudFlushBilegRoutine() {
+  const el = document.getElementById('chud-routine-bileg');
+  if (!el) return;
+  const d = _chudBilegRoutineData;
+  const g = _chudBilegGlowupData;
+  const items = [
+    { key:'exercise', label:'WORKOUT', icon:'💪' },
+    { key:'hanzi',    label:'HSK',     icon:'📖' },
+    { key:'read',     label:'READING', icon:'📚' },
+    { key:'journal',  label:'JOURNAL', icon:'✍' },
+  ];
+  // Glowup cats
+  const gDone = g.done || [];
+  const gItems = ['glowup','workout','study','learn','beauty'].map(id => ({
+    key: '__glow_' + id, label: id.toUpperCase(), icon: '✨', done: gDone.includes(id)
+  }));
+  const all = [
+    ...items.map(i => ({ ...i, done: !!d[i.key] })),
+    ...gItems,
+  ];
+  el.innerHTML = all.map(i => `
+    <div class="chud-routine-item">
+      <div class="chud-check${i.done ? ' done' : ''}">${i.done ? '✓' : ''}</div>
+      <span class="chud-routine-label" style="${i.done ? 'opacity:.45;text-decoration:line-through' : ''}">${i.icon} ${i.label}</span>
+    </div>`).join('');
+}
+
+function _chudRenderMarlaaRoutine(data) {
+  const el = document.getElementById('chud-routine-marlaa');
+  if (!el) return;
+  const tasks = (data.confirmed || []).slice(0, 7);
+  if (!tasks.length) {
+    el.innerHTML = '<div style="opacity:.35;font-family:var(--mono);font-size:10px;padding:4px 0">[ NO TASKS ]</div>';
+    return;
+  }
+  el.innerHTML = tasks.map(t => `
+    <div class="chud-routine-item">
+      <div class="chud-check${t.done ? ' done' : ''}">${t.done ? '✓' : ''}</div>
+      <span class="chud-routine-label" style="${t.done ? 'opacity:.45;text-decoration:line-through' : ''}">${t.icon || ''} ${t.label || ''}</span>
+      <span class="chud-routine-time">${t.start || (t.done ? '✓' : 'PENDING')}</span>
+    </div>`).join('');
+}
+
+function _chudRenderProofs(data) {
+  const grid = document.getElementById('chud-proofs-grid');
+  if (!grid) return;
+  const verified = Object.values(data || {}).filter(p => p.verified);
+  if (!verified.length) {
+    grid.innerHTML = '<div style="font-family:var(--mono);font-size:9px;opacity:.35">[ NO VERIFIED PROOFS ]</div>';
+    return;
+  }
+  grid.innerHTML = verified.map(p =>
+    `<div class="chud-proof-chip">✅ ${p.fromName || '?'}${p.caption ? '<br><span style="opacity:.6">' + p.caption + '</span>' : ''}</div>`
+  ).join('');
+}
+
+function _chudLog(msg) {
+  const t = new Date().toTimeString().slice(0, 5);
+  _chudLogs.unshift({ t, msg });
+  if (_chudLogs.length > 40) _chudLogs.length = 40;
+  const el = document.getElementById('chud-logs');
+  if (!el) return;
+  el.innerHTML = _chudLogs.map(l =>
+    `<div class="chud-log-item"><span class="chud-log-time">[${l.t}]</span>${l.msg}</div>`
+  ).join('');
 }
 
 // Toast helper (if not already defined)
