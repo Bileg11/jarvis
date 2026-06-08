@@ -5161,7 +5161,8 @@ document.addEventListener('jarvis:ready', ()=>{
 // SPRINT 26 — LUXURY ONBOARDING WIZARD
 // ══════════════════════════════════════════════════════════════════
 
-const ACTIVATION_KEY = 'STARK-JARVIS-2026';
+const ACTIVATION_KEY  = 'STARK-JARVIS-2026';
+const MARLAA_KEY      = 'BLOSSOM-2026';       // Маралаагийн онцгой код
 
 // Wizard state
 const _obData = {
@@ -5246,6 +5247,7 @@ function nextStep(fromStep) {
     // Validate activation key
     const key = (document.getElementById('ob-key-input')?.value || '').trim();
     const errEl = document.getElementById('ob-key-error');
+    if (key === MARLAA_KEY) { _activateMarlaaInstant(); return; }
     if (key !== ACTIVATION_KEY) {
       const inp = document.getElementById('ob-key-input');
       if (inp) inp.classList.add('error');
@@ -5372,6 +5374,61 @@ function _onTelegramLinked() {
     _listenTelegramInbox();
   }
   localStorage.setItem('jarvis_telegram_linked', '1');
+}
+
+// ── MARLAA INSTANT ACTIVATION ────────────────────────────────────
+function _activateMarlaaInstant() {
+  // localStorage бүгдийг Маралаагийн профайлаар тохируулна
+  localStorage.setItem('jarvis_setup_complete', '1');
+  localStorage.setItem('jarvis_user_role',      'marlaa');
+  localStorage.setItem('jarvis_theme',           'marlaa');
+  localStorage.setItem('jarvis_callsign',        'Маралаа');
+  localStorage.setItem('jarvis_name',            'Маралаа');
+
+  // Electron persistent flag
+  window.jarvisAPI?.setSetupFlag?.({
+    complete: true, callSign: 'Маралаа', name: 'Маралаа',
+    theme: 'marlaa', setupAt: new Date().toISOString(),
+  }).catch?.(() => {});
+
+  // Marlaa theme шууд хэрэглэнэ
+  if (typeof applyTheme === 'function') applyTheme('marlaa');
+
+  // Onboarding overlay хаана
+  const ov = document.getElementById('onboarding-overlay');
+  if (ov) { ov.style.opacity = '0'; ov.style.transition = 'opacity .4s'; setTimeout(() => { ov.style.display = 'none'; }, 400); }
+  window._onboardingActive = false;
+
+  // Маралаагийн welcome overlay харуулна
+  const wel = document.createElement('div');
+  wel.id = 'marlaa-welcome';
+  wel.style.cssText = `position:fixed;inset:0;z-index:9999;background:rgba(6,8,16,.97);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+    font-family:var(--hud);color:#f9a8c5;text-align:center;animation:notif-in .4s ease;`;
+  wel.innerHTML = `
+    <div style="font-size:36px;filter:drop-shadow(0 0 16px rgba(249,168,197,.6))">🌸</div>
+    <div style="font-size:13px;letter-spacing:.3em;text-shadow:0 0 20px rgba(249,168,197,.5)">MARLAA_PROTOCOL // ACTIVATED</div>
+    <div style="font-size:9px;letter-spacing:.15em;color:#e8cfe0;opacity:.7;margin-top:4px">BLOSSOM CORE ONLINE // CHALLENGE SYNC READY</div>
+    <div style="font-size:9px;letter-spacing:.1em;color:#f9a8c5;opacity:.5;margin-top:8px">Тавтай морил, Маралаа ✦</div>`;
+  document.body.appendChild(wel);
+
+  // 2.4 секундын дараа boot
+  setTimeout(() => {
+    wel.style.opacity = '0'; wel.style.transition = 'opacity .5s';
+    setTimeout(() => {
+      wel.remove();
+      // Boot terminal-д Маралаагийн мессеж
+      if (typeof runBootSequence === 'function') {
+        runBootSequence();
+        setTimeout(() => {
+          if (typeof addTermLine === 'function') {
+            addTermLine('sys', '>> MARLAA BLOSSOM CORE — CHALLENGE PROTOCOL ACTIVE');
+            addTermLine('ai',  '🌸 Маралаа, тавтай морил. Өнөөдрийн хийх зүйлсээ бэлдэж байна...');
+          }
+        }, 900);
+      }
+    }, 500);
+  }, 2400);
 }
 
 // ── FINALIZE ─────────────────────────────────────────────────────
