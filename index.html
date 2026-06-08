@@ -1995,9 +1995,14 @@ body.user-marlaa {
 #challenge-hud-overlay.open { display:block; }
 #challenge-hud {
   position:fixed; top:calc(var(--bar-h) + 6px); left:12px; right:12px; bottom:12px;
-  z-index:2100; background:rgba(0,4,14,.98); border:1px solid var(--border-h);
+  z-index:2100; border:1px solid var(--border-h);
   border-radius:6px; display:none; flex-direction:column;
   overflow:hidden; box-shadow:0 0 80px rgba(0,229,255,.12), 0 0 0 1px rgba(0,229,255,.06);
+  background-color:rgba(0,4,14,.98);
+  background-image:
+    linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 #challenge-hud.open { display:flex; animation:ws-pop .2s ease; }
 .chud-header {
