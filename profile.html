@@ -9,6 +9,29 @@
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
   <style>
+    /* ── DESKTOP LAYOUT OVERRIDE ─────────────────────────────── */
+    body { max-width: 860px; margin: 0 auto; padding: 0 20px; }
+    .bottom-nav { display: none !important; }
+    .header {
+      position: static !important;
+      padding: 20px 0 14px !important;
+      border-bottom: 1px solid rgba(0,229,255,.1);
+      margin-bottom: 20px;
+    }
+    .header h1 { font-size: 22px !important; }
+    .profile-wrap { padding: 0 0 60px !important; }
+    .back-btn-wrap {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
+    }
+    .back-to-jarvis {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; color: rgba(0,229,255,.6);
+      text-decoration: none; letter-spacing: .06em;
+      font-family: var(--mono, monospace);
+      transition: color .15s;
+    }
+    .back-to-jarvis:hover { color: rgba(0,229,255,1); }
+
     /* ── CORE MEMORY CARD ──────────────────────────────────────── */
     .mem-card {
       margin: 20px 0 0;
@@ -147,6 +170,9 @@
 
   <header class="header">
     <div>
+      <div class="back-btn-wrap">
+        <a href="/" class="back-to-jarvis">← JARVIS</a>
+      </div>
       <h1>Профайл</h1>
       <div class="sub">Дансны мэдээлэл</div>
     </div>
