@@ -6390,9 +6390,12 @@ function navTo(tab, _isBack) {
     page.classList.add('active');
     // FIX: хоосон src="" нь Chrome-д хуудасны URL болж шийдэгддэг тул !iframe.src
     // үргэлж false болж profile.html ачаалагддаггүй байсан. Attribute-аар шалгана.
+    // CF нь /profile.html-ийг /profile рүү redirect хийдэг → iframe эвддэг.
+    // Тиймээс web дээр extensionless зам (redirect-гүй) ашиглана. Electron нь _navMap (.html) хэвээр.
     const iframe = document.getElementById('iframe-' + tab);
-    if (iframe && _navMap[tab] && iframe.getAttribute('src') !== _navMap[tab]) {
-      iframe.src = _navMap[tab];
+    const _webSrc = (_navMap[tab] || '').replace(/\.html$/, '');
+    if (iframe && _webSrc && iframe.getAttribute('src') !== _webSrc) {
+      iframe.src = _webSrc;
     }
   }
   _updateNavMesh();
