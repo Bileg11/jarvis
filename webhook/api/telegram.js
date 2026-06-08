@@ -2312,13 +2312,13 @@ async function handleText(msg, ctx = {}) {
     try {
       const messages = [
         { role: 'system', content: sysText },
-        ...hist.map(m => ({ role: m.role, content: m.content || '' })),
-        { role: 'user', content: raw },
+        ...hist.slice(-6).map(m => ({ role: m.role, content: (m.content || '').slice(0, 600) })),
+        { role: 'user', content: raw.slice(0, 800) },
       ];
       const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-        body: JSON.stringify({ model: 'gpt-4o', messages, max_tokens: 800, temperature: 0.8 }),
+        body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 600, temperature: 0.8 }),
       });
       const data = await resp.json();
       reply   = data.choices?.[0]?.message?.content?.trim() || '';
