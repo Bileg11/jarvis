@@ -19,8 +19,8 @@ cp sw.js             _site/ 2>/dev/null || true
 cp manifest.json     _site/ 2>/dev/null || true
 cp icon.svg          _site/ 2>/dev/null || true
 
-# Бусад html хуудаснууд (chat, profile, tracker, guide, life, dashboard)
-cp chat.html profile.html tracker.html guide.html life.html dashboard.html _site/ 2>/dev/null || true
+# Бусад html хуудаснууд (chat, profile, tracker, guide, life, dashboard, hsk)
+cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html _site/ 2>/dev/null || true
 
 # Assets фолдер
 cp -r assets _site/assets 2>/dev/null || true
