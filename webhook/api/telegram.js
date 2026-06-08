@@ -2303,56 +2303,27 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
-  // ── Free Chat — Gemini 2.0 Flash (үндсэн) + GitHub Models (fallback) ──
-  // Gemini free tier нь өгөөмөр тул rate-limit-д бараг ороохгүй.
-  if (!apiKey && !GEMINI_URL) { await tgSend('⚠️ API key тохиргоогүй.'); return; }
+  // ── Free Chat — GitHub Models gpt-4o (цорын ганц) ──
+  if (!apiKey) { await tgSend('⚠️ SYSTEM_USE_TOKEN тохируулаагүй.'); return; }
   try {
     const hist = await getChatHistory(uid);
     let reply = '', lastErr = '';
 
-    // 1) GEMINI — үндсэн
-    if (GEMINI_URL) {
-      try {
-        const gContents = hist.map(m => ({
-          role:  m.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: m.content || '' }],
-        }));
-        while (gContents.length && gContents[0].role === 'model') gContents.shift();
-        gContents.push({ role: 'user', parts: [{ text: raw }] });
-
-        const gResp = await fetch(GEMINI_URL, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: sysText }] },
-            contents: gContents,
-            generationConfig: { temperature: 0.8, maxOutputTokens: 800 },
-          }),
-        });
-        const gData = await gResp.json();
-        reply = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-        if (!reply) lastErr = gData.error?.message || `Gemini HTTP ${gResp.status}`;
-      } catch (e) { lastErr = 'Gemini: ' + e.message; }
-    }
-
-    // 2) GITHUB MODELS (gpt-4o-mini) — fallback
-    if (!reply && apiKey) {
-      try {
-        const messages = [
-          { role: 'system', content: sysText },
-          ...hist.map(m => ({ role: m.role, content: m.content || '' })),
-          { role: 'user', content: raw },
-        ];
-        const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 800, temperature: 0.8 }),
-        });
-        const data = await resp.json();
-        reply = data.choices?.[0]?.message?.content?.trim() || '';
-        if (!reply && !lastErr) lastErr = data.error?.message || `GitHub HTTP ${resp.status}`;
-      } catch (e) { if (!lastErr) lastErr = 'GitHub: ' + e.message; }
-    }
+    try {
+      const messages = [
+        { role: 'system', content: sysText },
+        ...hist.map(m => ({ role: m.role, content: m.content || '' })),
+        { role: 'user', content: raw },
+      ];
+      const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ model: 'gpt-4o', messages, max_tokens: 800, temperature: 0.8 }),
+      });
+      const data = await resp.json();
+      reply   = data.choices?.[0]?.message?.content?.trim() || '';
+      lastErr = reply ? '' : (data.error?.message || `HTTP ${resp.status}`);
+    } catch (e) { lastErr = e.message; }
 
     if (!reply) {
       console.error('[FreeChat] empty reply:', lastErr);
