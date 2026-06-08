@@ -28,5 +28,24 @@ cp -r assets _site/assets 2>/dev/null || true
 # SPA fallback
 cp index.html _site/404.html 2>/dev/null || true
 
-echo "✅ _site бэлэн:"
+# ── CACHE-BUST: build бүрт local JS/CSS-д unique version нэмнэ ───────
+# (Browser хуучин gemini.js г.м-ийг кэшнээс уншихаас сэргийлнэ)
+BUILD_ID=$(date +%s)
+for f in _site/index.html _site/404.html; do
+  [ -f "$f" ] && sed -i.bak -E "s|(src=\"[a-zA-Z0-9_./-]+\.js)\"|\1?b=${BUILD_ID}\"|g; s|(href=\"[a-zA-Z0-9_./-]+\.css)\"|\1?b=${BUILD_ID}\"|g" "$f" && rm -f "$f.bak"
+done
+
+# ── HTML-ийг үргэлж revalidate (шинэ deploy шууд хүрнэ) ─────────────
+cat > _site/_headers <<'HEADERS'
+/
+  Cache-Control: no-cache, must-revalidate
+/index.html
+  Cache-Control: no-cache, must-revalidate
+/404.html
+  Cache-Control: no-cache, must-revalidate
+HEADERS
+
+echo "✅ _site бэлэн (build=${BUILD_ID}):"
 ls -1 _site
+echo "--- index.html script srcs ---"
+grep -oE "src=\"[a-z][a-zA-Z0-9_.-]+\.js[^\"]*\"" _site/index.html || true
