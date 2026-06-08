@@ -6387,8 +6387,12 @@ function navTo(tab, _isBack) {
   const page = document.getElementById('page-' + tab);
   if (page) {
     page.classList.add('active');
+    // FIX: хоосон src="" нь Chrome-д хуудасны URL болж шийдэгддэг тул !iframe.src
+    // үргэлж false болж profile.html ачаалагддаггүй байсан. Attribute-аар шалгана.
     const iframe = document.getElementById('iframe-' + tab);
-    if (iframe && !iframe.src) iframe.src = _navMap[tab] || '';
+    if (iframe && _navMap[tab] && iframe.getAttribute('src') !== _navMap[tab]) {
+      iframe.src = _navMap[tab];
+    }
   }
   _updateNavMesh();
 }
