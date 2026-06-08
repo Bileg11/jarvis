@@ -413,9 +413,10 @@
   </div>
 
   <script>
-    const _auth = firebase.auth();
+    // _pAuth нь firebase-config.js-д const-аар зарлагдсан — дахин зарлахгүй
+    const _pAuth = firebase.auth();
     // Sprint 38: persistence LOCAL — нэвтэрсэн хэвээр үлдэнэ (дахин нээхэд)
-    _auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+    _pAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
 
     function showToast(msg) {
       const t = document.getElementById('toast');
@@ -452,7 +453,7 @@
       document.getElementById('clear-trigger-btn').style.display = triggerKey ? 'block' : 'none';
     }
 
-    _auth.onAuthStateChanged(user => {
+    _pAuth.onAuthStateChanged(user => {
       renderUser(user);
       if (user) loadJarvisSettings();
     });
@@ -474,7 +475,7 @@
       try {
         // Timeout — VPN/сүлжээний улмаас гацахаас сэргийлнэ (20с)
         await Promise.race([
-          _auth.signInWithEmailAndPassword(email, pass),
+          _pAuth.signInWithEmailAndPassword(email, pass),
           new Promise((_, rej) => setTimeout(() => rej(new Error('NET_TIMEOUT')), 20000)),
         ]);
         errEl.style.color = '#4ade80';
@@ -500,7 +501,7 @@
       localStorage.setItem('jarvis_proxy_url', val);
       window.DB?.saveSettings({ proxy_url: val });
       document.getElementById('prof-proxy').value = '';
-      renderUser(_auth.currentUser);
+      renderUser(_pAuth.currentUser);
       showToast('✅ Proxy URL хадгалагдлаа ☁️');
     }
 
@@ -532,7 +533,7 @@
     function clearProxy() {
       if (!confirm('Proxy URL устгах уу?')) return;
       localStorage.removeItem('jarvis_proxy_url');
-      renderUser(_auth.currentUser);
+      renderUser(_pAuth.currentUser);
       showToast('🗑 Proxy устгагдлаа');
     }
 
@@ -542,14 +543,14 @@
       localStorage.setItem('jarvis_chat_key', val);
       window.DB?.saveSettings({ chat_key: val });
       document.getElementById('prof-chat-key').value = '';
-      renderUser(_auth.currentUser);
+      renderUser(_pAuth.currentUser);
       showToast('✅ GitHub Token хадгалагдлаа ☁️');
     }
 
     function clearChatKey() {
       if (!confirm('GitHub Token устгах уу?')) return;
       localStorage.removeItem('jarvis_chat_key');
-      renderUser(_auth.currentUser);
+      renderUser(_pAuth.currentUser);
       showToast('🗑 Token устгагдлаа');
     }
 
@@ -559,14 +560,14 @@
       localStorage.setItem('jarvis_gh_trigger', val);
       window.DB?.saveSettings({ gh_trigger: val });
       document.getElementById('prof-trigger').value = '';
-      renderUser(_auth.currentUser);
+      renderUser(_pAuth.currentUser);
       showToast('✅ Trigger Token хадгалагдлаа ☁️');
     }
 
     function clearTriggerToken() {
       if (!confirm('Trigger Token устгах уу?')) return;
       localStorage.removeItem('jarvis_gh_trigger');
-      renderUser(_auth.currentUser);
+      renderUser(_pAuth.currentUser);
       showToast('🗑 Token устгагдлаа');
     }
 
@@ -578,7 +579,7 @@
 
     function doSignOut() {
       if (!confirm('Гарах уу?')) return;
-      _auth.signOut();
+      _pAuth.signOut();
     }
 
     // ── JARVIS SETTINGS ───────────────────────────────────────────
