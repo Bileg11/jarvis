@@ -2133,6 +2133,64 @@ body.user-marlaa {
 .chud-vault-amt { font-family:var(--hud); font-size:20px; color:#fbbf24; margin-bottom:3px; }
 .chud-vault-split { font-family:var(--mono); font-size:9px; color:var(--text); opacity:.6; }
 
+/* ══ SPRINT 38 — ROLE-BASED WIDGET VISIBILITY ══════════════════ */
+/* Bileg-д л харагдах */
+body[data-role="marlaa"] #widget-hsk,
+body[data-role="marlaa"] #widget-hsk-blitz,
+body[data-role="marlaa"] #widget-missions,
+body[data-role="marlaa"] #widget-intel,
+body[data-role="marlaa"] #widget-fx { display: none !important; }
+
+/* Маралаад л харагдах */
+body[data-role="bileg"] #widget-driving,
+body[data-role="bileg"] #widget-skincare,
+body[data-role="bileg"] #widget-habit-ring,
+body[data-role="bileg"] #widget-mood { display: none !important; }
+
+/* Маралаагийн widget-ууд — default харагдахгүй, role-оор идэвхждэг */
+#widget-driving, #widget-skincare, #widget-habit-ring, #widget-mood { display: none; }
+
+/* ── Driving Progress widget ── */
+.drv-header { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid var(--border); }
+.drv-progress-row { padding:8px 10px; }
+.drv-bar-wrap { height:6px; background:rgba(255,255,255,.07); border-radius:3px; overflow:hidden; margin:6px 0; }
+.drv-bar-fill { height:100%; background:var(--accent); border-radius:3px; transition:width .5s ease; box-shadow:0 0 6px rgba(var(--accent-rgb,0,229,255),.4); }
+.drv-stats { display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; color:var(--text); opacity:.6; }
+.drv-exam { font-family:var(--hud); font-size:9px; letter-spacing:.1em; color:var(--amber,#fbbf24); padding:4px 10px 6px; }
+.drv-btns { display:flex; gap:5px; padding:5px 10px; border-top:1px solid var(--border); }
+.drv-btn { flex:1; font-family:var(--mono); font-size:9px; padding:5px; border-radius:3px; cursor:pointer; text-align:center; transition:all .15s; }
+.drv-btn-add { background:rgba(0,229,255,.08); border:1px solid var(--border); color:var(--accent); }
+.drv-btn-add:hover { border-color:var(--accent); background:rgba(0,229,255,.14); }
+.drv-btn-set { background:none; border:1px dashed var(--border); color:var(--text); opacity:.6; font-size:8px; }
+.drv-btn-set:hover { opacity:1; }
+
+/* ── Skincare tracker ── */
+.sk-section { padding:6px 10px; }
+.sk-section-title { font-family:var(--hud); font-size:8px; letter-spacing:.14em; color:var(--accent); margin-bottom:5px; opacity:.8; }
+.sk-item { display:flex; align-items:center; gap:8px; padding:4px 0; font-family:var(--mono); font-size:10px; cursor:pointer; }
+.sk-check { width:13px; height:13px; border:1px solid var(--border-h); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:8px; transition:all .15s; }
+.sk-item.done .sk-check { background:var(--accent); border-color:var(--accent); color:#000; }
+.sk-item.done .sk-label { opacity:.4; text-decoration:line-through; }
+.sk-divider { border:none; border-top:1px solid var(--border); margin:4px 0; }
+.sk-score { display:flex; justify-content:space-between; align-items:center; padding:4px 10px 6px; font-family:var(--mono); font-size:8px; color:var(--text); opacity:.6; }
+
+/* ── Habit ring ── */
+.hr-grid { display:flex; flex-direction:column; gap:5px; padding:8px 10px; }
+.hr-row { display:flex; align-items:center; gap:4px; }
+.hr-label { font-family:var(--mono); font-size:8px; color:var(--text); opacity:.5; width:52px; flex-shrink:0; }
+.hr-dots { display:flex; gap:3px; }
+.hr-dot { width:11px; height:11px; border-radius:50%; border:1px solid var(--border); transition:all .3s; }
+.hr-dot.on { border-color:var(--accent); box-shadow:0 0 5px rgba(0,229,255,.35); }
+.hr-dot.on-pink { background:#f9a8c5; border-color:#f9a8c5; box-shadow:0 0 5px rgba(249,168,197,.35); }
+.hr-dot.today { border-color:var(--accent); opacity:.35; }
+
+/* ── Mood widget ── */
+.mood-row { display:flex; justify-content:space-around; align-items:center; padding:10px 8px; }
+.mood-btn { font-size:22px; cursor:pointer; padding:4px 6px; border-radius:6px; border:2px solid transparent; transition:all .2s; opacity:.5; }
+.mood-btn:hover { opacity:.85; transform:scale(1.15); }
+.mood-btn.selected { opacity:1; border-color:var(--accent); background:rgba(0,229,255,.08); transform:scale(1.1); }
+.mood-label { font-family:var(--hud); font-size:8px; letter-spacing:.1em; color:var(--text); opacity:.4; text-align:center; padding:0 10px 6px; }
+
 /* ── Universal Scale indicator (debug, hidden by default) */
 #scale-indicator {
   position: fixed; bottom: 6px; left: 8px; z-index: 9999;
@@ -3035,6 +3093,63 @@ body.user-marlaa {
       </div>
     </div>
 
+    <!-- SPRINT 38: WIDGET — Driving Progress (Marlaa) -->
+    <div class="glass hud-br" id="widget-driving">
+      <div class="drv-header">
+        <span style="font-family:var(--hud);font-size:9px;letter-spacing:.14em;color:var(--accent)">🚗 DRIVING COURSE</span>
+        <span class="hdr-tag" id="drv-pct-tag">0%</span>
+      </div>
+      <div class="drv-progress-row">
+        <div class="drv-stats">
+          <span>SESSION <span id="drv-current">0</span> / <span id="drv-total">60</span></span>
+          <span id="drv-streak-label">🔥 0 week streak</span>
+        </div>
+        <div class="drv-bar-wrap"><div class="drv-bar-fill" id="drv-bar" style="width:0%"></div></div>
+      </div>
+      <div class="drv-exam" id="drv-exam-label">📅 Шалгалт: — өдөр үлдсэн</div>
+      <div class="drv-btns">
+        <button class="drv-btn drv-btn-add" onclick="_drvAddSession()">+ Хичээл нэмэх</button>
+        <button class="drv-btn drv-btn-set" onclick="_drvSetTotal()">⚙ Тохиргоо</button>
+      </div>
+    </div>
+
+    <!-- SPRINT 38: WIDGET — Skincare Routine (Marlaa) -->
+    <div class="glass hud-br gauge-left" id="widget-skincare">
+      <div class="panel-hdr">✨ SKINCARE ROUTINE <span class="hdr-tag" id="sk-date-tag">TODAY</span></div>
+      <div class="sk-section">
+        <div class="sk-section-title">☀ MORNING</div>
+        <div id="sk-am-list"></div>
+      </div>
+      <hr class="sk-divider">
+      <div class="sk-section" style="padding-top:2px">
+        <div class="sk-section-title">🌙 NIGHT</div>
+        <div id="sk-pm-list"></div>
+      </div>
+      <div class="sk-score">
+        <span>COMPLETION</span>
+        <span id="sk-score-label">0 / 0</span>
+      </div>
+    </div>
+
+    <!-- SPRINT 38: WIDGET — Habit Ring (Marlaa) -->
+    <div class="glass hud-br" id="widget-habit-ring">
+      <div class="panel-hdr">⬡ HABIT RING <span class="hdr-tag">7 DAYS</span></div>
+      <div class="hr-grid" id="hr-grid"></div>
+    </div>
+
+    <!-- SPRINT 38: WIDGET — Today's Vibe (Marlaa) -->
+    <div class="glass hud-br" id="widget-mood">
+      <div class="panel-hdr">◈ TODAY'S VIBE</div>
+      <div class="mood-row" id="mood-row">
+        <span class="mood-btn" onclick="_moodPick('😴')" data-vibe="😴">😴</span>
+        <span class="mood-btn" onclick="_moodPick('😤')" data-vibe="😤">😤</span>
+        <span class="mood-btn" onclick="_moodPick('😊')" data-vibe="😊">😊</span>
+        <span class="mood-btn" onclick="_moodPick('🔥')" data-vibe="🔥">🔥</span>
+        <span class="mood-btn" onclick="_moodPick('🌟')" data-vibe="🌟">🌟</span>
+      </div>
+      <div class="mood-label" id="mood-label">— өнөөдрийн байдлаа сонгоно уу</div>
+    </div>
+
     <!-- SPRINT 34: WIDGET — Bileg HSK Blitz (hidden by default, shown for bileg role) -->
     <div class="glass hud-br" id="widget-hsk-blitz">
       <!-- Header with countdown -->
@@ -3486,8 +3601,14 @@ function acknowledgeAlarm() {
 
 // ── BOOT SEQUENCE ────────────────────────────────────────────────
 function runBootSequence() {
-  if (_bootStarted) return;   // FIX: зөвхөн нэг удаа ажиллана (давхар дуудлагаас сэргийлнэ)
+  if (_bootStarted) return;
   _bootStarted = true;
+  // Role-based body attr — CSS widget visibility + Marlaa layout
+  const _role = localStorage.getItem('jarvis_user_role') || 'bileg';
+  document.body.dataset.role = _role;
+  if (_role === 'marlaa' && !localStorage.getItem('jarvis_layout_id')) {
+    localStorage.setItem('jarvis_layout_id', '4');
+  }
   _reactor = new ArcReactor('reactor');
   window._reactor = _reactor; // expose for themes.js
   _reactor.triggerFlare(600);
@@ -3523,8 +3644,9 @@ function runBootSequence() {
     // Periodic resync: Firestore may settle after initial render
     setInterval(updateRoutineUI, 10000); // 10s — was 2500ms
     if (typeof loadSavedTheme==='function') loadSavedTheme();
-    _loadCustomThemeColor();           // Sprint 28: restore custom color on boot
-    applyLayout(_currentLayout);       // Sprint 28: restore saved layout on boot
+    _loadCustomThemeColor();
+    applyLayout(_currentLayout);
+    _marlaaWidgetsInit();
     loadWidgetLayout();
     jarvisGreeting();
     // Sprint 27: Dynamic terminal prefix with callSign
@@ -5381,9 +5503,10 @@ function _activateMarlaaInstant() {
   // localStorage бүгдийг Маралаагийн профайлаар тохируулна
   localStorage.setItem('jarvis_setup_complete', '1');
   localStorage.setItem('jarvis_user_role',      'marlaa');
-  localStorage.setItem('jarvis_theme',           'marlaa');
-  localStorage.setItem('jarvis_callsign',        'Маралаа');
-  localStorage.setItem('jarvis_name',            'Маралаа');
+  localStorage.setItem('jarvis_theme',          'marlaa');
+  localStorage.setItem('jarvis_callsign',       'Маралаа');
+  localStorage.setItem('jarvis_name',           'Маралаа');
+  localStorage.setItem('jarvis_layout_id',      '4');
 
   // Electron persistent flag
   window.jarvisAPI?.setSetupFlag?.({
@@ -6152,6 +6275,13 @@ const LAYOUTS = {
     colRight: ['widget-missions','widget-hsk','widget-fx','widget-intel','widget-gym','widget-route'],
     hide: [],
   },
+  4: { // Marlaa Blossom
+    name: 'MARLAA BLOSSOM',
+    colLeft: ['routine'],
+    colCenter: ['terminal'],
+    colRight: ['widget-june-challenge','widget-life-logic','widget-route','widget-driving','widget-gym','widget-skincare','widget-habit-ring','widget-mood'],
+    hide: ['widget-hsk','widget-hsk-blitz','widget-missions','widget-intel','widget-fx'],
+  },
 };
 
 let _currentLayout = parseInt(localStorage.getItem('jarvis_layout_id') || '3');
@@ -6163,7 +6293,7 @@ function applyLayout(id) {
   localStorage.setItem('jarvis_layout_id', id);
 
   // Show/hide right-side widgets
-  const allWidgets = ['widget-missions','widget-hsk','widget-fx','widget-intel','widget-gym','widget-route'];
+  const allWidgets = ['widget-missions','widget-hsk','widget-hsk-blitz','widget-fx','widget-intel','widget-gym','widget-route','widget-june-challenge','widget-life-logic','widget-driving','widget-skincare','widget-habit-ring','widget-mood'];
   allWidgets.forEach(wid => {
     const el = document.getElementById(wid);
     if (!el) return;
@@ -6193,7 +6323,7 @@ function applyLayout(id) {
 
 function _applyLayoutChange(json) {
   const id = parseInt(json.layoutId);
-  if (id >= 1 && id <= 3) applyLayout(id);
+  if (id >= 1 && id <= 4) applyLayout(id);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -10309,6 +10439,182 @@ function _chudLog(msg) {
   el.innerHTML = _chudLogs.map(l =>
     `<div class="chud-log-item"><span class="chud-log-time">[${l.t}]</span>${l.msg}</div>`
   ).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SPRINT 38 — MARLAA WIDGETS
+// ══════════════════════════════════════════════════════════════════
+
+// ── 1. DRIVING PROGRESS ──────────────────────────────────────────
+function _drvData() {
+  try { return JSON.parse(localStorage.getItem('jarvis_driving') || '{}'); } catch { return {}; }
+}
+function _drvSave(d) { localStorage.setItem('jarvis_driving', JSON.stringify(d)); }
+
+function _drvRender() {
+  const d = _drvData();
+  const current  = d.current  || 0;
+  const total    = d.total    || 60;
+  const examDate = d.examDate || null;
+  const pct      = total ? Math.round(current / total * 100) : 0;
+
+  document.getElementById('drv-current')?.setAttribute('data-v', current);
+  if (document.getElementById('drv-current'))  document.getElementById('drv-current').textContent  = current;
+  if (document.getElementById('drv-total'))    document.getElementById('drv-total').textContent    = total;
+  if (document.getElementById('drv-pct-tag'))  document.getElementById('drv-pct-tag').textContent  = pct + '%';
+  if (document.getElementById('drv-bar'))      document.getElementById('drv-bar').style.width      = pct + '%';
+
+  const examEl = document.getElementById('drv-exam-label');
+  if (examEl && examDate) {
+    const days = Math.max(0, Math.ceil((new Date(examDate) - Date.now()) / 86400000));
+    examEl.textContent = `📅 Шалгалт: ${days} өдөр үлдсэн`;
+  } else if (examEl) {
+    examEl.textContent = '📅 Шалгалт: тохируулаагүй';
+  }
+
+  // Week streak (last 7 days session count from log)
+  const log = d.log || [];
+  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
+  const weekSessions = log.filter(dt => dt >= weekAgo).length;
+  const streakEl = document.getElementById('drv-streak-label');
+  if (streakEl) streakEl.textContent = `🔥 ${weekSessions} / 7 days`;
+}
+
+function _drvAddSession() {
+  const d = _drvData();
+  d.current = Math.min((d.current || 0) + 1, d.total || 60);
+  if (!d.log) d.log = [];
+  d.log.push(new Date().toISOString().slice(0,10));
+  _drvSave(d); _drvRender();
+  _mrHabitRender();
+  if (typeof showToast === 'function') showToast('🚗 Хичээл нэмэгдлээ — ' + d.current + ' / ' + (d.total || 60));
+}
+
+function _drvSetTotal() {
+  const d   = _drvData();
+  const tot = prompt('Нийт хичээлийн тоо:', d.total || 60);
+  const ex  = prompt('Шалгалтын огноо (YYYY-MM-DD):', d.examDate || '');
+  if (tot) d.total    = parseInt(tot) || 60;
+  if (ex)  d.examDate = ex.trim();
+  _drvSave(d); _drvRender();
+}
+
+// ── 2. SKINCARE ROUTINE ───────────────────────────────────────────
+const SK_AM = ['🧼 Цэвэрлэгч', '💧 Тоник', '☀️ SPF / Тоосго'];
+const SK_PM = ['🧼 Цэвэрлэгч', '✨ Сэрум', '🌙 Чийгшүүлэгч'];
+
+function _skToday() { return new Date().toISOString().slice(0,10); }
+function _skData()  { try { return JSON.parse(localStorage.getItem('jarvis_skincare_' + _skToday()) || '{}'); } catch { return {}; } }
+function _skSave(d) { localStorage.setItem('jarvis_skincare_' + _skToday(), JSON.stringify(d)); }
+
+function _skToggle(period, idx) {
+  const d = _skData();
+  if (!d[period]) d[period] = {};
+  d[period][idx] = !d[period][idx];
+  _skSave(d); _skRender();
+  _mrHabitRender();
+}
+
+function _skRender() {
+  const d    = _skData();
+  const amEl = document.getElementById('sk-am-list');
+  const pmEl = document.getElementById('sk-pm-list');
+  if (amEl) amEl.innerHTML = SK_AM.map((label, i) => {
+    const done = !!(d.am?.[i]);
+    return `<div class="sk-item${done?' done':''}" onclick="_skToggle('am',${i})">
+      <div class="sk-check">${done?'✓':''}</div>
+      <span class="sk-label">${label}</span></div>`;
+  }).join('');
+  if (pmEl) pmEl.innerHTML = SK_PM.map((label, i) => {
+    const done = !!(d.pm?.[i]);
+    return `<div class="sk-item${done?' done':''}" onclick="_skToggle('pm',${i})">
+      <div class="sk-check">${done?'✓':''}</div>
+      <span class="sk-label">${label}</span></div>`;
+  }).join('');
+  const total = SK_AM.length + SK_PM.length;
+  const doneAm = SK_AM.filter((_,i) => d.am?.[i]).length;
+  const donePm = SK_PM.filter((_,i) => d.pm?.[i]).length;
+  const scoreEl = document.getElementById('sk-score-label');
+  if (scoreEl) scoreEl.textContent = (doneAm + donePm) + ' / ' + total;
+  const tag = document.getElementById('sk-date-tag');
+  if (tag) tag.textContent = _skToday().slice(5).replace('-','/');
+}
+
+// ── 3. HABIT RING ─────────────────────────────────────────────────
+const HR_HABITS = [
+  { id:'challenge', label:'CHALLENGE', color:'on' },
+  { id:'gym',       label:'GYM',       color:'on' },
+  { id:'driving',   label:'ЖОЛОО',     color:'on' },
+  { id:'skincare',  label:'АРЬС',      color:'on-pink' },
+];
+
+function _mrHabitRender() {
+  const grid = document.getElementById('hr-grid');
+  if (!grid) return;
+  const today = new Date().toISOString().slice(0,10);
+  const days  = Array.from({length:7}, (_,i) => {
+    const d = new Date(Date.now() - (6-i)*86400000);
+    return d.toISOString().slice(0,10);
+  });
+
+  grid.innerHTML = HR_HABITS.map(h => {
+    const dots = days.map((day, di) => {
+      let on = false;
+      if (h.id === 'skincare') {
+        try {
+          const sk = JSON.parse(localStorage.getItem('jarvis_skincare_' + day) || '{}');
+          const am = SK_AM.filter((_,i) => sk.am?.[i]).length;
+          const pm = SK_PM.filter((_,i) => sk.pm?.[i]).length;
+          on = (am + pm) >= 3;
+        } catch {}
+      } else if (h.id === 'driving') {
+        try {
+          const drv = JSON.parse(localStorage.getItem('jarvis_driving') || '{}');
+          on = (drv.log || []).includes(day);
+        } catch {}
+      } else if (h.id === 'gym') {
+        try {
+          const gd = JSON.parse(localStorage.getItem('jarvis_gym_log') || '[]');
+          on = gd.includes(day);
+        } catch {}
+      } else if (h.id === 'challenge') {
+        try {
+          const sc = JSON.parse(localStorage.getItem('jarvis_ch_scores_' + day) || '{}');
+          on = ((sc.bileg?.pct || sc.marlaa?.pct || 0) >= 50);
+        } catch {}
+      }
+      const isToday = day === today;
+      const cls = on ? h.color : (isToday ? 'today' : '');
+      return `<div class="hr-dot ${cls}" title="${day}"></div>`;
+    }).join('');
+    return `<div class="hr-row"><span class="hr-label">${h.label}</span><div class="hr-dots">${dots}</div></div>`;
+  }).join('');
+}
+
+// ── 4. MOOD / VIBE ────────────────────────────────────────────────
+const MOOD_LABELS = { '😴':'Ядарсан', '😤':'Хэцүү', '😊':'Хэвийн', '🔥':'Ид хүч', '🌟':'Тэргүүн' };
+
+function _moodToday() { return new Date().toISOString().slice(0,10); }
+function _moodPick(vibe) {
+  localStorage.setItem('jarvis_mood_' + _moodToday(), vibe);
+  _moodRender();
+}
+function _moodRender() {
+  const saved = localStorage.getItem('jarvis_mood_' + _moodToday());
+  document.querySelectorAll('.mood-btn').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.vibe === saved);
+  });
+  const labelEl = document.getElementById('mood-label');
+  if (labelEl) labelEl.textContent = saved ? `${saved} ${MOOD_LABELS[saved] || ''}` : '— өнөөдрийн байдлаа сонгоно уу';
+}
+
+// ── Init Marlaa widgets on boot ───────────────────────────────────
+function _marlaaWidgetsInit() {
+  if ((localStorage.getItem('jarvis_user_role') || 'bileg') !== 'marlaa') return;
+  _drvRender();
+  _skRender();
+  _mrHabitRender();
+  _moodRender();
 }
 
 // Toast helper (if not already defined)
