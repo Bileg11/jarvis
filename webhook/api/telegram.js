@@ -558,8 +558,8 @@ async function sendBrief() {
     } catch {}
   }
 
-  // ── HSK Blitz: өнөөдрийн 5 ханз сонгох (Sprint 5) ───────────────
-  const todayWords = [...HSK_BANK].sort(() => Math.random() - 0.5).slice(0, 5);
+  // ── HSK Blitz: өнөөдрийн 20 ханз — HSK3 шалгалт 20 өдрийн дотор ──
+  const todayWords = [...HSK_BANK].sort(() => Math.random() - 0.5).slice(0, 20);
 
   // Firestore-д хадгалах — handleVoice-д ашиглана
   dbPersonal.doc(`users/${UID}/hsk/today`).set({
@@ -601,11 +601,11 @@ async function sendBrief() {
   msg += `\n💡 J.A.R.V.I.S:\n${advice}\n`;
 
   // HSK Blitz хэсэг
-  msg += `\n\n🈶 *Өнөөдрийн 5 ханз (HSK Blitz):*\n`;
-  todayWords.forEach(w => {
-    msg += `• *${w.char}* (${w.pinyin}) — ${w.meaning} [HSK${w.level}]\n`;
+  msg += `\n\n🈶 *Өнөөдрийн 20 ханз (HSK3 · 20 өдөр үлдсэн):*\n`;
+  todayWords.forEach((w, i) => {
+    msg += `${i+1}. *${w.char}* (${w.pinyin}) — ${w.meaning}\n`;
   });
-  msg += `\n_Дуут зурвасаар өгүүлбэр зохио — J.A.R.V.I.S оноо өгнө 🎯_`;
+  msg += `\n_/hsk\\_drill — drill эхлэх · дуут зурвасаар өгүүлбэр зохио 🎯_`;
 
   msg += `\n\n⚡ J.A.R.V.I.S ажиллаж байна.`;
 

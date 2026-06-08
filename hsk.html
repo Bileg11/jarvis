@@ -281,6 +281,7 @@
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab active" onclick="switchTab('vault')">📚 Үгийн сан</button>
+    <button class="tab" onclick="switchTab('session')">🔥 Session</button>
     <button class="tab" onclick="switchTab('drill')">⚡ Drill</button>
     <button class="tab" onclick="switchTab('test')">🎯 Шалгалт</button>
     <button class="tab" onclick="switchTab('sentence')">✍ Өгүүлбэр</button>
@@ -329,6 +330,18 @@
   <div id="today-words-wrap" style="display:none;background:rgba(126,184,126,.06);border:1px solid rgba(126,184,126,.2);border-radius:8px;padding:12px 16px;margin-bottom:14px">
     <div style="font-size:10px;font-weight:600;letter-spacing:.08em;color:#7eb87e;opacity:.8;text-transform:uppercase;margin-bottom:8px">☀ Өглөөний 5 үг (JARVIS bot)</div>
     <div id="today-words-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+
+  <!-- ── TAB: SESSION (20-25 оновчтой үг) ── -->
+  <div class="tab-panel" id="panel-session">
+    <div class="card" id="session-wrap">
+      <div class="empty" style="padding:40px 0">Session ачааллаж байна...</div>
+    </div>
+    <div class="card" style="padding:12px 16px;margin-top:0">
+      <div style="font-size:11px;color:var(--text);opacity:.5;margin-bottom:6px">Session явц</div>
+      <div class="prog-bar"><div class="prog-fill" id="sess-prog-fill" style="width:0%"></div></div>
+      <div style="font-size:11px;color:var(--text);opacity:.5;text-align:right;margin-top:4px" id="sess-prog-label">0 / 0</div>
+    </div>
   </div>
 
   <!-- ── TAB: DRILL ── -->
@@ -536,10 +549,11 @@ function updatePlan() {
 // ── Tab switching ─────────────────────────────────────────────────
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach((t,i) => {
-    t.classList.toggle('active', ['vault','drill','test','sentence'][i] === name);
+    t.classList.toggle('active', ['vault','session','drill','test','sentence'][i] === name);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + name)?.classList.add('active');
+  if (name === 'session')  initSession();
   if (name === 'drill')    initDrill();
   if (name === 'test')     initTest();
   if (name === 'sentence') initSentence();
@@ -880,6 +894,108 @@ function showToast(msg, ms=2200) {
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ── STUDY SESSION (20-25 оновчтой үг) ────────────────────────────
+const SESSION_SIZE = 20;
+let _sessQueue = [], _sessIdx = 0, _sessFlipped = false;
+let _sessKnow = 0, _sessMiss = 0;
+
+function initSession() {
+  const words = getWords();
+  if (!words.length) {
+    document.getElementById('session-wrap').innerHTML = '<div class="empty" style="padding:40px 0">Эхлээд үгийн сан нэм</div>';
+    return;
+  }
+  // Ухаалаг дараалал: давтах → шинэ → бусад, нийт 20-25
+  const due   = words.filter(w => !w.mastered && _isDue(w));
+  const fresh = words.filter(w => !w.mastered && !w.reviewed);
+  const pool  = [...due.sort(()=>Math.random()-.5).slice(0, 12),
+                 ...fresh.sort(()=>Math.random()-.5).slice(0, SESSION_SIZE)];
+  const unique = [...new Map(pool.map(w=>[w.h,w])).values()].slice(0, SESSION_SIZE);
+  _sessQueue  = unique;
+  _sessIdx    = 0; _sessKnow = 0; _sessMiss = 0; _sessFlipped = false;
+  renderSession();
+}
+
+function renderSession() {
+  const wrap = document.getElementById('session-wrap');
+  if (!wrap) return;
+  const total = _sessQueue.length;
+  const done  = _sessIdx;
+  document.getElementById('sess-prog-fill').style.width = (total ? done/total*100 : 0) + '%';
+  document.getElementById('sess-prog-label').textContent = done + ' / ' + total;
+
+  if (_sessIdx >= total) {
+    const pct = total ? Math.round(_sessKnow/total*100) : 0;
+    wrap.innerHTML = `<div class="test-result">
+      <div style="font-size:32px;margin-bottom:12px">${pct>=80?'🌟':pct>=60?'✅':'📖'}</div>
+      <div class="test-score" style="color:${pct>=80?'var(--green)':pct>=60?'var(--amber)':'var(--red)'}">${pct}%</div>
+      <div style="font-size:13px;color:var(--text);opacity:.6;margin:8px 0">${_sessKnow} мэдсэн · ${_sessMiss} мэдэхгүй · ${total} нийт</div>
+      <div style="font-size:12px;color:var(--text);opacity:.4;margin-bottom:20px">${pct>=80?'Маш сайн! Drill-д дэвжүүл.':pct>=60?'Дахин нэг давта.':'Мэдэхгүй үгс дахин гарна.'}</div>
+      <button onclick="initSession()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-b);border-radius:8px;padding:10px 20px;cursor:pointer;font-size:13px">Дахин эхлэх</button>
+    </div>`;
+    bumpStreak(); updateStats(); updatePlan();
+    return;
+  }
+  const w = _sessQueue[_sessIdx];
+  _sessFlipped = false;
+  const isReview = w.reviewed && _isDue(w);
+  wrap.innerHTML = `
+    <div class="flash-card" onclick="sessFlip()" title="Дарж харах">
+      <div style="height:18px;display:flex;justify-content:center;margin-bottom:4px">
+        ${isReview ? '<span style="font-size:9px;background:rgba(196,112,96,.12);color:var(--red);border:1px solid rgba(196,112,96,.3);border-radius:3px;padding:2px 7px">🔴 ДАВТАХ</span>'
+                   : '<span style="font-size:9px;background:rgba(126,184,126,.1);color:#7eb87e;border:1px solid rgba(126,184,126,.25);border-radius:3px;padding:2px 7px">🆕 ШИНЭ</span>'}
+      </div>
+      <div class="flash-hanzi">${w.h}</div>
+      <div class="flash-pinyin" id="sf-py" style="opacity:0;transition:opacity .3s">${w.p||''}</div>
+      <div class="flash-meaning" id="sf-mn" style="opacity:0;transition:opacity .3s">${w.m}</div>
+      <div class="flash-hint">↓ дарж харах</div>
+    </div>
+    <div class="flash-actions">
+      <button class="flash-btn" onclick="sessMiss()" style="border-color:var(--red);color:var(--red);flex:1;padding:12px">✗ Мэдэхгүй</button>
+      <button class="flash-btn flash-btn-know" onclick="sessKnow()" style="flex:1;padding:12px">✓ Мэднэ</button>
+    </div>
+    <div style="font-size:10px;color:var(--text);opacity:.4;text-align:center;margin-top:8px">${done+1}/${total} · ✓${_sessKnow} ✗${_sessMiss}</div>`;
+}
+
+function sessFlip() {
+  _sessFlipped = !_sessFlipped;
+  const py = document.getElementById('sf-py');
+  const mn = document.getElementById('sf-mn');
+  if (py) py.style.opacity = _sessFlipped ? '1' : '0';
+  if (mn) mn.style.opacity = _sessFlipped ? '1' : '0';
+  document.querySelector('#session-wrap .flash-hint')?.remove();
+}
+
+function sessKnow() {
+  _sessKnow++;
+  const w   = _sessQueue[_sessIdx];
+  const idx = _words.findIndex(x => x.h === w.h);
+  if (idx >= 0) {
+    _words[idx].mastery  = Math.min((_words[idx].mastery||0)+1, 5);
+    _words[idx].mastered = _words[idx].mastery >= 3;
+    _words[idx].reviewed = new Date().toISOString();
+    saveWords(_words);
+    _updateMasteryInFirestore(w.h, _words[idx].mastery);
+  }
+  _sessIdx++; renderSession();
+}
+
+function sessMiss() {
+  _sessMiss++;
+  const w   = _sessQueue[_sessIdx];
+  const idx = _words.findIndex(x => x.h === w.h);
+  if (idx >= 0) {
+    _words[idx].mastery  = Math.max(0, (_words[idx].mastery||0)-1);
+    _words[idx].mastered = false;
+    saveWords(_words);
+    _updateMasteryInFirestore(w.h, _words[idx].mastery);
+  }
+  // Мэдэхгүй үгсийг сүүлд дахин нэм
+  _sessQueue.push(_sessQueue[_sessIdx]);
+  _sessIdx++;
+  renderSession();
 }
 
 // ── Today's 5 words (bot morning brief) ──────────────────────────
