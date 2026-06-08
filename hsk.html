@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HSK4 — Үгийн сан</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
 <style>
   /* ── Base ─────────────────────────────────────────────── */
@@ -455,17 +458,16 @@ function _renderExamDays() {
 async function init() {
   _renderExamDays();
 
-  // Firestore холбогдсон эсэхийг шалга
-  if (window._db && window._auth) {
+  // Firebase auth хүлээх (max 4s)
+  if (window._db) {
     _db = window._db;
-    // Auth settle хүлээх
     await new Promise(resolve => {
-      const unsub = window._auth.onAuthStateChanged(user => {
-        unsub();
+      const timer = setTimeout(resolve, 4000);
+      firebase.auth().onAuthStateChanged(user => {
+        clearTimeout(timer);
         _uid = user?.uid || null;
         resolve();
       });
-      setTimeout(resolve, 3000); // 3s timeout
     });
   }
 
