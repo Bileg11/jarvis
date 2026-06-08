@@ -38,8 +38,8 @@
   --yellow:   #ffd700;
 
   /* ── READABILITY: high-contrast text colors ─────────────────── */
-  --text:     #d2e9f7;   /* тод болгов — was #a8cfe0 (бараан байсан) */
-  --text-b:   #eef8ff;   /* near-white primary */
+  --text:     #e6f3fd;   /* илүү тод (уншихад хялбар) */
+  --text-b:   #f6fbff;   /* near-white primary */
   --dim:      #0d2033;
 
   /* ── TYPOGRAPHY SYSTEM (Sprint 31 — global scaling) ─────────── */
@@ -9407,7 +9407,14 @@ async function _fvSend() {
   try {
     if (typeof sendChatMessage === 'function') {
       const reply = await _withTimeout(sendChatMessage(text), 20000);
-      if (thinking) thinking.innerHTML = _fvEscape(reply || '...').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      // FIX: AI-ийн __jarvis_card JSON-ыг түүхий текстээр биш, КАРТ болгож гаргана
+      const card = (typeof _tryParseCard === 'function') ? _tryParseCard(reply || '') : null;
+      if (card && card.__jarvis_card) {
+        thinking?.closest('.fv-msg')?.remove();   // "боловсруулж байна" мөрийг арилгана
+        _fvSpawnCustomCard(card);
+      } else if (thinking) {
+        thinking.innerHTML = _fvEscape(reply || '...').replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      }
     } else {
       if (thinking) thinking.innerHTML = '⚙️ AI тохиргоогүй байна. Profile-д Token оруулна уу.';
     }
@@ -9556,6 +9563,38 @@ function _fvSpawnCard(type) {
 
   _fvRenderCard(type);
   _fvMakeDraggable(card, card.querySelector('.fv-card-hdr'));
+}
+
+// AI-ийн картыг (__jarvis_card JSON) FOCUS canvas дээр floating card болгож гаргана
+let _fvCustomCardN = 0;
+function _fvSpawnCustomCard(card) {
+  const canvas = document.getElementById('fv-canvas');
+  if (!canvas) return;
+  const el = document.createElement('div');
+  el.className = 'fv-card';
+  el.id = 'fv-custom-' + (++_fvCustomCardN);
+  el.style.zIndex = (window._fvCardZ = (window._fvCardZ || 60) + 1);
+  const n = canvas.querySelectorAll('.fv-card').length;
+  el.style.left = (40 + (n % 4) * 60) + 'px';
+  el.style.top  = (60 + (n % 5) * 44) + 'px';
+  const color = card.color || 'var(--accent)';
+  let body = '';
+  if (card.type === 'progress') {
+    const pct = card.max ? Math.round((+card.value / +card.max) * 100) : +card.value;
+    body = `<div style="font-size:22px;color:${color};font-family:var(--hud)">${card.value}${card.max?'/'+card.max:''}</div>
+            <div style="height:5px;background:var(--dim);border-radius:2px;margin:8px 0;overflow:hidden"><div style="height:100%;width:${Math.min(100,pct)}%;background:${color}"></div></div>
+            ${card.subtitle?`<div style="font-size:10px;opacity:.75">${_fvEscape(String(card.subtitle))}</div>`:''}`;
+  } else if (card.type === 'list') {
+    body = `<div style="display:flex;flex-direction:column;gap:5px">${(card.items||[]).map(i=>`<div style="font-size:11px">▸ ${_fvEscape(String(i))}</div>`).join('')}</div>`;
+  } else {
+    body = `<div style="font-size:23px;color:${color};font-family:var(--hud);margin:4px 0">${_fvEscape(String(card.value||''))}</div>
+            ${card.subtitle?`<div style="font-size:10px;opacity:.75">${_fvEscape(String(card.subtitle))}</div>`:''}`;
+  }
+  el.innerHTML = `<div class="fv-card-hdr"><span>${_fvEscape(String(card.label||card.title||'A.C.E.'))}</span><button class="fv-card-close" onclick="this.closest('.fv-card').remove()">✕</button></div>
+                  <div class="fv-card-body">${body}</div>`;
+  canvas.appendChild(el);
+  el.addEventListener('mousedown', () => { el.style.zIndex = (window._fvCardZ = (window._fvCardZ || 60) + 1); });
+  if (typeof _fvMakeDraggable === 'function') _fvMakeDraggable(el, el.querySelector('.fv-card-hdr'));
 }
 
 function _fvCloseCard(type) {
