@@ -2117,6 +2117,13 @@ body.user-marlaa {
 }
 .chud-panel:last-child { border-right:none; }
 .chud-panel-title { font-family:var(--hud); font-size:8px; letter-spacing:.15em; color:var(--accent); margin-bottom:5px; flex-shrink:0; }
+.chud-ace-line {
+  font-family:var(--mono); font-size:9px; color:var(--accent);
+  border-bottom:1px solid var(--border); padding-bottom:5px; margin-bottom:5px;
+  flex-shrink:0; min-height:13px; letter-spacing:.04em; font-style:italic;
+}
+.chud-ace-line.loading { opacity:.4; animation:chud-pulse 1.2s ease infinite; }
+.chud-ace-prefix { color:var(--green); font-style:normal; margin-right:4px; }
 .chud-logs { flex:1; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:1px; }
 .chud-logs::-webkit-scrollbar { width:2px; }
 .chud-log-item { font-family:var(--mono); font-size:9px; color:var(--text); padding:1px 0; }
@@ -3235,6 +3242,9 @@ body.user-marlaa {
     </div>
     <div class="chud-panel" style="flex:2">
       <div class="chud-panel-title">▶ LIVE_LOGS // COMM_FEED</div>
+      <div class="chud-ace-line" id="chud-ace-line">
+        <span class="chud-ace-prefix">A.C.E.›</span><span id="chud-ace-text" style="opacity:.4">[ ANALYZING... ]</span>
+      </div>
       <div class="chud-logs" id="chud-logs">
         <div class="chud-log-item" style="opacity:.35">[ AWAITING SIGNAL... ]</div>
       </div>
@@ -9959,7 +9969,9 @@ let _chudPrevHp = 100;
 function openChallengeHud() {
   document.getElementById('challenge-hud-overlay')?.classList.add('open');
   document.getElementById('challenge-hud')?.classList.add('open');
-  _chudLogs = [];
+  _chudLogs      = [];
+  _chudRoastTimer = 0;
+  _chudPrevHp    = 100;
   _chudStart();
 }
 
@@ -10075,6 +10087,13 @@ function _chudRenderScores(bileg, marlaa) {
   }
   if (label) label.textContent = `HP: ${hp}%`;
 
+  // A.C.E. roast — нэг удаа (HUD нээгдсэнээс хойш анхны score update-д)
+  if (!_chudRoastTimer) {
+    _chudRoastTimer = 1;
+    const streak = parseInt(document.getElementById('chud-streak-bileg')?.textContent || '0', 10);
+    _chudFetchRoast(bPct, mPct, streak);
+  }
+
   // Boss critical flash: trigger when crossing below 30%
   if (hp < 30 && _chudPrevHp >= 30) {
     const alert = document.getElementById('chud-boss-alert');
@@ -10162,6 +10181,66 @@ function _chudRenderProofs(data) {
   grid.innerHTML = verified.map(p =>
     `<div class="chud-proof-chip">✅ ${p.fromName || '?'}${p.caption ? '<br><span style="opacity:.6">' + p.caption + '</span>' : ''}</div>`
   ).join('');
+}
+
+// ── A.C.E. Roast / Motivation ─────────────────────────────────────
+let _chudRoastTimer = 0;
+
+async function _chudFetchRoast(bPct, mPct, bStreak) {
+  const aceEl  = document.getElementById('chud-ace-text');
+  const lineEl = document.getElementById('chud-ace-line');
+  if (!aceEl) return;
+
+  // 30 минут cache
+  const cacheKey = `jarvis_chud_roast_${_chudToday()}`;
+  const cached   = localStorage.getItem(cacheKey);
+  if (cached) { aceEl.textContent = cached; aceEl.style.opacity = '1'; return; }
+
+  if (!_isConfigured()) {
+    aceEl.textContent = 'A.C.E. offline — proxy холбогдоогүй';
+    aceEl.style.opacity = '.4';
+    return;
+  }
+
+  lineEl?.classList.add('loading');
+  aceEl.textContent  = '[ ANALYZING... ]';
+  aceEl.style.opacity = '.4';
+
+  const diff    = bPct - mPct;
+  const who     = diff > 5 ? 'Билэг түрүүлж байна' : diff < -5 ? 'Маралаа түрүүлж байна' : 'Тэнцүү байна';
+  const prompt  = `Чи A.C.E. — Билэгийн JARVIS. Өнөөдрийн тайлан: Билэг ${bPct}%, Маралаа ${mPct}%. ${who}. Streak: ${bStreak || 0} өдөр. Нэг өгүүлбэрээр (≤55 тэмдэгт, Монголоор, дотоод нэр томьёогүйгээр) шоолж эсвэл өдөөж хариул. Тайлбар хэрэггүй.`;
+
+  try {
+    const ep  = _chatEndpoint();
+    const res = await Promise.race([
+      fetch(ep.url, {
+        method: 'POST', headers: ep.headers,
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: 'Чи A.C.E. — товч, хурц, монголоор хариулдаг JARVIS AI.' },
+            { role: 'user',   content: prompt }
+          ],
+          max_tokens: 80, temperature: 0.9
+        })
+      }),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 10000))
+    ]);
+    if (!res.ok) throw new Error('api_err');
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content?.trim();
+    if (text) {
+      aceEl.textContent  = text;
+      aceEl.style.opacity = '1';
+      localStorage.setItem(cacheKey, text);
+      _chudLog('🤖 A.C.E. intel шинэчлэгдлээ');
+    }
+  } catch {
+    aceEl.textContent  = '[ SIGNAL LOST ]';
+    aceEl.style.opacity = '.35';
+  } finally {
+    lineEl?.classList.remove('loading');
+  }
 }
 
 function _chudLog(msg) {
