@@ -2016,6 +2016,46 @@ body.user-marlaa {
 .chud-boss-hp-fill.hp-warn { background:#f59e0b; }
 .chud-boss-hp-fill.hp-win { background:var(--green); box-shadow:0 0 8px rgba(0,255,136,.5); }
 @keyframes chud-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+/* Power Balance meter */
+.chud-balance { padding:6px 16px 8px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.chud-balance-label {
+  display:flex; justify-content:space-between;
+  font-family:var(--hud); font-size:8px; letter-spacing:.1em; color:var(--text); opacity:.5;
+  margin-bottom:5px;
+}
+.chud-balance-label span:nth-child(2) { opacity:.7; letter-spacing:.06em; }
+.chud-balance-track {
+  height:5px; background:rgba(255,255,255,.06); border-radius:3px;
+  position:relative; overflow:visible;
+}
+.chud-balance-fill-l {
+  position:absolute; top:0; left:0; height:100%; border-radius:3px 0 0 3px;
+  background:var(--accent); opacity:.5; transition:width .7s ease;
+}
+.chud-balance-fill-r {
+  position:absolute; top:0; right:0; height:100%; border-radius:0 3px 3px 0;
+  background:#f9a8c5; opacity:.5; transition:width .7s ease;
+}
+.chud-balance-knot {
+  position:absolute; top:-3px; width:3px; height:11px;
+  background:#fff; border-radius:2px;
+  box-shadow:0 0 6px rgba(255,255,255,.7);
+  transition:left .7s ease; transform:translateX(-50%);
+}
+/* Boss critical flash */
+@keyframes chud-boss-critical {
+  0%   { opacity:0; letter-spacing:.4em; }
+  12%  { opacity:1; letter-spacing:.2em; }
+  78%  { opacity:1; }
+  100% { opacity:0; letter-spacing:.3em; }
+}
+#chud-boss-alert {
+  font-family:var(--hud); font-size:9px; letter-spacing:.18em;
+  color:var(--red); text-shadow:var(--neon-r);
+  margin-top:5px; height:13px; opacity:0; pointer-events:none;
+  white-space:nowrap; overflow:hidden;
+}
+#chud-boss-alert.firing { animation:chud-boss-critical 3s ease forwards; }
 .chud-columns { display:flex; flex:1; overflow:hidden; min-height:0; }
 .chud-col {
   flex:1; border-right:1px solid var(--border); display:flex; flex-direction:column;
@@ -3135,6 +3175,19 @@ body.user-marlaa {
     </div>
     <div class="chud-boss-hp-bar">
       <div class="chud-boss-hp-fill hp-danger" id="chud-boss-fill" style="width:100%"></div>
+    </div>
+    <div id="chud-boss-alert">⚠ BOSS_CRITICAL_STATE // INITIATING FINISHING_BLOW</div>
+  </div>
+  <div class="chud-balance">
+    <div class="chud-balance-label">
+      <span>⚡ BILEG</span>
+      <span>POWER_BALANCE // INITIATIVE</span>
+      <span>МАРАЛАА 🌸</span>
+    </div>
+    <div class="chud-balance-track">
+      <div class="chud-balance-fill-l" id="chud-bal-left" style="width:50%"></div>
+      <div class="chud-balance-fill-r" id="chud-bal-right" style="width:50%"></div>
+      <div class="chud-balance-knot" id="chud-bal-knot" style="left:50%"></div>
     </div>
   </div>
   <div class="chud-columns">
@@ -9896,6 +9949,7 @@ function _fvMakeDraggable(card, handle) {
 // ══════════════════════════════════════════════════════════════════
 let _chudUnsubs = [];
 let _chudLogs   = [];
+let _chudPrevHp = 100;
 
 function openChallengeHud() {
   document.getElementById('challenge-hud-overlay')?.classList.add('open');
@@ -10015,6 +10069,27 @@ function _chudRenderScores(bileg, marlaa) {
     fill.className   = 'chud-boss-hp-fill ' + (hp > 60 ? 'hp-danger' : hp > 30 ? 'hp-warn' : 'hp-win');
   }
   if (label) label.textContent = `HP: ${hp}%`;
+
+  // Boss critical flash: trigger when crossing below 30%
+  if (hp < 30 && _chudPrevHp >= 30) {
+    const alert = document.getElementById('chud-boss-alert');
+    if (alert) {
+      alert.classList.remove('firing');
+      void alert.offsetWidth; // reflow to restart animation
+      alert.classList.add('firing');
+      alert.addEventListener('animationend', () => alert.classList.remove('firing'), { once: true });
+    }
+  }
+  _chudPrevHp = hp;
+
+  // Power Balance meter: knot position = 50 − (bPct − mPct) / 2
+  const knotPct = Math.min(100, Math.max(0, 50 - (bPct - mPct) / 2));
+  const knotEl = document.getElementById('chud-bal-knot');
+  const leftEl = document.getElementById('chud-bal-left');
+  const rightEl= document.getElementById('chud-bal-right');
+  if (knotEl)  knotEl.style.left   = knotPct + '%';
+  if (leftEl)  leftEl.style.width  = knotPct + '%';
+  if (rightEl) rightEl.style.width = (100 - knotPct) + '%';
 }
 
 let _chudBilegRoutineData = {};
