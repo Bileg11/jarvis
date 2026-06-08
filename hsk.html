@@ -360,9 +360,9 @@ const LS_WORDS   = 'jarvis_hsk_vault_cache';
 const LS_SESSION = 'jarvis_hsk_session_';
 const LS_STREAK  = 'jarvis_hsk_streak';
 
-let _db  = null;
-let _uid = null;
-let _words = []; // in-memory cache
+let _hskDb  = null;
+let _hskUid = null;
+let _words  = []; // in-memory cache
 
 // Firestore-аас ирсэн word → дотоод формат руу хөрвүүлэх
 function _mapWord(id, d) {
@@ -387,9 +387,9 @@ function saveWords(arr) {
 }
 
 async function _loadFromFirestore() {
-  if (!_db || !_uid) return false;
+  if (!_hskDb || !_hskUid) return false;
   try {
-    const snap = await _db.collection(`users/${_uid}/vocabulary`).get();
+    const snap = await _hskDb.collection(`users/${_hskUid}/vocabulary`).get();
     if (snap.empty) return false;
     _words = snap.docs.map(d => _mapWord(d.id, d.data()));
     localStorage.setItem(LS_WORDS, JSON.stringify(_words));
@@ -406,9 +406,9 @@ function _loadFromCache() {
 }
 
 async function _saveWordToFirestore(word) {
-  if (!_db || !_uid) return;
+  if (!_hskDb || !_hskUid) return;
   const id = word.h;
-  _db.doc(`users/${_uid}/vocabulary/${id}`).set({
+  _hskDb.doc(`users/${_hskUid}/vocabulary/${id}`).set({
     word:       word.h,
     pinyin:     word.p,
     definition: word.m,
@@ -420,8 +420,8 @@ async function _saveWordToFirestore(word) {
 }
 
 async function _updateMasteryInFirestore(wordH, mastery) {
-  if (!_db || !_uid) return;
-  _db.doc(`users/${_uid}/vocabulary/${wordH}`).set({
+  if (!_hskDb || !_hskUid) return;
+  _hskDb.doc(`users/${_hskUid}/vocabulary/${wordH}`).set({
     mastery_level:  mastery,
     last_reviewed:  new Date().toISOString(),
   }, { merge: true }).catch(() => {});
@@ -460,12 +460,12 @@ async function init() {
 
   // Firebase auth хүлээх (max 4s)
   if (window._db) {
-    _db = window._db;
+    _hskDb = window._db;
     await new Promise(resolve => {
       const timer = setTimeout(resolve, 4000);
       firebase.auth().onAuthStateChanged(user => {
         clearTimeout(timer);
-        _uid = user?.uid || null;
+        _hskUid = user?.uid || null;
         resolve();
       });
     });
@@ -479,7 +479,7 @@ async function init() {
   updatePlan();
   renderVault();
 
-  const src = _uid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
+  const src = _hskUid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
   document.getElementById('plan-sub') && updatePlan();
   console.log('[HSK] Эх сурвалж:', src);
 }
