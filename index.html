@@ -1988,12 +1988,15 @@ body.user-marlaa {
 .gu-add-task { font-family: var(--mono); font-size: 10px; color: var(--accent); background: none; border: 1px dashed var(--border); border-radius: 4px; padding: 5px; width: 100%; cursor: pointer; margin-top: 2px; }
 
 /* ══ CHALLENGE HUD — Tactical Mission Control ══════════════════ */
-#challenge-hud-overlay { position:fixed; inset:0; z-index:2099; background:rgba(0,0,0,.78); display:none; }
+#challenge-hud-overlay {
+  position:fixed; top:var(--bar-h); left:0; right:0; bottom:0;
+  z-index:2099; background:rgba(0,0,0,.72); display:none;
+}
 #challenge-hud-overlay.open { display:block; }
 #challenge-hud {
-  position:fixed; inset:12px; z-index:2100;
-  background:rgba(0,4,14,.98); border:1px solid var(--border-h);
-  border-radius:8px; display:none; flex-direction:column;
+  position:fixed; top:calc(var(--bar-h) + 6px); left:12px; right:12px; bottom:12px;
+  z-index:2100; background:rgba(0,4,14,.98); border:1px solid var(--border-h);
+  border-radius:6px; display:none; flex-direction:column;
   overflow:hidden; box-shadow:0 0 80px rgba(0,229,255,.12), 0 0 0 1px rgba(0,229,255,.06);
 }
 #challenge-hud.open { display:flex; animation:ws-pop .2s ease; }
@@ -2014,15 +2017,31 @@ body.user-marlaa {
 .chud-boss-hp-fill.hp-win { background:var(--green); box-shadow:0 0 8px rgba(0,255,136,.5); }
 @keyframes chud-pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
 .chud-columns { display:flex; flex:1; overflow:hidden; min-height:0; }
-.chud-col { flex:1; border-right:1px solid var(--border); display:flex; flex-direction:column; overflow-y:auto; padding:10px 12px; }
+.chud-col {
+  flex:1; border-right:1px solid var(--border); display:flex; flex-direction:column;
+  overflow-y:auto; padding:12px 14px; position:relative;
+  /* 4-corner crosshairs via background-image gradient */
+  background-image:
+    linear-gradient(var(--accent),var(--accent)), linear-gradient(var(--accent),var(--accent)),
+    linear-gradient(var(--accent),var(--accent)), linear-gradient(var(--accent),var(--accent)),
+    linear-gradient(var(--accent),var(--accent)), linear-gradient(var(--accent),var(--accent)),
+    linear-gradient(var(--accent),var(--accent)), linear-gradient(var(--accent),var(--accent));
+  background-size: 10px 1px, 1px 10px, 10px 1px, 1px 10px, 10px 1px, 1px 10px, 10px 1px, 1px 10px;
+  background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
 .chud-col:last-child { border-right:none; }
 .chud-col::-webkit-scrollbar { width:3px; }
 .chud-col::-webkit-scrollbar-thumb { background:var(--border-h); border-radius:2px; }
-.chud-col-title { font-family:var(--hud); font-size:10px; letter-spacing:.14em; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+.chud-col-title { font-family:var(--hud); font-size:10px; letter-spacing:.14em; margin-bottom:2px; display:flex; align-items:center; gap:6px; }
+.chud-sysline { font-family:var(--mono); font-size:8px; letter-spacing:.06em; color:var(--text); opacity:.35; margin-bottom:8px; }
 .chud-status-badge { font-size:8px; letter-spacing:.08em; padding:2px 6px; border-radius:2px; }
-.chud-pct-big { font-family:var(--hud); font-size:34px; line-height:1; margin-bottom:6px; }
-.chud-score-bar { height:3px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; margin-bottom:10px; }
-.chud-score-fill { height:100%; transition:width .5s ease; }
+.chud-pct-big { font-family:var(--hud); font-size:36px; line-height:1; margin-bottom:4px; }
+.chud-pct-sub { font-family:var(--mono); font-size:8px; letter-spacing:.08em; opacity:.4; margin-bottom:8px; }
+.chud-score-bar { height:5px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; margin-bottom:12px; position:relative; }
+.chud-score-fill { height:100%; transition:width .6s ease; border-radius:2px; }
+#chud-col-bileg .chud-score-fill { box-shadow:0 0 6px rgba(0,229,255,.4); }
+#chud-col-marlaa .chud-score-fill { box-shadow:0 0 6px rgba(249,168,197,.4); }
 .chud-routine-item { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,.04); font-family:var(--mono); font-size:10px; }
 .chud-check { width:13px; height:13px; border:1px solid var(--border-h); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:8px; }
 .chud-check.done { background:var(--accent); border-color:var(--accent); color:#000; }
@@ -2039,8 +2058,18 @@ body.user-marlaa {
 #chud-col-marlaa .chud-score-fill { background:#f9a8c5; }
 #chud-col-marlaa .chud-check.done { background:#f9a8c5; border-color:#f9a8c5; color:#000; }
 #chud-col-marlaa .chud-status-badge { background:rgba(249,168,197,.12); color:#f9a8c5; }
-.chud-bottom { display:flex; border-top:1px solid var(--border); height:130px; flex-shrink:0; }
-.chud-panel { flex:1; border-right:1px solid var(--border); padding:8px 10px; overflow:hidden; display:flex; flex-direction:column; }
+.chud-bottom { display:flex; border-top:1px solid var(--border); height:135px; flex-shrink:0; }
+.chud-panel {
+  flex:1; border-right:1px solid var(--border); padding:8px 10px; overflow:hidden; display:flex; flex-direction:column;
+  background-image:
+    linear-gradient(var(--border-h),var(--border-h)), linear-gradient(var(--border-h),var(--border-h)),
+    linear-gradient(var(--border-h),var(--border-h)), linear-gradient(var(--border-h),var(--border-h)),
+    linear-gradient(var(--border-h),var(--border-h)), linear-gradient(var(--border-h),var(--border-h)),
+    linear-gradient(var(--border-h),var(--border-h)), linear-gradient(var(--border-h),var(--border-h));
+  background-size: 8px 1px, 1px 8px, 8px 1px, 1px 8px, 8px 1px, 1px 8px, 8px 1px, 1px 8px;
+  background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+  background-repeat: no-repeat;
+}
 .chud-panel:last-child { border-right:none; }
 .chud-panel-title { font-family:var(--hud); font-size:8px; letter-spacing:.15em; color:var(--accent); margin-bottom:5px; flex-shrink:0; }
 .chud-logs { flex:1; overflow-y:auto; display:flex; flex-direction:column-reverse; gap:1px; }
@@ -3114,7 +3143,9 @@ body.user-marlaa {
         &lt;&lt; BILEG &gt;&gt;
         <span class="chud-status-badge">[ACTIVE]</span>
       </div>
+      <div class="chud-sysline">SYS_CORE: ONLINE // SYNC: OK // EFFORT_COEFF: 1.00</div>
       <div class="chud-pct-big" id="chud-pct-bileg">—</div>
+      <div class="chud-pct-sub">DAILY_SCORE // VOLTAGE</div>
       <div class="chud-score-bar"><div class="chud-score-fill" id="chud-bar-bileg" style="width:0%"></div></div>
       <div id="chud-routine-bileg"></div>
       <div class="chud-meta">
@@ -3127,7 +3158,9 @@ body.user-marlaa {
         &lt;&lt; МАРАЛАА &gt;&gt;
         <span class="chud-status-badge">[ACTIVE]</span>
       </div>
+      <div class="chud-sysline">SYS_CORE: ONLINE // SYNC: OK // EFFORT_COEFF: 1.00</div>
       <div class="chud-pct-big" id="chud-pct-marlaa">—</div>
+      <div class="chud-pct-sub">DAILY_SCORE // VOLTAGE</div>
       <div class="chud-score-bar"><div class="chud-score-fill" id="chud-bar-marlaa" style="width:0%"></div></div>
       <div id="chud-routine-marlaa"></div>
       <div class="chud-meta">
