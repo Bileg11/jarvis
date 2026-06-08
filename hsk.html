@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HSK4 — Үгийн сан</title>
+<script src="firebase-config.js"></script>
 <style>
   /* ── Base ─────────────────────────────────────────────── */
   :root {
@@ -351,15 +352,77 @@
 
 <script>
 // ── Data ──────────────────────────────────────────────────────────
-const EXAM_DATE = new Date('2026-06-28T09:00:00+08:00');
-const LS_WORDS   = 'jarvis_hsk_vault';
+const EXAM_DATE  = new Date('2026-06-28T09:00:00+08:00');
+const LS_WORDS   = 'jarvis_hsk_vault_cache';
 const LS_SESSION = 'jarvis_hsk_session_';
 const LS_STREAK  = 'jarvis_hsk_streak';
 
-function getWords() {
-  try { return JSON.parse(localStorage.getItem(LS_WORDS) || '[]'); } catch { return []; }
+let _db  = null;
+let _uid = null;
+let _words = []; // in-memory cache
+
+// Firestore-аас ирсэн word → дотоод формат руу хөрвүүлэх
+function _mapWord(id, d) {
+  return {
+    h:        d.word     || d.h     || id,
+    p:        d.pinyin   || d.p     || '',
+    m:        d.definition || d.meaning || d.m || '',
+    level:    d.hsk_level || d.level || 4,
+    mastered: (d.mastery_level || 0) >= 3,
+    mastery:  d.mastery_level || 0,
+    reviewed: d.last_reviewed || null,
+    added:    d.added || '',
+    _id:      id,
+  };
 }
-function saveWords(arr) { localStorage.setItem(LS_WORDS, JSON.stringify(arr)); }
+
+function getWords() { return _words; }
+
+function saveWords(arr) {
+  _words = arr;
+  localStorage.setItem(LS_WORDS, JSON.stringify(arr));
+}
+
+async function _loadFromFirestore() {
+  if (!_db || !_uid) return false;
+  try {
+    const snap = await _db.collection(`users/${_uid}/vocabulary`).get();
+    if (snap.empty) return false;
+    _words = snap.docs.map(d => _mapWord(d.id, d.data()));
+    localStorage.setItem(LS_WORDS, JSON.stringify(_words));
+    return true;
+  } catch { return false; }
+}
+
+function _loadFromCache() {
+  try {
+    const c = JSON.parse(localStorage.getItem(LS_WORDS) || '[]');
+    if (c.length) { _words = c; return true; }
+  } catch {}
+  return false;
+}
+
+async function _saveWordToFirestore(word) {
+  if (!_db || !_uid) return;
+  const id = word.h;
+  _db.doc(`users/${_uid}/vocabulary/${id}`).set({
+    word:       word.h,
+    pinyin:     word.p,
+    definition: word.m,
+    hsk_level:  word.level || 4,
+    mastery_level: 0,
+    added:      word.added,
+    source:     'hsk_page',
+  }, { merge: true }).catch(() => {});
+}
+
+async function _updateMasteryInFirestore(wordH, mastery) {
+  if (!_db || !_uid) return;
+  _db.doc(`users/${_uid}/vocabulary/${wordH}`).set({
+    mastery_level:  mastery,
+    last_reviewed:  new Date().toISOString(),
+  }, { merge: true }).catch(() => {});
+}
 function today() { return new Date().toISOString().slice(0,10); }
 
 // ── Session (today's drill stats) ─────────────────────────────────
@@ -383,17 +446,40 @@ function bumpStreak() {
 }
 
 // ── Init ──────────────────────────────────────────────────────────
-function init() {
-  const days = Math.max(0, Math.ceil((EXAM_DATE - Date.now()) / 86400000));
-  const daysEl = document.getElementById('exam-days-num');
-  if (daysEl) {
-    daysEl.textContent = days;
-    daysEl.style.color = days < 14 ? 'var(--red)' : days < 30 ? 'var(--amber)' : 'var(--sage)';
+function _renderExamDays() {
+  const days  = Math.max(0, Math.ceil((EXAM_DATE - Date.now()) / 86400000));
+  const el    = document.getElementById('exam-days-num');
+  if (el) { el.textContent = days; el.style.color = days < 14 ? 'var(--red)' : days < 30 ? 'var(--amber)' : 'var(--sage)'; }
+}
+
+async function init() {
+  _renderExamDays();
+
+  // Firestore холбогдсон эсэхийг шалга
+  if (window._db && window._auth) {
+    _db = window._db;
+    // Auth settle хүлээх
+    await new Promise(resolve => {
+      const unsub = window._auth.onAuthStateChanged(user => {
+        unsub();
+        _uid = user?.uid || null;
+        resolve();
+      });
+      setTimeout(resolve, 3000); // 3s timeout
+    });
   }
+
+  // Firestore-оос үг татах, амжаагүй бол cache
+  const fromFS = await _loadFromFirestore();
+  if (!fromFS) _loadFromCache();
 
   updateStats();
   updatePlan();
   renderVault();
+
+  const src = _uid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
+  document.getElementById('plan-sub') && updatePlan();
+  console.log('[HSK] Эх сурвалж:', src);
 }
 
 function updateStats() {
@@ -442,8 +528,10 @@ function addWord() {
   const words = getWords();
   if (words.find(w => w.h === h)) { showToast('Энэ үг аль хэдийн байна'); return; }
 
-  words.push({ h, p: p||'', m, added: today(), mastered: false });
-  saveWords(words);
+  const newWord = { h, p: p||'', m, level:4, mastered:false, mastery:0, added: today() };
+  _words.push(newWord);
+  saveWords(_words);
+  _saveWordToFirestore(newWord);
   document.getElementById('inp-hanzi').value  = '';
   document.getElementById('inp-pinyin').value = '';
   document.getElementById('inp-mean').value   = '';
@@ -558,10 +646,14 @@ function drillKnow() {
     session.known = (session.known || 0) + 1;
     saveSession(session);
   }
-  // Mark as mastered
-  const words = getWords();
-  const idx   = words.findIndex(x => x.h === w.h);
-  if (idx >= 0) { words[idx].mastered = true; saveWords(words); }
+  // Mark as mastered locally + Firestore
+  const idx = _words.findIndex(x => x.h === w.h);
+  if (idx >= 0) {
+    _words[idx].mastered = true;
+    _words[idx].mastery  = Math.min((_words[idx].mastery || 0) + 1, 5);
+    saveWords(_words);
+    _updateMasteryInFirestore(w.h, _words[idx].mastery);
+  }
   _drillIdx++;
   bumpStreak();
   updateStats();
