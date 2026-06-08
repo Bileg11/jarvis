@@ -9995,7 +9995,7 @@ function _chudStart() {
   window._db.doc('challenge/current').get().then(snap => {
     const cur    = snap?.exists ? snap.data() : {};
     const chalId = cur.id   || 'june2026';
-    const endStr = cur.end  || '2026-11-30';
+    const endStr = cur.end  || '2026-06-30';
     _chudSetDaysLeft(endStr);
 
     // Daily scores (Bileg + Marlaa %)
