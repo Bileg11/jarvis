@@ -4204,14 +4204,12 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
   }
 
   addTermLine('user', text);
-  console.log('[DIAG] termSend:AI-path reached');
   if (typeof sendChatMessage!=='function') {
     termTypeJarvis('⚙️ Профайл хуудсанд Token тохируулна уу, Stark.');
     return;
   }
   // Timeout-той + input түгжиж UX тодорхой болгоно (гацсан мэт харагдахаас сэргийлнэ)
   addTermLine('sys', '>> боловсруулж байна…');
-  console.log('[DIAG] termSend:calling sendChatMessage');
   inp.disabled = true;
   const _ph = inp.placeholder;
   inp.placeholder = '⏳ JARVIS боловсруулж байна...';

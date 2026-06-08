@@ -247,7 +247,6 @@ function _hardTimeout(promise, ms, label) {
 // hoisting-ээс болж _origSendChat нь wrapper-ийг барьж аваад → INFINITE RECURSION
 // (чат /chat хүсэлт ч явуулалгүй мөнхөд гацдаг байсан). Одоо нэрийг нь салгав.
 async function _sendChatCore(userText) {
-  console.log('[DIAG] core:start');
   if (!_isConfigured()) return '⚙️ Профайл хуудсанд Proxy URL эсвэл GitHub Token оруулна уу.';
 
   // ── Rate limit шалгах ─────────────────────────────────────────
@@ -295,7 +294,6 @@ async function _sendChatCore(userText) {
     };
 
     let json, status = 200;
-    console.log('[DIAG] core:before-fetch', ep.url);
 
     // Electron бол Node дамжуулна (VPN/CORS тойрно), эс бөгөөс browser fetch
     if (typeof window !== 'undefined' && window.jarvisAPI?.chatCompletion) {
@@ -465,7 +463,6 @@ window._markTodoChanged = function() {
 
 // ── Context prefix builder (async) ──────────────────────────────────
 async function _buildContextPrefix() {
-  console.log('[DIAG] buildCtx:start');
   const parts = [];
 
   // Time period
@@ -549,18 +546,14 @@ window._getSystemInstruction = _getSystemInstruction;
 // хувьсагч (_runtimeCtxPrefix) + try/finally ашиглана.
 const _origSendChat = _sendChatCore;   // FIX: core-ийг барина (wrapper-ийг биш)
 async function sendChatMessage(userText) {
-  console.log('[DIAG] wrapper:start');
   try {
     _runtimeCtxPrefix = await Promise.race([
       _buildContextPrefix(),
       new Promise(r => setTimeout(() => r(''), 1500)),
     ]) || '';
   } catch { _runtimeCtxPrefix = ''; }
-  console.log('[DIAG] wrapper:ctx-done, calling core');
   try {
-    const _r = await _origSendChat(userText);
-    console.log('[DIAG] wrapper:core-returned');
-    return _r;
+    return await _origSendChat(userText);
   } finally {
     _runtimeCtxPrefix = '';   // дараагийн дуудлагад үлдэхгүй
   }
