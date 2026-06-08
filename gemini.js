@@ -242,8 +242,11 @@ function _hardTimeout(promise, ms, label) {
   ]);
 }
 
-// ── SEND CHAT ─────────────────────────────────────────────────────
-async function sendChatMessage(userText) {
+// ── SEND CHAT (core) — wrapper доороос дуудагдана ─────────────────
+// FIX: өмнө энэ ба доорх wrapper хоёулаа "sendChatMessage" нэртэй байсан тул
+// hoisting-ээс болж _origSendChat нь wrapper-ийг барьж аваад → INFINITE RECURSION
+// (чат /chat хүсэлт ч явуулалгүй мөнхөд гацдаг байсан). Одоо нэрийг нь салгав.
+async function _sendChatCore(userText) {
   if (!_isConfigured()) return '⚙️ Профайл хуудсанд Proxy URL эсвэл GitHub Token оруулна уу.';
 
   // ── Rate limit шалгах ─────────────────────────────────────────
@@ -541,7 +544,7 @@ window._getSystemInstruction = _getSystemInstruction;
 // Өмнө window._getSystemInstruction-г wrap хийгээд дутуу restore хийснээс болж
 // "Maximum call stack size exceeded" — чат мөнхөд гацдаг байсан. Одоо module
 // хувьсагч (_runtimeCtxPrefix) + try/finally ашиглана.
-const _origSendChat = sendChatMessage;
+const _origSendChat = _sendChatCore;   // FIX: core-ийг барина (wrapper-ийг биш)
 async function sendChatMessage(userText) {
   try {
     _runtimeCtxPrefix = await Promise.race([
