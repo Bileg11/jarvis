@@ -288,6 +288,10 @@
 
   <!-- ── TAB: VAULT ── -->
   <div class="tab-panel active" id="panel-vault">
+    <div id="seed-banner" style="display:none;background:rgba(196,160,100,.08);border:1px solid rgba(196,160,100,.3);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <span style="font-size:12px;color:#c4a064">⚠ Үгийн сан хоосон байна — HSK 1-6 (2094 үг) татах уу?</span>
+      <button onclick="seedFromBrowser()" style="background:#c4a064;color:#0d1117;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">📥 Татах</button>
+    </div>
     <div class="card">
       <div class="card-title">Шинэ үг нэмэх</div>
       <div class="add-form">
@@ -482,6 +486,11 @@ async function init() {
   const src = _hskUid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
   document.getElementById('plan-sub') && updatePlan();
   console.log('[HSK] Эх сурвалж:', src);
+  // Vocab хоосон бол seed banner харуулах
+  if (_words.length === 0) {
+    const banner = document.getElementById('seed-banner');
+    if (banner) banner.style.display = 'flex';
+  }
 }
 
 function updateStats() {
@@ -828,6 +837,56 @@ function showToast(msg, ms=2200) {
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ── Seed from browser (UID mismatch fix) ─────────────────────────
+const HSK_SEED_SAMPLE = [
+  {word:'爱',pinyin:'ài',definition:'хайрлах',hsk_level:1},{word:'八',pinyin:'bā',definition:'найм',hsk_level:1},
+  {word:'爸爸',pinyin:'bàba',definition:'аав',hsk_level:1},{word:'不',pinyin:'bù',definition:'үгүй',hsk_level:1},
+  {word:'大',pinyin:'dà',definition:'том',hsk_level:1},{word:'的',pinyin:'de',definition:'-ын/-ийн',hsk_level:1},
+  {word:'地',pinyin:'de/dì',definition:'газар / (дэвсгэр үг)',hsk_level:2},{word:'得',pinyin:'de/děi',definition:'авах / ёстой',hsk_level:2},
+  {word:'好',pinyin:'hǎo',definition:'сайн',hsk_level:1},{word:'很',pinyin:'hěn',definition:'маш',hsk_level:1},
+  {word:'你',pinyin:'nǐ',definition:'чи',hsk_level:1},{word:'是',pinyin:'shì',definition:'байна',hsk_level:1},
+  {word:'我',pinyin:'wǒ',definition:'би',hsk_level:1},{word:'在',pinyin:'zài',definition:'байна / дотор',hsk_level:1},
+  {word:'中国',pinyin:'Zhōngguó',definition:'Хятад',hsk_level:1},{word:'人',pinyin:'rén',definition:'хүн',hsk_level:1},
+  {word:'学习',pinyin:'xuéxí',definition:'суралцах',hsk_level:2},{word:'工作',pinyin:'gōngzuò',definition:'ажил',hsk_level:2},
+  {word:'时候',pinyin:'shíhou',definition:'үе, цаг',hsk_level:2},{word:'问题',pinyin:'wèntí',definition:'асуулт, асуудал',hsk_level:2},
+  {word:'因为',pinyin:'yīnwèi',definition:'учир нь',hsk_level:3},{word:'所以',pinyin:'suǒyǐ',definition:'тийм учраас',hsk_level:3},
+  {word:'虽然',pinyin:'suīrán',definition:'хэдийгээр',hsk_level:3},{word:'但是',pinyin:'dànshì',definition:'гэхдээ',hsk_level:3},
+  {word:'如果',pinyin:'rúguǒ',definition:'хэрэв',hsk_level:3},{word:'经验',pinyin:'jīngyàn',definition:'туршлага',hsk_level:4},
+  {word:'环境',pinyin:'huánjìng',definition:'орчин',hsk_level:4},{word:'影响',pinyin:'yǐngxiǎng',definition:'нөлөөлөх',hsk_level:4},
+  {word:'态度',pinyin:'tàidu',definition:'хандлага',hsk_level:4},{word:'机会',pinyin:'jīhuì',definition:'боломж',hsk_level:4},
+  {word:'质量',pinyin:'zhìliàng',definition:'чанар',hsk_level:4},{word:'发展',pinyin:'fāzhǎn',definition:'хөгжих',hsk_level:4},
+  {word:'目标',pinyin:'mùbiāo',definition:'зорилт',hsk_level:4},{word:'坚持',pinyin:'jiānchí',definition:'тэвчих',hsk_level:4},
+  {word:'努力',pinyin:'nǔlì',definition:'хичээх',hsk_level:4},{word:'成功',pinyin:'chénggōng',definition:'амжилт',hsk_level:4},
+  {word:'专注',pinyin:'zhuānzhù',definition:'төвлөрөх',hsk_level:5},{word:'焦虑',pinyin:'jiāolǜ',definition:'түгшүүр',hsk_level:5},
+  {word:'突破',pinyin:'tūpò',definition:'нэвтрэх',hsk_level:5},{word:'积累',pinyin:'jīlěi',definition:'хуримтлах',hsk_level:5},
+];
+
+async function seedFromBrowser() {
+  const btn = document.querySelector('#seed-banner button');
+  if (btn) { btn.textContent = '⏳ Татаж байна...'; btn.disabled = true; }
+  if (!_hskDb || !_hskUid) { showToast('Нэвтрэх шаардлагатай'); return; }
+  let count = 0;
+  try {
+    for (const w of HSK_SEED_SAMPLE) {
+      await _hskDb.doc(`users/${_hskUid}/vocabulary/${w.word}`).set({
+        ...w, mastery_level: 0, source: 'hsk_page_seed', added: today()
+      }, { merge: true });
+      count++;
+    }
+    showToast(`✓ ${count} үг нэмэгдлээ — Bot-д /seed_hsk явуулахад 2094 бүгд орно`);
+    document.getElementById('seed-banner').style.display = 'none';
+    await loadTxns_stub(); // vocab reload
+  } catch(e) { showToast('Алдаа: ' + e.message); }
+  if (btn) { btn.textContent = '📥 Татах'; btn.disabled = false; }
+}
+
+async function loadTxns_stub() {
+  // hsk vocab дахин ачаалах
+  const fromFS = await _loadFromFirestore();
+  if (!fromFS) _loadFromCache();
+  updateStats(); updatePlan(); renderVault();
 }
 
 // ── Boot ──────────────────────────────────────────────────────────
