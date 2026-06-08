@@ -523,7 +523,7 @@ canvas#reactor { display:block; will-change:transform; transform:translateZ(0); 
   margin-bottom:3px;
 }
 .mission-sub-os { font-family:var(--mono); font-size:9px; color:var(--text); letter-spacing:.04em;
-  margin-bottom:4px; }
+  margin-bottom:4px; overflow-wrap:anywhere; word-break:break-word; }
 .mission-bar-os { height:3px; background:var(--dim); border-radius:1px; overflow:hidden; margin-bottom:3px; }
 .mission-fill-os { height:100%; border-radius:1px;
   background: linear-gradient(90deg, var(--accent2), var(--accent));
@@ -536,7 +536,8 @@ canvas#reactor { display:block; will-change:transform; transform:translateZ(0); 
   font-family:var(--body); flex-shrink:0;
 }
 .m-btn-os:hover { background:rgba(0,229,255,.18); box-shadow:var(--neon); }
-.m-val-os { font-family:var(--mono); font-size:9px; color:var(--text-b); flex:1; letter-spacing:.04em; }
+.m-val-os { font-family:var(--mono); font-size:9px; color:var(--text-b); flex:1; letter-spacing:.04em;
+  min-width:0; overflow-wrap:anywhere; word-break:break-word; }
 
 /* Global business feed */
 .biz-feed { flex:1; overflow:hidden; display:flex; flex-direction:column; }
@@ -1745,7 +1746,7 @@ body.user-marlaa {
 /* Floating card canvas */
 .fv-canvas {
   position: absolute; inset: var(--bar-h) 0 0 0;
-  pointer-events: none; z-index: 5;
+  pointer-events: none; z-index: 60;   /* FIX: was 5 — card-ууд бусад агуулгын ДЭЭР гарна */
 }
 .fv-card {
   position: absolute; pointer-events: all;
@@ -6484,6 +6485,7 @@ function _startModuleCustomizerProtocol(moduleId) {
         <button class="mcf-color-btn${prefs.color==='#a855f7'?' active':''}" style="--c:#a855f7" data-color="#a855f7"></button>
         <button class="mcf-color-btn${prefs.color==='#ffd700'?' active':''}" style="--c:#ffd700" data-color="#ffd700"></button>
         <input type="color" class="mcf-color-picker" value="${prefs.color||'#00e5ff'}" title="Custom color">
+        <input type="text" class="mcf-color-hex" value="${prefs.color||'#00e5ff'}" maxlength="7" placeholder="#hex" title="Hex код бичих" style="width:78px;background:rgba(0,0,0,.35);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:3px 7px;border-radius:3px;text-transform:uppercase;">
       </div>
     </div>
     <div class="mcf-row">
@@ -6500,24 +6502,45 @@ function _startModuleCustomizerProtocol(moduleId) {
 
   // Wire color buttons
   let selectedColor = prefs.color || null;
+  const _previewEl = () => document.getElementById(moduleId);
+  const _setColor = (c) => {
+    selectedColor = c;
+    form.querySelector('.mcf-color-picker').value = c;
+    const hx = form.querySelector('.mcf-color-hex'); if (hx) hx.value = c.toUpperCase();
+    const el = _previewEl(); if (el) el.style.setProperty('--accent', c);   // live preview
+  };
   form.querySelectorAll('.mcf-color-btn').forEach(btn => {
     btn.style.background = btn.dataset.color;
     btn.addEventListener('click', () => {
       form.querySelectorAll('.mcf-color-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      selectedColor = btn.dataset.color;
-      form.querySelector('.mcf-color-picker').value = selectedColor;
+      _setColor(btn.dataset.color);
     });
   });
   form.querySelector('.mcf-color-picker').addEventListener('input', e => {
-    selectedColor = e.target.value;
     form.querySelectorAll('.mcf-color-btn').forEach(b => b.classList.remove('active'));
+    _setColor(e.target.value);
+  });
+  // Hex код бичих input
+  const hexInput = form.querySelector('.mcf-color-hex');
+  if (hexInput) hexInput.addEventListener('input', e => {
+    let v = e.target.value.trim();
+    if (v && !v.startsWith('#')) v = '#' + v;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+      form.querySelectorAll('.mcf-color-btn').forEach(b => b.classList.remove('active'));
+      selectedColor = v;
+      form.querySelector('.mcf-color-picker').value = v;
+      const el = _previewEl(); if (el) el.style.setProperty('--accent', v);
+    }
   });
 
-  // Font size slider
+  // Font size slider — live ZOOM preview (тогтмол px текстийг ч масштаблана → харагддаг болно)
   const slider = form.querySelector('.mcf-size-slider');
   const sizeVal = form.querySelector('.mcf-fsize-val');
-  slider.addEventListener('input', () => { sizeVal.textContent = slider.value + 'px'; });
+  slider.addEventListener('input', () => {
+    sizeVal.textContent = slider.value + 'px';
+    const el = _previewEl(); if (el) el.style.zoom = (parseFloat(slider.value) / 13).toFixed(3);
+  });
 
   // Apply button
   form.querySelector('.mcf-apply-btn').addEventListener('click', () => {
@@ -6525,7 +6548,7 @@ function _startModuleCustomizerProtocol(moduleId) {
     const fontSize = parseFloat(slider.value);
     if (el) {
       if (selectedColor) el.style.setProperty('--accent', selectedColor);
-      if (fontSize)      el.style.fontSize = fontSize + 'px';
+      if (fontSize)      el.style.zoom = (fontSize / 13).toFixed(3);
     }
     // Save preferences
     const allPrefs = JSON.parse(localStorage.getItem('jarvis_mod_prefs_v1') || '{}');
@@ -6553,7 +6576,7 @@ function _restoreModulePrefs() {
     const el   = document.getElementById(elId);
     if (!el) return;
     if (prefs.color)    el.style.setProperty('--accent', prefs.color);
-    if (prefs.fontSize) el.style.fontSize = prefs.fontSize + 'px';
+    if (prefs.fontSize) el.style.zoom = (prefs.fontSize / 13).toFixed(3);
   });
 }
 
@@ -9510,6 +9533,9 @@ function _fvSpawnCard(type) {
   const card = document.createElement('div');
   card.className = 'fv-card';
   card.id = 'fv-card-' + type;
+  // Дарсан/шинэ card-ыг урагш гаргана
+  card.style.zIndex = (window._fvCardZ = (window._fvCardZ || 60) + 1);
+  card.addEventListener('mousedown', () => { card.style.zIndex = (window._fvCardZ = (window._fvCardZ || 60) + 1); });
   // Stagger position — spread horizontally so cards don't overlap
   const count = Object.keys(_fvCardState).filter(k => _fvCardState[k]).length;
   card.style.left = (30 + count * 200) + 'px';
