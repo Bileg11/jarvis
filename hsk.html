@@ -646,8 +646,8 @@ function renderDrillCard() {
       <div class="flash-hint">↓ дарж харах</div>
     </div>
     <div class="flash-actions">
+      <button class="flash-btn flash-btn-skip" onclick="drillUnknown()" style="border-color:var(--red);color:var(--red)">✗ Мэдэхгүй</button>
       <button class="flash-btn flash-btn-know" onclick="drillKnow()">✓ Мэднэ</button>
-      <button class="flash-btn flash-btn-skip" onclick="drillSkip()">→ Дараачийнх</button>
     </div>
     <div class="flash-progress">${done + 1} / ${total} · ${session.known} мэдсэн</div>`;
 }
@@ -681,12 +681,19 @@ function drillKnow() {
   renderDrillCard();
 }
 
-function drillSkip() {
-  const session = getSession();
+function drillUnknown() {
+  // Мэдэхгүй → word-ыг дараалалын сүүлд нэм (дахин гарна)
   const w = _drillQueue[_drillIdx];
-  if (!session.drilled.includes(w.h)) session.drilled.push(w.h);
-  saveSession(session);
-  _drillIdx++;
+  _drillQueue.splice(_drillIdx, 1);
+  _drillQueue.push(w); // сүүлд нэмнэ
+  // mastery буцааж бууруулах
+  const idx = _words.findIndex(x => x.h === w.h);
+  if (idx >= 0 && _words[idx].mastery > 0) {
+    _words[idx].mastered = false;
+    _words[idx].mastery  = Math.max(0, (_words[idx].mastery || 0) - 1);
+    saveWords(_words);
+    _updateMasteryInFirestore(w.h, _words[idx].mastery);
+  }
   renderDrillCard();
 }
 
