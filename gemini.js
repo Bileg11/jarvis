@@ -57,6 +57,8 @@ LAYOUT: Layout солих хүсэлтэд (1=DevFocus,2=HSKStudy,3=Full):
 \`\`\``;
 
 
+// FIX: chat-д нэг удаагийн runtime context (цаг/цаг агаар) нэмэх module хувьсагч
+let _runtimeCtxPrefix = '';
 // Firestore profile → profile.html тохируулна, эсвэл localStorage-с уна
 function _getSystemInstruction() {
   const base = window._jarvisSystemInstruction
@@ -64,10 +66,13 @@ function _getSystemInstruction() {
     || JARVIS_SYSTEM_DEFAULT;
 
   const callSign = localStorage.getItem('jarvis_callsign');
-  if (callSign && callSign.trim()) {
-    return base + `\n\n[CALL SIGN OVERRIDE]\nХэрэглэгч өөрийн callSign-г "${callSign.trim()}" гэж тохируулсан байна. Одооноос эхлэн "Boss" биш "${callSign.trim()}" гэж ҮРГЭЛЖ дуудна уу. Энэ дүрмийг ямар ч нөхцөлд зөрчихгүй.`;
-  }
-  return base;
+  let out = (callSign && callSign.trim())
+    ? base + `\n\n[CALL SIGN OVERRIDE]\nХэрэглэгч өөрийн callSign-г "${callSign.trim()}" гэж тохируулсан байна. Одооноос эхлэн "Boss" биш "${callSign.trim()}" гэж ҮРГЭЛЖ дуудна уу. Энэ дүрмийг ямар ч нөхцөлд зөрчихгүй.`
+    : base;
+  // FIX: coach suffix + runtime context-ийг ЭНД нэгтгэнэ (window-г дахин томилохгүй → recursion үгүй)
+  if (typeof _coachSystemSuffix === 'function') out += _coachSystemSuffix();
+  if (_runtimeCtxPrefix) out += '\n\n' + _runtimeCtxPrefix;
+  return out;
 }
 
 // Backward-compat alias
@@ -528,38 +533,27 @@ function _coachSystemSuffix() {
   return `\n\n[COACH LEVEL ${level} — ${profile.name.toUpperCase()}]\n${profile.tone}`;
 }
 
-// Override _getSystemInstruction to include coach mode
-const _origGetSystemInstruction = _getSystemInstruction;
-window._getSystemInstruction = function() {
-  return _origGetSystemInstruction() + _coachSystemSuffix();
-};
+// FIX: coach-ийг _getSystemInstruction дотор нэгтгэсэн тул энд зүгээр alias.
+// (Өмнө window._getSystemInstruction-г wrap хийдэг байсан нь recursion үүсгэдэг байсан)
+window._getSystemInstruction = _getSystemInstruction;
 
-// ── Inject context into sendChatMessage ──────────────────────────────
-// Patch: wrap original sendChatMessage with context injection
+// ── Inject context into sendChatMessage (FIX: recursion-гүй) ──────────
+// Өмнө window._getSystemInstruction-г wrap хийгээд дутуу restore хийснээс болж
+// "Maximum call stack size exceeded" — чат мөнхөд гацдаг байсан. Одоо module
+// хувьсагч (_runtimeCtxPrefix) + try/finally ашиглана.
 const _origSendChat = sendChatMessage;
 async function sendChatMessage(userText) {
-  // Build context prefix async (weather + time + deadlock)
-  let ctxPrefix = '';
   try {
-    ctxPrefix = await Promise.race([
+    _runtimeCtxPrefix = await Promise.race([
       _buildContextPrefix(),
-      new Promise(r => setTimeout(() => r(''), 1500))
-    ]);
-  } catch {}
-
-  // Inject context into the system (not into user message — keeps history clean)
-  // We temporarily patch the system instruction
-  const _origFn = window._getSystemInstruction || _getSystemInstruction;
-  if (ctxPrefix) {
-    window._getSystemInstruction = () => _origFn() + '\n\n' + ctxPrefix;
+      new Promise(r => setTimeout(() => r(''), 1500)),
+    ]) || '';
+  } catch { _runtimeCtxPrefix = ''; }
+  try {
+    return await _origSendChat(userText);
+  } finally {
+    _runtimeCtxPrefix = '';   // дараагийн дуудлагад үлдэхгүй
   }
-
-  const result = await _origSendChat(userText);
-
-  // Restore
-  if (ctxPrefix) window._getSystemInstruction = _origFn;
-
-  return result;
 }
 
 // ── Coach Level 4: Full Goggins Alert ────────────────────────────────
