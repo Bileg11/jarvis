@@ -1864,6 +1864,94 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
+  // ── FINANCE COMMANDS ──────────────────────────────────────────────
+  // /зарлага <дүн> [CNY|MNT|USD] [категори] [тайлбар]
+  // /орлого  <дүн> [CNY|MNT|USD] [тайлбар]
+  // /хуримтлал <дүн> [тайлбар]
+  // /санхүү — энэ сарын тайлан
+  // ─────────────────────────────────────────────────────────────────
+  const finCmd = raw.match(/^\/?(зарлага|орлого|хуримтлал|санхүү|finance|expense|income|savings)\b/i);
+  if (finCmd) {
+    const cmd = finCmd[1].toLowerCase();
+
+    if (cmd === 'санхүү' || cmd === 'finance') {
+      // Monthly summary from Firestore
+      const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+      const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      let txns = [];
+      try {
+        const snap = await dbPersonal.collection(`users/${uid}/finance/txns/records`)
+          .where('date', '>=', month + '-01').where('date', '<=', month + '-31').get();
+        txns = snap.docs.map(d => d.data());
+      } catch {}
+      const incomeCNY  = txns.filter(t=>t.type==='income'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
+      const expCNY     = txns.filter(t=>t.type==='expense'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
+      const incMNT     = txns.filter(t=>t.type==='income'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
+      const expMNT     = txns.filter(t=>t.type==='expense'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
+      const savMNT     = txns.filter(t=>t.type==='savings'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
+      const net        = incomeCNY - expCNY;
+      // Category breakdown
+      const cats = {};
+      txns.filter(t=>t.type==='expense'&&t.currency==='CNY').forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
+      const catLines = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5)
+        .map(([c,a]) => `  • ${c}: ¥${a.toFixed(0)}`).join('\n');
+      await tgSend(`💰 *${month} САНХҮҮГИЙН ТАЙЛАН*\n\n` +
+        `*CNY*\n` +
+        `  📈 Орлого: ¥${incomeCNY.toFixed(0)}\n` +
+        `  📉 Зарлага: ¥${expCNY.toFixed(0)}\n` +
+        `  ${net>=0?'✅':'⚠️'} Үлдэгдэл: ${net>=0?'+':''}¥${net.toFixed(0)}\n\n` +
+        (expMNT||incMNT||savMNT ? `*MNT*\n  ⬆ Хуримтлал: ₮${savMNT.toLocaleString()}\n\n` : '') +
+        (catLines ? `*Зарлагын ангилал:*\n${catLines}\n\n` : '') +
+        `_Нийт ${txns.length} гүйлгээ · /finance дэлгэрэнгүй_`);
+      return;
+    }
+
+    // Parse: /зарлага 50 CNY хоол coffee
+    const parts  = raw.trim().split(/\s+/).slice(1);
+    let amount   = 0, currency = 'CNY', category = 'бусад', note = '';
+
+    // Amount (support 50, 50CNY, 50¥, 50₮, 50000MNT)
+    const amtMatch = parts[0]?.match(/^([\d.]+)(CNY|MNT|USD|¥|₮|\$)?$/i);
+    if (amtMatch) {
+      amount = parseFloat(amtMatch[1]);
+      if (amtMatch[2]) currency = {CNY:'CNY','¥':'CNY',MNT:'MNT','₮':'MNT',USD:'USD','$':'USD'}[amtMatch[2].toUpperCase()] || 'CNY';
+      parts.shift();
+    }
+    // Explicit currency word
+    if (/^(CNY|MNT|USD)$/i.test(parts[0])) { currency = parts.shift().toUpperCase(); }
+
+    // Category
+    const CATS = ['хоол','тээвэр','амьдрал','хувцас','боловсрол','LFS','тоглоом','хуримтлал','бусад'];
+    if (parts[0] && CATS.some(c => c === parts[0].toLowerCase())) { category = parts.shift(); }
+    note = parts.join(' ');
+
+    if (!amount) {
+      const ex = cmd==='зарлага'||cmd==='expense' ? '/зарлага 50 хоол coffee' : cmd==='орлого'||cmd==='income' ? '/орлого 2000 LFS' : '/хуримтлал 100000 хадгаламжийн данс';
+      await tgSend(`Хэлбэр: \`${ex}\``); return;
+    }
+
+    const type = (cmd==='зарлага'||cmd==='expense') ? 'expense'
+               : (cmd==='хуримтлал'||cmd==='savings') ? 'savings' : 'income';
+    if (type === 'savings') currency = currency==='CNY' ? 'MNT' : currency;
+    if (type === 'savings' && category==='бусад') category = 'хуримтлал';
+
+    const txn = {
+      id:       Date.now().toString(),
+      type, amount, currency, category, note,
+      date:     new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Shanghai'})).toISOString().slice(0,10),
+      ts:       new Date().toISOString(),
+      source:   'telegram',
+    };
+    try {
+      await dbPersonal.collection(`users/${uid}/finance/txns/records`).doc(txn.id).set(txn);
+    } catch (e) { console.error('[Finance] Firestore:', e.message); }
+
+    const symb = currency==='MNT' ? '₮' : currency==='USD' ? '$' : '¥';
+    const icon = type==='expense' ? '📉' : type==='savings' ? '⬆' : '📈';
+    await tgSend(`${icon} *${category}* — ${symb}${amount.toLocaleString()}\n${note ? `_${note}_\n` : ''}\`/санхүү\` тайлан харах`);
+    return;
+  }
+
   // /newchallenge YYYY-MM-DD <нэр> — шинэ challenge эхлүүлэх (зөвхөн Билэг)
   if (raw.startsWith('/newchallenge')) {
     if (uid !== UID) { await tgSend('⛔️ Зөвхөн админ энэ командыг ашиглана.'); return; }

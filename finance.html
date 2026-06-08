@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Санхүү — JARVIS</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+:root {
+  --bg:      #0d1117;
+  --surf:    #131920;
+  --surf2:   #1a2230;
+  --border:  rgba(100,120,100,.18);
+  --border-h:rgba(100,120,100,.35);
+  --green:   #7eb87e;
+  --green2:  #4a9a4a;
+  --red:     #c47060;
+  --amber:   #c4a064;
+  --blue:    #6090c0;
+  --text:    #bcc8b8;
+  --text-b:  #dde8d8;
+  --dim:     rgba(255,255,255,.05);
+  --r:       10px;
+  --sans:    system-ui,-apple-system,sans-serif;
+  --mono:    'DM Mono','Fira Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text-b);font-family:var(--sans);font-size:14px;min-height:100vh}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-thumb{background:var(--border-h);border-radius:2px}
+
+.page{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+
+/* Header */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
+.header-left{display:flex;align-items:center;gap:12px}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--text);font-size:12px;text-decoration:none;background:var(--surf);border:1px solid var(--border);border-radius:6px;padding:6px 12px;transition:all .15s}
+.back:hover{border-color:var(--border-h);color:var(--text-b)}
+.page-title{font-size:20px;font-weight:600;color:var(--text-b)}
+.page-sub{font-size:11px;color:var(--text);opacity:.6;margin-top:2px}
+.month-badge{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:8px 14px;text-align:right}
+.month-label{font-family:var(--mono);font-size:11px;color:var(--text);opacity:.6}
+.month-net{font-family:var(--mono);font-size:20px;font-weight:700;line-height:1;margin-top:2px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px}
+.stat{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:14px;text-align:center}
+.stat-num{font-family:var(--mono);font-size:20px;font-weight:700;line-height:1}
+.stat-label{font-size:10px;color:var(--text);opacity:.55;margin-top:4px}
+.stat-sub{font-size:9px;color:var(--text);opacity:.35;margin-top:2px}
+
+/* Grid layout */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:640px){.grid2{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* Card */
+.card{background:var(--surf);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.card-title{font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--text);opacity:.6;text-transform:uppercase;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center}
+
+/* Budget bars */
+.budget-item{margin-bottom:12px}
+.budget-row{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.budget-cat{color:var(--text-b)}
+.budget-amt{font-family:var(--mono);font-size:11px}
+.bar{height:5px;background:var(--dim);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .5s ease}
+
+/* Add form */
+.form-row{display:grid;grid-template-columns:80px 1fr 1fr auto;gap:8px;margin-bottom:8px}
+.form-row2{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
+select,input{background:var(--surf2);border:1px solid var(--border);border-radius:6px;color:var(--text-b);font-size:13px;padding:8px 10px;outline:none;transition:border .15s;font-family:var(--sans);width:100%}
+select:focus,input:focus{border-color:var(--green)}
+.btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
+.btn-green{background:var(--green);color:#0d1117}
+.btn-green:hover{background:var(--green2)}
+.btn-red{background:rgba(196,112,96,.12);border:1px solid var(--red);color:var(--red)}
+.btn-red:hover{background:rgba(196,112,96,.22)}
+.btn-ghost{background:var(--surf2);border:1px solid var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:var(--border-h);color:var(--text-b)}
+
+/* Transactions */
+.txn-list{display:flex;flex-direction:column;gap:6px;max-height:380px;overflow-y:auto}
+.txn{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:8px;transition:border .15s}
+.txn:hover{border-color:var(--border-h)}
+.txn-icon{font-size:18px;flex-shrink:0;width:28px;text-align:center}
+.txn-info{flex:1}
+.txn-cat{font-size:13px;color:var(--text-b);font-weight:500}
+.txn-note{font-size:11px;color:var(--text);opacity:.55;margin-top:1px}
+.txn-date{font-size:10px;color:var(--text);opacity:.4;font-family:var(--mono)}
+.txn-amount{font-family:var(--mono);font-size:14px;font-weight:700;text-align:right;flex-shrink:0}
+.txn-del{background:none;border:none;color:var(--text);opacity:.25;cursor:pointer;font-size:13px;padding:2px 6px}
+.txn-del:hover{opacity:.7;color:var(--red)}
+
+/* Savings */
+.savings-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.savings-num{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--amber)}
+.savings-target{font-size:11px;color:var(--text);opacity:.5}
+
+/* Currency tabs */
+.cur-tabs{display:flex;gap:4px;margin-bottom:12px}
+.cur-tab{padding:5px 14px;border-radius:5px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);transition:all .15s}
+.cur-tab.active{background:var(--surf2);border-color:var(--green);color:var(--green)}
+
+/* Empty */
+.empty{text-align:center;padding:28px;color:var(--text);opacity:.35;font-size:13px}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;color:var(--text-b);opacity:0;transition:opacity .25s;pointer-events:none;z-index:99;white-space:nowrap}
+#toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <a href="/" class="back">← JARVIS</a>
+      <div>
+        <div class="page-title">💰 Санхүү</div>
+        <div class="page-sub">Орлого · Зарлага · Хуримтлал</div>
+      </div>
+    </div>
+    <div class="month-badge">
+      <div class="month-label" id="month-label">— сар</div>
+      <div class="month-net" id="month-net" style="color:var(--green)">+0</div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-num" id="stat-income" style="color:var(--green)">0</div>
+      <div class="stat-label">Орлого</div>
+      <div class="stat-sub" id="stat-income-cur">CNY</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-expense" style="color:var(--red)">0</div>
+      <div class="stat-label">Зарлага</div>
+      <div class="stat-sub" id="stat-expense-cur">CNY</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-savings" style="color:var(--amber)">0</div>
+      <div class="stat-label">Хуримтлал</div>
+      <div class="stat-sub">MNT</div>
+    </div>
+    <div class="stat">
+      <div class="stat-num" id="stat-txns" style="color:var(--blue)">0</div>
+      <div class="stat-label">Гүйлгээ</div>
+      <div class="stat-sub" id="stat-month-days"></div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <!-- Add transaction -->
+    <div class="card">
+      <div class="card-title">Гүйлгээ нэмэх</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button class="btn btn-green" id="btn-expense" onclick="setType('expense')" style="flex:1">− Зарлага</button>
+        <button class="btn btn-ghost" id="btn-income"  onclick="setType('income')"  style="flex:1">+ Орлого</button>
+        <button class="btn btn-ghost" id="btn-savings" onclick="setType('savings')" style="flex:1">⬆ Хуримтлал</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 90px;gap:8px;margin-bottom:8px">
+        <input id="inp-amount" type="number" placeholder="Дүн" min="0">
+        <select id="inp-currency">
+          <option value="CNY">¥ CNY</option>
+          <option value="MNT">₮ MNT</option>
+          <option value="USD">$ USD</option>
+        </select>
+      </div>
+      <select id="inp-category" style="margin-bottom:8px">
+        <option value="">Категори сонгох…</option>
+        <option value="хоол">🍜 Хоол</option>
+        <option value="тээвэр">🚇 Тээвэр</option>
+        <option value="амьдрал">🏠 Амьдрал</option>
+        <option value="хувцас">👕 Хувцас</option>
+        <option value="боловсрол">📚 Боловсрол</option>
+        <option value="тоглоом">🎮 Тоглоом/цэнгэл</option>
+        <option value="LFS">💼 LFS орлого</option>
+        <option value="хуримтлал">💰 Хуримтлал</option>
+        <option value="бусад">📦 Бусад</option>
+      </select>
+      <input id="inp-note" type="text" placeholder="Тайлбар (заавал биш)" style="margin-bottom:10px" maxlength="80">
+      <button class="btn btn-green" onclick="addTxn()" style="width:100%">Хадгалах</button>
+    </div>
+
+    <!-- Savings tracker -->
+    <div class="card">
+      <div class="card-title">
+        💰 Хуримтлал (MNT)
+        <button class="btn btn-ghost" onclick="editSavingsGoal()" style="padding:3px 10px;font-size:10px">Зорилт</button>
+      </div>
+      <div class="savings-row">
+        <div class="stat-num" id="savings-total" style="font-size:26px;color:var(--amber)">₮0</div>
+        <div style="text-align:right">
+          <div class="savings-target" id="savings-goal-label">Зорилт: ₮—</div>
+          <div class="savings-target" id="savings-pct-label">—%</div>
+        </div>
+      </div>
+      <div class="bar" style="margin-bottom:16px"><div class="bar-fill" id="savings-bar" style="width:0%;background:var(--amber)"></div></div>
+
+      <div class="card-title" style="margin-top:4px">📊 Сарын төсөв (CNY)</div>
+      <div id="budget-list">
+        <div class="empty" style="padding:12px 0">Төсөв тохируулаагүй</div>
+      </div>
+      <button class="btn btn-ghost" onclick="editBudget()" style="width:100%;margin-top:10px;font-size:11px">⚙ Төсөв тохируулах</button>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div class="card">
+    <div class="card-title">
+      Сүүлийн гүйлгээнүүд
+      <div style="display:flex;gap:6px;align-items:center">
+        <div class="cur-tabs">
+          <button class="cur-tab active" onclick="filterCur('all',this)">Бүгд</button>
+          <button class="cur-tab" onclick="filterCur('CNY',this)">CNY</button>
+          <button class="cur-tab" onclick="filterCur('MNT',this)">MNT</button>
+        </div>
+        <select onchange="filterMonth(this.value)" id="month-filter" style="padding:4px 8px;font-size:11px;width:auto">
+        </select>
+      </div>
+    </div>
+    <div class="txn-list" id="txn-list">
+      <div class="empty">Гүйлгээ байхгүй байна.</div>
+    </div>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+// ── Config ────────────────────────────────────────────────────────
+const LS_TXN    = 'fin_txns';
+const LS_BUDGET = 'fin_budget';
+const LS_SAVES  = 'fin_savings_goal';
+let _fDb = null, _fUid = null;
+let _txns = [];
+let _curFilter = 'all';
+let _monFilter = '';
+let _txType = 'expense';
+
+// ── Firebase init ─────────────────────────────────────────────────
+async function finInit() {
+  updateMonthLabel();
+  populateMonthFilter();
+
+  if (window._db) {
+    _fDb = window._db;
+    await new Promise(resolve => {
+      const t = setTimeout(resolve, 4000);
+      firebase.auth().onAuthStateChanged(u => { clearTimeout(t); _fUid = u?.uid||null; resolve(); });
+    });
+  }
+  await loadTxns();
+  render();
+}
+
+// ── Data ──────────────────────────────────────────────────────────
+function localTxns() { try { return JSON.parse(localStorage.getItem(LS_TXN)||'[]'); } catch { return []; } }
+function saveTxnsLocal(arr) { localStorage.setItem(LS_TXN, JSON.stringify(arr)); }
+
+async function loadTxns() {
+  if (_fDb && _fUid) {
+    try {
+      const snap = await _fDb.collection(`users/${_fUid}/finance/txns/records`).orderBy('ts','desc').limit(200).get();
+      if (!snap.empty) {
+        _txns = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        saveTxnsLocal(_txns);
+        return;
+      }
+    } catch {}
+  }
+  _txns = localTxns();
+}
+
+async function saveTxnFs(txn) {
+  if (!_fDb || !_fUid) return;
+  _fDb.collection(`users/${_fUid}/finance/txns/records`).doc(txn.id).set(txn).catch(() => {});
+}
+
+async function deleteTxnFs(id) {
+  if (!_fDb || !_fUid) return;
+  _fDb.collection(`users/${_fUid}/finance/txns/records`).doc(id).delete().catch(() => {});
+}
+
+// ── Add transaction ───────────────────────────────────────────────
+function setType(t) {
+  _txType = t;
+  ['expense','income','savings'].forEach(x => {
+    const btn = document.getElementById('btn-'+x);
+    btn.className = 'btn ' + (x === t ? (x==='expense'?'btn-red':x==='income'?'btn-green':'btn-ghost') : 'btn-ghost');
+  });
+  if (t === 'savings') document.getElementById('inp-currency').value = 'MNT';
+  if (t === 'expense' || t === 'income') document.getElementById('inp-currency').value = 'CNY';
+}
+
+function addTxn() {
+  const amount = parseFloat(document.getElementById('inp-amount').value);
+  const currency = document.getElementById('inp-currency').value;
+  const category = document.getElementById('inp-category').value || 'бусад';
+  const note = document.getElementById('inp-note').value.trim();
+  if (!amount || amount <= 0) { showToast('Дүн оруулна уу'); return; }
+
+  const txn = {
+    id:       Date.now().toString(),
+    type:     _txType,
+    amount,
+    currency,
+    category,
+    note,
+    date:     new Date().toISOString().slice(0,10),
+    ts:       new Date().toISOString(),
+    source:   'web',
+  };
+  _txns.unshift(txn);
+  saveTxnsLocal(_txns);
+  saveTxnFs(txn);
+
+  document.getElementById('inp-amount').value = '';
+  document.getElementById('inp-note').value = '';
+  render();
+  showToast('✓ Хадгалагдлаа');
+}
+
+function deleteTxn(id) {
+  if (!confirm('Устгах уу?')) return;
+  _txns = _txns.filter(t => t.id !== id);
+  saveTxnsLocal(_txns);
+  deleteTxnFs(id);
+  render();
+}
+
+// ── Render ────────────────────────────────────────────────────────
+function todayMonth() { return new Date().toISOString().slice(0,7); }
+
+function render() {
+  const month = _monFilter || todayMonth();
+  const monthTxns = _txns.filter(t => t.date?.startsWith(month));
+  const filtered  = _curFilter === 'all' ? monthTxns : monthTxns.filter(t => t.currency === _curFilter);
+
+  // Stats
+  const incomeCNY  = monthTxns.filter(t=>t.type==='income'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
+  const expCNY     = monthTxns.filter(t=>t.type==='expense'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
+  const savMNT     = _txns.filter(t=>t.type==='savings'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
+  const net        = incomeCNY - expCNY;
+
+  document.getElementById('stat-income').textContent  = fmt(incomeCNY, 'CNY');
+  document.getElementById('stat-expense').textContent = fmt(expCNY, 'CNY');
+  document.getElementById('stat-savings').textContent = fmt(savMNT, 'MNT');
+  document.getElementById('stat-txns').textContent    = monthTxns.length;
+  document.getElementById('month-net').textContent    = (net >= 0 ? '+' : '') + fmt(net, 'CNY');
+  document.getElementById('month-net').style.color    = net >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // Savings bar
+  const goal = parseInt(localStorage.getItem(LS_SAVES) || '0');
+  document.getElementById('savings-total').textContent  = '₮' + savMNT.toLocaleString();
+  document.getElementById('savings-goal-label').textContent = goal ? 'Зорилт: ₮' + goal.toLocaleString() : 'Зорилт: —';
+  const pct = goal ? Math.min(100, Math.round(savMNT/goal*100)) : 0;
+  document.getElementById('savings-pct-label').textContent = goal ? pct + '%' : '';
+  document.getElementById('savings-bar').style.width = pct + '%';
+
+  // Budget bars
+  renderBudget(expCNY, monthTxns);
+
+  // Transactions
+  renderTxns(filtered);
+}
+
+function renderBudget(totalExp, monthTxns) {
+  const budget = JSON.parse(localStorage.getItem(LS_BUDGET) || '{}');
+  const list = document.getElementById('budget-list');
+  const cats = Object.keys(budget).filter(k => budget[k] > 0);
+  if (!cats.length) { list.innerHTML = '<div class="empty" style="padding:10px 0;font-size:11px">Төсөв тохируулаагүй</div>'; return; }
+  list.innerHTML = cats.map(cat => {
+    const spent = monthTxns.filter(t=>t.type==='expense'&&t.category===cat&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
+    const pct   = Math.min(100, budget[cat] ? Math.round(spent/budget[cat]*100) : 0);
+    const color = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--amber)' : 'var(--green)';
+    const ICONS = {хоол:'🍜',тээвэр:'🚇',амьдрал:'🏠',хувцас:'👕',боловсрол:'📚',тоглоом:'🎮',бусад:'📦'};
+    return `<div class="budget-item">
+      <div class="budget-row">
+        <span class="budget-cat">${ICONS[cat]||'▪'} ${cat}</span>
+        <span class="budget-amt" style="color:${color}">¥${fmt(spent,'')}/¥${fmt(budget[cat],'')} · ${pct}%</span>
+      </div>
+      <div class="bar"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function renderTxns(txns) {
+  const list = document.getElementById('txn-list');
+  if (!txns.length) { list.innerHTML = '<div class="empty">Гүйлгээ байхгүй.</div>'; return; }
+  const ICONS = {хоол:'🍜',тээвэр:'🚇',амьдрал:'🏠',хувцас:'👕',боловсрол:'📚',LFS:'💼',хуримтлал:'💰',тоглоом:'🎮',бусад:'📦',income:'💵',savings:'⬆'};
+  list.innerHTML = txns.slice(0,50).map(t => {
+    const icon   = ICONS[t.type === 'income' ? 'income' : t.type === 'savings' ? 'savings' : t.category] || '▪';
+    const sign   = t.type === 'expense' ? '-' : '+';
+    const color  = t.type === 'expense' ? 'var(--red)' : t.type === 'savings' ? 'var(--amber)' : 'var(--green)';
+    const symb   = t.currency === 'MNT' ? '₮' : t.currency === 'USD' ? '$' : '¥';
+    return `<div class="txn">
+      <div class="txn-icon">${icon}</div>
+      <div class="txn-info">
+        <div class="txn-cat">${t.category || t.type}</div>
+        <div class="txn-note">${t.note || ''} ${t.source === 'telegram' ? '· 📱 TG' : ''}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="txn-amount" style="color:${color}">${sign}${symb}${fmt(t.amount,'')}</div>
+        <div class="txn-date">${t.date || ''}</div>
+      </div>
+      <button class="txn-del" onclick="deleteTxn('${t.id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function fmt(n, cur) {
+  const s = parseFloat(n||0).toLocaleString('mn-MN', {maximumFractionDigits:0});
+  return s;
+}
+
+function filterCur(cur, el) {
+  _curFilter = cur;
+  document.querySelectorAll('.cur-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+function filterMonth(val) { _monFilter = val; render(); }
+
+function populateMonthFilter() {
+  const sel = document.getElementById('month-filter');
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = d.toISOString().slice(0,7);
+    const label = d.toLocaleDateString('mn-MN', {year:'numeric', month:'long'});
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = label;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function updateMonthLabel() {
+  const label = new Date().toLocaleDateString('mn-MN', {year:'numeric', month:'long'});
+  document.getElementById('month-label').textContent = label;
+  document.getElementById('stat-month-days').textContent = new Date().getDate() + '-ны өдөр';
+}
+
+function editSavingsGoal() {
+  const cur = localStorage.getItem(LS_SAVES) || '';
+  const val = prompt('Хуримтлалын зорилт (MNT):', cur);
+  if (val !== null) { localStorage.setItem(LS_SAVES, parseInt(val.replace(/,/g,''))||0); render(); }
+}
+
+function editBudget() {
+  const budget = JSON.parse(localStorage.getItem(LS_BUDGET) || '{}');
+  const cats   = ['хоол','тээвэр','амьдрал','хувцас','боловсрол','тоглоом','бусад'];
+  const lines  = cats.map(c => `${c}: ${budget[c]||0}`).join('\n');
+  const input  = prompt('Сарын төсөв (CNY)\nФормат: категори: дүн', lines);
+  if (!input) return;
+  const newBudget = {};
+  input.split('\n').forEach(line => {
+    const [k, v] = line.split(':');
+    if (k && v) newBudget[k.trim()] = parseInt(v)||0;
+  });
+  localStorage.setItem(LS_BUDGET, JSON.stringify(newBudget));
+  render();
+  showToast('✓ Төсөв хадгалагдлаа');
+}
+
+function showToast(msg, ms=2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), ms);
+}
+
+// ── Boot ──────────────────────────────────────────────────────────
+setType('expense');
+finInit();
+</script>
+</body>
+</html>
