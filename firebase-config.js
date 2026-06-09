@@ -234,12 +234,14 @@ async function _saveUserProfile(uid, patch) {
     localStorage.setItem('jarvis_user_profile', JSON.stringify(merged));
     document.dispatchEvent(new CustomEvent('jarvis:profile', { detail: merged }));
   } catch {}
-  // config/profile — роль, тема (primary)
-  cfgRef.set(patch, { merge: true }).catch(e => console.warn('[Profile/cfg]', e.code));
-  // meta/profile — role field-г telegram.js-д ч харагдуулна
+  // config/profile + meta/profile — parallel, race condition гүй
+  const writes = [
+    cfgRef.set(patch, { merge: true }).catch(e => console.warn('[Profile/cfg]', e.code)),
+  ];
   if (patch.role) {
-    metaRef.set({ role: patch.role }, { merge: true }).catch(() => {});
+    writes.push(metaRef.set({ role: patch.role }, { merge: true }).catch(() => {}));
   }
+  await Promise.all(writes);
 }
 
 _auth.onAuthStateChanged(async user => {

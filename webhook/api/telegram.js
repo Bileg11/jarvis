@@ -854,8 +854,10 @@ async function handleVoice(msg, ctx = {}) {
 
 // ── CALLBACK HANDLER ──────────────────────────────────────────────
 async function handleCallback(cb) {
+  if (!cb?.message) return; // ghost callback — message deleted эсвэл inline mode
   const { data: cmd, message, id: cbId } = cb;
   const msgId = message.message_id;
+  const chatId = message.chat?.id ?? cb.from?.id ?? TG_CHAT;
   await tgAnswer(cbId);
 
   // Calendar event устгах
