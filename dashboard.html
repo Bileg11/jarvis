@@ -202,8 +202,64 @@
     </div>
   </div>
 
+  <!-- ── T.H.R.E.E. OS — Today Panel ────────────────────────────── -->
+  <div class="v22-label">⚡ T.H.R.E.E. OS — Today</div>
+
+  <div class="v22-card" id="os-today-panel">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="v22-title" style="margin-bottom:0">📅 <span id="os-date">—</span></div>
+      <div id="os-score-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(124,92,252,0.15);color:rgba(124,92,252,0.9);letter-spacing:0.5px">— / 100</div>
+    </div>
+
+    <!-- Routine row -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px">
+      <div class="os-routine-chip" id="os-r-exercise" data-key="exercise">💪<br><span>Дасгал</span></div>
+      <div class="os-routine-chip" id="os-r-hanzi"    data-key="hanzi">🈶<br><span>汉字</span></div>
+      <div class="os-routine-chip" id="os-r-read"     data-key="read">📚<br><span>Уншилт</span></div>
+      <div class="os-routine-chip" id="os-r-journal"  data-key="journal">📝<br><span>Journal</span></div>
+    </div>
+
+    <!-- HSK + Challenge + Finance row -->
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+      <div class="os-mini-card">
+        <div class="os-mini-label">HSK</div>
+        <div class="os-mini-val" id="os-hsk-val">—</div>
+        <div class="os-mini-sub" id="os-hsk-sub">drill —</div>
+      </div>
+      <div class="os-mini-card">
+        <div class="os-mini-label">Challenge</div>
+        <div class="os-mini-val" id="os-ch-val">—%</div>
+        <div class="os-mini-sub" id="os-ch-sub">proof —</div>
+      </div>
+      <div class="os-mini-card">
+        <div class="os-mini-label">Санхүү</div>
+        <div class="os-mini-val" id="os-fin-val">—</div>
+        <div class="os-mini-sub" id="os-fin-sub">энэ сар</div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .os-routine-chip {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 8px 4px; text-align: center;
+      font-size: 18px; line-height: 1.4; transition: all 0.25s;
+    }
+    .os-routine-chip span { display:block; font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 2px; letter-spacing: 0.3px; }
+    .os-routine-chip.done { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); }
+    .os-routine-chip.done span { color: rgba(34,197,94,0.7); }
+    .os-mini-card {
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; padding: 10px 8px; text-align: center;
+    }
+    .os-mini-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 4px; }
+    .os-mini-val   { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.85); }
+    .os-mini-sub   { font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+  </style>
+
   <!-- ── Sprint 1: JARVIS v2.2 Live Panel ───────────────────────── -->
-  <div class="v22-label">⚡ J.A.R.V.I.S v2.2 — Live</div>
+  <div class="v22-label">📊 Дэлгэрэнгүй</div>
 
   <!-- Tasks -->
   <div class="v22-card">
@@ -619,6 +675,83 @@
           document.getElementById('jarvis-red-alert').classList.add('active');
         });
       });
+
+      // ── T.H.R.E.E. OS Today Panel ────────────────────────────────
+      (function () {
+        var now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+        var dateEl = document.getElementById('os-date');
+        var days = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+        var months = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар','7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
+        if (dateEl) dateEl.textContent = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()];
+        var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+
+        // Routine today
+        db.doc('users/' + uid + '/routines/' + today).onSnapshot(function (snap) {
+          var rt = snap.exists ? snap.data() : {};
+          var routineKeys = ['exercise','hanzi','read','journal'];
+          var done = 0;
+          routineKeys.forEach(function (k) {
+            var chip = document.getElementById('os-r-' + k);
+            if (!chip) return;
+            if (rt[k]) { chip.classList.add('done'); done++; }
+            else        chip.classList.remove('done');
+          });
+          // Score badge: 25pts each routine key
+          var score = done * 25;
+          var badge = document.getElementById('os-score-badge');
+          if (badge) {
+            badge.textContent = score + ' / 100';
+            badge.style.background = score === 100 ? 'rgba(34,197,94,0.2)' : 'rgba(124,92,252,0.15)';
+            badge.style.color      = score === 100 ? 'rgba(34,197,94,0.9)' : 'rgba(124,92,252,0.9)';
+          }
+        });
+
+        // HSK today
+        db.doc('users/' + uid + '/hsk/today').onSnapshot(function (snap) {
+          if (!snap.exists) return;
+          var d = snap.data();
+          var val = document.getElementById('os-hsk-val');
+          var sub = document.getElementById('os-hsk-sub');
+          if (val) val.textContent = (d.words ? d.words.length : 0) + ' ханз';
+          if (sub) sub.textContent = d.scored ? 'drill ✅' : 'drill ❌';
+        });
+
+        // Challenge today
+        db.doc('challenge/current').get().then(function (cSnap) {
+          if (!cSnap.exists) return;
+          var chid = cSnap.data().id;
+          db.doc('challenge/' + chid + '/daily/' + today).onSnapshot(function (snap) {
+            var d   = snap.exists ? snap.data() : {};
+            var pct = d.bileg ? (d.bileg.pct || 0) : 0;
+            var val = document.getElementById('os-ch-val');
+            if (val) val.textContent = pct + '%';
+          });
+          db.doc('challenge/' + chid + '/proofs/' + today).onSnapshot(function (snap) {
+            var sub = document.getElementById('os-ch-sub');
+            if (sub) sub.textContent = snap.exists ? 'proof ✅' : 'proof ❌';
+          });
+        }).catch(function () {});
+
+        // Finance this month
+        db.collection('users/' + uid + '/finance/txns/records')
+          .where('date', '>=', month + '-01')
+          .where('date', '<=', month + '-31')
+          .onSnapshot(function (snap) {
+            var txns   = snap.docs.map(function (d) { return d.data(); });
+            var expCNY = txns.filter(function (t) { return t.type === 'expense' && t.currency === 'CNY'; })
+                             .reduce(function (s,t) { return s + t.amount; }, 0);
+            var incCNY = txns.filter(function (t) { return t.type === 'income'  && t.currency === 'CNY'; })
+                             .reduce(function (s,t) { return s + t.amount; }, 0);
+            var net    = incCNY - expCNY;
+            var val    = document.getElementById('os-fin-val');
+            var sub    = document.getElementById('os-fin-sub');
+            if (val) {
+              val.textContent = (net >= 0 ? '+' : '') + '¥' + net.toFixed(0);
+              val.style.color = net >= 0 ? 'rgba(34,197,94,0.85)' : 'rgba(239,68,68,0.85)';
+            }
+            if (sub) sub.textContent = '¥' + expCNY.toFixed(0) + ' зарцуулсан';
+          });
+      })();
 
       // Resolve button handler
       window.jarvisResolveAlert = function () {

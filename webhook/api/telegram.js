@@ -85,6 +85,73 @@ function getBilegSystem() {
 }
 const BILEG_SYSTEM = getBilegSystem(); // backward compat
 
+// ── LIVE OS CONTEXT — Firestore-оос бүх модулийн өнөөдрийн байдал ──
+// JARVIS free chat-д system prompt руу нэмэгддэг.
+// Routine · HSK · Challenge · Finance · Tasks · Profile
+async function getFullContext(uid) {
+  const today = todaySH();
+  const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  try {
+    const [routineSnap, hskSnap, tasksRaw, challengeSnap, profileSnap] = await Promise.all([
+      dbPersonal.doc(`users/${uid}/routines/${today}`).get().catch(() => null),
+      dbPersonal.doc(`users/${uid}/hsk/today`).get().catch(() => null),
+      dbPersonal.collection(`users/${uid}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
+      dbPersonal.doc('challenge/current').get().catch(() => null),
+      dbPersonal.doc(`users/${uid}/bileg/profile`).get().catch(() => null),
+    ]);
+
+    const rt      = routineSnap?.exists ? routineSnap.data() : {};
+    const hsk     = hskSnap?.exists ? hskSnap.data() : {};
+    const tasks   = tasksRaw.docs.slice(0, 5).map(d => d.data().text).filter(Boolean);
+    const profile = profileSnap?.exists ? profileSnap.data() : {};
+
+    const routineStr = [
+      rt.exercise ? '✅ Дасгал' : '❌ Дасгал',
+      rt.hanzi    ? '✅ 汉字'   : '❌ 汉字',
+      rt.read     ? '✅ Уншилт' : '❌ Уншилт',
+      rt.journal  ? '✅ Journal' : '❌ Journal',
+    ].join(' · ');
+
+    let challengeLine = '';
+    if (challengeSnap?.exists) {
+      const chid = challengeSnap.data().id;
+      const [proofSnap, dailySnap] = await Promise.all([
+        dbPersonal.doc(`challenge/${chid}/proofs/${today}`).get().catch(() => null),
+        dbPersonal.doc(`challenge/${chid}/daily/${today}`).get().catch(() => null),
+      ]);
+      const pct = dailySnap?.exists ? (dailySnap.data()?.bileg?.pct || 0) : 0;
+      challengeLine = `Challenge proof: ${proofSnap?.exists ? '✅ оруулсан' : '❌ байхгүй'} · Хуваарь: ${pct}%`;
+    }
+
+    let financeLine = '';
+    try {
+      const finSnap = await dbPersonal.collection(`users/${uid}/finance/txns/records`)
+        .where('date', '>=', month + '-01').where('date', '<=', month + '-31').get();
+      const txns   = finSnap.docs.map(d => d.data());
+      const expCNY = txns.filter(t => t.type === 'expense' && t.currency === 'CNY').reduce((s,t) => s + t.amount, 0);
+      const incCNY = txns.filter(t => t.type === 'income'  && t.currency === 'CNY').reduce((s,t) => s + t.amount, 0);
+      if (txns.length) financeLine = `Санхүү (${month}): орлого ¥${incCNY.toFixed(0)}, зарлага ¥${expCNY.toFixed(0)}, үлдэгдэл ${incCNY-expCNY >= 0 ? '+' : ''}¥${(incCNY-expCNY).toFixed(0)}`;
+    } catch {}
+
+    const lines = [
+      `Одоо: ${today} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} Shanghai`,
+      `Routine: ${routineStr}`,
+      hsk.date === today ? `HSK: ${hsk.words?.length || 0} ханз · drill ${hsk.scored ? '✅ хийсэн' : '❌ хийгдэхгүй'}` : 'HSK: өнөөдрийн session байхгүй',
+      challengeLine,
+      financeLine,
+      profile.goal  ? `Зорилго: "${profile.goal}"` : '',
+      profile.focus ? `Фокус: "${profile.focus}"` : '',
+      tasks.length  ? `Нээлттэй tasks (${tasks.length}): ${tasks.join(', ')}` : '',
+    ].filter(Boolean).join('\n');
+
+    return `\n\n## LIVE OS CONTEXT [${today}]\n${lines}`;
+  } catch (e) {
+    console.error('[getFullContext]', e.message);
+    return '';
+  }
+}
+
 // ── BUILD PROMPT — HSK coaching context packager ──────────────────
 // Gemini руу явуулах системийн болон хэрэглэгчийн context-ийг цэгцлэнэ.
 // Drill start, progress summary, weak word coaching-д ашиглана.
@@ -2458,6 +2525,8 @@ async function handleText(msg, ctx = {}) {
       `/msg [текст] — хамтрагч руу чат\n` +
       `/addpartner [id] [нэр] — хамтрагч нэмэх (админ)\n` +
       `/newchallenge [YYYY-MM-DD] [нэр] — шинэ challenge (админ)\n\n` +
+      `⚡ *T.H.R.E.E. OS*\n` +
+      `/os — өнөөдрийн бүрэн тоймchan (routine · HSK · challenge · finance · tasks)\n\n` +
       `🔥 *Execution Sprint (Sprint 37)*\n` +
       `/sprint setup — анх тохируулах\n` +
       `/sprint quickstart — өдрийн 3 цонх\n` +
@@ -2470,15 +2539,96 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
+  // ── /os — T.H.R.E.E. OS unified today view ───────────────────────
+  if (text === '/os' || text === '/status') {
+    const today = todaySH();
+    const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+    const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+    const [routineSnap, hskSnap, tasksRaw, challengeSnap, profileSnap] = await Promise.all([
+      dbPersonal.doc(`users/${uid}/routines/${today}`).get().catch(() => null),
+      dbPersonal.doc(`users/${uid}/hsk/today`).get().catch(() => null),
+      dbPersonal.collection(`users/${uid}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
+      dbPersonal.doc('challenge/current').get().catch(() => null),
+      dbPersonal.doc(`users/${uid}/bileg/profile`).get().catch(() => null),
+    ]);
+
+    const rt      = routineSnap?.exists ? routineSnap.data() : {};
+    const hsk     = hskSnap?.exists ? hskSnap.data() : {};
+    const tasks   = tasksRaw.docs.slice(0, 5).map(d => d.data().text).filter(Boolean);
+    const profile = profileSnap?.exists ? profileSnap.data() : {};
+
+    // Routine score
+    const routineItems = [
+      { k: 'exercise', e: '💪', l: 'Дасгал' },
+      { k: 'hanzi',    e: '🈶', l: '汉字' },
+      { k: 'read',     e: '📚', l: 'Уншилт' },
+      { k: 'journal',  e: '📝', l: 'Journal' },
+    ];
+    const doneCnt = routineItems.filter(r => rt[r.k]).length;
+
+    // Challenge
+    let challengeBlock = '';
+    if (challengeSnap?.exists) {
+      const chid = challengeSnap.data().id;
+      const [proofSnap, dailySnap] = await Promise.all([
+        dbPersonal.doc(`challenge/${chid}/proofs/${today}`).get().catch(() => null),
+        dbPersonal.doc(`challenge/${chid}/daily/${today}`).get().catch(() => null),
+      ]);
+      const pct = dailySnap?.exists ? (dailySnap.data()?.bileg?.pct || 0) : 0;
+      const bar = '█'.repeat(Math.round(pct / 10)) + '░'.repeat(10 - Math.round(pct / 10));
+      challengeBlock = `\n\n🏆 *Challenge:*\n${proofSnap?.exists ? '📸 Proof ✅' : '📸 Proof байхгүй'}\n\`${bar}\` ${pct}%`;
+    }
+
+    // Finance
+    let financeBlock = '';
+    try {
+      const finSnap = await dbPersonal.collection(`users/${uid}/finance/txns/records`)
+        .where('date', '>=', month + '-01').where('date', '<=', month + '-31').get();
+      const txns   = finSnap.docs.map(d => d.data());
+      const expCNY = txns.filter(t => t.type === 'expense' && t.currency === 'CNY').reduce((s,t) => s+t.amount, 0);
+      const incCNY = txns.filter(t => t.type === 'income'  && t.currency === 'CNY').reduce((s,t) => s+t.amount, 0);
+      const net    = incCNY - expCNY;
+      if (txns.length) {
+        financeBlock = `\n\n💰 *Санхүү (${month}):*\n` +
+          `📈 ¥${incCNY.toFixed(0)}  📉 ¥${expCNY.toFixed(0)}  ${net >= 0 ? '✅' : '⚠️'} ${net >= 0 ? '+' : ''}¥${net.toFixed(0)}`;
+      }
+    } catch {}
+
+    // Build message
+    let msg = `⚡ *T.H.R.E.E. OS*\n\`${today}\`\n\n`;
+    msg += `*Routine ${doneCnt}/4:*\n`;
+    routineItems.forEach(r => { msg += `${rt[r.k] ? '✅' : '❌'} ${r.e} ${r.l}\n`; });
+
+    if (hsk.date === today) {
+      msg += `\n📚 *HSK:*\n${hsk.words?.length || 0} ханз · ${hsk.scored ? 'Drill ✅' : 'Drill ❌'}`;
+    }
+
+    msg += challengeBlock;
+    msg += financeBlock;
+
+    if (tasks.length) {
+      msg += `\n\n📋 *Tasks (${tasks.length}):*\n`;
+      tasks.forEach((t, i) => { msg += `${i + 1}. ${t}\n`; });
+    }
+
+    if (profile.goal)  msg += `\n🎯 _${profile.goal}_`;
+    if (profile.focus) msg += `\n🔥 Focus: _${profile.focus}_`;
+
+    await tgSend(msg);
+    return;
+  }
+
   // ── Free Chat — GitHub Models gpt-4o (цорын ганц) ──
   if (!apiKey) { await tgSend('⚠️ SYSTEM_USE_TOKEN тохируулаагүй.'); return; }
   try {
-    const hist = await getChatHistory(uid);
+    const [hist, liveCtx] = await Promise.all([getChatHistory(uid), getFullContext(uid)]);
+    const sysWithCtx = sysText + liveCtx;
     let reply = '', lastErr = '';
 
     try {
       const messages = [
-        { role: 'system', content: sysText },
+        { role: 'system', content: sysWithCtx },
         ...hist.slice(-6).map(m => ({ role: m.role, content: (m.content || '').slice(0, 600) })),
         { role: 'user', content: raw.slice(0, 800) },
       ];
