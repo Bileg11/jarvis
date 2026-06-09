@@ -85,6 +85,63 @@ function getBilegSystem() {
 }
 const BILEG_SYSTEM = getBilegSystem(); // backward compat
 
+// ── BUILD PROMPT — HSK coaching context packager ──────────────────
+// Gemini руу явуулах системийн болон хэрэглэгчийн context-ийг цэгцлэнэ.
+// Drill start, progress summary, weak word coaching-д ашиглана.
+function buildHSKPrompt({ profile = {}, progress = null, weakWords = [], mode = 'drill_end', drillResult = null }) {
+  const hskDays = Math.max(0, Math.ceil(
+    (new Date('2026-06-28T09:00:00+08:00') - Date.now()) / 86400000
+  ));
+  const urgencyTag = hskDays <= 7  ? 'ШҮРГЭЖ ИРЛЭЭ'
+                   : hskDays <= 20 ? 'ЯАРАЛ БИЙ'
+                   : 'ТОГТВОРТОЙ';
+
+  const systemInstruction = [
+    'Чи бол JARVIS — HSK4 шалгалтын strict coach.',
+    'Монголоор, товч, практик хариул. Урамшуулал > шүүмж.',
+    `Urgency: ${urgencyTag} (${hskDays} хоног үлдсэн).`,
+    'JSON хариу буцаа. Markdown бичвэл bold (*) ашигла.',
+  ].join('\n');
+
+  const lines = [
+    `Mode: ${mode}`,
+    progress ? `Нийт: ${progress.total} үг | Mastered: ${progress.mastered} (${progress.pct}%)` : '',
+    progress ? `Өдрийн зорилт: ${progress.dailyGoal} үг | Үлдсэн хоног: ${hskDays}` : '',
+    progress?.activeLevel ? `Одоо активдаа: HSK ${progress.activeLevel}` : '',
+    weakWords.length ? `Сул үгс: ${weakWords.slice(0,5).map(w=>w.word).join(', ')}` : '',
+    drillResult ? `Drill үр дүн: ${drillResult.correct}/${drillResult.total} (${drillResult.pct}%)` : '',
+  ].filter(Boolean).join('\n');
+
+  const modeInstruction = {
+    drill_end:  'Drill дууслаа. 1-2 мөрөнд coaching тайлбар өг. Маш товч, motivating. Хэт их бичихгүй.',
+    progress:   'HSK явцын бүрэн дүгнэлт өг. Алсын харааг оруул. 3-4 мөр.',
+    weak_coach: 'Хамгийн сул 5 үгийг яаж давтах зөвлөгөө бич. Тодорхой алхам оруул.',
+  }[mode] || 'Практик зөвлөгөө өг.';
+
+  const userPrompt = `${lines}\n\nДаалгавар: ${modeInstruction}`;
+  return { systemInstruction, userPrompt };
+}
+
+// Gemini-ийг buildHSKPrompt-тайгаар дуудах helper
+async function callGeminiCoach(promptData) {
+  if (!GEMINI_URL) return null;
+  try {
+    const { systemInstruction, userPrompt } = buildHSKPrompt(promptData);
+    const res = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemInstruction }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: { maxOutputTokens: 120, temperature: 0.7 },
+      }),
+    });
+    if (!res.ok) return null;
+    const d = await res.json();
+    return d.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+  } catch { return null; }
+}
+
 // ── HSK WORD BANK (HSK 4-6 хэцүү ханзууд) ───────────────────────
 const HSK_BANK = [
   { char: '焦虑', pinyin: 'jiāolǜ',    meaning: 'санаа зоволт, түгшүүр',         level: 5 },
@@ -1127,8 +1184,17 @@ async function handleDrillAnswer(msg, ctx, session) {
     const medal = pct >= 80 ? '🏆' : pct >= 60 ? '🥈' : '💪';
     const drillLvl = session.hsk_level || null;
 
-    // Dynamic coaching: тухайн түвшний дэвшил шалгах
+    // Dynamic coaching: Gemini-аар context-aware тайлбар үүсгэнэ
     let coachNote = pct >= 80 ? '💪 Гайхалтай! Хэмнэл хадгалаарай.' : '📚 Буруу үгсийг дахин давтаарай.';
+    try {
+      const prog = await getProgress(uid);
+      const aiNote = await callGeminiCoach({
+        progress: prog,
+        mode: 'drill_end',
+        drillResult: { correct: newCorrect, total: session.words.length, pct },
+      });
+      if (aiNote) coachNote = aiNote;
+    } catch { /* fallback to default */ }
     let nextLvlBtn = null;
     if (drillLvl) {
       try {
