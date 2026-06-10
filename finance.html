@@ -34,6 +34,9 @@ body{background:var(--bg);color:var(--text-b);font-family:var(--sans);font-size:
 ::-webkit-scrollbar-thumb{background:var(--border-h);border-radius:2px}
 
 .page{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;margin-left:7px;vertical-align:middle;transition:background .4s}
+.live-dot.on{background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.7);animation:live-pulse 2s ease-in-out infinite}
+@keyframes live-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* Header */
 .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
@@ -135,7 +138,7 @@ canvas{max-height:210px}
     <div class="header-left">
       <a href="/" class="back">← JARVIS</a>
       <div>
-        <div class="page-title">💰 Санхүү</div>
+        <div class="page-title">💰 Санхүү <span class="live-dot" id="fin-live-dot" title="Холбогдож байна..."></span></div>
         <div class="page-sub">Орлого · Зарлага · Хуримтлал</div>
       </div>
     </div>
@@ -291,9 +294,47 @@ async function finInit() {
       firebase.auth().onAuthStateChanged(u => { clearTimeout(t); _fUid = u?.uid||null; resolve(); });
     });
   }
-  await loadTxns();
-  render();
+
+  if (_fDb && _fUid) {
+    // Real-time listener — Telegram-аас ирсэн гүйлгээ шууд харагдана
+    _fDb.collection(`users/${_fUid}/finance/txns/records`)
+      .orderBy('ts', 'desc').limit(200)
+      .onSnapshot(snap => {
+        const incoming = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Telegram-аас шинэ гүйлгээ ирвэл toast харуулах
+        if (_txns.length) {
+          const prevIds = new Set(_txns.map(t => t.id));
+          const newTg   = incoming.filter(t => !prevIds.has(t.id) && t.source === 'telegram');
+          if (newTg.length) {
+            const tx   = newTg[0];
+            const symb = tx.currency === 'MNT' ? '₮' : tx.currency === 'USD' ? '$' : '¥';
+            const icon = tx.type === 'expense' ? '📉' : tx.type === 'savings' ? '⬆' : '📈';
+            showToast(`${icon} ${tx.category} ${symb}${tx.amount} — Telegram-аас ирлээ`);
+          }
+        }
+        _txns = incoming;
+        saveTxnsLocal(_txns);
+        render();
+        _setLiveDot(true);
+      }, () => {
+        // Firestore холбогдохгүй бол localStorage-аас уна
+        _setLiveDot(false);
+        _txns = localTxns();
+        render();
+      });
+  } else {
+    _txns = localTxns();
+    render();
+  }
+
   getAiAdvice();
+}
+
+function _setLiveDot(live) {
+  const dot = document.getElementById('fin-live-dot');
+  if (!dot) return;
+  dot.classList.toggle('on', live);
+  dot.title = live ? 'Live — Telegram синк идэвхтэй' : 'Offline — localStorage';
 }
 
 // ── Data ──────────────────────────────────────────────────────────
