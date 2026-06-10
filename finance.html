@@ -279,6 +279,7 @@ const LS_SAVES  = 'fin_savings_goal';
 let _fDb = null, _fUid = null;
 let _txns = [];
 let _curFilter = 'all';
+let _dispCur = 'CNY';
 let _monFilter = '';
 let _txType = 'expense';
 
@@ -415,22 +416,34 @@ function deleteTxn(id) {
 // ── Render ────────────────────────────────────────────────────────
 function todayMonth() { return new Date().toISOString().slice(0,7); }
 
+// Тухайн сард харуулах валютыг тодорхойлно (filter эсвэл хамгийн их гүйлгээтэй валют)
+function _displayCur(monthTxns) {
+  if (_curFilter !== 'all') return _curFilter;
+  const cnt = {};
+  monthTxns.filter(t=>t.type!=='savings').forEach(t => { cnt[t.currency]=(cnt[t.currency]||0)+1; });
+  const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+  return top ? top[0] : 'CNY';
+}
+
 function render() {
   const month = _monFilter || todayMonth();
   const monthTxns = _txns.filter(t => t.date?.startsWith(month));
   const filtered  = _curFilter === 'all' ? monthTxns : monthTxns.filter(t => t.currency === _curFilter);
+  const dispCur   = _displayCur(monthTxns);
 
-  // Stats
-  const incomeCNY  = monthTxns.filter(t=>t.type==='income'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
-  const expCNY     = monthTxns.filter(t=>t.type==='expense'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
-  const savMNT     = _txns.filter(t=>t.type==='savings'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
-  const net        = incomeCNY - expCNY;
+  // Stats — идэвхтэй валютаар
+  const incomeC = monthTxns.filter(t=>t.type==='income'&&t.currency===dispCur).reduce((s,t)=>s+t.amount,0);
+  const expC    = monthTxns.filter(t=>t.type==='expense'&&t.currency===dispCur).reduce((s,t)=>s+t.amount,0);
+  const savMNT  = _txns.filter(t=>t.type==='savings'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
+  const net     = incomeC - expC;
 
-  document.getElementById('stat-income').textContent  = fmt(incomeCNY, 'CNY');
-  document.getElementById('stat-expense').textContent = fmt(expCNY, 'CNY');
+  document.getElementById('stat-income').textContent  = fmt(incomeC, dispCur);
+  document.getElementById('stat-expense').textContent = fmt(expC, dispCur);
+  const icur = document.getElementById('stat-income-cur');  if (icur) icur.textContent = dispCur;
+  const ecur = document.getElementById('stat-expense-cur'); if (ecur) ecur.textContent = dispCur;
   document.getElementById('stat-savings').textContent = fmt(savMNT, 'MNT');
   document.getElementById('stat-txns').textContent    = monthTxns.length;
-  document.getElementById('month-net').textContent    = (net >= 0 ? '+' : '') + fmt(net, 'CNY');
+  document.getElementById('month-net').textContent    = (net >= 0 ? '+' : '') + fmt(net, dispCur);
   document.getElementById('month-net').style.color    = net >= 0 ? 'var(--green)' : 'var(--red)';
 
   // Savings bar
@@ -441,8 +454,10 @@ function render() {
   document.getElementById('savings-pct-label').textContent = goal ? pct + '%' : '';
   document.getElementById('savings-bar').style.width = pct + '%';
 
+  _dispCur = dispCur;  // chart функцууд ашиглана
+
   // Budget bars
-  renderBudget(expCNY, monthTxns);
+  renderBudget(expC, monthTxns, dispCur);
 
   // Charts
   renderCharts(monthTxns);
@@ -451,13 +466,13 @@ function render() {
   renderTxns(filtered);
 }
 
-function renderBudget(totalExp, monthTxns) {
+function renderBudget(totalExp, monthTxns, dispCur='CNY') {
   const budget = JSON.parse(localStorage.getItem(LS_BUDGET) || '{}');
   const list = document.getElementById('budget-list');
   const cats = Object.keys(budget).filter(k => budget[k] > 0);
   if (!cats.length) { list.innerHTML = '<div class="empty" style="padding:10px 0;font-size:11px">Төсөв тохируулаагүй</div>'; return; }
   list.innerHTML = cats.map(cat => {
-    const spent = monthTxns.filter(t=>t.type==='expense'&&t.category===cat&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
+    const spent = monthTxns.filter(t=>t.type==='expense'&&t.category===cat&&t.currency===dispCur).reduce((s,t)=>s+t.amount,0);
     const pct   = Math.min(100, budget[cat] ? Math.round(spent/budget[cat]*100) : 0);
     const color = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--amber)' : 'var(--green)';
     const ICONS = {хоол:'🍜',тээвэр:'🚇',амьдрал:'🏠',хувцас:'👕',боловсрол:'📚',тоглоом:'🎮',бусад:'📦'};
@@ -573,7 +588,7 @@ function renderDonut(monthTxns) {
   const ctx = document.getElementById('chart-donut');
   if (!ctx) return;
   const cats = {};
-  monthTxns.filter(t => t.type==='expense' && t.currency==='CNY')
+  monthTxns.filter(t => t.type==='expense' && t.currency===_dispCur)
     .forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
   const labels = Object.keys(cats);
   const data   = Object.values(cats);
@@ -606,8 +621,8 @@ function renderBarChart() {
     const m = d.toISOString().slice(0,7);
     months.push(d.toLocaleDateString('mn-MN', { month: 'short' }));
     const mTxns = _txns.filter(t => t.date?.startsWith(m));
-    incomes.push(mTxns.filter(t=>t.type==='income'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0));
-    expenses.push(mTxns.filter(t=>t.type==='expense'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0));
+    incomes.push(mTxns.filter(t=>t.type==='income'&&t.currency===_dispCur).reduce((s,t)=>s+t.amount,0));
+    expenses.push(mTxns.filter(t=>t.type==='expense'&&t.currency===_dispCur).reduce((s,t)=>s+t.amount,0));
   }
   if (_chartBar) _chartBar.destroy();
   _chartBar = new Chart(ctx, {
@@ -638,11 +653,11 @@ async function getAiAdvice() {
 
   const month = _monFilter || todayMonth();
   const mTxns = _txns.filter(t => t.date?.startsWith(month));
-  const incomeCNY = mTxns.filter(t=>t.type==='income'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
-  const expCNY    = mTxns.filter(t=>t.type==='expense'&&t.currency==='CNY').reduce((s,t)=>s+t.amount,0);
+  const incomeCNY = mTxns.filter(t=>t.type==='income'&&t.currency===_dispCur).reduce((s,t)=>s+t.amount,0);
+  const expCNY    = mTxns.filter(t=>t.type==='expense'&&t.currency===_dispCur).reduce((s,t)=>s+t.amount,0);
   const savMNT    = _txns.filter(t=>t.type==='savings'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
   const cats = {};
-  mTxns.filter(t=>t.type==='expense'&&t.currency==='CNY').forEach(t => { cats[t.category]=(cats[t.category]||0)+t.amount; });
+  mTxns.filter(t=>t.type==='expense'&&t.currency===_dispCur).forEach(t => { cats[t.category]=(cats[t.category]||0)+t.amount; });
   const catStr = Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`${c}: ¥${a.toFixed(0)}`).join(', ');
   const daysIn = new Date().getDate();
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
