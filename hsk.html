@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
+<script src="hsk-vocab.js"></script>
 <style>
   /* ── Base ─────────────────────────────────────────────── */
   :root {
@@ -214,6 +215,29 @@
   }
   .search-input:focus { border-color:var(--sage); }
 
+  /* ── AI Word explain ─────────────────────────────────── */
+  .word-ai-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-top:10px; font-size:13px; color:var(--text-b); line-height:1.7; white-space:pre-line; }
+  .word-ai-box.loading { opacity:.4; animation:pulse 1.2s ease infinite; }
+  .btn-word-ai { background:rgba(100,144,192,.1); border:1px solid rgba(100,144,192,.25); color:#6090c0; border-radius:6px; padding:6px 14px; font-size:11px; cursor:pointer; transition:all .15s; margin-top:8px; width:100%; }
+  .btn-word-ai:hover { background:rgba(100,144,192,.2); }
+  /* ── Conversation ─────────────────────────────────────── */
+  .conv-messages { display:flex; flex-direction:column; gap:10px; max-height:340px; overflow-y:auto; margin-bottom:12px; }
+  .conv-msg { padding:10px 14px; border-radius:10px; font-size:13px; line-height:1.6; max-width:88%; }
+  .conv-msg.user { background:rgba(126,184,126,.12); border:1px solid rgba(126,184,126,.2); align-self:flex-end; }
+  .conv-msg.ai   { background:var(--surface2); border:1px solid var(--border); align-self:flex-start; }
+  .conv-cn { font-family:var(--serif,serif); font-size:16px; color:#dde8d8; }
+  .conv-mn { font-size:11px; color:var(--text); opacity:.6; margin-top:3px; }
+  .conv-fix { font-size:11px; color:#c4a064; margin-top:3px; }
+  .conv-input-row { display:flex; gap:8px; }
+  /* ── Weak spot ────────────────────────────────────────── */
+  .weak-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,.04); }
+  .weak-rank { font-family:var(--mono); font-size:10px; color:var(--text); opacity:.4; width:18px; }
+  .weak-hanzi { font-family:var(--serif,serif); font-size:20px; width:36px; text-align:center; }
+  .weak-info { flex:1; }
+  .weak-pin { font-size:10px; color:#7eb87e; font-family:var(--mono); }
+  .weak-mean { font-size:12px; color:var(--text); }
+  .weak-mastery { font-family:var(--mono); font-size:10px; color:var(--red); }
+  .weak-tip { font-size:11px; color:var(--text); opacity:.5; line-height:1.5; padding:4px 0 8px 64px; border-bottom:1px solid rgba(255,255,255,.04); }
   /* ── Empty state ──────────────────────────────────────── */
   .empty { text-align:center; padding:32px; color:var(--text); opacity:.4; font-size:13px; }
 
@@ -237,16 +261,33 @@
   <!-- Header -->
   <div class="header">
     <div class="header-left">
-      <a href="/" class="header-back">← JARVIS</a>
+      <a href="/" class="header-back" id="hdr-back" style="display:none">← JARVIS</a>
       <div>
-        <div class="header-title">HSK 3 — Үгийн сан</div>
-        <div class="header-sub">Шалгалт 2026/06/28 13:30 · Билэг</div>
+        <div class="header-title" id="hdr-title">HSK — Үгийн сан</div>
+        <div class="header-sub" id="hdr-sub">Уншиж байна...</div>
       </div>
     </div>
     <div class="exam-badge">
       <div class="exam-days" id="exam-days-num" style="color:var(--red)">—</div>
       <div class="exam-label">өдөр үлдлээ</div>
     </div>
+  </div>
+
+  <!-- Free upgrade banner (HSK users only) -->
+  <div id="hsk-free-banner" style="display:none;align-items:center;justify-content:space-between;
+    background:rgba(109,191,103,.08);border:1px solid rgba(109,191,103,.25);
+    border-radius:12px;padding:12px 16px;margin-bottom:12px;gap:12px">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:#7eb87e">🆓 Үнэгүй — HSK 1 (150 үг)</div>
+      <div style="font-size:11px;color:rgba(200,220,190,.5);margin-top:2px">
+        Premium-д HSK 1-3 (553 үг) + AI + дэвшлийн тайлан
+      </div>
+    </div>
+    <a href="mailto:bileg@lfs.mn?subject=Ханз Premium" style="white-space:nowrap;
+      padding:8px 14px;background:rgba(109,191,103,.2);border:1px solid rgba(109,191,103,.4);
+      border-radius:8px;color:#7eb87e;font-size:12px;font-weight:600;text-decoration:none">
+      ⭐ Upgrade
+    </a>
   </div>
 
   <!-- Daily plan banner -->
@@ -278,6 +319,12 @@
     </div>
   </div>
 
+  <!-- Daily chart -->
+  <div class="card" style="margin-bottom:16px;padding:14px 18px">
+    <div class="card-title" style="margin-bottom:10px">📈 Сүүлийн 7 хоног</div>
+    <div id="daily-chart"></div>
+  </div>
+
   <!-- Tabs -->
   <div class="tabs">
     <button class="tab active" onclick="switchTab('vault')">📚 Үгийн сан</button>
@@ -285,11 +332,15 @@
     <button class="tab" onclick="switchTab('drill')">⚡ Drill</button>
     <button class="tab" onclick="switchTab('test')">🎯 Шалгалт</button>
     <button class="tab" onclick="switchTab('sentence')">✍ Өгүүлбэр</button>
+    <button class="tab" onclick="switchTab('weakspot')">🎯 Сул үгс</button>
+    <button class="tab" onclick="switchTab('conversation')">💬 Яриа</button>
+    <button class="tab" onclick="switchTab('cram')">🔥 Cram</button>
+    <button class="tab" onclick="switchTab('mock')">📝 Mock</button>
   </div>
 
   <!-- ── TAB: VAULT ── -->
   <div class="tab-panel active" id="panel-vault">
-    <div id="seed-banner" style="display:none;background:rgba(196,160,100,.08);border:1px solid rgba(196,160,100,.3);border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+    <div id="seed-banner" style="display:none;background:rgba(196,160,100,.08);border:1px solid rgba(196,160,100,.3);border-radius:8px;padding:12px 16px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:12px">
       <span style="font-size:12px;color:#c4a064">⚠ Үгийн сан хоосон байна — HSK 1-6 (2094 үг) татах уу?</span>
       <button onclick="seedFromBrowser()" style="background:#c4a064;color:#0d1117;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">📥 Татах</button>
     </div>
@@ -360,6 +411,10 @@
 
   <!-- ── TAB: TEST ── -->
   <div class="tab-panel" id="panel-test">
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button id="test-mode-mc" class="tab active" style="flex:1;padding:8px;font-size:12px" onclick="setTestMode('mc')">📝 Сонголт</button>
+      <button id="test-mode-py" class="tab" style="flex:1;padding:8px;font-size:12px" onclick="setTestMode('pinyin')">✏ Pinyin бичих</button>
+    </div>
     <div class="card" id="test-card">
       <div class="empty" style="padding:40px 0">Шалгалт ачааллаж байна...</div>
     </div>
@@ -369,6 +424,58 @@
   <div class="tab-panel" id="panel-sentence">
     <div class="card" id="sentence-card">
       <div class="empty">Үг сангаа нэмсний дараа өгүүлбэр бичиж болно.</div>
+    </div>
+  </div>
+
+  <!-- ── TAB: CRAM ── -->
+  <div class="tab-panel" id="panel-cram">
+    <div class="card" id="cram-wrap">
+      <div class="empty">Ачааллаж байна...</div>
+    </div>
+    <div class="card" style="padding:12px 16px;margin-top:0">
+      <div style="font-size:11px;color:var(--text);opacity:.5;margin-bottom:6px">Cram явц</div>
+      <div class="prog-bar"><div class="prog-fill" id="cram-prog-fill" style="width:0%"></div></div>
+      <div style="font-size:11px;color:var(--text);opacity:.5;text-align:right;margin-top:4px" id="cram-prog-label">0 / 0</div>
+    </div>
+  </div>
+
+  <!-- ── TAB: MOCK ── -->
+  <div class="tab-panel" id="panel-mock">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <div>
+          <div class="card-title" style="margin:0">📝 Mock HSK шалгалт</div>
+          <div style="font-size:11px;color:var(--text);opacity:.5;margin-top:2px">40 асуулт · 60 минут</div>
+        </div>
+        <div id="mock-timer" style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--sage)">60:00</div>
+      </div>
+      <div id="mock-content">
+        <div style="text-align:center;padding:20px 0">
+          <div style="font-size:13px;color:var(--text);opacity:.5;margin-bottom:16px">HSK3 формат дуурайлган шалгалт</div>
+          <button class="btn-add" onclick="initMock()" style="padding:12px 28px;font-size:14px">Шалгалт эхлүүлэх →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: WEAK SPOT ── -->
+  <div class="tab-panel" id="panel-weakspot">
+    <div class="card" id="weakspot-card">
+      <div class="empty">Тооцоолж байна...</div>
+    </div>
+  </div>
+
+  <!-- ── TAB: CONVERSATION ── -->
+  <div class="tab-panel" id="panel-conversation">
+    <div class="card">
+      <div class="card-title">💬 Хятад яриа дадлага</div>
+      <div class="conv-messages" id="conv-messages" style="min-height:200px"></div>
+      <div class="conv-input-row" style="margin-top:10px">
+        <input class="form-input" id="conv-input" placeholder="Хятадаар бич... (Enter = илгээх)"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendConvMsg();}"
+          style="flex:1">
+        <button class="btn-add" onclick="sendConvMsg()" style="padding:9px 18px">→</button>
+      </div>
     </div>
   </div>
 
@@ -383,6 +490,7 @@ const HSK_MAX_LEVEL = 3; // HSK 3 → level 1-3 шүүнэ
 const LS_WORDS   = 'jarvis_hsk_vault_cache';
 const LS_SESSION = 'jarvis_hsk_session_';
 const LS_STREAK  = 'jarvis_hsk_streak';
+const LS_MISS    = 'jarvis_hsk_miss';
 
 let _hskDb  = null;
 let _hskUid = null;
@@ -487,6 +595,80 @@ function _renderExamDays() {
   if (el) { el.textContent = days; el.style.color = days < 14 ? 'var(--red)' : days < 30 ? 'var(--amber)' : 'var(--sage)'; }
 }
 
+// ── HSK user profile ─────────────────────────────────────────────
+let _hskProduct = 'three';  // 'hsk' | 'three'
+let _hskPremium = false;
+let _hskTarget  = 3;
+let _hskName    = '';
+
+async function _loadHSKProfile() {
+  if (!_hskDb || !_hskUid) return;
+  try {
+    const snap = await _hskDb.doc('users/' + _hskUid + '/config/profile').get();
+    if (snap.exists) {
+      const d     = snap.data();
+      _hskProduct = d.product  || 'three';
+      _hskPremium = d.premium  || false;
+      _hskTarget  = d.hsk_target || 3;
+      _hskName    = d.name     || '';
+    }
+  } catch(e) { console.warn('[HSKProfile]', e.message); }
+}
+
+function _applyHSKUI() {
+  // Header
+  const back  = document.getElementById('hdr-back');
+  const title = document.getElementById('hdr-title');
+  const sub   = document.getElementById('hdr-sub');
+  if (_hskProduct === 'three') {
+    if (back) back.style.display = '';
+  }
+  if (title) title.textContent = `HSK ${_hskTarget} — Үгийн сан`;
+  if (sub) {
+    const name = _hskName || '';
+    if (_hskProduct === 'hsk') {
+      sub.textContent = (_hskPremium ? '⭐ Premium' : '🆓 Үнэгүй') + (name ? ' · ' + name : '');
+    } else {
+      sub.textContent = 'Шалгалт 2026/06/28 · ' + (name || 'Билэг');
+    }
+  }
+  // Free users: show upgrade banner
+  if (_hskProduct === 'hsk' && !_hskPremium) {
+    const el = document.getElementById('hsk-free-banner');
+    if (el) el.style.display = 'flex';
+  }
+}
+
+// Auto-seed from HSK_VOCAB_ALL (client-side) when Firestore is empty
+async function _autoSeedVocab() {
+  if (!_hskDb || !_hskUid) return;
+  if (typeof HSK_VOCAB_ALL === 'undefined') return;
+  const maxLevel = (_hskProduct === 'hsk' && !_hskPremium) ? 1 : _hskTarget;
+  const words = HSK_VOCAB_ALL.filter(w => w.hsk_level <= maxLevel);
+  // Batch write to Firestore (batch of 400)
+  try {
+    const batch = _hskDb.batch();
+    let count = 0;
+    words.forEach(w => {
+      const ref = _hskDb.doc('users/' + _hskUid + '/vocabulary/' + w.word);
+      batch.set(ref, {
+        word:          w.word,
+        pinyin:        w.pinyin,
+        definition:    w.definition,
+        hsk_level:     w.hsk_level,
+        mastery_level: 0,
+        added:         new Date().toISOString(),
+        source:        'auto_seed',
+      }, { merge: true });
+      count++;
+      // Firestore batch limit 500
+      if (count >= 400) return;
+    });
+    await batch.commit();
+    console.log('[HSK] Auto-seed:', words.length, 'words →', maxLevel, 'level');
+  } catch(e) { console.warn('[HSK] Seed error:', e.message); }
+}
+
 async function init() {
   _renderExamDays();
 
@@ -503,19 +685,35 @@ async function init() {
     });
   }
 
+  // Load HSK user profile (product, premium, target level)
+  await _loadHSKProfile();
+  _applyHSKUI();
+
   // Firestore-оос үг татах, амжаагүй бол cache
   const fromFS = await _loadFromFirestore();
-  if (!fromFS) _loadFromCache();
+  if (!fromFS) {
+    _loadFromCache();
+    // Хоосон бол auto-seed
+    if (_words.length === 0 && _hskUid) {
+      showToast('Үгийн санг ачаалж байна...');
+      await _autoSeedVocab();
+      await _loadFromFirestore();
+    }
+  }
+
+  // Premium gate: free users зөвхөн HSK1 үзнэ
+  if (_hskProduct === 'hsk' && !_hskPremium) {
+    _words = _words.filter(w => w.level <= 1);
+    saveWords(_words);
+  }
 
   updateStats();
   updatePlan();
   renderVault();
 
   const src = _hskUid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
-  document.getElementById('plan-sub') && updatePlan();
   console.log('[HSK] Эх сурвалж:', src);
   loadTodayWords();
-  // Vocab хоосон бол seed banner харуулах
   if (_words.length === 0) {
     const banner = document.getElementById('seed-banner');
     if (banner) banner.style.display = 'flex';
@@ -531,6 +729,7 @@ function updateStats() {
   document.getElementById('stat-today').textContent    = session.drilled.length;
   document.getElementById('stat-streak').textContent   = streak.count;
   document.getElementById('vault-count').textContent   = words.length + ' үг';
+  renderDailyChart();
 }
 
 function updatePlan() {
@@ -548,15 +747,20 @@ function updatePlan() {
 
 // ── Tab switching ─────────────────────────────────────────────────
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach((t,i) => {
-    t.classList.toggle('active', ['vault','session','drill','test','sentence'][i] === name);
+  const tabNames = ['vault','session','drill','test','sentence','weakspot','conversation','cram','mock'];
+  document.querySelectorAll('.tabs .tab').forEach((t,i) => {
+    t.classList.toggle('active', tabNames[i] === name);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + name)?.classList.add('active');
-  if (name === 'session')  initSession();
-  if (name === 'drill')    initDrill();
-  if (name === 'test')     initTest();
-  if (name === 'sentence') initSentence();
+  if (name === 'session')      initSession();
+  if (name === 'drill')        initDrill();
+  if (name === 'test')         initTest();
+  if (name === 'sentence')     initSentence();
+  if (name === 'weakspot')     initWeakspot();
+  if (name === 'conversation') initConversation();
+  if (name === 'cram')         initCram();
+  if (name === 'mock')         { /* start button triggers initMock */ }
 }
 
 // ── Add word ──────────────────────────────────────────────────────
@@ -690,7 +894,9 @@ function renderDrillCard() {
       <button class="flash-btn flash-btn-skip" onclick="drillUnknown()" style="border-color:var(--red);color:var(--red)">✗ Мэдэхгүй</button>
       <button class="flash-btn flash-btn-know" onclick="drillKnow()">✓ Мэднэ</button>
     </div>
-    <div class="flash-progress">${done + 1} / ${total} · ${session.known} мэдсэн · 🔴${_drillDueEnd} давтах</div>`;
+    <div class="flash-progress">${done + 1} / ${total} · ${session.known} мэдсэн · 🔴${_drillDueEnd} давтах</div>
+    <button class="btn-word-ai" onclick="wordAI('${w.h.replace(/'/g,"\\'")}','${(w.p||'').replace(/'/g,"\\'")}','${(w.m||'').replace(/'/g,"\\'")}')">🤖 Контекст жишээ үзэх</button>
+    <div class="word-ai-box" id="word-ai-result" style="display:none"></div>`;
 }
 
 function flipCard() {
@@ -725,6 +931,7 @@ function drillKnow() {
 function drillUnknown() {
   // Мэдэхгүй → word-ыг дараалалын сүүлд нэм (дахин гарна)
   const w = _drillQueue[_drillIdx];
+  recordMiss(w);
   _drillQueue.splice(_drillIdx, 1);
   _drillQueue.push(w); // сүүлд нэмнэ
   // mastery буцааж бууруулах
@@ -759,6 +966,7 @@ function initTest() {
 }
 
 function renderTest() {
+  if (_testMode === 'pinyin') { renderPinyinQ(); return; }
   const card  = document.getElementById('test-card');
   if (!card) return;
   if (_testIdx >= _testQueue.length) {
@@ -985,6 +1193,7 @@ function sessKnow() {
 function sessMiss() {
   _sessMiss++;
   const w   = _sessQueue[_sessIdx];
+  recordMiss(w);
   const idx = _words.findIndex(x => x.h === w.h);
   if (idx >= 0) {
     _words[idx].mastery  = Math.max(0, (_words[idx].mastery||0)-1);
@@ -1069,6 +1278,442 @@ async function loadTxns_stub() {
   const fromFS = await _loadFromFirestore();
   if (!fromFS) _loadFromCache();
   updateStats(); updatePlan(); renderVault();
+}
+
+// ── Daily chart ───────────────────────────────────────────────────
+function renderDailyChart() {
+  const el = document.getElementById('daily-chart');
+  if (!el) return;
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d   = new Date(Date.now() - i * 86400000);
+    const key = d.toISOString().slice(0,10);
+    const s   = JSON.parse(localStorage.getItem(LS_SESSION + key) || '{"known":0}');
+    days.push({ label: i===0 ? 'Өнөөдөр' : (d.getMonth()+1)+'/'+d.getDate(), known: s.known||0 });
+  }
+  const max = Math.max(...days.map(d=>d.known), 1);
+  el.innerHTML = days.map(d => `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+      <div style="width:52px;font-size:10px;color:var(--text);opacity:.5;text-align:right;flex-shrink:0">${d.label}</div>
+      <div style="flex:1;height:16px;background:var(--dim);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(d.known/max*100)}%;background:${d.label==='Өнөөдөр'?'var(--sage)':'rgba(126,184,126,.5)'};border-radius:3px;transition:width .5s;min-width:${d.known>0?'3px':'0'}"></div>
+      </div>
+      <div style="width:22px;font-family:var(--mono);font-size:11px;color:${d.label==='Өнөөдөр'?'var(--sage)':'var(--text)'};opacity:${d.label==='Өнөөдөр'?'1':'.45'}">${d.known}</div>
+    </div>`).join('');
+}
+
+// ── Test mode (mc / pinyin) ────────────────────────────────────────
+let _testMode = 'mc';
+function setTestMode(mode) {
+  _testMode = mode;
+  document.getElementById('test-mode-mc')?.classList.toggle('active', mode==='mc');
+  document.getElementById('test-mode-py')?.classList.toggle('active', mode==='pinyin');
+  initTest();
+}
+
+function renderPinyinQ() {
+  const card = document.getElementById('test-card');
+  if (!card) return;
+  if (_testIdx >= _testQueue.length) {
+    const pct = Math.round(_testScore.correct / _testQueue.length * 100);
+    const emoji = pct >= 80 ? '🌟' : pct >= 60 ? '✅' : '📖';
+    card.innerHTML = `<div class="test-result">
+      <div style="font-size:36px;margin-bottom:12px">${emoji}</div>
+      <div class="test-score" style="color:${pct>=80?'var(--sage)':pct>=60?'var(--amber)':'var(--red)'}">${pct}%</div>
+      <div style="font-size:13px;color:var(--text);opacity:.6;margin:8px 0">${_testScore.correct} зөв / ${_testQueue.length}</div>
+      <button onclick="initTest()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-b);border-radius:8px;padding:10px 20px;cursor:pointer;font-size:13px">Дахин шалгах</button>
+    </div>`;
+    return;
+  }
+  const w = _testQueue[_testIdx];
+  card.innerHTML = `
+    <div style="font-size:11px;color:var(--text);opacity:.4;margin-bottom:12px">${_testIdx+1}/${_testQueue.length} · ✓${_testScore.correct}</div>
+    <div class="test-q">${w.h}</div>
+    <div style="font-size:12px;color:var(--text);opacity:.5;text-align:center;margin-bottom:16px">${w.m}</div>
+    <div style="display:flex;gap:8px">
+      <input id="py-inp" class="form-input" placeholder="пиньин бич..." style="flex:1;font-size:15px"
+        onkeydown="if(event.key==='Enter')checkPinyin('${(w.p||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+      <button class="btn-add" onclick="checkPinyin('${(w.p||'').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">→</button>
+    </div>
+    <div id="py-fb" style="margin-top:10px;font-size:13px;text-align:center;min-height:20px"></div>`;
+  setTimeout(() => document.getElementById('py-inp')?.focus(), 80);
+}
+
+function _normPy(s) {
+  return (s||'').toLowerCase()
+    .replace(/[āáǎà]/g,'a').replace(/[ēéěè]/g,'e').replace(/[īíǐì]/g,'i')
+    .replace(/[ōóǒò]/g,'o').replace(/[ūúǔùǖǘǚǜü]/g,'u')
+    .replace(/\s+/g,'');
+}
+
+function checkPinyin(correct) {
+  const inp = document.getElementById('py-inp');
+  const fb  = document.getElementById('py-fb');
+  if (!inp || !fb) return;
+  const given = inp.value.trim();
+  if (!given) return;
+  const ok = _normPy(given) === _normPy(correct);
+  if (ok) _testScore.correct++; else _testScore.wrong++;
+  fb.style.color   = ok ? 'var(--sage)' : 'var(--red)';
+  fb.textContent   = ok ? `✓ Зөв! ${correct}` : `✗ Буруу. Зөв: ${correct}`;
+  inp.style.borderColor = ok ? 'var(--sage)' : 'var(--red)';
+  setTimeout(() => { _testIdx++; renderPinyinQ(); }, 1100);
+}
+
+// ── CRAM MODE ─────────────────────────────────────────────────────
+let _cramQueue = [], _cramIdx = 0, _cramKnow = 0;
+
+function initCram() {
+  const words = getWords();
+  if (!words.length) {
+    document.getElementById('cram-wrap').innerHTML = '<div class="empty" style="padding:40px 0">Эхлээд үг нэм</div>';
+    return;
+  }
+  const miss    = getMissData();
+  const missed  = Object.values(miss)
+    .sort((a,b) => b.count - a.count)
+    .map(m => words.find(w => w.h === m.h)).filter(Boolean);
+  const missSet = new Set(missed.map(w=>w.h));
+  const m0 = words.filter(w => !w.mastered && (w.mastery||0)===0 && !missSet.has(w.h));
+  const m1 = words.filter(w => !w.mastered && (w.mastery||0)===1 && !missSet.has(w.h));
+  const pool = [...missed, ...m0.sort(()=>Math.random()-.5), ...m1.sort(()=>Math.random()-.5)];
+  _cramQueue = [...new Map(pool.map(w=>[w.h,w])).values()].slice(0, 30);
+  _cramIdx = 0; _cramKnow = 0;
+  renderCramCard();
+}
+
+function renderCramCard() {
+  const wrap = document.getElementById('cram-wrap');
+  if (!wrap) return;
+  const total = _cramQueue.length;
+  document.getElementById('cram-prog-fill').style.width  = (total ? _cramIdx/total*100 : 0) + '%';
+  document.getElementById('cram-prog-label').textContent = _cramIdx + ' / ' + total;
+
+  if (_cramIdx >= total) {
+    const pct = total ? Math.round(_cramKnow/total*100) : 0;
+    wrap.innerHTML = `<div class="test-result">
+      <div style="font-size:32px;margin-bottom:12px">${pct>=80?'🔥':'💪'}</div>
+      <div class="test-score" style="color:${pct>=80?'var(--sage)':pct>=60?'var(--amber)':'var(--red)'}">${pct}%</div>
+      <div style="font-size:13px;color:var(--text);opacity:.6;margin:8px 0">${_cramKnow} мэдсэн · ${total-_cramKnow} мэдэхгүй · ${total} нийт</div>
+      <button onclick="initCram()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-b);border-radius:8px;padding:10px 20px;cursor:pointer;font-size:13px;margin-top:8px">🔄 Дахин</button>
+    </div>`;
+    bumpStreak(); updateStats(); updatePlan();
+    return;
+  }
+
+  const w = _cramQueue[_cramIdx];
+  const missCount = getMissData()[w.h]?.count || 0;
+  wrap.innerHTML = `
+    <div class="flash-card" onclick="cramFlip()" title="Дарж харах">
+      <div style="height:18px;display:flex;justify-content:center;gap:6px;margin-bottom:4px">
+        ${missCount>0?`<span style="font-size:9px;background:rgba(196,112,96,.12);color:var(--red);border:1px solid rgba(196,112,96,.3);border-radius:3px;padding:2px 7px">⚠ ${missCount}× алдсан</span>`:''}
+        <span style="font-size:9px;color:var(--text);opacity:.3">mastery ${w.mastery||0}/5</span>
+      </div>
+      <div class="flash-hanzi">${w.h}</div>
+      <div id="cr-py" class="flash-pinyin">${w.p||''}</div>
+      <div id="cr-mn" class="flash-meaning">${w.m}</div>
+      <div class="flash-hint">↓ дарж харах</div>
+    </div>
+    <div class="flash-actions">
+      <button class="flash-btn" onclick="cramMiss()" style="border-color:var(--red);color:var(--red);flex:1;padding:12px">✗ Мэдэхгүй</button>
+      <button class="flash-btn flash-btn-know" onclick="cramKnow()" style="flex:1;padding:12px">✓ Мэднэ</button>
+    </div>
+    <div style="font-size:10px;color:var(--text);opacity:.4;text-align:center;margin-top:8px">${_cramIdx+1}/${total} · ✓${_cramKnow}</div>`;
+}
+
+function cramFlip() {
+  const py = document.getElementById('cr-py');
+  const mn = document.getElementById('cr-mn');
+  const show = py && py.style.opacity !== '1';
+  if (py) py.style.opacity = show ? '1' : '0';
+  if (mn) mn.style.opacity = show ? '1' : '0';
+}
+
+function cramKnow() {
+  _cramKnow++;
+  const w = _cramQueue[_cramIdx];
+  const idx = _words.findIndex(x => x.h === w.h);
+  if (idx >= 0) {
+    _words[idx].mastery  = Math.min((_words[idx].mastery||0)+1, 5);
+    _words[idx].mastered = _words[idx].mastery >= 3;
+    _words[idx].reviewed = new Date().toISOString();
+    saveWords(_words);
+    _updateMasteryInFirestore(w.h, _words[idx].mastery);
+  }
+  _cramIdx++;
+  renderCramCard();
+}
+
+function cramMiss() {
+  const w = _cramQueue[_cramIdx];
+  recordMiss(w);
+  _cramQueue.splice(_cramIdx, 1);
+  _cramQueue.push(w);
+  const idx = _words.findIndex(x => x.h === w.h);
+  if (idx >= 0) {
+    _words[idx].mastery  = Math.max(0, (_words[idx].mastery||0)-1);
+    _words[idx].mastered = false;
+    saveWords(_words);
+    _updateMasteryInFirestore(w.h, _words[idx].mastery);
+  }
+  renderCramCard();
+}
+
+// ── MOCK HSK TEST ─────────────────────────────────────────────────
+let _mockQ = [], _mockIdx = 0, _mockScore = 0, _mockWrong = [];
+let _mockTimerSec = 3600, _mockTimerInt = null, _mockAnswered = false;
+
+function initMock() {
+  clearInterval(_mockTimerInt);
+  const words = getWords();
+  if (words.length < 4) {
+    document.getElementById('mock-content').innerHTML = '<div class="empty">Дор хаяж 4 үг хэрэгтэй</div>';
+    return;
+  }
+  _mockQ       = [...words].sort(()=>Math.random()-.5).slice(0, Math.min(40, words.length));
+  _mockIdx     = 0; _mockScore = 0; _mockWrong = []; _mockAnswered = false;
+  _mockTimerSec = 3600;
+  _updateMockTimer();
+  _mockTimerInt = setInterval(() => {
+    _mockTimerSec--;
+    _updateMockTimer();
+    if (_mockTimerSec <= 0) { clearInterval(_mockTimerInt); showMockResult(); }
+  }, 1000);
+  renderMockQ();
+}
+
+function _updateMockTimer() {
+  const el = document.getElementById('mock-timer');
+  if (!el) return;
+  const m = Math.floor(_mockTimerSec/60), s = _mockTimerSec%60;
+  el.textContent = m + ':' + String(s).padStart(2,'0');
+  el.style.color = _mockTimerSec < 300 ? 'var(--red)' : _mockTimerSec < 600 ? 'var(--amber)' : 'var(--sage)';
+}
+
+function renderMockQ() {
+  const content = document.getElementById('mock-content');
+  if (!content) return;
+  if (_mockIdx >= _mockQ.length) { clearInterval(_mockTimerInt); showMockResult(); return; }
+  const w = _mockQ[_mockIdx];
+  const distractors = getWords().filter(x=>x.h!==w.h).sort(()=>Math.random()-.5).slice(0,3);
+  const choices = [...distractors, w].sort(()=>Math.random()-.5);
+  _mockAnswered = false;
+  content.innerHTML = `
+    <div style="font-size:11px;color:var(--text);opacity:.4;margin-bottom:12px">${_mockIdx+1}/${_mockQ.length} · ✓${_mockScore}</div>
+    <div class="test-q">${w.h}</div>
+    <div style="font-family:var(--mono);font-size:12px;color:var(--sage);text-align:center;margin-bottom:16px;opacity:.7">${w.p||''}</div>
+    <div class="test-choices">
+      ${choices.map(c=>`<div class="test-choice" onclick="answerMock('${c.h.replace(/'/g,"\\'")}','${w.h.replace(/'/g,"\\'")}',this)">${c.m}</div>`).join('')}
+    </div>`;
+}
+
+function answerMock(chosen, correct, el) {
+  if (_mockAnswered) return;
+  _mockAnswered = true;
+  const ok = chosen === correct;
+  if (ok) { _mockScore++; } else { _mockWrong.push(_mockQ[_mockIdx]); }
+  el.classList.add(ok ? 'correct' : 'wrong');
+  if (!ok) {
+    document.querySelectorAll('#mock-content .test-choice').forEach(c => {
+      if (c.textContent === getWords().find(w=>w.h===correct)?.m) c.classList.add('correct');
+    });
+  }
+  setTimeout(() => { _mockIdx++; renderMockQ(); }, 800);
+}
+
+function showMockResult() {
+  const content = document.getElementById('mock-content');
+  if (!content) return;
+  const total = _mockQ.length;
+  const pct   = Math.round(_mockScore/total*100);
+  const used  = 60 - Math.floor(_mockTimerSec/60);
+  content.innerHTML = `
+    <div class="test-result">
+      <div style="font-size:36px;margin-bottom:8px">${pct>=60?'🎉':'📖'}</div>
+      <div style="font-size:12px;color:${pct>=60?'var(--sage)':'var(--red)'};margin-bottom:4px">${pct>=60?'Тэнцлээ!':'Дахин хичээ'}</div>
+      <div class="test-score" style="color:${pct>=80?'var(--sage)':pct>=60?'var(--amber)':'var(--red)'}">${pct}%</div>
+      <div style="font-size:13px;color:var(--text);opacity:.6;margin:8px 0">${_mockScore} зөв / ${total} · ${used} мин</div>
+      ${_mockWrong.length ? `<div style="margin-top:10px;text-align:left;max-height:140px;overflow-y:auto;border-top:1px solid var(--border);padding-top:10px">
+        <div style="font-size:10px;color:var(--red);margin-bottom:6px;letter-spacing:.05em">АЛДСАН ҮГС</div>
+        ${_mockWrong.map(w=>`<div style="font-size:12px;padding:3px 0;display:flex;gap:8px">
+          <span style="font-family:var(--serif);font-size:16px;width:36px">${w.h}</span>
+          <span style="color:var(--sage);font-size:10px;width:70px">${w.p||''}</span>
+          <span style="color:var(--text);opacity:.6">${w.m}</span>
+        </div>`).join('')}
+      </div>` : ''}
+      <button onclick="initMock()" style="margin-top:14px;background:var(--surface2);border:1px solid var(--border);color:var(--text-b);border-radius:8px;padding:10px 20px;cursor:pointer;font-size:13px">🔄 Дахин оролдох</button>
+    </div>`;
+}
+
+// ── Miss tracking helpers ─────────────────────────────────────────
+function getMissData() {
+  try { return JSON.parse(localStorage.getItem(LS_MISS) || '{}'); } catch { return {}; }
+}
+function recordMiss(word) {
+  const d = getMissData();
+  const k = word.h;
+  d[k] = { h: word.h, p: word.p||'', m: word.m||'', count: (d[k]?.count||0)+1 };
+  localStorage.setItem(LS_MISS, JSON.stringify(d));
+}
+function clearMissData() {
+  if (confirm('Сул үгсийн бүртгэлийг цэвэрлэх үү?')) {
+    localStorage.removeItem(LS_MISS);
+    initWeakspot();
+  }
+}
+
+// ── WEAK SPOT ─────────────────────────────────────────────────────
+function initWeakspot() {
+  const card = document.getElementById('weakspot-card');
+  if (!card) return;
+  const missData = getMissData();
+  const entries  = Object.values(missData).sort((a,b) => b.count - a.count).slice(0, 15);
+
+  if (!entries.length) {
+    card.innerHTML = `<div class="card-title">🎯 Сул үгс</div>
+      <div class="empty" style="padding:20px 0">
+        Drill эхлэгдээгүй байна<br>
+        <span style="font-size:11px;opacity:.5">Drill дахь "✗ Мэдэхгүй" дарсан үгс энд гарна</span>
+      </div>`;
+    return;
+  }
+
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="card-title" style="margin:0">🎯 Хамгийн сул ${entries.length} үг</div>
+      <button onclick="clearMissData()" style="background:none;border:1px solid rgba(196,112,96,.3);color:var(--red);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">Цэвэрлэх</button>
+    </div>
+    ${entries.map((e,i) => `
+      <div class="weak-item">
+        <div class="weak-rank">#${i+1}</div>
+        <div class="weak-hanzi">${e.h}</div>
+        <div class="weak-info">
+          <div class="weak-pin">${e.p}</div>
+          <div class="weak-mean">${e.m}</div>
+        </div>
+        <div class="weak-mastery">${e.count}× алдсан</div>
+      </div>`).join('')}
+    <div style="margin-top:14px;font-size:11px;color:var(--text);opacity:.4">
+      💡 Эдгээр үгийг Drill эхлэлд давт
+    </div>`;
+}
+
+// ── WORD AI ───────────────────────────────────────────────────────
+async function wordAI(h, p, m) {
+  const box = document.getElementById('word-ai-result');
+  const btn = document.querySelector('.btn-word-ai');
+  if (!box) return;
+  box.style.display = 'block';
+  box.className = 'word-ai-box loading';
+  box.textContent = '🤖 AI боловсруулж байна...';
+  if (btn) btn.disabled = true;
+
+  const proxy   = (localStorage.getItem('jarvis_proxy_url') || 'https://jarvis-production-5842.up.railway.app').replace(/\/$/,'');
+  const secret  = localStorage.getItem('jarvis_proxy_secret') || '';
+  const headers = { 'Content-Type':'application/json' };
+  if (secret) headers['x-jarvis-secret'] = secret;
+
+  const prompt = `"${h}" (${p}) — ${m}
+1. 3 богино хятад өгүүлбэр + пиньин + монгол орчуулга
+2. Хамт ихэнх ордог 2 хэллэг
+Товч, тодорхой байлга.`;
+
+  try {
+    const res = await Promise.race([
+      fetch(proxy + '/chat', {
+        method:'POST', headers,
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role:'system', content:'Хятад хэлний HSK багш. Монголоор товч тайлбар өг.' },
+            { role:'user',   content: prompt }
+          ],
+          max_tokens:300, temperature:0.5
+        })
+      }),
+      new Promise((_,r) => setTimeout(() => r(new Error('timeout')), 12000))
+    ]);
+    if (!res.ok) throw new Error('api ' + res.status);
+    const data = await res.json();
+    const text = data.choices?.[0]?.message?.content?.trim() || '';
+    box.className = 'word-ai-box';
+    box.innerHTML = text
+      ? `<div style="white-space:pre-line;line-height:1.7">${text}</div>`
+      : '<div style="opacity:.5">Хариу ирсэнгүй</div>';
+  } catch(e) {
+    box.className = 'word-ai-box';
+    box.innerHTML = `<div style="opacity:.5">⚠ ${e.message}</div>`;
+  }
+  if (btn) btn.disabled = false;
+}
+
+// ── CONVERSATION ──────────────────────────────────────────────────
+let _convHistory = [];
+let _convReady   = false;
+
+function initConversation() {
+  if (_convReady) return;
+  _convReady = true;
+  _convHistory = [{
+    role: 'assistant',
+    content: '你好！我是你的汉语练习助手。\n(Сайн байна уу! Хятадаар яриагаарай, алдааг нь засаж хариулна. Жишээ: 我在学习汉语。)'
+  }];
+  renderConvMessages();
+}
+
+function renderConvMessages() {
+  const el = document.getElementById('conv-messages');
+  if (!el) return;
+  el.innerHTML = _convHistory.map(m => `
+    <div class="conv-msg ${m.role}">
+      <div class="conv-cn">${m.content.replace(/\n/g,'<br>')}</div>
+    </div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendConvMsg() {
+  const input = document.getElementById('conv-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+
+  _convHistory.push({ role:'user', content: text });
+  _convHistory.push({ role:'assistant', content:'✍ ...' });
+  renderConvMessages();
+
+  const proxy   = (localStorage.getItem('jarvis_proxy_url') || 'https://jarvis-production-5842.up.railway.app').replace(/\/$/,'');
+  const secret  = localStorage.getItem('jarvis_proxy_secret') || '';
+  const headers = { 'Content-Type':'application/json' };
+  if (secret) headers['x-jarvis-secret'] = secret;
+
+  const sysPrompt = `Чи хятад хэлний HSK3 дадлага туслагч.
+Хэрэглэгч хятадаар бичихэд:
+1. Алдаа байвал "✏ Засвар: [зөв хувилбар]" гэж монголоор тайлбарла
+2. Хятадаар хариул (богино, энгийн HSK3 үгс)
+3. Монгол орчуулгыг жижгээр нэм`;
+
+  try {
+    const history = _convHistory.slice(0,-1).filter(m => m.content !== '✍ ...').slice(-8);
+    const res = await Promise.race([
+      fetch(proxy + '/chat', {
+        method:'POST', headers,
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [{ role:'system', content: sysPrompt }, ...history],
+          max_tokens:250, temperature:0.7
+        })
+      }),
+      new Promise((_,r) => setTimeout(() => r(new Error('timeout')), 15000))
+    ]);
+    if (!res.ok) throw new Error('api ' + res.status);
+    const data  = await res.json();
+    const reply = data.choices?.[0]?.message?.content?.trim() || 'Хариу ирсэнгүй';
+    _convHistory[_convHistory.length-1] = { role:'assistant', content: reply };
+  } catch(e) {
+    _convHistory[_convHistory.length-1] = { role:'assistant', content:`⚠ ${e.message} — proxy шалга` };
+  }
+  renderConvMessages();
 }
 
 // ── Boot ──────────────────────────────────────────────────────────

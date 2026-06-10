@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ханз — Хятад хэл сурах</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+:root {
+  --bg:      #0a0f0a;
+  --surface: #111a11;
+  --border:  rgba(120,180,100,.18);
+  --green:   #6dbf67;
+  --green2:  #4a9e44;
+  --text:    #c8dcc4;
+  --dim:     rgba(200,220,190,.45);
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  padding:20px;
+}
+
+.wrap { width:100%; max-width:400px; }
+
+/* Logo */
+.logo {
+  text-align:center; margin-bottom:36px;
+}
+.logo-char {
+  font-size:64px; line-height:1;
+  background: linear-gradient(135deg, #6dbf67, #3a9e3a);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  background-clip:text;
+  display:block; margin-bottom:8px;
+}
+.logo-name { font-size:28px; font-weight:700; color:var(--text); letter-spacing:2px; }
+.logo-sub  { font-size:13px; color:var(--dim); margin-top:4px; }
+
+/* Card */
+.card {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px; padding:28px 24px;
+}
+
+/* Tabs */
+.auth-tabs {
+  display:flex; gap:4px; margin-bottom:24px;
+  background:rgba(255,255,255,.04); border-radius:10px; padding:4px;
+}
+.auth-tab {
+  flex:1; padding:8px; border:none; background:transparent;
+  color:var(--dim); font-size:13px; font-weight:600;
+  border-radius:7px; cursor:pointer; transition:all .2s;
+}
+.auth-tab.active {
+  background:var(--surface); color:var(--green);
+  border:1px solid var(--border);
+}
+
+/* Form */
+.field { margin-bottom:16px; }
+.field label {
+  display:block; font-size:11px; font-weight:600;
+  letter-spacing:.8px; color:var(--dim); margin-bottom:6px;
+  text-transform:uppercase;
+}
+.field input, .field select {
+  width:100%; padding:12px 14px;
+  background:rgba(255,255,255,.05); border:1px solid var(--border);
+  border-radius:10px; color:var(--text); font-size:14px;
+  outline:none; transition:border-color .2s;
+  -webkit-appearance:none;
+}
+.field input::placeholder { color:rgba(200,220,190,.3); }
+.field input:focus, .field select:focus { border-color:var(--green); }
+.field select option { background:#111a11; }
+
+/* Level picker */
+.level-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+.level-btn {
+  padding:10px 6px; background:rgba(255,255,255,.04);
+  border:1.5px solid var(--border); border-radius:10px;
+  color:var(--dim); font-size:12px; font-weight:600; cursor:pointer;
+  text-align:center; transition:all .2s;
+}
+.level-btn .lv-num { font-size:18px; font-weight:700; display:block; margin-bottom:2px; }
+.level-btn.selected { border-color:var(--green); color:var(--green); background:rgba(109,191,103,.08); }
+
+/* Submit */
+.btn-submit {
+  width:100%; padding:14px;
+  background:linear-gradient(135deg, var(--green), var(--green2));
+  border:none; border-radius:12px; color:#fff;
+  font-size:15px; font-weight:700; cursor:pointer;
+  margin-top:8px; transition:opacity .2s;
+  letter-spacing:.3px;
+}
+.btn-submit:disabled { opacity:.5; cursor:not-allowed; }
+
+/* Error */
+.err {
+  background:rgba(200,80,60,.12); border:1px solid rgba(200,80,60,.3);
+  border-radius:8px; padding:10px 14px; font-size:13px;
+  color:#e88; margin-bottom:16px; display:none;
+}
+.err.show { display:block; }
+
+/* Free note */
+.free-note {
+  text-align:center; font-size:12px; color:var(--dim);
+  margin-top:16px; line-height:1.6;
+}
+.free-note strong { color:var(--green); }
+
+/* Already have account */
+.switch-link {
+  text-align:center; font-size:13px; color:var(--dim);
+  margin-top:20px;
+}
+.switch-link a { color:var(--green); text-decoration:none; cursor:pointer; }
+
+/* Loading */
+.spinner {
+  width:20px; height:20px; border:2px solid rgba(255,255,255,.2);
+  border-top-color:#fff; border-radius:50%;
+  animation:spin .7s linear infinite; display:inline-block;
+  vertical-align:middle; margin-right:6px;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="logo">
+    <span class="logo-char">汉</span>
+    <div class="logo-name">ХАНЗ</div>
+    <div class="logo-sub">Монгол хэлтэй HSK сургалт</div>
+  </div>
+
+  <div class="card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-signup" onclick="switchMode('signup')">Бүртгүүлэх</button>
+      <button class="auth-tab"        id="tab-login"  onclick="switchMode('login')">Нэвтрэх</button>
+    </div>
+
+    <div id="err-box" class="err"></div>
+
+    <!-- SIGNUP -->
+    <div id="form-signup">
+      <div class="field">
+        <label>Нэр</label>
+        <input id="su-name" type="text" placeholder="Билэг" autocomplete="name">
+      </div>
+      <div class="field">
+        <label>Имэйл</label>
+        <input id="su-email" type="email" placeholder="email@gmail.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Нууц үг</label>
+        <input id="su-pass" type="password" placeholder="Дор хаяж 6 тэмдэгт" autocomplete="new-password">
+      </div>
+      <div class="field">
+        <label>HSK түвшин</label>
+        <div class="level-grid">
+          <button class="level-btn selected" data-level="1" onclick="pickLevel(1)">
+            <span class="lv-num">1</span>150 үг
+          </button>
+          <button class="level-btn" data-level="2" onclick="pickLevel(2)">
+            <span class="lv-num">2</span>310 үг
+          </button>
+          <button class="level-btn" data-level="3" onclick="pickLevel(3)">
+            <span class="lv-num">3</span>553 үг
+          </button>
+        </div>
+      </div>
+      <button class="btn-submit" id="btn-signup" onclick="doSignup()">Эхлэх →</button>
+      <div class="free-note">
+        <strong>Үнэгүй:</strong> HSK 1-ийн 150 үг<br>
+        Premium-д бүх түвшин + AI + дэвшлийн тайлан
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="form-login" style="display:none">
+      <div class="field">
+        <label>Имэйл</label>
+        <input id="li-email" type="email" placeholder="email@gmail.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label>Нууц үг</label>
+        <input id="li-pass" type="password" placeholder="Нууц үг" autocomplete="current-password">
+      </div>
+      <button class="btn-submit" id="btn-login" onclick="doLogin()">Нэвтрэх →</button>
+    </div>
+
+    <div class="switch-link" id="switch-txt">
+      Аль хэдийн бүртгэлтэй юу? <a onclick="switchMode('login')">Нэвтрэх</a>
+    </div>
+  </div>
+
+</div>
+
+<script>
+let _level = 1;
+
+function pickLevel(n) {
+  _level = n;
+  document.querySelectorAll('.level-btn').forEach(b => {
+    b.classList.toggle('selected', parseInt(b.dataset.level) === n);
+  });
+}
+
+function switchMode(mode) {
+  const isSignup = mode === 'signup';
+  document.getElementById('form-signup').style.display = isSignup ? '' : 'none';
+  document.getElementById('form-login').style.display  = isSignup ? 'none' : '';
+  document.getElementById('tab-signup').classList.toggle('active', isSignup);
+  document.getElementById('tab-login').classList.toggle('active', !isSignup);
+  document.getElementById('switch-txt').innerHTML = isSignup
+    ? 'Аль хэдийн бүртгэлтэй юу? <a onclick="switchMode(\'login\')">Нэвтрэх</a>'
+    : 'Бүртгэл байхгүй юу? <a onclick="switchMode(\'signup\')">Бүртгүүлэх</a>';
+  showErr('');
+}
+
+function showErr(msg) {
+  const el = document.getElementById('err-box');
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (loading) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Уншиж байна...';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btnId === 'btn-signup' ? 'Эхлэх →' : 'Нэвтрэх →';
+  }
+}
+
+async function doSignup() {
+  const name  = document.getElementById('su-name').value.trim();
+  const email = document.getElementById('su-email').value.trim();
+  const pass  = document.getElementById('su-pass').value;
+  if (!name)  return showErr('Нэрээ оруулна уу');
+  if (!email) return showErr('Имэйлээ оруулна уу');
+  if (pass.length < 6) return showErr('Нууц үг дор хаяж 6 тэмдэгт байх ёстой');
+  showErr('');
+  setLoading('btn-signup', true);
+  try {
+    const cred = await _auth.createUserWithEmailAndPassword(email, pass);
+    const uid  = cred.user.uid;
+    // Firebase profile
+    await _db.doc('users/' + uid + '/config/profile').set({
+      product:    'hsk',
+      premium:    false,
+      name:       name,
+      hsk_target: _level,
+      createdAt:  new Date().toISOString(),
+    });
+    // Notify Railway (Telegram мэдэгдэл + vocab seed)
+    try {
+      await fetch('https://jarvis-production-bb0c.up.railway.app/api/hsk-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, name, email, level: _level }),
+      });
+    } catch(e) { console.warn('Notify failed:', e.message); }
+    // HSK хуудас руу
+    window.location.href = 'hsk.html';
+  } catch (e) {
+    const msgs = {
+      'auth/email-already-in-use': 'Энэ имэйл аль хэдийн бүртгэлтэй байна.',
+      'auth/invalid-email':        'Имэйл хаяг буруу байна.',
+      'auth/weak-password':        'Нууц үг хэтэрхий энгийн байна.',
+    };
+    showErr(msgs[e.code] || e.message);
+    setLoading('btn-signup', false);
+  }
+}
+
+async function doLogin() {
+  const email = document.getElementById('li-email').value.trim();
+  const pass  = document.getElementById('li-pass').value;
+  if (!email || !pass) return showErr('Имэйл болон нууц үгээ оруулна уу');
+  showErr('');
+  setLoading('btn-login', true);
+  try {
+    await _auth.signInWithEmailAndPassword(email, pass);
+    // Auth state listener in firebase-config.js will redirect
+  } catch (e) {
+    const msgs = {
+      'auth/user-not-found':  'Энэ имэйлтэй хэрэглэгч олдсонгүй.',
+      'auth/wrong-password':  'Нууц үг буруу байна.',
+      'auth/invalid-email':   'Имэйл хаяг буруу байна.',
+      'auth/too-many-requests': 'Хэт олон оролдлого. Түр хүлээнэ үү.',
+    };
+    showErr(msgs[e.code] || e.message);
+    setLoading('btn-login', false);
+  }
+}
+
+// Enter key support
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (document.getElementById('form-login').style.display !== 'none') doLogin();
+  else doSignup();
+});
+
+// If already logged in → redirect
+_auth.onAuthStateChanged(async user => {
+  if (!user) return;
+  try {
+    const snap = await _db.doc('users/' + user.uid + '/config/profile').get();
+    const product = snap.exists ? snap.data().product : 'three';
+    window.location.href = product === 'hsk' ? 'hsk.html' : 'index.html';
+  } catch { window.location.href = 'hsk.html'; }
+});
+</script>
+</body>
+</html>

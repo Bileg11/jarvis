@@ -157,6 +157,49 @@ app.options('/world', (req, res) => {
 // Telegram — хувийн JARVIS
 app.post('/api/telegram', tgHandler);
 
+// ── ХАНЗ SIGNUP — шинэ хэрэглэгч бүртгэл ────────────────────────
+// hsk-signup.html → POST /api/hsk-signup → Telegram notify + vocab seed
+app.options('/api/hsk-signup', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(204);
+});
+app.post('/api/hsk-signup', async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', CORS_ORIGIN);
+  try {
+    const { uid, name, email, level } = req.body || {};
+    if (!uid) return res.status(400).json({ ok: false, error: 'uid required' });
+
+    // 1) Vocab seed (HSK 1 → target level)
+    const { seedVocab } = require('./api/hsk3-coach');
+    const levels = [];
+    for (let i = 1; i <= (level || 1); i++) levels.push(i);
+    const seeded = await seedVocab(uid, { levels, force: false }).catch(() => ({ seeded: 0 }));
+
+    // 2) Telegram notification → Билэгт
+    const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
+    const TG_CHAT  = process.env.TELEGRAM_ID;
+    if (TG_TOKEN && TG_CHAT) {
+      const msg = `🎉 *ХАНЗ — Шинэ хэрэглэгч*\n\n` +
+        `👤 *${name || '?'}*\n` +
+        `📧 ${email || '?'}\n` +
+        `📚 HSK ${level || 1} · ${seeded.seeded || '?'} үг seed хийлээ\n\n` +
+        `_Премиум идэвхжүүлэх:_ Firebase → users/${uid}/config/profile → premium: true`;
+      await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: TG_CHAT, text: msg, parse_mode: 'Markdown' }),
+      }).catch(() => {});
+    }
+
+    res.json({ ok: true, seeded: seeded.seeded });
+  } catch (e) {
+    console.error('[hsk-signup]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 
 app.listen(PORT, () => console.log(`[JARVIS] Server running on port ${PORT}`));
 

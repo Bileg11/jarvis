@@ -247,6 +247,24 @@ async function _saveUserProfile(uid, patch) {
 _auth.onAuthStateChanged(async user => {
   if (user) {
     _hideLoginModal();
+
+    // ── Product routing: HSK users → hsk.html, THREE users → normal ──
+    const _currentPage = window.location.pathname.replace(/.*\//, '');
+    const _hskPages    = ['hsk.html', 'hsk-signup.html'];
+    const _threePages  = ['index.html', 'dashboard.html', 'tracker.html',
+                          'chat.html', 'finance.html', 'profile.html', ''];
+    if (!_hskPages.includes(_currentPage)) {
+      // Only redirect if on a T.H.R.E.E. page — don't loop
+      try {
+        const _pSnap   = await _db.doc('users/' + user.uid + '/config/profile').get();
+        const _product = _pSnap.exists ? _pSnap.data().product : 'three';
+        if (_product === 'hsk' && _threePages.includes(_currentPage)) {
+          window.location.href = 'hsk.html';
+          return;
+        }
+      } catch (e) { console.warn('[routing]', e.message); }
+    }
+
     // Load user profile FIRST (role → theme), then syncDown
     await _loadUserProfile(user.uid);
     _syncDownThrottled();
