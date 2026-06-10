@@ -328,9 +328,20 @@ async function completeWindow(uid, taskId, dateK) {
   }
   await ref.set({ windows }, { merge: true });
 
-  // XP нэмэх
+  // XP нэмэх — sprint_users + users/${uid}/meta/xp (Level system)
   const cur = us0.exists ? (us0.data().sprint_xp || 0) : 0;
   await dbPersonal.doc(`sprint_users/${uid}`).set({ sprint_xp: cur + award }, { merge: true });
+  const xpRef  = dbPersonal.doc(`users/${uid}/meta/xp`);
+  const xpSnap = await xpRef.get().catch(() => null);
+  const oldTotal = xpSnap?.exists ? (xpSnap.data().total || 0) : 0;
+  const newTotal = oldTotal + award;
+  const oldLevel = Math.floor(oldTotal / 500) + 1;
+  const newLevel = Math.floor(newTotal / 500) + 1;
+  await xpRef.set({ total: newTotal, updatedAt: new Date().toISOString() }, { merge: true });
+  if (newLevel > oldLevel) {
+    const chatId = await getUserChatId(uid);
+    if (chatId) await sendTg(chatId, `🎉 *LEVEL UP! → Level ${newLevel}*\nНийт XP: ${newTotal}. Үргэлжлүүл! 🔥`);
+  }
 
   // ── Co-op pool шалгах: хоёулаа өдрийн threshold давсан бол celebrate
   await _checkCoopProgress(dateK);

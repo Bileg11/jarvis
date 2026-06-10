@@ -98,26 +98,28 @@ async function compileLiveContext(uid) {
   const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   try {
-    const [routineSnap, hskSnap, tasksRaw, challengeSnap, profileSnap] = await Promise.all([
+    const [routineSnap, hskSnap, tasksRaw, challengeSnap, profileSnap, logSnap, routineCfgSnap] = await Promise.all([
       dbPersonal.doc(`users/${uid}/routines/${today}`).get().catch(() => null),
       dbPersonal.doc(`users/${uid}/hsk/today`).get().catch(() => null),
       dbPersonal.collection(`users/${uid}/tasks`).where('done', '==', false).get().catch(() => ({ docs: [] })),
       dbPersonal.doc('challenge/current').get().catch(() => null),
       dbPersonal.doc(`users/${uid}/bileg/profile`).get().catch(() => null),
+      dbPersonal.doc(`users/${uid}/logs/${today}`).get().catch(() => null),
+      dbPersonal.doc(`users/${uid}/config/routines`).get().catch(() => null),
     ]);
 
     const rt      = routineSnap?.exists ? routineSnap.data() : {};
     const hsk     = hskSnap?.exists ? hskSnap.data() : {};
     const tasks   = tasksRaw.docs.slice(0, 5).map(d => d.data().text).filter(Boolean);
     const profile = profileSnap?.exists ? profileSnap.data() : {};
+    const mood    = logSnap?.exists ? logSnap.data()?.mood?.label : null;
+    const rCfg    = (routineCfgSnap?.exists && routineCfgSnap.data()?.routines) || ROUTINE_DEFAULTS;
 
-    const routineStr = [
-      rt.exercise ? '✅ Дасгал' : '❌ Дасгал',
-      rt.hanzi    ? '✅ 汉字'   : '❌ 汉字',
-      rt.read     ? '✅ Уншилт' : '❌ Уншилт',
-      rt.journal  ? '✅ Journal' : '❌ Journal',
-    ].join(' · ');
+    const routineStr = rCfg.map(r =>
+      `${rt[r.key] ? '✅' : '❌'} ${r.label}`
+    ).join(' · ');
 
+    const role = uid === UID ? 'bileg' : 'marlaa';
     let challengeLine = '';
     if (challengeSnap?.exists) {
       const chid = challengeSnap.data().id;
@@ -125,7 +127,7 @@ async function compileLiveContext(uid) {
         dbPersonal.doc(`challenge/${chid}/proofs/${today}`).get().catch(() => null),
         dbPersonal.doc(`challenge/${chid}/daily/${today}`).get().catch(() => null),
       ]);
-      const pct = dailySnap?.exists ? (dailySnap.data()?.bileg?.pct || 0) : 0;
+      const pct = dailySnap?.exists ? (dailySnap.data()?.[role]?.pct || 0) : 0;
       challengeLine = `Challenge proof: ${proofSnap?.exists ? '✅ оруулсан' : '❌ байхгүй'} · Хуваарь: ${pct}%`;
     }
 
@@ -141,7 +143,8 @@ async function compileLiveContext(uid) {
 
     const lines = [
       `Routine: ${routineStr}`,
-      hsk.date === today ? `HSK: ${hsk.words?.length || 0} ханз · drill ${hsk.scored ? '✅ хийсэн' : '❌ хийгдэхгүй'}` : 'HSK: өнөөдрийн session байхгүй',
+      hsk.date === today ? `HSK: ${hsk.words?.length || 0} ханз · drill ${hsk.scored ? '✅ хийсэн' : '❌ хийгдэхгүй'}` : '',
+      mood ? `Өнөөдрийн mood: ${mood}` : '',
       challengeLine,
       financeLine,
       profile.goal  ? `Зорилго: "${profile.goal}"` : '',
@@ -403,6 +406,36 @@ async function saveBilegProfile(updates, uid = UID) {
     );
     compileLiveContext(uid).catch(() => {});
   } catch {}
+}
+
+// ── FEATURE FLAGS ─────────────────────────────────────────────────
+// users/${uid}/config/features → { hsk, finance, execution, calendar, brief }
+// Байхгүй бол default (Билэгийн бүх feature асаалттай).
+const FEATURE_DEFAULTS = { hsk: true, finance: true, execution: true, calendar: true, brief: true, mood: true };
+async function getFeatures(uid) {
+  try {
+    const snap = await dbPersonal.doc(`users/${uid}/config/features`).get();
+    return { ...FEATURE_DEFAULTS, ...(snap.exists ? snap.data() : {}) };
+  } catch { return { ...FEATURE_DEFAULTS }; }
+}
+
+// ── ROUTINE CONFIG ─────────────────────────────────────────────────
+// users/${uid}/config/routines → [{ key, label, points }]
+// Байхгүй бол Билэгийн default (exercise/hanzi/read/journal).
+const ROUTINE_DEFAULTS = [
+  { key: 'exercise', label: 'Дасгал', points: 20 },
+  { key: 'hanzi',    label: '汉字',   points: 20 },
+  { key: 'read',     label: 'Уншилт', points: 15 },
+  { key: 'journal',  label: 'Journal', points: 10 },
+];
+async function getRoutineConfig(uid) {
+  try {
+    const snap = await dbPersonal.doc(`users/${uid}/config/routines`).get();
+    if (snap.exists && Array.isArray(snap.data()?.routines) && snap.data().routines.length) {
+      return snap.data().routines;
+    }
+  } catch {}
+  return ROUTINE_DEFAULTS;
 }
 
 // ── CHAT HISTORY — Sliding Window (max 10) ────────────────────────
@@ -1059,6 +1092,35 @@ async function handleCallback(cb) {
     return;
   }
 
+  // ── Mood callback ─────────────────────────────────────────────────
+  if (cmd.startsWith('mood|')) {
+    const moodKey = cmd.split('|')[1];
+    const moodMap = { fire: '🔥 Энерги', ok: '🙂 Хэвийн', tired: '😴 Ядарсан', stress: '😤 Стресс' };
+    const moodLabel = moodMap[moodKey] || moodKey;
+    const userChat = String(cb.message?.chat?.id || cb.from?.id || TG_CHAT);
+    const userInfo = await findUserByChatId(userChat) || { uid: UID };
+    const moodUid  = userInfo.uid;
+    const today    = todaySH();
+    try {
+      await dbPersonal.doc(`users/${moodUid}/logs/${today}`).set(
+        { mood: { key: moodKey, label: moodLabel, savedAt: new Date().toISOString() } },
+        { merge: true }
+      );
+      compileLiveContext(moodUid).catch(() => {});
+      const moodMsg = {
+        fire:   '⚡ Сайхан байна — энэ энергийг ашигла!',
+        ok:     '👌 Хэвийн. Жижиг алхмуудаар урагшил.',
+        tired:  '😴 Амрах хэрэгтэй. Routine хэлбэрээр л хий, хэт шахалтгүй.',
+        stress: '🧘 Амьсгалаа авч, нэг зүйлд л анхаарлаа хандуул.',
+      };
+      await tgCall('editMessageText', {
+        chat_id: userChat, message_id: msgId,
+        text: `${moodLabel} — тэмдэглэлээ ✅\n${moodMsg[moodKey] || ''}`,
+      });
+    } catch (e) { console.error('[mood-cb]', e.message); }
+    return;
+  }
+
   // HSK Reminder + Dashboard кнопкууд
   if (cmd === 'hsk_start_drill') {
     await handleText({ text: '/hsk_drill' }, { uid: UID });
@@ -1363,14 +1425,25 @@ async function handleText(msg, ctx = {}) {
   // ── Routine ──────────────────────────────────────────────────────
   if (text === '/score') {
     const { score, routine, water } = await getScore(uid);
-    const [exS, hzS] = await Promise.all([getStreak('exercise', uid), getStreak('hanzi', uid)]);
+    const routineCfg = await getRoutineConfig(uid);
+    const streaks = await Promise.all(routineCfg.map(r => getStreak(r.key, uid)));
+    const routineLines = routineCfg.map((r, i) =>
+      `${routine[r.key] ? '✅' : '❌'} ${r.label}${streaks[i] > 0 ? ` (${streaks[i]}🔥)` : ''}`
+    ).join('\n');
+
+    // XP → Level
+    const xpSnap = await dbPersonal.doc(`users/${uid}/meta/xp`).get().catch(() => null);
+    const totalXp  = xpSnap?.exists ? (xpSnap.data()?.total || 0) : 0;
+    const level    = Math.floor(totalXp / 500) + 1;
+    const xpInLvl  = totalXp % 500;
+    const xpBar    = '█'.repeat(Math.round(xpInLvl / 50)) + '░'.repeat(10 - Math.round(xpInLvl / 50));
+    const lvlLine  = totalXp > 0 ? `\n⚡ Level *${level}*  \`${xpBar}\` ${xpInLvl}/500 XP` : '';
+
     await tgSend(
       `📊 *Өнөөдрийн Score: ${score}/100*\n\n` +
-      `${routine.exercise ? '✅' : '❌'} Дасгал (${exS}🔥)\n` +
-      `${routine.hanzi    ? '✅' : '❌'} 汉字 (${hzS}🔥)\n` +
-      `${routine.read     ? '✅' : '❌'} Унших\n` +
-      `${routine.journal  ? '✅' : '❌'} Journal\n` +
-      `💧 Ус: ${water}мл/2000мл`
+      routineLines + '\n' +
+      `💧 Ус: ${water}мл/2000мл` +
+      lvlLine
     );
     return;
   }
@@ -1401,6 +1474,24 @@ async function handleText(msg, ctx = {}) {
   }
 
   // ── /journal — Sprint 3: HSK Journal Coach ───────────────────────
+  // ── Mood / Emotion check-in ───────────────────────────────────────
+  if (text === '/mood') {
+    const feat = await getFeatures(uid);
+    if (!feat.mood) { await tgSend('⛔ Mood модуль тохируулаагүй.'); return; }
+    await tgCall('sendMessage', {
+      chat_id: ctx.chatId || TG_CHAT,
+      text: '🌡 *Өнөөдөр ямар байна?*\nНэгийг сонго:',
+      parse_mode: 'Markdown',
+      reply_markup: { inline_keyboard: [[
+        { text: '🔥 Энерги',   callback_data: 'mood|fire' },
+        { text: '🙂 Хэвийн',   callback_data: 'mood|ok' },
+        { text: '😴 Ядарсан', callback_data: 'mood|tired' },
+        { text: '😤 Стресс',  callback_data: 'mood|stress' },
+      ]] },
+    });
+    return;
+  }
+
   if (text === '/journal' || raw.startsWith('/journal ') || raw.startsWith('/journal\n')) {
     const journalText = (raw.startsWith('/journal ') || raw.startsWith('/journal\n'))
       ? raw.slice(9).trim() : '';
@@ -1730,6 +1821,16 @@ async function handleText(msg, ctx = {}) {
   }
 
   // ── Sprint 10: HSK 3 Commands ────────────────────────────────────
+
+  // ── HSK BLOCK — feature flag шалгана ─────────────────────────────
+  if (text.startsWith('/seed_hsk') || text === '/hsk_progress' || text === '/progress' ||
+      text.startsWith('/hsk_drill') || text.startsWith('/drill') || text === '/drill_stop' || text === '/stop') {
+    const feat = await getFeatures(uid);
+    if (!feat.hsk) {
+      await tgSend('⛔ HSK модуль тохируулаагүй байна.');
+      return;
+    }
+  }
 
   // /seed_hsk [force] — HSK 1-6 бүх үгийг Firestore-д нэмэх
   if (text.startsWith('/seed_hsk')) {
@@ -2170,9 +2271,20 @@ async function handleText(msg, ctx = {}) {
           { role: 'marlaa', name: pName, updatedAt: new Date().toISOString() }, { merge: true }),
         dbPersonal.doc(`users/${pUid}/meta/profile`).set({
           name: pName, username_slug: 'marlaa', telegram_chat_id: String(pChat),
-          system_instruction: 'Чи бол Маралаагийн хувийн AI дасгалжуулагч. Монголоор, найрсаг, шууд хариул. Glow-up, дасгал, хичээл, гоо сайхан, шинэ мэдлэгт өдөр бүр түлхэц өг. Богино, урам зоригтой бич.',
+          system_instruction: `Чи бол ${pName}-н хувийн AI дасгалжуулагч J.A.R.V.I.S.\nМонголоор, найрсаг, шууд хариул. Хятад хэлний зүйл хэрэггүй.\nGlow-up, дасгал, хичээл, гоо сайхан, сэтгэл зүй, шинэ мэдлэгт өдөр бүр түлхэц өг.\nБогино, урам зоригтой, практик бич. Оршил, "Мэдээж", "Ойлголоо" — хориотой.`,
           seededAt: new Date().toISOString(),
         }, { merge: true }),
+        // Маралаад хятад хэл хэрэггүй — HSK off, execution off
+        dbPersonal.doc(`users/${pUid}/config/features`).set({
+          hsk: false, finance: true, execution: false, calendar: false, brief: true, mood: true,
+        }, { merge: true }),
+        // Маралаагийн routine: exercise/study/read/journal (hanzi биш)
+        dbPersonal.doc(`users/${pUid}/config/routines`).set({ routines: [
+          { key: 'exercise', label: 'Дасгал',  points: 25 },
+          { key: 'hanzi',    label: 'Хичээл',  points: 25 },
+          { key: 'read',     label: 'Уншилт',  points: 25 },
+          { key: 'journal',  label: 'Journal', points: 25 },
+        ]}, { merge: true }),
         dbPersonal.doc(`users/${pUid}/integrations/telegram`).set(
           { chat_id: String(pChat) }, { merge: true }),
       ]);
@@ -2543,7 +2655,8 @@ async function handleText(msg, ctx = {}) {
       `/dasgal · /hanzi · /nom\n` +
       `/journal — тэмдэглэл log\n` +
       `/journal [текст] — хятадаар → HSK шалгана\n` +
-      `/us [мл] — ус 💧\n\n` +
+      `/us [мл] — ус 💧\n` +
+      `/mood — өнөөдрийн байдал 🌡\n\n` +
       `🎬 *Контент*\n` +
       `/hook [сэдэв] — Reels 3 hook + 30с скрипт\n\n` +
       `🎙 *Voice*\n` +
