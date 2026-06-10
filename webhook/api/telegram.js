@@ -406,18 +406,16 @@ async function saveBilegProfile(updates, uid = UID) {
 }
 
 // ── CHAT HISTORY — Sliding Window (max 10) ────────────────────────
-// Path: users/${uid}/meta/chat  (web + Telegram хоёулаа энэ path ашиглана)
-// Format: { role: 'user'|'assistant', content: '...' }
-//   → web gemini.js _migrateMsg() backward-compat-тэй
+// Path: users/${uid}/meta/chat_bot  (Telegram bot өөрийн тусдаа doc ашиглана)
+// web gemini.js → users/${uid}/meta/chat_web  (race condition сэргийлэх)
 
 async function getChatHistory(uid = UID) {
   try {
-    const snap = await dbPersonal.doc(`users/${uid}/meta/chat`).get();
+    const snap = await dbPersonal.doc(`users/${uid}/meta/chat_bot`).get();
     if (!snap.exists) return [];
     const msgs = snap.data().history || snap.data().messages || [];
-    // Migrate Gemini-format { role:'model', parts:[{text}] } → { role:'assistant', content }
     return msgs.map(m => {
-      if (m.content !== undefined) return m;            // already new format
+      if (m.content !== undefined) return m;
       const text = m.parts?.[0]?.text || '';
       return { role: m.role === 'model' ? 'assistant' : (m.role || 'user'), content: text };
     });
@@ -426,9 +424,7 @@ async function getChatHistory(uid = UID) {
 
 async function saveChatHistory(msgs, uid = UID) {
   try {
-    // GAP-14: Web-ийн MAX_MSGS*4=48 лимиттэй тэнцүү хадгална
-    // slice(-10) нь web-ийн урт түүхийг устгаж байсан
-    await dbPersonal.doc(`users/${uid}/meta/chat`).set({
+    await dbPersonal.doc(`users/${uid}/meta/chat_bot`).set({
       history:   msgs.slice(-48),
       updatedAt: new Date().toISOString(),
     });
@@ -1104,6 +1100,7 @@ async function handleCallback(cb) {
           caption: `✅ Баталгаажлаа — *${proof.fromName}*: ${proof.caption || ''}`, parse_mode: 'Markdown' }).catch(() => {});
         if (proof.fromChat) await tgCall('sendMessage', { chat_id: proof.fromChat, parse_mode: 'Markdown',
           text: `🔥 Хамтрагч таны баталгааг *зөвшөөрлөө!* ✅\nӨнөөдөр *${cur + 1}* баталгаа. Үргэлжлүүл!` });
+        compileLiveContext(proof.fromUid).catch(() => {});
       } else if (action === 'xproof') {
         if (proof.rejected) return;
         await ref.set({ [pid]: { rejected: true, rejectedAt: new Date().toISOString() } }, { merge: true });
@@ -1189,6 +1186,7 @@ async function handlePhoto(msg, ctx = {}) {
 
   await tgCall('sendMessage', { chat_id: myChat, parse_mode: 'Markdown',
     text: `📤 *${partner.name}* руу илгээлээ. Баталгаажуулалт хүлээж байна...` });
+  compileLiveContext(uid).catch(() => {});
 }
 
 // ── DRILL HELPERS (Sprint 10) ─────────────────────────────────────

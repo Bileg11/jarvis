@@ -714,25 +714,38 @@
         if (dateEl) dateEl.textContent = days[now.getDay()] + ', ' + now.getDate() + ' ' + months[now.getMonth()];
         var month = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
 
-        // Routine today
-        db.doc('users/' + uid + '/routines/' + today).onSnapshot(function (snap) {
-          var rt = snap.exists ? snap.data() : {};
-          var routineKeys = ['exercise','hanzi','read','journal'];
-          var done = 0;
-          routineKeys.forEach(function (k) {
-            var chip = document.getElementById('os-r-' + k);
-            if (!chip) return;
-            if (rt[k]) { chip.classList.add('done'); done++; }
-            else        chip.classList.remove('done');
-          });
-          // Score badge: 25pts each routine key
-          var score = done * 25;
+        // Routine + water score (telegram.js _calcBilegScore-тэй ижил formula)
+        var _rt = {};
+        var _waterMl = 0;
+        function _renderScore() {
+          var score = Math.min(100, Math.round(
+            Math.min(25, (_waterMl / 2000) * 25) +
+            (_rt.exercise ? 20 : 0) +
+            (_rt.hanzi    ? 20 : 0) +
+            (_rt.read     ? 15 : 0) +
+            (_rt.journal  ? 10 : 0)
+          ));
           var badge = document.getElementById('os-score-badge');
           if (badge) {
             badge.textContent = score + ' / 100';
             badge.style.background = score === 100 ? 'rgba(34,197,94,0.2)' : 'rgba(124,92,252,0.15)';
             badge.style.color      = score === 100 ? 'rgba(34,197,94,0.9)' : 'rgba(124,92,252,0.9)';
           }
+        }
+        db.doc('users/' + uid + '/routines/' + today).onSnapshot(function (snap) {
+          _rt = snap.exists ? snap.data() : {};
+          var routineKeys = ['exercise','hanzi','read','journal'];
+          routineKeys.forEach(function (k) {
+            var chip = document.getElementById('os-r-' + k);
+            if (!chip) return;
+            if (_rt[k]) chip.classList.add('done');
+            else        chip.classList.remove('done');
+          });
+          _renderScore();
+        });
+        db.doc('users/' + uid + '/logs/' + today).onSnapshot(function (snap) {
+          _waterMl = snap.exists ? (snap.data().water?.total_ml || 0) : 0;
+          _renderScore();
         });
 
         // HSK today

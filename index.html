@@ -2541,6 +2541,61 @@ body[data-role="bileg"] #widget-mood { display: none !important; }
   );
   border-radius: 3px;
 }
+
+/* ── BACKGROUND LAYER ────────────────────────────────────────────── */
+#bg-layer {
+  position: fixed; inset: 0; z-index: -1;
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+  transition: background .6s, filter .6s, opacity .6s;
+  pointer-events: none;
+}
+
+/* ── SETTINGS PAGE ───────────────────────────────────────────────── */
+.settings-content {
+  padding: 24px; overflow-y: auto; height: calc(100% - 44px);
+  display: flex; flex-direction: column; gap: 28px;
+}
+.settings-section { display: flex; flex-direction: column; gap: 12px; }
+.settings-section-title {
+  font-family: var(--hud, 'Orbitron', monospace); font-size: 11px;
+  letter-spacing: .12em; color: var(--accent); text-transform: uppercase;
+  border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 4px;
+}
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.theme-card {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--glass);
+  cursor: pointer; transition: all .18s;
+}
+.theme-card:hover { border-color: var(--border-h); transform: translateY(-1px); }
+.theme-card.active { border-color: var(--accent); background: var(--glass2); }
+.theme-dot { width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0; }
+.bg-mode-btns { display: flex; gap: 6px; margin-bottom: 10px; }
+.bg-mode-btn {
+  padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--glass); color: var(--text); cursor: pointer; font-size: 12px; transition: all .15s;
+}
+.bg-mode-btn:hover { border-color: var(--border-h); color: var(--text-b); }
+.bg-mode-btn.active { border-color: var(--accent); color: var(--accent); background: var(--glass2); }
+.bg-panel { padding: 12px 0; }
+.settings-label { font-size: 11px; color: var(--text); opacity: .6; display: block; margin-bottom: 6px; }
+.settings-input {
+  width: 100%; background: var(--glass2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text-b); font-size: 13px; padding: 8px 10px;
+  outline: none; transition: border .15s;
+}
+.settings-input:focus { border-color: var(--accent); }
+.settings-file-btn {
+  padding: 8px 14px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--glass); color: var(--text); cursor: pointer; font-size: 12px;
+  white-space: nowrap; transition: all .15s;
+}
+.settings-file-btn:hover { border-color: var(--border-h); }
+.settings-range {
+  width: 100%; accent-color: var(--accent); height: 4px;
+  background: var(--dim); border-radius: 2px; outline: none; cursor: pointer;
+}
 </style>
 </head>
 <body>
@@ -2797,7 +2852,7 @@ body[data-role="bileg"] #widget-mood { display: none !important; }
 
 <!-- ── OS TOP BAR ─────────────────────────────────────────────── -->
 <div class="os-bar">
-  <div class="os-bar-brand">
+  <div class="os-bar-brand" onclick="navTo('core')" title="CORE нүүр хуудас" style="cursor:pointer">
     <span>T.H.R.E.E. OS</span>
     <span class="ver">v27.0 // A.C.E. CORE</span>
   </div>
@@ -2822,6 +2877,7 @@ body[data-role="bileg"] #widget-mood { display: none !important; }
     <button class="os-nav-btn os-nav-guide" id="nav-guide" onclick="navTo('guide')" title="Хэрэглэгчийн гарын авлага">? GUIDE</button>
     <button class="os-nav-btn" onclick="openLM()" title="Layout Manager — хадгалсан layouts" style="border-color:rgba(168,85,247,.3);color:rgba(168,85,247,.7)">🎨 LAYOUTS</button>
     <button class="os-nav-btn" onclick="_setViewMode('focus')" title="Focus Chat горим руу шилжих" style="border-color:rgba(0,229,255,.4);color:var(--accent)">⬡ FOCUS</button>
+    <button class="os-nav-btn" id="nav-settings" onclick="navTo('settings')" title="Тохиргоо — Theme, Background">⚙ SET</button>
   </div>
 </div>
 
@@ -3647,6 +3703,7 @@ function runBootSequence() {
     setInterval(updateRoutineUI, 10000); // 10s — was 2500ms
     if (typeof loadSavedTheme==='function') loadSavedTheme();
     _loadCustomThemeColor();
+    loadSavedBackground();
     applyLayout(_currentLayout);
     _marlaaWidgetsInit();
     loadWidgetLayout();
@@ -5089,6 +5146,133 @@ document.addEventListener('jarvis:ready', ()=>{
   <iframe class="page-iframe" id="iframe-profile" src="" allowfullscreen></iframe>
 </div>
 
+<!-- ── SETTINGS PAGE (unified) ────────────────────────────────────── -->
+<div class="os-page" id="page-settings">
+  <div class="page-bar">
+    <span class="page-bar-title">⚙ SETTINGS — T.H.R.E.E. OS</span>
+    <button class="page-back" onclick="navTo('core')">← CORE</button>
+  </div>
+  <div class="settings-content" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:20px;overflow-y:auto;height:calc(100%-44px)">
+
+    <!-- LEFT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- Theme -->
+      <div class="settings-section">
+        <div class="settings-section-title">🎨 Theme</div>
+        <div class="theme-grid" id="sg-theme-grid"></div>
+      </div>
+
+      <!-- Background -->
+      <div class="settings-section">
+        <div class="settings-section-title">🖼️ Background</div>
+        <div class="bg-mode-btns">
+          <button class="bg-mode-btn active" id="bg-mode-none"  onclick="setBgMode('none')">✕ None</button>
+          <button class="bg-mode-btn"        id="bg-mode-color" onclick="setBgMode('color')">🎨 Color</button>
+          <button class="bg-mode-btn"        id="bg-mode-image" onclick="setBgMode('image')">🖼️ Image</button>
+        </div>
+        <div id="bg-color-panel" class="bg-panel" style="display:none">
+          <label class="settings-label">Өнгө сонгох</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="color" id="bg-color-input" value="#001122"
+              oninput="applyBackground({type:'color',value:this.value});document.getElementById('bg-color-hex').textContent=this.value"
+              style="width:56px;height:40px;border:none;border-radius:8px;cursor:pointer;background:none;padding:0">
+            <span id="bg-color-hex" style="font-family:var(--mono);font-size:12px;color:var(--text);opacity:.6">#001122</span>
+          </div>
+        </div>
+        <div id="bg-image-panel" class="bg-panel" style="display:none">
+          <label class="settings-label">URL эсвэл файл</label>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <input id="bg-url-input" class="settings-input" placeholder="https://..." oninput="previewBgImage(this.value)">
+            <label class="settings-file-btn">📁<input type="file" accept="image/*" onchange="loadBgFile(this)" style="display:none"></label>
+          </div>
+          <label class="settings-label">Blur — <span id="blur-val">0</span>px</label>
+          <input type="range" id="bg-blur" class="settings-range" min="0" max="30" value="0" oninput="updateBgBlur(this.value)" style="margin-bottom:12px">
+          <label class="settings-label">Opacity — <span id="opacity-val">30</span>%</label>
+          <input type="range" id="bg-opacity" class="settings-range" min="5" max="100" value="30" oninput="updateBgOpacity(this.value)">
+          <div id="bg-preview-img" style="margin-top:12px;border-radius:8px;overflow:hidden;max-height:120px;display:none">
+            <img id="bg-preview-src" style="width:100%;object-fit:cover;max-height:120px" alt="">
+          </div>
+        </div>
+      </div>
+
+      <!-- View mode -->
+      <div class="settings-section">
+        <div class="settings-section-title">⊞ View Mode</div>
+        <div class="cust-view-row" id="cust-view-row">
+          <button class="cust-view-btn" data-view="command" onclick="_setViewMode('command')"><span class="vb-icon">⊞</span>Command Core</button>
+          <button class="cust-view-btn" data-view="focus"   onclick="_setViewMode('focus')"><span class="vb-icon">⬡</span>Focus Chat</button>
+        </div>
+      </div>
+
+      <!-- Chat input pos -->
+      <div class="settings-section">
+        <div class="settings-section-title">💬 Chat Input Position</div>
+        <div class="cust-input-pos-row" id="cust-pos-btns">
+          <button class="cust-pos-btn pos-active" data-pos="bottom"   onclick="_applyInputPos('bottom')">⬇ BOTTOM</button>
+          <button class="cust-pos-btn"            data-pos="top"      onclick="_applyInputPos('top')">⬆ TOP</button>
+          <button class="cust-pos-btn"            data-pos="floating" onclick="_applyInputPos('floating')">✦ FLOAT</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- Panel opacity + Typography -->
+      <div class="settings-section">
+        <div class="settings-section-title">🎛️ Display</div>
+        <label class="settings-label">Panel Opacity — <span id="cust-opacity-val">85%</span></label>
+        <input class="cust-slider" id="cust-opacity-slider" type="range" min="10" max="100" value="85"
+          oninput="_custOpacity=+this.value;document.getElementById('cust-opacity-val').textContent=this.value+'%';_applyOpacity(+this.value);" style="margin-bottom:14px">
+        <label class="settings-label">Font — <span id="cust-fsize-val">13px</span></label>
+        <input class="cust-slider" id="cust-fsize-slider" type="range" min="11" max="18" value="13" step="0.5"
+          oninput="_applyFontSize(+this.value)" style="margin-bottom:10px">
+        <select class="cust-select" id="cust-font-family" onchange="_applyFontFamily(this.value)">
+          <option value="'JetBrains Mono',monospace">JetBrains Mono</option>
+          <option value="'Fira Code',monospace">Fira Code</option>
+          <option value="'Inter',sans-serif">Inter</option>
+          <option value="'Rajdhani',sans-serif">Rajdhani</option>
+        </select>
+      </div>
+
+      <!-- Coach level -->
+      <div class="settings-section">
+        <div class="settings-section-title">🧠 A.C.E. Coach Level</div>
+        <div class="cust-coach-row" id="cust-coach-btns"></div>
+        <div style="font-size:9px;color:rgba(0,229,255,.35);margin-top:6px;font-family:var(--mono)">🌿 Зөөлөн · ⚡ Тэнцвэртэй · 🔥 Чанд · 💀 Goggins</div>
+      </div>
+
+      <!-- Widgets -->
+      <div class="settings-section">
+        <div class="settings-section-title">📦 Widget Visibility</div>
+        <div id="cust-widget-list"></div>
+      </div>
+
+      <!-- Layout moods -->
+      <div class="settings-section">
+        <div class="settings-section-title">🌙 Layout Moods</div>
+        <div id="cust-mood-list"></div>
+        <div class="cust-mood-input-row" style="margin-top:8px">
+          <input class="cust-mood-input" id="cust-mood-name" type="text" placeholder="Mood нэр…" maxlength="24"
+            onkeydown="if(event.key==='Enter')_saveMoodUI()">
+          <button class="cust-mood-save-btn" onclick="_saveMoodUI()">SAVE</button>
+        </div>
+      </div>
+
+      <!-- Save -->
+      <button class="cust-save-btn" id="cust-save-btn"
+        onclick="window._sprint33SaveCustomizer?.() ?? saveCustomizerSettings()"
+        style="width:100%;padding:12px;font-size:13px">SAVE & SYNC →</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- Background layer (behind everything) -->
+<div id="bg-layer"></div>
+
 <script>
 // ── STARK TASK MATRIX (Sprint 24) ────────────────────────────────
 const MATRIX_COLS = ['TODO','IN PROGRESS','REVIEW','DONE'];
@@ -6385,14 +6569,14 @@ function toggleVoice() {
 // ── SPA NAVIGATION ──────────────────────────────────────────────
 // Customizer FAB HTML — injected once on boot
 function _injectCustomizerUI() {
+  // FAB болон floating panel-г Settings page-д нэгтгэсэн тул дуудахгүй
   if (document.getElementById('customizer-fab')) return;
-  const fab = document.createElement('button');
-  fab.id = 'customizer-fab';
-  fab.title = 'System Customizer';
-  fab.innerHTML = '⚙';
-  fab.onclick = toggleCustomizer;
-  document.body.appendChild(fab);
+  // Хуучин panel-г нуух (аль хэдийн байвал)
+  const old = document.getElementById('customizer-panel');
+  if (old) old.style.display = 'none';
+  return;
 
+  // Legacy код доор — ашиглагдахгүй
   const panel = document.createElement('div');
   panel.id = 'customizer-panel';
   panel.innerHTML = `
@@ -6820,8 +7004,139 @@ function navTo(tab, _isBack) {
     if (iframe && _webSrc && iframe.getAttribute('src') !== _webSrc) {
       iframe.src = _webSrc;
     }
+    if (tab === 'settings') initSettingsPage();
   }
   _updateNavMesh();
+}
+
+// ── SETTINGS PAGE ─────────────────────────────────────────────────
+let _bgState = {};
+try { _bgState = JSON.parse(localStorage.getItem('jarvis_bg') || '{}'); } catch {}
+
+function initSettingsPage() {
+  _renderThemeGrid();
+  _renderBgControls();
+  // Хуучин customizer-ын динамик хэсгүүдийг render хийнэ
+  if (typeof _renderCustomizerPanel === 'function') _renderCustomizerPanel();
+  if (typeof _renderModHub === 'function') _renderModHub();
+  // Restore sliders
+  const blur = _bgState.blur || 0;
+  const opacity = Math.round((_bgState.opacity ?? 0.3) * 100);
+  const blurEl    = document.getElementById('bg-blur');
+  const opacityEl = document.getElementById('bg-opacity');
+  const urlEl     = document.getElementById('bg-url-input');
+  const colorEl   = document.getElementById('bg-color-input');
+  if (blurEl)    { blurEl.value    = blur;    document.getElementById('blur-val').textContent    = blur; }
+  if (opacityEl) { opacityEl.value = opacity; document.getElementById('opacity-val').textContent = opacity; }
+  if (urlEl && _bgState.value && !_bgState.value.startsWith('data:')) urlEl.value = _bgState.value;
+  if (colorEl && _bgState.type === 'color') { colorEl.value = _bgState.value || '#001122'; }
+}
+
+function _renderThemeGrid() {
+  const grid = document.getElementById('sg-theme-grid');
+  if (!grid || typeof JARVIS_THEMES === 'undefined') return;
+  const current = localStorage.getItem('jarvis_theme') || 'stark-cyan';
+  grid.innerHTML = Object.entries(JARVIS_THEMES).map(([id, t]) => `
+    <div class="theme-card${id === current ? ' active' : ''}" onclick="_pickTheme('${id}')">
+      <div class="theme-dot" style="background:rgb(${t.reactor.r},${t.reactor.g},${t.reactor.b});box-shadow:0 0 10px rgba(${t.reactor.r},${t.reactor.g},${t.reactor.b},.5)"></div>
+      <div style="font-size:12px;font-weight:600;letter-spacing:.04em;flex:1">${t.label}</div>
+      ${id === current ? '<span style="font-size:9px;color:var(--accent);letter-spacing:.08em">● ACTIVE</span>' : ''}
+    </div>`).join('');
+}
+
+function _pickTheme(id) {
+  if (typeof applyTheme === 'function') applyTheme(id);
+  _renderThemeGrid();
+}
+
+function _renderBgControls() {
+  const mode = _bgState.type || 'none';
+  ['none','color','image'].forEach(m => {
+    document.getElementById('bg-mode-' + m)?.classList.toggle('active', mode === m);
+  });
+  const colorPanel = document.getElementById('bg-color-panel');
+  const imagePanel = document.getElementById('bg-image-panel');
+  if (colorPanel) colorPanel.style.display = mode === 'color' ? 'block' : 'none';
+  if (imagePanel) imagePanel.style.display = mode === 'image' ? 'block' : 'none';
+}
+
+function setBgMode(mode) {
+  _bgState.type = mode;
+  _renderBgControls();
+  if (mode === 'none')  applyBackground({ type:'none' });
+  if (mode === 'color') applyBackground({ ..._bgState, type:'color', value: document.getElementById('bg-color-input')?.value || '#001122' });
+  if (mode === 'image' && _bgState.value) applyBackground(_bgState);
+}
+
+function previewBgImage(url) {
+  if (!url) return;
+  _bgState.value = url;
+  applyBackground(_bgState);
+  const prev = document.getElementById('bg-preview-img');
+  const src  = document.getElementById('bg-preview-src');
+  if (prev && src) { src.src = url; prev.style.display = 'block'; }
+}
+
+function loadBgFile(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _bgState.value = e.target.result;
+    const urlEl = document.getElementById('bg-url-input');
+    if (urlEl) urlEl.value = '📁 ' + file.name;
+    const prev = document.getElementById('bg-preview-img');
+    const src  = document.getElementById('bg-preview-src');
+    if (prev && src) { src.src = e.target.result; prev.style.display = 'block'; }
+    applyBackground(_bgState);
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateBgBlur(v) {
+  const el = document.getElementById('blur-val');
+  if (el) el.textContent = v;
+  _bgState.blur = parseInt(v);
+  applyBackground(_bgState);
+}
+
+function updateBgOpacity(v) {
+  const el = document.getElementById('opacity-val');
+  if (el) el.textContent = v;
+  _bgState.opacity = parseInt(v) / 100;
+  applyBackground(_bgState);
+}
+
+function applyBackground(state) {
+  const el = document.getElementById('bg-layer');
+  if (!el) return;
+  _bgState = { ..._bgState, ...state };
+  const { type, value, blur = 0, opacity = 0.3 } = _bgState;
+  localStorage.setItem('jarvis_bg', JSON.stringify(_bgState));
+  // Update color hex display
+  const hexEl = document.getElementById('bg-color-hex');
+  if (hexEl && type === 'color') hexEl.textContent = value;
+  if (!type || type === 'none') {
+    el.style.cssText = '';
+    return;
+  }
+  if (type === 'color') {
+    el.style.cssText = `background:${value};`;
+    return;
+  }
+  if (type === 'image' && value) {
+    el.style.cssText = `background:url('${value}') center/cover no-repeat;filter:blur(${blur}px);opacity:${opacity};transform:scale(1.05);`;
+  }
+}
+
+function loadSavedBackground() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('jarvis_bg') || '{}');
+    if (saved.type && saved.type !== 'none' && saved.value) {
+      _bgState = saved;
+      applyBackground(saved);
+    }
+  } catch {}
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -9661,7 +9976,7 @@ function _listenTelegramInbox() {
       snap.docChanges().forEach(change => {
         if (change.type !== 'added') return;
         _tgHandleCommand((change.doc.data().text || '').trim());
-        change.doc.ref.update({ processed: true }).catch(() => {});
+        change.doc.ref.delete().catch(() => {});
       });
     }, () => {});
 }

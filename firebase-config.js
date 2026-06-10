@@ -292,13 +292,13 @@ window.DB = {
   },
 
   saveChatHistory(history) {
-    const ref = _uref('meta/chat');
+    const ref = _uref('meta/chat_web');
     if (!ref) return;
     ref.set({ history, updatedAt: new Date().toISOString() }).catch(() => {});
   },
 
   async loadChatHistory() {
-    const ref = _uref('meta/chat');
+    const ref = _uref('meta/chat_web');
     if (!ref) return null;
     try {
       const snap = await ref.get();
