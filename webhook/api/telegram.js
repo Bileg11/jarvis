@@ -537,11 +537,34 @@ async function getStreak(key, uid = UID) {
 }
 
 async function logRoutine(key, uid = UID) {
-  await dbPersonal.doc(`users/${uid}/routines/${todaySH()}`).set(
-    { [key]: true, updatedAt: new Date().toISOString() },
-    { merge: true }
-  );
+  const today = todaySH();
+  const ref   = dbPersonal.doc(`users/${uid}/routines/${today}`);
+  const snap  = await ref.get();
+  const alreadyDone = snap.exists && snap.data()[key] === true;
+
+  await ref.set({ [key]: true, updatedAt: new Date().toISOString() }, { merge: true });
   compileLiveContext(uid).catch(() => {});
+
+  // XP — өдөрт нэг л удаа (давтан тэмдэглэвэл авдаггүй)
+  if (!alreadyDone) {
+    const XP_MAP = { exercise: 15, hanzi: 15, read: 10, journal: 10 };
+    const xp = XP_MAP[key] || 10;
+    const xpRef  = dbPersonal.doc(`users/${uid}/meta/xp`);
+    const xpSnap = await xpRef.get().catch(() => null);
+    const oldTotal = xpSnap?.exists ? (xpSnap.data().total || 0) : 0;
+    const newTotal = oldTotal + xp;
+    const oldLevel = Math.floor(oldTotal / 500) + 1;
+    const newLevel = Math.floor(newTotal / 500) + 1;
+    await xpRef.set({ total: newTotal, updatedAt: new Date().toISOString() }, { merge: true });
+    if (newLevel > oldLevel) {
+      const tgUsers = await _getTelegramUsers().catch(() => []);
+      const u = tgUsers.find(x => x.uid === uid);
+      if (u?.chatId) await tgCall('sendMessage', { chat_id: u.chatId, parse_mode: 'Markdown',
+        text: `🎉 *LEVEL UP! → Level ${newLevel}*\nНийт XP: ${newTotal}. Үргэлжлүүл! 🔥` });
+    }
+    return xp;
+  }
+  return 0;
 }
 
 async function logWater(ml, uid = UID) {
@@ -1451,25 +1474,25 @@ async function handleText(msg, ctx = {}) {
   // FIX: substring match (text.includes) нь жирийн чатад андуурч ажилладаг байсан.
   // Зөвхөн тодорхой команд эсвэл богино баталгаа хэллэг л тэмдэглэнэ.
   if (['/dasgal', 'дасгал хийлээ', 'дасгалаа хийлээ', 'дасгал хийсэн', 'workout хийлээ'].includes(text)) {
-    await logRoutine('exercise', uid);
+    const xp = await logRoutine('exercise', uid);
     const { score } = await getScore(uid);
     const s = await getStreak('exercise', uid);
-    await tgSend(`💪 Дасгал тэмдэглэлээ! ${s} хоног дараалал 🔥\nScore: ${score}/100`);
+    await tgSend(`💪 Дасгал тэмдэглэлээ! ${s} хоног дараалал 🔥\nScore: ${score}/100${xp ? `  ·  +${xp} XP ⚡` : ''}`);
     return;
   }
 
   if (['/hanzi', '汉字 хийлээ', 'ханз хийлээ', 'ханз сурлаа', '汉字 сурлаа', 'ханз хийсэн'].includes(text)) {
-    await logRoutine('hanzi', uid);
+    const xp = await logRoutine('hanzi', uid);
     const { score } = await getScore(uid);
     const s = await getStreak('hanzi', uid);
-    await tgSend(`🈶 汉字 тэмдэглэлээ! ${s} хоног дараалал 🔥\nScore: ${score}/100`);
+    await tgSend(`🈶 汉字 тэмдэглэлээ! ${s} хоног дараалал 🔥\nScore: ${score}/100${xp ? `  ·  +${xp} XP ⚡` : ''}`);
     return;
   }
 
   if (['/nom', 'ном уншлаа', 'уншлаа', 'ном уншсан', 'номоо уншлаа'].includes(text)) {
-    await logRoutine('read', uid);
+    const xp = await logRoutine('read', uid);
     const { score } = await getScore(uid);
-    await tgSend(`📚 Уншилт тэмдэглэлээ! Score: ${score}/100`);
+    await tgSend(`📚 Уншилт тэмдэглэлээ! Score: ${score}/100${xp ? `  ·  +${xp} XP ⚡` : ''}`);
     return;
   }
 
@@ -1498,10 +1521,10 @@ async function handleText(msg, ctx = {}) {
 
     if (!journalText) {
       // Текстгүй → хуучин хэлбэрээр log хийнэ
-      await logRoutine('journal', uid);
+      const xp = await logRoutine('journal', uid);
       const { score } = await getScore(uid);
       await tgSend(
-        `📝 Journal тэмдэглэлээ! Score: ${score}/100\n\n` +
+        `📝 Journal тэмдэглэлээ! Score: ${score}/100${xp ? `  ·  +${xp} XP ⚡` : ''}\n\n` +
         `_Хятад хэлээр тэмдэглэл бичихийн тулд:_\n` +
         `\`/journal 我今天去了上海...\``
       );
