@@ -1,7 +1,8 @@
-const CACHE = 'jarvis-v20';
+const CACHE = 'jarvis-v21';
 const ASSETS = [
-  './', './dashboard.html', './index.html', './tracker.html',
-  './profile.html', './chat.html', './life.html', './finance.html', './hsk.html',
+  './', './index.html', './dashboard.html', './learn.html',
+  './tracker.html', './profile.html', './chat.html', './life.html',
+  './finance.html', './hsk.html', './hsk-vocab.js',
   './style.css', './app.js', './gemini.js', './intel.js', './firebase-config.js',
   './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png',
 ];

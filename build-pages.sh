@@ -62,7 +62,6 @@ HEADERS
 
 # ── REDIRECTS ───────────────────────────────────────────────────
 cat > _site/_redirects <<'REDIRECTS'
-/              /dashboard.html  302
 /hsk           /hsk-signup.html 302
 /hsk-app       /hsk-signup.html 302
 REDIRECTS
