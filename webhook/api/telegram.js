@@ -2951,17 +2951,43 @@ async function sendGlowupNudge(slot) {
   const nudge = GLOWUP_NUDGES[slot];
   if (!nudge) return;
   try {
-    const usersSnap = await dbPersonal.collection('users').get();
-    for (const userDoc of usersSnap.docs) {
-      const uid    = userDoc.id;
-      const chatId = (await dbPersonal.doc(`users/${uid}/integrations/telegram`).get()
-        .catch(() => null))?.data()?.chat_id;
-      if (!chatId) continue;
+    // GAP-07 fix: telegram_lookup-аас татна — collection('users').get() биш
+    const tgUsers = await _getTelegramUsers();
+    for (const { uid, chatId } of tgUsers) {
+      const today = todaySH();
 
-      const cfg = await getGlowupConfig(uid);
+      // Smart: routine + glowup статус зэрэг авах
+      const [routineSnap, glowSnap] = await Promise.all([
+        dbPersonal.doc(`users/${uid}/routines/${today}`).get().catch(() => null),
+        dbPersonal.doc(`users/${uid}/glowup/${today}`).get().catch(() => null),
+      ]);
+      const rt       = routineSnap?.exists ? routineSnap.data() : {};
+      const glowDone = glowSnap?.exists ? (glowSnap.data()?.done || []) : [];
+
+      // Кат → routine/glowup хийгдсэн эсэх mapping
+      const catDone = {
+        workout: !!rt.exercise,
+        study:   !!rt.hanzi,
+        glowup:  glowDone.includes('glowup'),
+        learn:   glowDone.includes('learn'),
+        beauty:  glowDone.includes('beauty'),
+      };
+
+      // Тухайн slot-ийн катуудаас хийгдээгүй байгааг л үлдээнэ
+      const pendingCats = nudge.cats.filter(c => !catDone[c]);
+      if (!pendingCats.length) {
+        console.log(`[Smart Notif] ${slot} nudge skipped for ${uid} — all cats done`);
+        continue;
+      }
+
+      const cfg     = await getGlowupConfig(uid);
+      const doneCnt = nudge.cats.length - pendingCats.length;
+
       let msg = nudge.intro + '\n\n';
-      nudge.cats.forEach(catId => {
-        const cat = cfg.find(c => c.id === catId) || GLOWUP_CATS[catId];
+      if (doneCnt > 0) msg += `✅ _${doneCnt}/${nudge.cats.length} хийгдсэн_ — үлдсэн:\n\n`;
+
+      pendingCats.forEach(catId => {
+        const cat   = cfg.find(c => c.id === catId) || GLOWUP_CATS[catId];
         if (!cat) return;
         const tasks = cat.tasks || GLOWUP_CATS[catId]?.tasks || [];
         msg += `${cat.icon} *${cat.title}*\n`;
@@ -2969,6 +2995,7 @@ async function sendGlowupNudge(slot) {
         msg += '\n';
       });
       msg += '_' + nudge.cta + '_';
+
       await tgCall('sendMessage', { chat_id: chatId, text: msg, parse_mode: 'Markdown' });
     }
   } catch (e) {
@@ -3060,6 +3087,17 @@ module.exports.sendHSKReminder  = sendHSKReminder;
 // ── HSK DAILY REMINDER — 15:00 Шанхай ────────────────────────────
 async function sendHSKReminder() {
   try {
+    // Smart: өнөөдөр voice eval хийгдсэн бол reminder skip
+    const today    = todaySH();
+    const hskSnap  = await dbPersonal.doc(`users/${UID}/hsk/today`).get().catch(() => null);
+    if (hskSnap?.exists) {
+      const d = hskSnap.data();
+      if (d.date === today && d.scored === true) {
+        console.log('[Smart Notif] HSK scored today — reminder skipped');
+        return;
+      }
+    }
+
     const p = await getProgress(UID);
 
     let progressLine = '';
