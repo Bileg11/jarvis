@@ -496,22 +496,22 @@ function speak(text) {
   window.speechSynthesis.speak(u);
 }
 
-// ── TONE VARIANTS ────────────────────────────────────────────────
-const TONE_MAP = {
-  'ā':['á','ǎ','à'],'á':['ā','ǎ','à'],'ǎ':['ā','á','à'],'à':['ā','á','ǎ'],
-  'ē':['é','ě','è'],'é':['ē','ě','è'],'ě':['ē','é','è'],'è':['ē','é','ě'],
-  'ī':['í','ǐ','ì'],'í':['ī','ǐ','ì'],'ǐ':['ī','í','ì'],'ì':['ī','í','ǐ'],
-  'ō':['ó','ǒ','ò'],'ó':['ō','ǒ','ò'],'ǒ':['ō','ó','ò'],'ò':['ō','ó','ǒ'],
-  'ū':['ú','ǔ','ù'],'ú':['ū','ǔ','ù'],'ǔ':['ū','ú','ù'],'ù':['ū','ú','ǔ'],
-};
+// ── TONE VARIANTS (Gemini алгоритм — group-based) ────────────────
+const TONE_GROUPS = [
+  ['ā','á','ǎ','à'], ['ē','é','ě','è'], ['ī','í','ǐ','ì'],
+  ['ō','ó','ǒ','ò'], ['ū','ú','ǔ','ù'], ['ǖ','ǘ','ǚ','ǜ'],
+];
 function getToneOptions(pinyin) {
-  for (const [ch, alts] of Object.entries(TONE_MAP)) {
-    if (pinyin.includes(ch)) {
-      const opts = alts.map(a => pinyin.replace(ch, a));
-      return [pinyin, ...opts].sort(() => Math.random()-.5);
+  for (const group of TONE_GROUPS) {
+    for (const ch of group) {
+      if (pinyin.includes(ch)) {
+        // Бүх 4 тон хувилбарыг үүсгэж холино
+        const opts = group.map(t => pinyin.replace(ch, t));
+        return opts.sort(() => Math.random()-.5);
+      }
     }
   }
-  return null;
+  return null; // Тонгүй үг (的, 了, 吗) → zh_to_mn руу унадаг
 }
 
 // ── QUIZ LOGIC ───────────────────────────────────────────────────
@@ -591,8 +591,8 @@ function renderQuestion() {
     document.getElementById('q-type-label').textContent = 'Сонсоод утгыг сонго';
     document.getElementById('quiz-card').innerHTML = `
       <button class="listen-btn" id="listen-play" onclick="playCurrentWord()">🔊</button>
-      <div class="quiz-pinyin" style="opacity:.4">_ _ _</div>`;
-    setTimeout(() => playCurrentWord(), 400);
+      <div class="quiz-pinyin" style="opacity:.4;margin-top:8px">Товч дарж сонсоно уу</div>`;
+    // iOS autoplay policy: хэрэглэгч дарсны дараа л дуугарна
     _renderChoices(q, area);
 
   } else if (q.type === 'tone') {
@@ -707,20 +707,37 @@ function renderMatch() {
 }
 
 function selectMatch(item, btn) {
+  if (matchState.matched.includes(item.id)) return;
+
+  // Дахин дарвал сонголт цуцалдаг
+  if (matchState.selected && matchState.selected.id === item.id && matchState.selected.side === item.side) {
+    matchState.selected = null;
+    renderMatch(); return;
+  }
+
   if (!matchState.selected) {
     matchState.selected = item;
     renderMatch(); return;
   }
+
   const prev = matchState.selected;
   matchState.selected = null;
+
   if (prev.id === item.id && prev.side !== item.side) {
-    // Зөв хос
+    // ✅ Зөв хос
     matchState.matched.push(item.id);
     showXpBurst(5);
+    if (matchState.matched.length === 4) {
+      setTimeout(() => { document.getElementById('btn-match-cont').className='btn-continue green'; }, 200);
+    }
   } else {
-    // Буруу
-    btn.classList.add('wrong-shake');
-    setTimeout(() => btn.classList.remove('wrong-shake'), 300);
+    // ❌ Буруу — хоёуланг нь шейк
+    document.querySelectorAll('.match-item').forEach(el => {
+      if (el.textContent === item.text || el.textContent === prev.text) {
+        el.classList.add('wrong-shake');
+        setTimeout(() => el.classList.remove('wrong-shake'), 300);
+      }
+    });
   }
   renderMatch();
 }
