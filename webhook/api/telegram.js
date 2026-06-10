@@ -651,175 +651,167 @@ async function notionSaveScript(title, content) {
   }
 }
 
-// ── WEEKLY REPORT ─────────────────────────────────────────────────
+// ── WEEKLY REPORT — multi-user ─────────────────────────────────────
 async function sendWeeklyReport() {
-  const now  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  const days = [];
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const days    = [];
   for (let i = 1; i <= 7; i++) {
     const d = new Date(now.getTime() - i * 86400000);
     days.push(d.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' }));
   }
 
-  const routineSnaps = await Promise.all(
-    days.map(d => dbPersonal.doc(`users/${UID}/routines/${d}`).get())
-  );
+  const tgUsers = await _getTelegramUsers().catch(() => []);
+  for (const { uid, chatId } of tgUsers) {
+    try {
+      const routineCfg   = await getRoutineConfig(uid);
+      const routineSnaps = await Promise.all(
+        days.map(d => dbPersonal.doc(`users/${uid}/routines/${d}`).get())
+      );
+      const cnt = {};
+      routineCfg.forEach(r => { cnt[r.key] = 0; });
+      routineSnaps.forEach(snap => {
+        if (!snap.exists) return;
+        const d = snap.data();
+        routineCfg.forEach(r => { if (d[r.key]) cnt[r.key]++; });
+      });
 
-  const routineKeys = ['exercise', 'hanzi', 'read', 'journal'];
-  const cnt = {};
-  routineKeys.forEach(k => { cnt[k] = 0; });
-  routineSnaps.forEach(snap => {
-    if (!snap.exists) return;
-    const d = snap.data();
-    routineKeys.forEach(k => { if (d[k]) cnt[k]++; });
-  });
+      const cfgSnap  = await dbPersonal.doc(`users/${uid}/config/profile`).get().catch(() => null);
+      const userName = cfgSnap?.exists ? (cfgSnap.data()?.name || 'Найз') : 'Билэг';
+      const pct      = n => `${Math.round(n / 7 * 100)}%`;
+      const weakest  = routineCfg.reduce((a, b) => cnt[a.key] <= cnt[b.key] ? a : b);
+      const tasks    = await getTasks(uid);
 
-  const pct     = n => `${Math.round(n / 7 * 100)}%`;
-  const weakest = routineKeys.reduce((a, b) => cnt[a] <= cnt[b] ? a : b);
-  const labels  = {
-    exercise: 'Дасгал 💪', hanzi: '汉字 🈶',
-    read: 'Уншилт 📚',    journal: 'Journal 📝',
-  };
-
-  const tasks = await getTasks();
-
-  let msg = `📊 *7 ХОНОГИЙН ТАЙЛАН*\n`;
-  msg += `_${days[6]} → ${days[0]}_\n`;
-  msg += `\`────────────────────\`\n\n`;
-  msg += `💪 *Routine:*\n`;
-  msg += `• Дасгал: *${cnt.exercise}/7* (${pct(cnt.exercise)})\n`;
-  msg += `• 汉字: *${cnt.hanzi}/7* (${pct(cnt.hanzi)})\n`;
-  msg += `• Уншилт: *${cnt.read}/7* (${pct(cnt.read)})\n`;
-  msg += `• Journal: *${cnt.journal}/7* (${pct(cnt.journal)})\n`;
-  msg += `\n📌 Сул тал: *${labels[weakest]}* — энэ долоо хоног анхаарна уу.\n`;
-
-  if (tasks.length) {
-    msg += `\n📋 Хийгдэхгүй үлдсэн tasks: *${tasks.length}*\n`;
-    tasks.slice(0, 3).forEach(t => { msg += `• ${t.text}\n`; });
+      let msg = `📊 *7 ХОНОГИЙН ТАЙЛАН — ${userName}*\n`;
+      msg += `_${days[6]} → ${days[0]}_\n\`────────────────────\`\n\n`;
+      msg += `💪 *Routine:*\n`;
+      routineCfg.forEach(r => {
+        msg += `• ${r.label}: *${cnt[r.key]}/7* (${pct(cnt[r.key])})\n`;
+      });
+      msg += `\n📌 Сул тал: *${weakest.label}* — энэ долоо хоног анхаарна уу.\n`;
+      if (tasks.length) {
+        msg += `\n📋 Хийгдэхгүй tasks: *${tasks.length}*\n`;
+        tasks.slice(0, 3).forEach(t => { msg += `• ${t.text}\n`; });
+      }
+      msg += `\n⚡ _J.A.R.V.I.S_`;
+      await tgCall('sendMessage', { chat_id: chatId, text: msg, parse_mode: 'Markdown' });
+    } catch (e) { console.error(`[Weekly] ${uid}:`, e.message); }
   }
-
-  msg += `\n⚡ _J.A.R.V.I.S_`;
-  await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg, parse_mode: 'Markdown' });
 }
 
-// ── MORNING BRIEF (Sprint 5: HSK Blitz нэмэгдсэн) ─────────────────
+// ── MORNING BRIEF — multi-user ─────────────────────────────────────
 async function sendBrief() {
+  const tgUsers = await _getTelegramUsers().catch(() => []);
+  for (const { uid, chatId } of tgUsers) {
+    await _sendBriefForUser(uid, chatId).catch(e =>
+      console.error(`[Brief] ${uid}:`, e.message)
+    );
+  }
+}
+
+async function _sendBriefForUser(uid, chatId) {
   const now       = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   const todaySHx  = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
   const yesterday = new Date(Date.now() - 86400000)
     .toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
-  const calEventsPromise = calOk()   ? listTodayEvents().catch(() => [])  : Promise.resolve([]);
-  const gmailPromise     = gmailOk() ? getUnreadEmails(3).catch(() => []) : Promise.resolve([]);
+  const features   = await getFeatures(uid);
+  const routineCfg = await getRoutineConfig(uid);
+  const isMain     = uid === UID;
 
-  const [bilegSnap, tasksRaw, routineSnap, logSnap, calEvents, gmailEmails] = await Promise.all([
-    dbPersonal.doc(`users/${UID}/bileg/profile`).get(),
-    dbPersonal.collection(`users/${UID}/tasks`).where('done', '==', false).get()
+  const calEventsPromise = (isMain && calOk())   ? listTodayEvents().catch(() => [])  : Promise.resolve([]);
+  const gmailPromise     = (isMain && gmailOk()) ? getUnreadEmails(3).catch(() => []) : Promise.resolve([]);
+
+  const [profileSnap, tasksRaw, routineSnap, logSnap, calEvents, gmailEmails] = await Promise.all([
+    dbPersonal.doc(`users/${uid}/bileg/profile`).get().catch(() => null),
+    dbPersonal.collection(`users/${uid}/tasks`).where('done', '==', false).get()
       .catch(() => ({ docs: [] })),
-    dbPersonal.doc(`users/${UID}/routines/${yesterday}`).get(),
-    dbPersonal.doc(`users/${UID}/logs/${yesterday}`).get(),
+    dbPersonal.doc(`users/${uid}/routines/${yesterday}`).get().catch(() => null),
+    dbPersonal.doc(`users/${uid}/logs/${yesterday}`).get().catch(() => null),
     calEventsPromise,
     gmailPromise,
   ]);
 
-  const bileg = bilegSnap.exists ? bilegSnap.data() : {};
-  const tasks = tasksRaw.docs
+  // Нэр
+  const cfgSnap  = await dbPersonal.doc(`users/${uid}/config/profile`).get().catch(() => null);
+  const userName = cfgSnap?.exists ? (cfgSnap.data()?.name || 'Найз') : (isMain ? 'Билэг' : 'Найз');
+
+  const profile = profileSnap?.exists ? profileSnap.data() : {};
+  const tasks   = tasksRaw.docs
     .map(d => d.data())
     .sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || ''))
     .slice(0, 5).map(t => t.text);
+  const rt    = routineSnap?.exists ? routineSnap.data() : {};
+  const water = logSnap?.exists ? (logSnap.data().water?.total_ml || 0) : 0;
 
-  const rt    = routineSnap.exists ? routineSnap.data() : {};
-  const water = logSnap.exists ? (logSnap.data().water?.total_ml || 0) : 0;
+  const done   = routineCfg.filter(r => rt[r.key]);
+  const missed = routineCfg.filter(r => !rt[r.key]);
 
-  const routineItems = [
-    { key: 'exercise', label: 'Дасгал', emoji: '💪' },
-    { key: 'hanzi',    label: '汉字',   emoji: '🈶' },
-    { key: 'read',     label: 'Уншилт', emoji: '📚' },
-    { key: 'journal',  label: 'Journal',emoji: '📝' },
-  ];
-  const done   = routineItems.filter(r => rt[r.key]);
-  const missed = routineItems.filter(r => !rt[r.key]);
-
-  // Gemini өглөөний зөвлөгөө
+  // Gemini зөвлөгөө
   const context = [
-    `Өнөөдөр: ${todaySHx}.`,
-    done.length   ? `Хийсэн: ${done.map(r => r.label).join(', ')}.`   : 'Өчигдөр routine хийгдэхгүй.',
+    `Хэрэглэгч: ${userName}. Өнөөдөр: ${todaySHx}.`,
+    done.length   ? `Өчигдөр хийсэн: ${done.map(r => r.label).join(', ')}.`   : 'Өчигдөр routine хийгдэхгүй.',
     missed.length ? `Хийгдэхгүй: ${missed.map(r => r.label).join(', ')}.` : '',
-    `Ус: ${water}мл.`,
-    bileg.goal   ? `Зорилго: "${bileg.goal}".` : '',
+    water ? `Ус: ${water}мл.` : '',
+    profile.goal ? `Зорилго: "${profile.goal}".` : '',
     tasks.length ? `Хийх tasks: ${tasks.slice(0, 3).join(', ')}.` : '',
-    `Билэгийн хувийн J.A.R.V.I.S. Өчигдрийн үр дүнд тулгуурлан 2-3 өгүүлбэр проактив, шууд зөвлөгөө өг. Монголоор, анхаарлын тэмдэггүй.`,
+    `${userName}-н хувийн AI. Өчигдрийн үр дүнд тулгуурлан 2-3 өгүүлбэр проактив, шууд зөвлөгөө өг. Монголоор, анхаарлын тэмдэггүй.`,
   ].filter(Boolean).join(' ');
 
   let advice = 'Өнөөдөр нэг алхам урагш.';
   if (GEMINI_URL) {
     try {
       const r = await fetch(GEMINI_URL, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: context }] }],
           generationConfig: { maxOutputTokens: 200, temperature: 0.85 },
         }),
       });
-      const data  = await r.json();
+      const data = await r.json();
       const parts = data.candidates?.[0]?.content?.parts || [];
-      const part  = parts.find(p => !p.thought && p.text) || parts[0];
-      advice = part?.text?.trim() || advice;
+      advice = (parts.find(p => !p.thought && p.text) || parts[0])?.text?.trim() || advice;
     } catch {}
   }
 
-  // ── HSK Blitz: өнөөдрийн 20 ханз — HSK3 шалгалт 20 өдрийн дотор ──
-  const todayWords = [...HSK_BANK].sort(() => Math.random() - 0.5).slice(0, 20);
-
-  // Firestore-д хадгалах — handleVoice-д ашиглана
-  dbPersonal.doc(`users/${UID}/hsk/today`).set({
-    words:     todayWords,
-    date:      todaySHx,
-    scored:    false,
-    updatedAt: new Date().toISOString(),
-  }).catch(() => {});
-
   const dayNames = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
-  const dayName  = dayNames[now.getDay()];
-
-  let msg = `🌅 Өглөөний мэнд, Билэг.\n`;
-  msg += `${dayName}, ${todaySHx} | Шанхай 07:30\n\n`;
-
+  let msg = `🌅 Өглөөний мэнд, *${userName}*.\n`;
+  msg += `${dayNames[now.getDay()]}, ${todaySHx} | Шанхай 07:30\n\n`;
   msg += `Routine: `;
-  msg += done.length ? done.map(r => r.emoji + r.label).join(' ') : 'хийгдэхгүй';
-  msg += ` | Ус: ${water}мл\n`;
+  msg += done.length ? done.map(r => r.label).join(' · ') : 'хийгдэхгүй';
+  msg += water ? ` | Ус: ${water}мл` : '';
+  msg += '\n';
 
   if (tasks.length) {
     msg += `\n📋 Хийх (${tasks.length}):\n`;
     tasks.forEach((t, i) => { msg += `${i + 1}. ${t}\n`; });
   }
+  if (profile.goal) msg += `\n🎯 ${profile.goal}\n`;
 
-  if (bileg.goal) msg += `\n🎯 ${bileg.goal}\n`;
-
-  if (calEvents && calEvents.length) {
+  if (calEvents?.length) {
     msg += `\n📅 Өнөөдрийн хуваарь:\n`;
     calEvents.forEach(e => { msg += `• ${formatEventTime(e)} — ${e.summary}\n`; });
   }
-
-  if (gmailEmails && gmailEmails.length) {
+  if (gmailEmails?.length) {
     msg += `\n📧 Уншаагүй имэйл (${gmailEmails.length}):\n`;
-    gmailEmails.forEach(e => {
-      msg += `• ${e.from.slice(0, 20)} — ${e.subject.slice(0, 40)}\n`;
-    });
+    gmailEmails.forEach(e => { msg += `• ${e.from.slice(0, 20)} — ${e.subject.slice(0, 40)}\n`; });
   }
 
   msg += `\n💡 J.A.R.V.I.S:\n${advice}\n`;
 
-  // HSK Blitz хэсэг
-  msg += `\n\n🈶 *Өнөөдрийн 20 ханз (HSK3 · 20 өдөр үлдсэн):*\n`;
-  todayWords.forEach((w, i) => {
-    msg += `${i+1}. *${w.char}* (${w.pinyin}) — ${w.meaning}\n`;
-  });
-  msg += `\n_/hsk\\_drill — drill эхлэх · дуут зурвасаар өгүүлбэр зохио 🎯_`;
+  // HSK Blitz — зөвхөн features.hsk = true
+  if (features.hsk) {
+    const todayWords = [...HSK_BANK].sort(() => Math.random() - 0.5).slice(0, 20);
+    dbPersonal.doc(`users/${uid}/hsk/today`).set({
+      words: todayWords, date: todaySHx, scored: false,
+      updatedAt: new Date().toISOString(),
+    }).catch(() => {});
+    msg += `\n\n🈶 *Өнөөдрийн 20 ханз:*\n`;
+    todayWords.forEach((w, i) => { msg += `${i+1}. *${w.char}* (${w.pinyin}) — ${w.meaning}\n`; });
+    msg += `\n_/hsk\\_drill — drill эхлэх · дуут зурвасаар өгүүлбэр зохио 🎯_`;
+  }
 
   msg += `\n\n⚡ J.A.R.V.I.S ажиллаж байна.`;
-
-  await tgCall('sendMessage', { chat_id: TG_CHAT, text: msg });
+  await tgCall('sendMessage', { chat_id: chatId, text: msg, parse_mode: 'Markdown' });
 }
 
 // ── VOICE-TO-ACTION AGENT (Sprint 2 + Sprint 5 HSK eval) ─────────
@@ -1462,10 +1454,14 @@ async function handleText(msg, ctx = {}) {
     const xpBar    = '█'.repeat(Math.round(xpInLvl / 50)) + '░'.repeat(10 - Math.round(xpInLvl / 50));
     const lvlLine  = totalXp > 0 ? `\n⚡ Level *${level}*  \`${xpBar}\` ${xpInLvl}/500 XP` : '';
 
+    const todayLog  = await dbPersonal.doc(`users/${uid}/logs/${todaySH()}`).get().catch(() => null);
+    const moodLabel = todayLog?.exists ? todayLog.data()?.mood?.label : null;
+
     await tgSend(
       `📊 *Өнөөдрийн Score: ${score}/100*\n\n` +
       routineLines + '\n' +
       `💧 Ус: ${water}мл/2000мл` +
+      (moodLabel ? `\n🌡 Mood: ${moodLabel}` : '') +
       lvlLine
     );
     return;
@@ -2392,7 +2388,17 @@ async function handleText(msg, ctx = {}) {
         const dSnap  = await dRef.get();
         const curPct = dSnap.exists ? (dSnap.data()?.[myRole]?.pct || 0) : 0;
         await _updateChallengeScore(uid, myRole, Math.max(curPct, glowPct), doneList.length, cfg.length);
-        await tgSend(`✅ *${cat.icon} ${cat.title}* тэмдэглэгдлээ!\nGlow-Up: *${doneList.length}/${cfg.length}* (${glowPct}%)`);
+
+        // Glow XP — анх тэмдэглэхэд +8 XP
+        const xpRef   = dbPersonal.doc(`users/${uid}/meta/xp`);
+        const xpSnap  = await xpRef.get().catch(() => null);
+        const oldXp   = xpSnap?.exists ? (xpSnap.data().total || 0) : 0;
+        const newXp   = oldXp + 8;
+        const lvlUp   = Math.floor(newXp / 500) > Math.floor(oldXp / 500);
+        await xpRef.set({ total: newXp, updatedAt: new Date().toISOString() }, { merge: true });
+        if (lvlUp) await tgSend(`🎉 *LEVEL UP! → Level ${Math.floor(newXp/500)+1}*\nНийт XP: ${newXp}. 🔥`);
+
+        await tgSend(`✅ *${cat.icon} ${cat.title}* тэмдэглэгдлээ!  +8 XP ⚡\nGlow-Up: *${doneList.length}/${cfg.length}* (${glowPct}%)`);
         return;
       }
 
@@ -3256,52 +3262,45 @@ module.exports.sendHSKReminder  = sendHSKReminder;
 
 // ── HSK DAILY REMINDER — 15:00 Шанхай ────────────────────────────
 async function sendHSKReminder() {
-  try {
-    // Smart: өнөөдөр voice eval хийгдсэн бол reminder skip
-    const today    = todaySH();
-    const hskSnap  = await dbPersonal.doc(`users/${UID}/hsk/today`).get().catch(() => null);
-    if (hskSnap?.exists) {
-      const d = hskSnap.data();
-      if (d.date === today && d.scored === true) {
-        console.log('[Smart Notif] HSK scored today — reminder skipped');
-        return;
+  const today    = todaySH();
+  const tgUsers  = await _getTelegramUsers().catch(() => []);
+  for (const { uid, chatId } of tgUsers) {
+    try {
+      const feat = await getFeatures(uid);
+      if (!feat.hsk) continue;
+
+      // Smart: өнөөдөр scored бол skip
+      const hskSnap = await dbPersonal.doc(`users/${uid}/hsk/today`).get().catch(() => null);
+      if (hskSnap?.exists && hskSnap.data().date === today && hskSnap.data().scored === true) {
+        console.log(`[HSK Reminder] ${uid} scored today — skipped`);
+        continue;
       }
-    }
 
-    const p = await getProgress(UID);
+      const p = await getProgress(uid);
+      let progressLine = '';
+      let activeLvl    = 3;
+      if (p) {
+        activeLvl = p.activeLevel || 3;
+        const lp  = p.byLevel?.[activeLvl] || {};
+        progressLine =
+          `\n📊 *HSK ${activeLvl}*: *${lp.mastered || 0}/${lp.total || 0}* үг (${lp.pct || 0}%)\n` +
+          `📅 Шалгалт хүртэл: *${p.daysLeft}* хоног\n`;
+      }
 
-    let progressLine = '';
-    let activeLvl    = 3;
-    if (p) {
-      activeLvl = p.activeLevel || 3;
-      const lp  = p.byLevel?.[activeLvl] || {};
-      progressLine =
-        `\n📊 *HSK ${activeLvl}* одоогийн түвшин: *${lp.mastered || 0}/${lp.total || 0}* үг (${lp.pct || 0}%)\n` +
-        `🌐 Нийт: *${p.mastered}/${p.total}* үг мастер\n` +
-        `📅 Шалгалт хүртэл: *${p.daysLeft}* хоног\n` +
-        `⚡ Өнөөдрийн зорилт: *${p.dailyGoal}* үг\n`;
-    }
-
-    await tgCall('sendMessage', {
-      chat_id:    TG_CHAT,
-      parse_mode: 'Markdown',
-      text:
-        `⏰ *15:00 болж байна — Хичээл дуусав!*\n\n` +
-        `Одоо чиний хувийн суралцах цаг эхэллээ.\n` +
-        `HSK ${activeLvl} түвшин давах хүртэл орой болтол орхиж болохгүй!\n` +
-        `${progressLine}\n` +
-        `📚 */hsk\\_drill ${activeLvl}* — HSK ${activeLvl} drill\n` +
-        `🎧 */listening* — Reading comp\n` +
-        `📈 */hsk\\_progress* — Дэвшил харах\n\n` +
-        `_"每天进步一点点" — Өдөр бүр жаахан ч гэсэн урагш_`,
-      reply_markup: {
-        inline_keyboard: [[
+      await tgCall('sendMessage', {
+        chat_id: chatId, parse_mode: 'Markdown',
+        text:
+          `⏰ *15:00 — Хичээлийн цаг!*\n\n` +
+          `HSK ${activeLvl} түвшин давах хүртэл орхиж болохгүй!\n` +
+          `${progressLine}\n` +
+          `📚 */hsk\\_drill ${activeLvl}* — drill\n` +
+          `📈 */hsk\\_progress* — дэвшил\n\n` +
+          `_"每天进步一点点"_`,
+        reply_markup: { inline_keyboard: [[
           { text: `🎯 HSK ${activeLvl} Drill`, callback_data: `hsk_drill_${activeLvl}` },
           { text: '📊 Дэвшил', callback_data: 'hsk_progress' },
-        ]],
-      },
-    });
-  } catch (e) {
-    console.error('[HSK Reminder] Error:', e.message);
+        ]]},
+      });
+    } catch (e) { console.error(`[HSK Reminder] ${uid}:`, e.message); }
   }
 }
