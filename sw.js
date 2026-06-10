@@ -1,15 +1,13 @@
-const CACHE = 'jarvis-v22';
+const CACHE = 'jarvis-v23';
+// Зөвхөн static asset cache хийнэ — HTML navigation-д ХҮРЭХГҮЙ
 const ASSETS = [
-  './', './index.html', './dashboard.html', './learn.html',
-  './tracker.html', './profile.html', './chat.html', './life.html',
-  './finance.html', './hsk.html', './hsk-vocab.js',
   './style.css', './app.js', './gemini.js', './intel.js', './firebase-config.js',
-  './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png',
+  './hsk-vocab.js', './manifest.json',
+  './icon-192.png', './icon-512.png', './apple-touch-icon.png',
 ];
 
 self.addEventListener('install', e => {
   self.skipWaiting();
-  // Asset тус бүрийг тусдаа cache — нэг алдаа бусдыг хааxгүй
   e.waitUntil(
     caches.open(CACHE).then(cache =>
       Promise.allSettled(ASSETS.map(url => cache.add(url)))
@@ -26,11 +24,17 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // GET request л cache хийнэ
-  if (e.request.method !== 'GET') return;
+  const req = e.request;
+  if (req.method !== 'GET') return;
+
+  // HTML navigation (хуудас солих) → ҮРГЭЛЖ network. SW хүрэхгүй.
+  // Ингэснээр clean URL redirect, шинэ deploy алдаагүй ажиллана.
+  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
+    return; // browser өөрөө network-аас авна
+  }
+
+  // Static asset → cache-first (хурд, offline)
   e.respondWith(
-    caches.match(e.request)
-      .then(cached => cached || fetch(e.request))
-      .catch(() => fetch(e.request))
+    caches.match(req).then(cached => cached || fetch(req)).catch(() => fetch(req))
   );
 });
