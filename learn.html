@@ -11,132 +11,211 @@
 <meta name="apple-mobile-web-app-title" content="Ханз">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d1117;color:#fff;min-height:100vh;overflow-x:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#111827;color:#fff;min-height:100vh;overflow-x:hidden}
 .screen{display:none;min-height:100vh;flex-direction:column}
 .screen.active{display:flex}
 :root{
-  --green:#58cc02;--green-bg:rgba(88,204,2,.12);
-  --red:#ff4b4b;--red-bg:rgba(255,75,75,.12);
-  --blue:#1cb0f6;--gold:#ffc800;
-  --card:rgba(255,255,255,.05);--border:rgba(255,255,255,.1);
-  --text2:rgba(255,255,255,.6);--text3:rgba(255,255,255,.3);
+  --green:#4ade80;--green-dim:rgba(74,222,128,.15);--green-border:rgba(74,222,128,.5);
+  --red:#f87171;--red-dim:rgba(248,113,113,.15);--red-border:rgba(248,113,113,.5);
+  --blue:#60a5fa;--gold:#fbbf24;
+  --card:rgba(255,255,255,.06);--border:rgba(255,255,255,.12);
+  --text2:rgba(255,255,255,.55);--text3:rgba(255,255,255,.28);
+  --surface:#1f2937;--surface2:#374151;
 }
 
-/* ── LOGIN ── */
-#screen-login{align-items:center;justify-content:center;padding:40px 24px;text-align:center;gap:0}
-.login-logo{font-size:72px;margin-bottom:16px}
-.login-title{font-size:28px;font-weight:800;margin-bottom:8px}
-.login-sub{font-size:15px;color:var(--text2);margin-bottom:48px;line-height:1.5}
-.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:320px;padding:16px 24px;background:#fff;color:#1a1a1a;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:14px;transition:opacity .15s}
-.btn-google:active{opacity:.85}
-.btn-google svg{width:22px;height:22px;flex-shrink:0}
-.btn-guest{background:none;border:1px solid var(--border);color:var(--text2);width:100%;max-width:320px;padding:14px;border-radius:14px;font-size:14px;cursor:pointer;transition:opacity .15s}
-.btn-guest:active{opacity:.7}
-.login-note{font-size:12px;color:var(--text3);margin-top:24px;line-height:1.6}
-
-/* ── TOPBAR ── */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;gap:12px;position:sticky;top:0;background:#0d1117;z-index:10;border-bottom:1px solid var(--border)}
-.topbar-stat{display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700}
-.topbar-stat span{font-size:18px}
-.topbar-avatar{width:30px;height:30px;border-radius:50%;background:rgba(88,204,2,.2);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;overflow:hidden}
-.topbar-avatar img{width:100%;height:100%;object-fit:cover}
-
-/* ── PATH ── */
-#screen-path{padding-bottom:48px}
-.path-header{padding:20px 20px 8px;text-align:center}
-.path-header h1{font-size:22px;font-weight:800}
-.path-header p{font-size:13px;color:var(--text2);margin-top:4px}
-.level-section{margin:24px 0 0}
-.level-label{padding:0 20px 10px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase}
-.path-row{display:flex;justify-content:center;gap:12px;padding:0 16px 12px;flex-wrap:wrap}
-.lesson-btn{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-weight:700;font-size:11px;transition:transform .15s;position:relative}
-.lesson-btn:active{transform:scale(.93)}
-.lesson-btn.done{background:var(--green);color:#fff;box-shadow:0 4px 16px rgba(88,204,2,.4)}
-.lesson-btn.current{background:var(--green);color:#fff;box-shadow:0 0 0 4px rgba(88,204,2,.3),0 4px 20px rgba(88,204,2,.5);animation:pulse 2s infinite}
-.lesson-btn.locked{background:rgba(255,255,255,.08);color:var(--text3);cursor:default;border:2px solid rgba(255,255,255,.1)}
-.lesson-num{font-size:9px;opacity:.8}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(88,204,2,.3),0 4px 20px rgba(88,204,2,.5)}50%{box-shadow:0 0 0 8px rgba(88,204,2,.15),0 4px 20px rgba(88,204,2,.4)}}
-.star-badge{position:absolute;top:-4px;right:-4px;width:22px;height:22px;background:var(--gold);border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid #0d1117}
-
-/* ── QUIZ ── */
-#screen-quiz{padding:0}
-.quiz-header{padding:14px 20px 12px;display:flex;align-items:center;gap:12px}
-.quiz-close{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
-.quiz-progress{flex:1;height:8px;background:rgba(255,255,255,.1);border-radius:8px;overflow:hidden}
-.quiz-progress-fill{height:100%;background:var(--green);border-radius:8px;transition:width .3s ease}
-.hearts{display:flex;gap:4px;font-size:20px;flex-shrink:0}
-.quiz-body{flex:1;display:flex;flex-direction:column;padding:20px 20px 12px}
-.quiz-question-label{font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px}
-.quiz-review-badge{display:inline-block;background:rgba(255,200,0,.15);border:1px solid rgba(255,200,0,.3);color:var(--gold);font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;margin-bottom:12px;letter-spacing:.5px}
-.quiz-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px 24px;text-align:center;margin-bottom:24px}
-.quiz-hanzi{font-size:56px;font-weight:700;line-height:1.2;margin-bottom:10px}
-.quiz-pinyin{font-size:18px;color:var(--blue);font-weight:500}
-.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;flex:1}
-.choice{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:14px 12px;text-align:center;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;min-height:56px;display:flex;align-items:center;justify-content:center}
-.choice:active{transform:scale(.96)}
-.choice.correct{background:var(--green-bg);border-color:var(--green);color:var(--green)}
-.choice.wrong{background:var(--red-bg);border-color:var(--red);color:var(--red)}
-.choice.disabled{cursor:default;opacity:.6}
-.quiz-footer{padding:14px 20px 32px}
-.btn-continue{width:100%;padding:16px;border-radius:14px;border:none;font-size:16px;font-weight:700;cursor:pointer;transition:all .15s}
-.btn-continue.hidden{visibility:hidden}
-.btn-continue.green{background:var(--green);color:#fff}
-.btn-continue.red{background:var(--red);color:#fff}
-.btn-continue.gold{background:var(--gold);color:#1a1a1a}
-
-/* ── RESULT ── */
-#screen-result{align-items:center;justify-content:center;text-align:center;padding:40px 24px}
-.result-icon{font-size:80px;margin-bottom:20px;line-height:1}
-.result-title{font-size:28px;font-weight:800;margin-bottom:8px}
-.result-sub{font-size:15px;color:var(--text2);margin-bottom:32px}
-.result-stats{display:flex;gap:12px;justify-content:center;margin-bottom:36px;flex-wrap:wrap}
-.result-stat{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 20px;min-width:80px}
-.result-stat-num{font-size:26px;font-weight:800;color:var(--green)}
-.result-stat-lbl{font-size:11px;color:var(--text3);margin-top:2px}
-.btn-big{width:100%;max-width:320px;padding:18px;border-radius:16px;border:none;font-size:17px;font-weight:700;cursor:pointer;margin-top:10px}
-.btn-big.green{background:var(--green);color:#fff}
-.btn-big.ghost{background:var(--card);border:1px solid var(--border);color:var(--text2)}
-
-/* ── FAIL ── */
-#screen-fail{align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:0}
-
-/* ── LOADING ── */
-#screen-loading{align-items:center;justify-content:center}
-.loading-spinner{width:48px;height:48px;border:4px solid rgba(88,204,2,.2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+/* LOADING */
+#screen-loading{align-items:center;justify-content:center;gap:16px}
+.loading-logo{font-size:56px}
+.loading-spinner{width:40px;height:40px;border:3px solid rgba(74,222,128,.2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── TOAST ── */
-.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(30,30,40,.95);border:1px solid var(--border);border-radius:12px;padding:12px 20px;font-size:13px;color:var(--text2);z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+/* LOGIN */
+#screen-login{align-items:center;justify-content:center;padding:40px 24px;text-align:center}
+.login-logo{font-size:64px;margin-bottom:16px}
+.login-title{font-size:30px;font-weight:800;margin-bottom:8px;letter-spacing:-.5px}
+.login-sub{font-size:15px;color:var(--text2);margin-bottom:48px;line-height:1.6}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:320px;padding:16px 24px;background:#fff;color:#111;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;transition:transform .15s,opacity .15s;box-shadow:0 4px 24px rgba(0,0,0,.3)}
+.btn-google:active{transform:scale(.97);opacity:.9}
+.btn-google svg{width:22px;height:22px;flex-shrink:0}
+.login-note{font-size:12px;color:var(--text3);margin-top:24px;line-height:1.7}
+
+/* ONBOARDING */
+#screen-onboard{align-items:center;justify-content:center;padding:32px 24px;text-align:center}
+.onboard-icon{font-size:56px;margin-bottom:20px}
+.onboard-title{font-size:24px;font-weight:800;margin-bottom:8px}
+.onboard-sub{font-size:14px;color:var(--text2);margin-bottom:36px;line-height:1.6}
+.level-cards{display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px}
+.level-card{background:var(--surface);border:2px solid var(--border);border-radius:18px;padding:20px 24px;text-align:left;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:16px}
+.level-card:active{transform:scale(.97)}
+.level-card:hover{border-color:var(--green-border);background:var(--green-dim)}
+.level-card-icon{font-size:32px;flex-shrink:0}
+.level-card-title{font-size:16px;font-weight:700;margin-bottom:3px}
+.level-card-sub{font-size:12px;color:var(--text2)}
+
+/* PLACEMENT */
+#screen-placement{padding:0}
+.placement-header{padding:20px 24px;text-align:center}
+.placement-title{font-size:18px;font-weight:700}
+.placement-sub{font-size:13px;color:var(--text2);margin-top:4px}
+
+/* TOPBAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;gap:12px;position:sticky;top:0;background:#111827;z-index:10;border-bottom:1px solid var(--border)}
+.topbar-stat{display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700}
+.topbar-stat span{font-size:18px}
+.topbar-avatar{width:32px;height:32px;border-radius:50%;background:rgba(74,222,128,.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;overflow:hidden;font-weight:700}
+.topbar-avatar img{width:100%;height:100%;object-fit:cover}
+
+/* PATH */
+#screen-path{padding-bottom:56px}
+.path-header{padding:24px 20px 8px;text-align:center}
+.path-header h1{font-size:24px;font-weight:800}
+.path-header p{font-size:13px;color:var(--text2);margin-top:5px}
+.level-section{margin:28px 0 0}
+.level-label{padding:0 20px 12px;font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase}
+.path-row{display:flex;justify-content:center;gap:14px;padding:0 16px 12px;flex-wrap:wrap}
+.lesson-btn{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-weight:700;font-size:11px;transition:transform .15s;position:relative}
+.lesson-btn:active{transform:scale(.92)}
+.lesson-btn.done{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 4px 16px rgba(34,197,94,.4)}
+.lesson-btn.current{background:linear-gradient(135deg,#4ade80,#22c55e);color:#111;box-shadow:0 0 0 4px rgba(74,222,128,.25),0 4px 20px rgba(74,222,128,.4);animation:pulse 2s infinite}
+.lesson-btn.locked{background:var(--surface);color:var(--text3);cursor:default;border:2px solid rgba(255,255,255,.08)}
+.lesson-num{font-size:9px;opacity:.75}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(74,222,128,.25),0 6px 20px rgba(74,222,128,.4)}50%{box-shadow:0 0 0 8px rgba(74,222,128,.1),0 6px 20px rgba(74,222,128,.3)}}
+.star-badge{position:absolute;top:-5px;right:-5px;width:22px;height:22px;background:var(--gold);border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid #111827}
+
+/* QUIZ */
+#screen-quiz{padding:0;background:#111827}
+.quiz-header{padding:14px 20px 10px;display:flex;align-items:center;gap:12px}
+.quiz-close{width:36px;height:36px;border-radius:50%;background:var(--surface);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text2);flex-shrink:0}
+.quiz-progress{flex:1;height:10px;background:var(--surface2);border-radius:8px;overflow:hidden}
+.quiz-progress-fill{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:8px;transition:width .4s ease}
+.hearts{display:flex;gap:3px;font-size:20px;flex-shrink:0}
+
+.quiz-body{flex:1;display:flex;flex-direction:column;padding:16px 20px 8px}
+.q-type-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:14px}
+.quiz-review-badge{display:inline-block;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:12px}
+
+/* WORD CARD */
+.quiz-card{
+  background:linear-gradient(135deg,rgba(74,222,128,.08) 0%,rgba(96,165,250,.06) 100%);
+  border:1px solid rgba(74,222,128,.2);
+  border-radius:24px;padding:32px 24px;text-align:center;margin-bottom:20px;
+  position:relative;overflow:hidden;
+}
+.quiz-card::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(74,222,128,.1),transparent);border-radius:50%}
+.quiz-hanzi{font-size:64px;font-weight:800;line-height:1.1;margin-bottom:12px;position:relative;z-index:1}
+.quiz-pinyin{font-size:18px;color:var(--blue);font-weight:600;letter-spacing:.5px;position:relative;z-index:1}
+.quiz-mn-word{font-size:28px;font-weight:700;margin-bottom:8px;color:#fff}
+.quiz-mn-sub{font-size:14px;color:var(--text2)}
+
+/* CHOICES */
+.choices{display:flex;flex-direction:column;gap:10px;flex:1}
+.choice{
+  background:var(--surface);border:2px solid var(--border);border-radius:16px;
+  padding:16px 20px;text-align:left;font-size:16px;font-weight:600;
+  cursor:pointer;transition:all .15s;min-height:56px;
+  display:flex;align-items:center;gap:14px;color:#fff;
+}
+.choice:active{transform:scale(.98)}
+.choice:hover{border-color:rgba(255,255,255,.25);background:var(--surface2)}
+.choice-key{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0}
+.choice-text{flex:1}
+.choice.correct{background:var(--green-dim);border-color:var(--green-border);color:var(--green)}
+.choice.correct .choice-key{background:rgba(74,222,128,.2);color:var(--green)}
+.choice.wrong{background:var(--red-dim);border-color:var(--red-border);color:var(--red)}
+.choice.wrong .choice-key{background:rgba(248,113,113,.2);color:var(--red)}
+.choice.disabled{cursor:default}
+
+/* TYPING */
+.type-input{width:100%;background:var(--surface);border:2px solid var(--border);border-radius:16px;padding:16px 20px;font-size:18px;font-weight:600;color:#fff;outline:none;text-align:center;transition:border-color .15s}
+.type-input:focus{border-color:rgba(74,222,128,.5)}
+.type-input.correct{border-color:var(--green);background:var(--green-dim);color:var(--green)}
+.type-input.wrong{border-color:var(--red);background:var(--red-dim);color:var(--red)}
+.type-hint{text-align:center;font-size:13px;color:var(--text3);margin-top:8px}
+
+/* XP BURST */
+.xp-burst{position:fixed;pointer-events:none;font-size:18px;font-weight:800;color:var(--gold);z-index:200;animation:xpFloat 1.2s ease-out forwards}
+@keyframes xpFloat{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-80px) scale(1.3)}}
+
+.quiz-footer{padding:12px 20px 32px}
+.btn-continue{width:100%;padding:18px;border-radius:16px;border:none;font-size:16px;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.3px}
+.btn-continue.hidden{visibility:hidden}
+.btn-continue.green{background:linear-gradient(135deg,#4ade80,#22c55e);color:#111;box-shadow:0 4px 16px rgba(74,222,128,.3)}
+.btn-continue.red{background:var(--red);color:#fff}
+.btn-continue.gold{background:var(--gold);color:#111}
+
+/* RESULT */
+#screen-result{align-items:center;justify-content:center;text-align:center;padding:40px 24px}
+.result-icon{font-size:88px;margin-bottom:20px;line-height:1;animation:pop .4s ease-out}
+@keyframes pop{0%{transform:scale(.5)}70%{transform:scale(1.15)}100%{transform:scale(1)}}
+.result-title{font-size:30px;font-weight:800;margin-bottom:8px}
+.result-sub{font-size:15px;color:var(--text2);margin-bottom:32px}
+.result-stats{display:flex;gap:12px;justify-content:center;margin-bottom:36px}
+.result-stat{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:16px 22px;min-width:90px}
+.result-stat-num{font-size:28px;font-weight:800;color:var(--green)}
+.result-stat-lbl{font-size:11px;color:var(--text3);margin-top:3px}
+.btn-big{width:100%;max-width:320px;padding:18px;border-radius:16px;border:none;font-size:17px;font-weight:700;cursor:pointer;margin-top:10px;transition:all .15s}
+.btn-big.green{background:linear-gradient(135deg,#4ade80,#22c55e);color:#111;box-shadow:0 4px 16px rgba(74,222,128,.3)}
+.btn-big.ghost{background:var(--surface);border:1px solid var(--border);color:var(--text2)}
+
+/* FAIL */
+#screen-fail{align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:0}
+
+/* TOAST */
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--border);border-radius:14px;padding:12px 20px;font-size:13px;color:var(--text2);z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(10px)}
 .toast.show{opacity:1}
 </style>
 </head>
 <body>
 
-<!-- ══ LOADING ══ -->
+<!-- LOADING -->
 <div class="screen active" id="screen-loading">
+  <div class="loading-logo">🈶</div>
   <div class="loading-spinner"></div>
 </div>
 
-<!-- ══ LOGIN ══ -->
+<!-- LOGIN -->
 <div class="screen" id="screen-login">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center">
     <div class="login-logo">🈶</div>
     <div class="login-title">Монгол HSK</div>
-    <div class="login-sub">Хятад хэлийг Монголоор сур<br>Дуолинго шиг, Монгол хэлтэй</div>
+    <div class="login-sub">Хятад хэлийг Монголоор сур<br>Дуолинго шиг, гэхдээ Монгол хэлтэй</div>
     <button class="btn-google" onclick="signInGoogle()">
       <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
       Google-ээр нэвтрэх
     </button>
-    <div class="login-note">Progress чинь ямар ч төхөөрөмж дээр<br>хадгалагдана — утас солих үед ч алдагдахгүй</div>
+    <div class="login-note">Progress чинь ямар ч төхөөрөмж дээр хадгалагдана</div>
   </div>
 </div>
 
-<!-- ══ PATH ══ -->
+<!-- ONBOARDING -->
+<div class="screen" id="screen-onboard">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center">
+    <div class="onboard-icon">🎯</div>
+    <div class="onboard-title">Хятад хэл хэр мэддэг вэ?</div>
+    <div class="onboard-sub">Чиний түвшинд тохируулсан<br>сургалт бэлдэж өгнө</div>
+    <div class="level-cards">
+      <div class="level-card" onclick="chooseLevel('beginner')">
+        <div class="level-card-icon">🌱</div>
+        <div><div class="level-card-title">Огт мэддэггүй</div><div class="level-card-sub">Эхнээс сурна — HSK 1</div></div>
+      </div>
+      <div class="level-card" onclick="chooseLevel('intermediate')">
+        <div class="level-card-icon">📖</div>
+        <div><div class="level-card-title">Бага мэддэг</div><div class="level-card-sub">Богино шалгалт өгч түвшин тодорхойлно</div></div>
+      </div>
+      <div class="level-card" onclick="chooseLevel('advanced')">
+        <div class="level-card-icon">🎓</div>
+        <div><div class="level-card-title">Мэддэг</div><div class="level-card-sub">Хүнд асуулт өгч байрлалыг тодорхойлно</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PATH -->
 <div class="screen" id="screen-path">
   <div class="topbar">
     <div class="topbar-stat"><span>🔥</span><span id="stat-streak">0</span></div>
     <div class="topbar-stat" style="color:var(--gold)"><span>⚡</span><span id="stat-xp">0</span> XP</div>
-    <div class="topbar-stat" style="color:var(--red)"><span>❤️</span><span id="stat-hearts">3</span></div>
+    <div class="topbar-stat" style="color:#f87171"><span>❤️</span><span id="stat-hearts">3</span></div>
     <div class="topbar-avatar" id="user-avatar" onclick="showUserMenu()">👤</div>
   </div>
   <div class="path-header">
@@ -146,7 +225,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <div id="path-container"></div>
 </div>
 
-<!-- ══ QUIZ ══ -->
+<!-- QUIZ -->
 <div class="screen" id="screen-quiz">
   <div class="quiz-header">
     <div class="quiz-close" onclick="exitQuiz()">✕</div>
@@ -155,19 +234,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="quiz-body">
     <div id="review-badge" class="quiz-review-badge" style="display:none">🔄 Буруу үгсийн давталт</div>
-    <div class="quiz-question-label">Монгол утгыг сонго</div>
-    <div class="quiz-card">
+    <div class="q-type-label" id="q-type-label">Монгол утгыг сонго</div>
+    <div class="quiz-card" id="quiz-card">
       <div class="quiz-hanzi" id="q-hanzi">—</div>
       <div class="quiz-pinyin" id="q-pinyin">—</div>
     </div>
-    <div class="choices" id="choices"></div>
+    <div id="choices-area"></div>
   </div>
   <div class="quiz-footer">
     <button class="btn-continue hidden" id="btn-cont" onclick="nextQuestion()">Үргэлжлүүлэх</button>
   </div>
 </div>
 
-<!-- ══ RESULT ══ -->
+<!-- RESULT -->
 <div class="screen" id="screen-result">
   <div class="result-icon" id="res-icon">🎉</div>
   <div class="result-title" id="res-title">Дууслаа!</div>
@@ -181,51 +260,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   <button class="btn-big ghost" style="margin-top:10px" onclick="retryLesson()">Дахин хийх</button>
 </div>
 
-<!-- ══ FAIL ══ -->
+<!-- FAIL -->
 <div class="screen" id="screen-fail">
   <div style="font-size:80px;margin-bottom:20px">💔</div>
   <div style="font-size:28px;font-weight:800;margin-bottom:8px">Амьдрал дууслаа</div>
   <div style="font-size:15px;color:var(--text2);margin-bottom:36px">Маргааш дахин орж ирнэ үү!</div>
-  <button class="btn-big" style="background:var(--red);color:#fff" onclick="retryLesson()">Дахин оролдох</button>
-  <button class="btn-big ghost" style="margin-top:10px" onclick="goPath()">Буцах</button>
+  <button class="btn-big" style="background:var(--red);color:#fff;max-width:320px" onclick="retryLesson()">Дахин оролдох</button>
+  <button class="btn-big ghost" style="margin-top:10px;max-width:320px" onclick="goPath()">Буцах</button>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- Firebase -->
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="hsk-vocab.js"></script>
 <script>
-// ── SW UNREGISTER (хуучин cache цэвэрлэнэ) ──────────────────────
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    regs.forEach(r => r.unregister());
-  });
+  navigator.serviceWorker.getRegistrations().then(r => r.forEach(x => x.unregister()));
 }
 
-// ── FIREBASE INIT ────────────────────────────────────────────────
+// ── FIREBASE ─────────────────────────────────────────────────────
 window.addEventListener('load', () => {
   firebase.initializeApp({
-    apiKey:      'AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc',
-    authDomain:  'jarvis-bileg.firebaseapp.com',
-    projectId:   'jarvis-bileg',
+    apiKey:     'AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc',
+    authDomain: 'jarvis-bileg.firebaseapp.com',
+    projectId:  'jarvis-bileg',
   });
   window._auth = firebase.auth();
   window._db   = firebase.firestore();
-
   _auth.onAuthStateChanged(user => {
     if (user) {
       currentUser = user;
-      loadFromFirestore(user.uid).then(() => {
+      loadFromCloud(user.uid).then(() => {
         updateAvatar(user);
-        showScreen('path');
-        renderPath();
+        if (!state.onboarded) { showScreen('onboard'); }
+        else { showScreen('path'); renderPath(); }
       });
     } else {
-      // Login хийгдээгүй → login screen харуулна
       showScreen('login');
     }
   });
@@ -233,117 +305,84 @@ window.addEventListener('load', () => {
 
 // ── CONFIG ───────────────────────────────────────────────────────
 const WORDS_PER_LESSON = 10;
-const MAX_HEARTS       = 3;
-const XP_CORRECT       = 10;
-const XP_LESSON_BONUS  = 30;
-const LS_KEY           = 'hanz_progress';
+const MAX_HEARTS = 3;
+const XP_CORRECT = 10;
+const XP_LESSON_BONUS = 30;
+const LS_KEY = 'hanz2_progress';
+const KEYS = ['A','B','C','D'];
 
-// ── STATE ────────────────────────────────────────────────────────
 let currentUser = null;
 let state = loadLocal();
 let quiz  = null;
 
 function defaultState() {
-  return { completed:[], xp:0, hearts:MAX_HEARTS, streak:0, lastDate:'' };
+  return { completed:[], xp:0, hearts:MAX_HEARTS, streak:0, lastDate:'', onboarded:false };
 }
-
 function loadLocal() {
+  try { return { ...defaultState(), ...JSON.parse(localStorage.getItem(LS_KEY)||'{}') }; }
+  catch { return defaultState(); }
+}
+function saveLocal() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+async function saveToCloud(uid) {
+  if (!uid||!window._db) return;
+  try { await _db.doc(`users/${uid}/hsk_learn/progress`).set(state,{merge:true}); } catch{}
+}
+async function loadFromCloud(uid) {
+  if (!uid||!window._db) return;
   try {
-    const s = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
-    return { ...defaultState(), ...s };
-  } catch { return defaultState(); }
+    const s = await _db.doc(`users/${uid}/hsk_learn/progress`).get();
+    if (s.exists) { state = { ...defaultState(), ...s.data() }; saveLocal(); }
+  } catch{}
 }
-
-function saveLocal() {
-  localStorage.setItem(LS_KEY, JSON.stringify(state));
-}
-
-async function saveToFirestore(uid) {
-  if (!uid || !window._db) return;
-  try {
-    await _db.doc(`users/${uid}/hsk_learn/progress`).set(state, { merge: true });
-  } catch(e) { console.error('[FSave]', e.message); }
-}
-
-async function loadFromFirestore(uid) {
-  if (!uid || !window._db) return;
-  try {
-    const snap = await _db.doc(`users/${uid}/hsk_learn/progress`).get();
-    if (snap.exists) {
-      state = { ...defaultState(), ...snap.data() };
-      saveLocal();
-    }
-  } catch(e) { console.error('[FLoad]', e.message); }
-}
-
-async function persistState() {
-  saveLocal();
-  if (currentUser) await saveToFirestore(currentUser.uid);
-}
+async function persist() { saveLocal(); if (currentUser) await saveToCloud(currentUser.uid); }
 
 // ── AUTH ─────────────────────────────────────────────────────────
 async function signInGoogle() {
-  if (!window._auth) { showToast('Firebase ачааллаж байна...'); return; }
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await _auth.signInWithPopup(provider);
-    // onAuthStateChanged handles the rest
-  } catch(e) {
-    if (e.code !== 'auth/popup-closed-by-user') showToast('Нэвтрэх алдаа: ' + e.message);
-  }
+  if (!window._auth) { showToast('Ачааллаж байна...'); return; }
+  try { await _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
+  catch(e) { if (e.code !== 'auth/popup-closed-by-user') showToast('Алдаа: ' + e.message); }
 }
-
-
 function showUserMenu() {
-  if (currentUser) {
-    if (confirm(currentUser.displayName + '\n\nГарах уу?')) {
-      _auth.signOut();
-      currentUser = null;
-      state = defaultState();
-      saveLocal();
-      showScreen('login');
-    }
-  } else {
-    if (confirm('Google-ээр нэвтрэх үү?\n(Progress хадгалагдана)')) signInGoogle();
+  if (!currentUser) return;
+  if (confirm(currentUser.displayName + '\n\nГарах уу?')) {
+    _auth.signOut(); currentUser=null; state=defaultState(); saveLocal(); showScreen('login');
   }
 }
-
 function updateAvatar(user) {
   const el = document.getElementById('user-avatar');
-  if (user.photoURL) {
-    el.innerHTML = `<img src="${user.photoURL}" alt="">`;
-  } else {
-    el.textContent = (user.displayName || 'U')[0].toUpperCase();
-  }
+  if (user.photoURL) el.innerHTML = `<img src="${user.photoURL}">`;
+  else el.textContent = (user.displayName||'U')[0].toUpperCase();
 }
 
 // ── HELPERS ──────────────────────────────────────────────────────
-function todayStr() {
-  return new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
-}
-
+function todayStr() { return new Date().toLocaleDateString('sv',{timeZone:'Asia/Shanghai'}); }
 function checkHeartRegen() {
   const today = todayStr();
   if (state.lastDate && state.lastDate !== today) {
     const yesterday = new Date(Date.now()-86400000).toLocaleDateString('sv',{timeZone:'Asia/Shanghai'});
-    if (state.lastDate !== yesterday) state.streak = 0; // streak тасарсан
+    if (state.lastDate !== yesterday) state.streak = 0;
     state.hearts = MAX_HEARTS;
   }
 }
-
 function updateStreak() {
   const today = todayStr();
   if (state.lastDate === today) return;
   const yesterday = new Date(Date.now()-86400000).toLocaleDateString('sv',{timeZone:'Asia/Shanghai'});
-  state.streak = state.lastDate === yesterday ? (state.streak||0) + 1 : 1;
+  state.streak = state.lastDate === yesterday ? (state.streak||0)+1 : 1;
   state.lastDate = today;
 }
-
 function showToast(msg, dur=2500) {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
+  t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), dur);
+}
+function showXpBurst(xp) {
+  const el = document.createElement('div');
+  el.className = 'xp-burst';
+  el.textContent = '+' + xp + ' XP';
+  el.style.cssText = `left:${40+Math.random()*20}%;top:60%;`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1300);
 }
 
 // ── LESSONS ──────────────────────────────────────────────────────
@@ -351,243 +390,220 @@ function buildLessons() {
   const lessons = [];
   for (const lvl of [1,2,3]) {
     const words = HSK_VOCAB_ALL.filter(w => w.hsk_level === lvl);
-    for (let i = 0; i < words.length; i += WORDS_PER_LESSON) {
-      lessons.push({
-        level: lvl,
-        levelName: 'HSK ' + lvl,
-        index: lessons.length,
-        words: words.slice(i, i + WORDS_PER_LESSON),
-      });
-    }
+    for (let i = 0; i < words.length; i += WORDS_PER_LESSON)
+      lessons.push({ level:lvl, levelName:'HSK '+lvl, index:lessons.length, words:words.slice(i,i+WORDS_PER_LESSON) });
   }
   return lessons;
 }
 const LESSONS = buildLessons();
 
+// ── ONBOARDING ───────────────────────────────────────────────────
+function chooseLevel(level) {
+  if (level === 'beginner') {
+    state.onboarded = true;
+    persist();
+    showScreen('path'); renderPath();
+  } else {
+    // Placement test: 10 асуулт
+    const pool = level === 'intermediate'
+      ? HSK_VOCAB_ALL.filter(w => w.hsk_level <= 2)
+      : HSK_VOCAB_ALL.filter(w => w.hsk_level >= 2);
+    const words = pool.sort(() => Math.random()-.5).slice(0,10);
+    quiz = {
+      isPlacement: true,
+      placementLevel: level,
+      lessonIdx: -1,
+      questions: words.map(makeQuestion),
+      current: 0, hearts: MAX_HEARTS, xpEarned: 0, correct: 0, wrongWords: [], isReview: false, answered: false,
+    };
+    document.getElementById('review-badge').style.display = 'none';
+    document.querySelector('.placement-header') && (document.querySelector('.placement-header').style.display='block');
+    showScreen('quiz');
+    renderQuestion();
+  }
+}
+
 // ── PATH ─────────────────────────────────────────────────────────
 function renderPath() {
   checkHeartRegen();
-  document.getElementById('stat-streak').textContent = state.streak || 0;
-  document.getElementById('stat-xp').textContent     = state.xp || 0;
-  document.getElementById('stat-hearts').textContent = state.hearts !== undefined ? state.hearts : MAX_HEARTS;
-
-  const totalLessons = LESSONS.length;
-  const doneLessons  = (state.completed || []).length;
-  document.getElementById('path-sub').textContent =
-    doneLessons > 0 ? `${doneLessons}/${totalLessons} хичээл дууссан` : 'Хятад хэл Монголоор сур';
-
+  document.getElementById('stat-streak').textContent = state.streak||0;
+  document.getElementById('stat-xp').textContent     = state.xp||0;
+  document.getElementById('stat-hearts').textContent = state.hearts!==undefined ? state.hearts : MAX_HEARTS;
+  const done = (state.completed||[]).length;
+  document.getElementById('path-sub').textContent = done>0 ? `${done}/${LESSONS.length} хичээл` : 'Хятад хэл Монголоор сур';
   const container = document.getElementById('path-container');
   container.innerHTML = '';
-  let currentLevel = null, row = null;
-
-  LESSONS.forEach((lesson, idx) => {
-    const done    = (state.completed||[]).includes(idx);
-    const current = !done && (idx === 0 || (state.completed||[]).includes(idx - 1));
-    const locked  = !done && !current;
-
-    if (lesson.levelName !== currentLevel) {
-      currentLevel = lesson.levelName;
-      const sec = document.createElement('div');
-      sec.className = 'level-section';
-      const lbl = document.createElement('div');
-      lbl.className = 'level-label';
-      const counts = {1:'150',2:'160',3:'243'};
-      lbl.textContent = lesson.levelName + ' — ' + counts[lesson.level] + ' үг';
-      sec.appendChild(lbl);
-      row = document.createElement('div');
-      row.className = 'path-row';
-      sec.appendChild(row);
-      container.appendChild(sec);
+  let curLevel=null, row=null;
+  LESSONS.forEach((lesson,idx) => {
+    const isDone    = (state.completed||[]).includes(idx);
+    const isCurrent = !isDone && (idx===0 || (state.completed||[]).includes(idx-1));
+    const isLocked  = !isDone && !isCurrent;
+    if (lesson.levelName !== curLevel) {
+      curLevel = lesson.levelName;
+      const sec = document.createElement('div'); sec.className='level-section';
+      const lbl = document.createElement('div'); lbl.className='level-label';
+      const cnt = {1:'150',2:'160',3:'243'};
+      lbl.textContent = lesson.levelName + ' — ' + cnt[lesson.level] + ' үг';
+      sec.appendChild(lbl); row=document.createElement('div'); row.className='path-row';
+      sec.appendChild(row); container.appendChild(sec);
     }
-
     const btn = document.createElement('button');
-    btn.className = 'lesson-btn ' + (done ? 'done' : current ? 'current' : 'locked');
-    btn.innerHTML = `<span style="font-size:22px">${done?'✓':current?'▶':'🔒'}</span><span class="lesson-num">${idx+1}</span>`;
-    if (done) {
-      const s = document.createElement('div');
-      s.className = 'star-badge'; s.textContent = '⭐';
-      btn.appendChild(s);
-    }
-    if (!locked) btn.onclick = () => startLesson(idx);
+    btn.className = 'lesson-btn '+(isDone?'done':isCurrent?'current':'locked');
+    btn.innerHTML = `<span style="font-size:22px">${isDone?'✓':isCurrent?'▶':'🔒'}</span><span class="lesson-num">${idx+1}</span>`;
+    if (isDone) { const s=document.createElement('div'); s.className='star-badge'; s.textContent='⭐'; btn.appendChild(s); }
+    if (!isLocked) btn.onclick = () => startLesson(idx);
     row.appendChild(btn);
   });
 }
 
-// ── QUIZ ─────────────────────────────────────────────────────────
+// ── QUIZ LOGIC ───────────────────────────────────────────────────
 function makeQuestion(word) {
-  const wrong = HSK_VOCAB_ALL
-    .filter(w => w.word !== word.word && w.definition !== word.definition)
-    .sort(() => Math.random() - .5)
-    .slice(0, 3)
-    .map(w => w.definition);
-  const options = [...wrong, word.definition].sort(() => Math.random() - .5);
-  return { word, correct: word.definition, options };
+  // 50% Хятад→Монгол, 50% Монгол→Хятад
+  const type = Math.random() < 0.5 ? 'zh_to_mn' : 'mn_to_zh';
+  if (type === 'zh_to_mn') {
+    const wrong = HSK_VOCAB_ALL.filter(w=>w.word!==word.word&&w.definition!==word.definition)
+      .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.definition);
+    return { word, type:'zh_to_mn', correct:word.definition, options:[...wrong,word.definition].sort(()=>Math.random()-.5) };
+  } else {
+    const wrong = HSK_VOCAB_ALL.filter(w=>w.word!==word.word)
+      .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.word);
+    return { word, type:'mn_to_zh', correct:word.word, options:[...wrong,word.word].sort(()=>Math.random()-.5) };
+  }
 }
 
-function startLesson(lessonIdx) {
-  const hearts = state.hearts !== undefined ? state.hearts : MAX_HEARTS;
-  if (hearts <= 0) {
-    showToast('❤️ Амьдрал дууссан. Маргааш дахин орно уу!');
-    return;
-  }
-  const lesson = LESSONS[lessonIdx];
+function startLesson(idx) {
+  const hearts = state.hearts!==undefined ? state.hearts : MAX_HEARTS;
+  if (hearts <= 0) { showToast('❤️ Амьдрал дууссан. Маргааш!'); return; }
   quiz = {
-    lessonIdx,
-    questions:  lesson.words.map(makeQuestion),
-    current:    0,
-    hearts,
-    xpEarned:   0,
-    correct:    0,
-    wrongWords: [],   // буруу хариулсан үгс
-    isReview:   false,
-    answered:   false,
+    lessonIdx:idx, isPlacement:false,
+    questions: LESSONS[idx].words.map(makeQuestion),
+    current:0, hearts, xpEarned:0, correct:0, wrongWords:[], isReview:false, answered:false,
   };
-  document.getElementById('review-badge').style.display = 'none';
-  showScreen('quiz');
-  renderQuestion();
+  document.getElementById('review-badge').style.display='none';
+  showScreen('quiz'); renderQuestion();
 }
 
 function renderQuestion() {
   if (!quiz) return;
-  const q   = quiz.questions[quiz.current];
-  const pct = (quiz.current / quiz.questions.length) * 100;
+  const q = quiz.questions[quiz.current];
+  const pct = (quiz.current/quiz.questions.length)*100;
+  document.getElementById('quiz-prog').style.width = pct+'%';
+  document.getElementById('quiz-hearts').textContent = '❤️'.repeat(quiz.hearts)+'🖤'.repeat(MAX_HEARTS-quiz.hearts);
 
-  document.getElementById('quiz-prog').style.width = pct + '%';
-  document.getElementById('quiz-hearts').textContent =
-    '❤️'.repeat(quiz.hearts) + '🖤'.repeat(MAX_HEARTS - quiz.hearts);
-  document.getElementById('q-hanzi').textContent  = q.word.word;
-  document.getElementById('q-pinyin').textContent = q.word.pinyin;
+  // Type label + card
+  if (q.type === 'zh_to_mn') {
+    document.getElementById('q-type-label').textContent = 'Монгол утгыг сонго';
+    document.getElementById('quiz-card').innerHTML = `
+      <div class="quiz-hanzi">${q.word.word}</div>
+      <div class="quiz-pinyin">${q.word.pinyin}</div>`;
+  } else {
+    document.getElementById('q-type-label').textContent = 'Хятад үгийг сонго';
+    document.getElementById('quiz-card').innerHTML = `
+      <div class="quiz-mn-word">${q.word.definition}</div>
+      <div class="quiz-mn-sub">${q.word.pinyin}</div>`;
+  }
 
   const cont = document.getElementById('btn-cont');
-  cont.className = 'btn-continue hidden';
-  quiz.answered  = false;
+  cont.className='btn-continue hidden'; quiz.answered=false;
 
-  const choicesEl = document.getElementById('choices');
-  choicesEl.innerHTML = '';
-  q.options.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.className = 'choice';
-    btn.textContent = opt;
+  const area = document.getElementById('choices-area');
+  area.innerHTML='';
+  const choices = document.createElement('div'); choices.className='choices';
+  q.options.forEach((opt,i) => {
+    const btn = document.createElement('button'); btn.className='choice';
+    btn.innerHTML = `<span class="choice-key">${KEYS[i]}</span><span class="choice-text">${opt}</span>`;
     btn.onclick = () => checkAnswer(opt, btn);
-    choicesEl.appendChild(btn);
+    choices.appendChild(btn);
   });
+  area.appendChild(choices);
 }
 
 function checkAnswer(chosen, btn) {
   if (quiz.answered) return;
   quiz.answered = true;
-
-  const q  = quiz.questions[quiz.current];
+  const q = quiz.questions[quiz.current];
   const ok = chosen === q.correct;
   const cont = document.getElementById('btn-cont');
   document.querySelectorAll('.choice').forEach(b => b.classList.add('disabled'));
 
   if (ok) {
     btn.classList.add('correct');
-    quiz.xpEarned += XP_CORRECT;
-    quiz.correct++;
-    cont.className   = 'btn-continue green';
-    cont.textContent = 'Үргэлжлүүлэх ➜';
-    // Review горимд зөв хариулвал жагсаалтаас хасна
-    if (quiz.isReview) {
-      quiz.wrongWords = quiz.wrongWords.filter(w => w.word !== q.word.word);
-    }
+    quiz.xpEarned += XP_CORRECT; quiz.correct++;
+    cont.className='btn-continue green'; cont.textContent='Үргэлжлүүлэх ➜';
+    showXpBurst(XP_CORRECT);
+    if (quiz.isReview) quiz.wrongWords = quiz.wrongWords.filter(w=>w.word!==q.word.word);
   } else {
     btn.classList.add('wrong');
-    document.querySelectorAll('.choice').forEach(b => {
-      if (b.textContent === q.correct) b.classList.add('correct');
-    });
+    document.querySelectorAll('.choice').forEach(b => { if (b.querySelector('.choice-text')?.textContent===q.correct) b.classList.add('correct'); });
     if (!quiz.isReview) {
       quiz.hearts--;
-      if (!quiz.wrongWords.find(w => w.word === q.word.word)) {
-        quiz.wrongWords.push(q.word); // буруу үгийг тэмдэглэ
-      }
+      if (!quiz.wrongWords.find(w=>w.word===q.word.word)) quiz.wrongWords.push(q.word);
     }
-    cont.className   = 'btn-continue red';
-    cont.textContent = 'Ойлголоо';
+    cont.className='btn-continue red'; cont.textContent='Ойлголоо';
   }
 }
 
 function nextQuestion() {
   if (!quiz) return;
-
-  if (!quiz.isReview && quiz.hearts <= 0) {
-    state.hearts = 0;
-    persistState();
-    showScreen('fail');
-    return;
-  }
-
+  if (!quiz.isReview && quiz.hearts<=0) { state.hearts=0; persist(); showScreen('fail'); return; }
   quiz.current++;
-
-  // Үндсэн хичээл дуусвал
   if (quiz.current >= quiz.questions.length) {
-    // Буруу үг байвал review горим
-    if (!quiz.isReview && quiz.wrongWords.length > 0) {
-      startReview();
-    } else {
-      finishLesson();
-    }
-    return;
+    if (!quiz.isReview && quiz.wrongWords.length>0) { startReview(); return; }
+    finishLesson(); return;
   }
   renderQuestion();
 }
 
 function startReview() {
-  quiz.isReview  = true;
-  quiz.questions = quiz.wrongWords.map(makeQuestion);
-  quiz.current   = 0;
-  document.getElementById('review-badge').style.display = 'block';
-  const cont = document.getElementById('btn-cont');
-  cont.className = 'btn-continue gold';
-  cont.textContent = `🔄 ${quiz.wrongWords.length} буруу үг давтана`;
-  cont.classList.remove('hidden');
-  // First question renders on next click
-  document.getElementById('quiz-prog').style.width = '90%';
-  document.getElementById('choices').innerHTML = '';
-  document.getElementById('q-hanzi').textContent  = '🔄';
-  document.getElementById('q-pinyin').textContent = 'Буруу үгсийг давтана';
-  quiz.answered = true; // next click → renderQuestion
+  quiz.isReview=true; quiz.questions=quiz.wrongWords.map(makeQuestion); quiz.current=0;
+  document.getElementById('review-badge').style.display='block';
+  const cont=document.getElementById('btn-cont');
+  cont.className='btn-continue gold'; cont.textContent=`🔄 ${quiz.wrongWords.length} буруу үг давтана`;
+  document.getElementById('quiz-prog').style.width='90%';
+  document.getElementById('choices-area').innerHTML='';
+  document.getElementById('quiz-card').innerHTML=`<div class="quiz-hanzi">🔄</div><div class="quiz-pinyin">Буруу үгсийг давтана</div>`;
+  quiz.answered=true;
 }
 
 function finishLesson() {
-  quiz.xpEarned += XP_LESSON_BONUS;
-  if (!(state.completed||[]).includes(quiz.lessonIdx)) {
-    if (!state.completed) state.completed = [];
-    state.completed.push(quiz.lessonIdx);
+  if (quiz.isPlacement) {
+    // Placement result → unlock lessons
+    const score = quiz.correct;
+    let startIdx = 0;
+    if (score >= 8) startIdx = quiz.placementLevel==='advanced' ? 22 : 15;
+    else if (score >= 5) startIdx = quiz.placementLevel==='advanced' ? 16 : 8;
+    else if (score >= 3) startIdx = 4;
+    for (let i=0; i<startIdx; i++) if (!state.completed.includes(i)) state.completed.push(i);
+    state.onboarded = true;
+    persist();
+    showToast(score>=6 ? `🎯 ${score}/10 зөв — ${startIdx+1}-р хичээлээс эхэллээ!` : `🌱 ${score}/10 зөв — эхнээс сурна`);
+    showScreen('path'); renderPath(); return;
   }
-  updateStreak();
-  state.xp    = (state.xp || 0) + quiz.xpEarned;
-  state.hearts = quiz.hearts;
-  persistState();
 
-  const total = quiz.questions.length + (quiz.isReview ? 0 : quiz.wrongWords.length);
-  const acc   = Math.round((quiz.correct / Math.max(total, 1)) * 100);
-  const mastered = quiz.wrongWords.length === 0;
+  quiz.xpEarned += XP_LESSON_BONUS;
+  if (!(state.completed||[]).includes(quiz.lessonIdx)) { if(!state.completed)state.completed=[]; state.completed.push(quiz.lessonIdx); }
+  updateStreak(); state.xp=(state.xp||0)+quiz.xpEarned; state.hearts=quiz.hearts; persist();
 
-  document.getElementById('res-icon').textContent  = mastered ? '🏆' : acc >= 80 ? '🎉' : '👍';
-  document.getElementById('res-title').textContent = mastered ? 'Төгс!' : acc >= 80 ? 'Сайн байна!' : 'Дууслаа!';
-  document.getElementById('res-sub').textContent   = mastered
-    ? 'Бүх үгийг зөв хариуллаа!'
-    : `${quiz.correct} зөв · ${LESSONS[quiz.lessonIdx].words.length} үг`;
-  document.getElementById('res-xp').textContent     = '+' + quiz.xpEarned;
-  document.getElementById('res-acc').textContent    = acc + '%';
-  document.getElementById('res-streak').textContent = state.streak || 0;
+  const total = quiz.questions.length;
+  const acc = Math.round((quiz.correct/Math.max(total,1))*100);
+  const mastered = quiz.wrongWords.length===0;
+  document.getElementById('res-icon').textContent  = mastered?'🏆':acc>=80?'🎉':'👍';
+  document.getElementById('res-title').textContent = mastered?'Төгс!':acc>=80?'Сайн байна!':'Дууслаа!';
+  document.getElementById('res-sub').textContent   = mastered?'Бүх үгийг зөв хариуллаа!': `${quiz.correct}/${total} зөв`;
+  document.getElementById('res-xp').textContent    = '+'+quiz.xpEarned;
+  document.getElementById('res-acc').textContent   = acc+'%';
+  document.getElementById('res-streak').textContent= state.streak||0;
   showScreen('result');
 }
 
 function exitQuiz()    { showScreen('path'); renderPath(); }
 function goPath()      { showScreen('path'); renderPath(); }
-function retryLesson() { if (quiz) startLesson(quiz.lessonIdx); }
+function retryLesson() { if (quiz) { if(quiz.isPlacement) showScreen('onboard'); else startLesson(quiz.lessonIdx); } }
 
 function showScreen(name) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
 }
-
-// ── INIT ─────────────────────────────────────────────────────────
-// Firebase onAuthStateChanged handles login flow
-// Guest mode starts immediately from signInGuest()
 </script>
 </body>
 </html>
