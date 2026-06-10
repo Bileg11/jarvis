@@ -22,6 +22,10 @@ cp icon.svg          _site/ 2>/dev/null || true
 # Бусад html хуудаснууд (chat, profile, tracker, guide, life, dashboard, hsk)
 cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html finance.html _site/ 2>/dev/null || true
 
+# Ханз app
+cp hsk-signup.html _site/ 2>/dev/null || true
+cp hsk-vocab.js    _site/ 2>/dev/null || true
+
 # Assets фолдер
 cp -r assets _site/assets 2>/dev/null || true
 
