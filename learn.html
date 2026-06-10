@@ -100,6 +100,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* ── FAIL ── */
 #screen-fail{align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:0}
 
+/* ── LOADING ── */
+#screen-loading{align-items:center;justify-content:center}
+.loading-spinner{width:48px;height:48px;border:4px solid rgba(88,204,2,.2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* ── TOAST ── */
 .toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(30,30,40,.95);border:1px solid var(--border);border-radius:12px;padding:12px 20px;font-size:13px;color:var(--text2);z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
 .toast.show{opacity:1}
@@ -107,8 +112,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 </head>
 <body>
 
+<!-- ══ LOADING ══ -->
+<div class="screen active" id="screen-loading">
+  <div class="loading-spinner"></div>
+</div>
+
 <!-- ══ LOGIN ══ -->
-<div class="screen active" id="screen-login">
+<div class="screen" id="screen-login">
   <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;text-align:center">
     <div class="login-logo">🈶</div>
     <div class="login-title">Монгол HSK</div>
@@ -214,8 +224,10 @@ window.addEventListener('load', () => {
         showScreen('path');
         renderPath();
       });
+    } else {
+      // Login хийгдээгүй → login screen харуулна
+      showScreen('login');
     }
-    // Хэрэв guest горимд байвал login screen хэвээр үлдэнэ
   });
 });
 
