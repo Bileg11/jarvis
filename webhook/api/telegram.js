@@ -2619,7 +2619,7 @@ async function handleText(msg, ctx = {}) {
     return;
   }
 
-  // ── Free Chat — GitHub Models gpt-4o (цорын ганц) ──
+  // ── Free Chat — GitHub Models → Gemini fallback ─────────────────
   if (!apiKey) { await tgSend('⚠️ SYSTEM_USE_TOKEN тохируулаагүй.'); return; }
   try {
     const [hist, liveCtx] = await Promise.all([getChatHistory(uid), getFullContext(uid)]);
@@ -2642,8 +2642,33 @@ async function handleText(msg, ctx = {}) {
       lastErr = reply ? '' : (data.error?.message || `HTTP ${resp.status}`);
     } catch (e) { lastErr = e.message; }
 
+    // Gemini fallback — Azure content filter эсвэл хоосон хариу үед
+    if (!reply && GEMINI_URL) {
+      try {
+        console.log('[FreeChat] GitHub filtered/empty, trying Gemini fallback. Reason:', lastErr?.slice(0, 80));
+        const contents = hist.slice(-6).map(m => ({
+          role: m.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: (m.content || '').slice(0, 600) }],
+        }));
+        // Gemini: contents-ийн эхний role 'user' байх ёстой
+        while (contents.length && contents[0].role === 'model') contents.shift();
+        contents.push({ role: 'user', parts: [{ text: raw.slice(0, 800) }] });
+        const gr   = await fetch(GEMINI_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: sysWithCtx }] },
+            contents,
+            generationConfig: { maxOutputTokens: 600, temperature: 0.8 },
+          }),
+        });
+        const gd = await gr.json();
+        reply = gd.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+      } catch (ge) { console.error('[FreeChat] Gemini fallback error:', ge.message); }
+    }
+
     if (!reply) {
-      console.error('[FreeChat] empty reply:', lastErr);
+      console.error('[FreeChat] both providers failed:', lastErr);
       await tgSend(`🤖 Одоогоор хариулж чадсангүй.\n_(${(lastErr || 'тодорхойгүй').slice(0, 70)})_\nТүр хүлээгээд дахин оролдоорой.`);
       return;
     }
