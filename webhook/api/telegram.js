@@ -88,7 +88,12 @@ const BILEG_SYSTEM = getBilegSystem(); // backward compat
 // ── LIVE OS CONTEXT — Firestore-оос бүх модулийн өнөөдрийн байдал ──
 // JARVIS free chat-д system prompt руу нэмэгддэг.
 // Routine · HSK · Challenge · Finance · Tasks · Profile
-async function getFullContext(uid) {
+// ── PERSONAL CONTEXT ENGINE ───────────────────────────────────────
+// Data mutation болгонд compileLiveContext() дуудна → meta/live_context-д хадгалана.
+// Chat-д getFullContext() 1 read хийж cache-аас авна (7-ын оронд).
+// Cache miss (шинэ өдөр / анх дуудсан) → full compile + save.
+
+async function compileLiveContext(uid) {
   const today = todaySH();
   const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -135,7 +140,6 @@ async function getFullContext(uid) {
     } catch {}
 
     const lines = [
-      `Одоо: ${today} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')} Shanghai`,
       `Routine: ${routineStr}`,
       hsk.date === today ? `HSK: ${hsk.words?.length || 0} ханз · drill ${hsk.scored ? '✅ хийсэн' : '❌ хийгдэхгүй'}` : 'HSK: өнөөдрийн session байхгүй',
       challengeLine,
@@ -145,11 +149,37 @@ async function getFullContext(uid) {
       tasks.length  ? `Нээлттэй tasks (${tasks.length}): ${tasks.join(', ')}` : '',
     ].filter(Boolean).join('\n');
 
-    return `\n\n## LIVE OS CONTEXT [${today}]\n${lines}`;
+    const body = `\n\n## LIVE OS CONTEXT [${today}]\n${lines}`;
+    // Background save — caller-г хүлээхгүй
+    dbPersonal.doc(`users/${uid}/meta/live_context`).set(
+      { body, date: today, compiledAt: new Date().toISOString() }
+    ).catch(e => console.error('[compileLiveContext] save:', e.message));
+
+    return body;
   } catch (e) {
-    console.error('[getFullContext]', e.message);
+    console.error('[compileLiveContext]', e.message);
     return '';
   }
+}
+
+async function getFullContext(uid) {
+  const today   = todaySH();
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  try {
+    // Cache hit: 1 Firestore read (7-ын оронд)
+    const snap = await dbPersonal.doc(`users/${uid}/meta/live_context`).get();
+    if (snap.exists && snap.data().date === today) {
+      // Header-д шинэ цаг inject хийнэ (body-г дахин compile хийхгүй)
+      const body = (snap.data().body || '').replace(
+        /(## LIVE OS CONTEXT \[[\d-]+)(])/,
+        `$1 ${timeStr} Shanghai$2`
+      );
+      return body;
+    }
+  } catch {}
+  // Cache miss → full compile + save
+  return compileLiveContext(uid);
 }
 
 // ── BUILD PROMPT — HSK coaching context packager ──────────────────
@@ -371,6 +401,7 @@ async function saveBilegProfile(updates, uid = UID) {
       { ...updates, updatedAt: new Date().toISOString() },
       { merge: true }
     );
+    compileLiveContext(uid).catch(() => {});
   } catch {}
 }
 
@@ -427,6 +458,7 @@ async function addTask(text, uid = UID) {
     await dbPersonal.collection(`users/${uid}/tasks`).add({
       text, done: false, createdAt: new Date().toISOString(),
     });
+    compileLiveContext(uid).catch(() => {});
   } catch {}
 }
 async function doneTask(index, uid = UID) {
@@ -437,6 +469,7 @@ async function doneTask(index, uid = UID) {
     await dbPersonal.doc(`users/${uid}/tasks/${task.id}`).update({
       done: true, doneAt: new Date().toISOString(),
     });
+    compileLiveContext(uid).catch(() => {});
     return task.text;
   } catch { return null; }
 }
@@ -479,6 +512,7 @@ async function logRoutine(key, uid = UID) {
     { [key]: true, updatedAt: new Date().toISOString() },
     { merge: true }
   );
+  compileLiveContext(uid).catch(() => {});
 }
 
 async function logWater(ml, uid = UID) {
@@ -2079,6 +2113,7 @@ async function handleText(msg, ctx = {}) {
     };
     try {
       await dbPersonal.collection(`users/${uid}/finance/txns/records`).doc(txn.id).set(txn);
+      compileLiveContext(uid).catch(() => {});
     } catch (e) { console.error('[Finance] Firestore:', e.message); }
 
     const symb = currency==='MNT' ? '₮' : currency==='USD' ? '$' : '¥';
@@ -2707,6 +2742,7 @@ async function _updateChallengeScore(uid, role, pct, done, total) {
       { [role]: { pct, done, total, uid, updatedAt: new Date().toISOString() } },
       { merge: true }
     );
+    compileLiveContext(uid).catch(() => {});
     // GAP-03: merge: true — race condition сэргийлэх
     const streakRef  = dbPersonal.doc(`challenge/${CHID}/streaks/${uid}`);
     const streakSnap = await streakRef.get();
