@@ -1,17 +1,24 @@
 {
-  "name": "My Jarvis",
-  "short_name": "Jarvis",
-  "description": "Билэгийн хувийн туслах",
-  "start_url": "./index.html",
+  "name": "J.A.R.V.I.S",
+  "short_name": "JARVIS",
+  "description": "Билэгийн хувийн OS",
+  "start_url": "./dashboard.html",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

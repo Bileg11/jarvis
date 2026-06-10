@@ -1,5 +1,10 @@
-const CACHE = 'jarvis-v19';
-const ASSETS = ['./', './index.html', './tracker.html', './profile.html', './chat.html', './life.html', './style.css', './app.js', './gemini.js', './intel.js', './firebase-config.js', './manifest.json'];
+const CACHE = 'jarvis-v20';
+const ASSETS = [
+  './', './dashboard.html', './index.html', './tracker.html',
+  './profile.html', './chat.html', './life.html', './finance.html', './hsk.html',
+  './style.css', './app.js', './gemini.js', './intel.js', './firebase-config.js',
+  './manifest.json', './icon-192.png', './icon-512.png', './apple-touch-icon.png',
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
