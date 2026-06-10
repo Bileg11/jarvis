@@ -160,6 +160,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* FAIL */
 #screen-fail{align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:0}
 
+/* LISTEN */
+.listen-btn{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,rgba(96,165,250,.15),rgba(96,165,250,.05));border:2px solid rgba(96,165,250,.4);font-size:40px;cursor:pointer;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.listen-btn:active{transform:scale(.92);background:rgba(96,165,250,.25)}
+.listen-btn.playing{border-color:var(--blue);box-shadow:0 0 0 8px rgba(96,165,250,.15);animation:listenPulse 1s infinite}
+@keyframes listenPulse{0%,100%{box-shadow:0 0 0 8px rgba(96,165,250,.15)}50%{box-shadow:0 0 0 16px rgba(96,165,250,.05)}}
+
+/* MATCH */
+.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+.match-item{background:var(--surface);border:2px solid var(--border);border-radius:14px;padding:14px 10px;text-align:center;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;min-height:52px;display:flex;align-items:center;justify-content:center}
+.match-item:active{transform:scale(.96)}
+.match-item.selected{border-color:var(--blue);background:rgba(96,165,250,.12);color:var(--blue)}
+.match-item.matched{border-color:var(--green-border);background:var(--green-dim);color:var(--green);cursor:default}
+.match-item.wrong-shake{animation:shake .3s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
 /* TOAST */
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--border);border-radius:14px;padding:12px 20px;font-size:13px;color:var(--text2);z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(10px)}
 .toast.show{opacity:1}
@@ -243,6 +258,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
   </div>
   <div class="quiz-footer">
     <button class="btn-continue hidden" id="btn-cont" onclick="nextQuestion()">Үргэлжлүүлэх</button>
+  </div>
+</div>
+
+<!-- MATCH SCREEN -->
+<div class="screen" id="screen-match">
+  <div class="quiz-header">
+    <div class="quiz-close" onclick="skipMatch()">✕</div>
+    <div style="flex:1;text-align:center;font-weight:700;font-size:14px;color:var(--text2)">🔗 Хосолж тааруул</div>
+    <div style="width:36px"></div>
+  </div>
+  <div style="padding:16px 20px 8px;font-size:12px;color:var(--text3);text-transform:uppercase;letter-spacing:1px">Зөв хосуудыг ол</div>
+  <div style="padding:0 20px;flex:1">
+    <div class="match-grid" id="match-grid"></div>
+  </div>
+  <div style="padding:16px 20px 32px">
+    <button class="btn-continue hidden" id="btn-match-cont" onclick="finishMatch()">Дууслаа ✓</button>
   </div>
 </div>
 
@@ -456,19 +487,66 @@ function renderPath() {
   });
 }
 
+// ── WEB SPEECH API ───────────────────────────────────────────────
+function speak(text) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'zh-CN'; u.rate = 0.85;
+  window.speechSynthesis.speak(u);
+}
+
+// ── TONE VARIANTS ────────────────────────────────────────────────
+const TONE_MAP = {
+  'ā':['á','ǎ','à'],'á':['ā','ǎ','à'],'ǎ':['ā','á','à'],'à':['ā','á','ǎ'],
+  'ē':['é','ě','è'],'é':['ē','ě','è'],'ě':['ē','é','è'],'è':['ē','é','ě'],
+  'ī':['í','ǐ','ì'],'í':['ī','ǐ','ì'],'ǐ':['ī','í','ì'],'ì':['ī','í','ǐ'],
+  'ō':['ó','ǒ','ò'],'ó':['ō','ǒ','ò'],'ǒ':['ō','ó','ò'],'ò':['ō','ó','ǒ'],
+  'ū':['ú','ǔ','ù'],'ú':['ū','ǔ','ù'],'ǔ':['ū','ú','ù'],'ù':['ū','ú','ǔ'],
+};
+function getToneOptions(pinyin) {
+  for (const [ch, alts] of Object.entries(TONE_MAP)) {
+    if (pinyin.includes(ch)) {
+      const opts = alts.map(a => pinyin.replace(ch, a));
+      return [pinyin, ...opts].sort(() => Math.random()-.5);
+    }
+  }
+  return null;
+}
+
 // ── QUIZ LOGIC ───────────────────────────────────────────────────
-function makeQuestion(word) {
-  // 50% Хятад→Монгол, 50% Монгол→Хятад
-  const type = Math.random() < 0.5 ? 'zh_to_mn' : 'mn_to_zh';
+function makeQuestion(word, forceType) {
+  const r = Math.random();
+  let type = forceType;
+  if (!type) {
+    const toneOpts = getToneOptions(word.pinyin);
+    if (r < 0.3) type = 'zh_to_mn';
+    else if (r < 0.55) type = 'mn_to_zh';
+    else if (r < 0.78) type = 'listen';
+    else if (toneOpts) type = 'tone';
+    else type = 'zh_to_mn';
+  }
+
   if (type === 'zh_to_mn') {
     const wrong = HSK_VOCAB_ALL.filter(w=>w.word!==word.word&&w.definition!==word.definition)
       .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.definition);
-    return { word, type:'zh_to_mn', correct:word.definition, options:[...wrong,word.definition].sort(()=>Math.random()-.5) };
-  } else {
+    return { word, type, correct:word.definition, options:[...wrong,word.definition].sort(()=>Math.random()-.5) };
+  }
+  if (type === 'mn_to_zh') {
     const wrong = HSK_VOCAB_ALL.filter(w=>w.word!==word.word)
       .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.word);
-    return { word, type:'mn_to_zh', correct:word.word, options:[...wrong,word.word].sort(()=>Math.random()-.5) };
+    return { word, type, correct:word.word, options:[...wrong,word.word].sort(()=>Math.random()-.5) };
   }
+  if (type === 'listen') {
+    const wrong = HSK_VOCAB_ALL.filter(w=>w.word!==word.word&&w.definition!==word.definition)
+      .sort(()=>Math.random()-.5).slice(0,3).map(w=>w.definition);
+    return { word, type, correct:word.definition, options:[...wrong,word.definition].sort(()=>Math.random()-.5) };
+  }
+  if (type === 'tone') {
+    const opts = getToneOptions(word.pinyin) || [word.pinyin];
+    return { word, type, correct:word.pinyin, options:opts.slice(0,4) };
+  }
+  return makeQuestion(word, 'zh_to_mn');
 }
 
 function startLesson(idx) {
@@ -490,32 +568,60 @@ function renderQuestion() {
   document.getElementById('quiz-prog').style.width = pct+'%';
   document.getElementById('quiz-hearts').textContent = '❤️'.repeat(quiz.hearts)+'🖤'.repeat(MAX_HEARTS-quiz.hearts);
 
-  // Type label + card
+  const cont = document.getElementById('btn-cont');
+  cont.className='btn-continue hidden'; quiz.answered=false;
+  const area = document.getElementById('choices-area');
+  area.innerHTML='';
+
   if (q.type === 'zh_to_mn') {
     document.getElementById('q-type-label').textContent = 'Монгол утгыг сонго';
     document.getElementById('quiz-card').innerHTML = `
       <div class="quiz-hanzi">${q.word.word}</div>
       <div class="quiz-pinyin">${q.word.pinyin}</div>`;
-  } else {
+    _renderChoices(q, area);
+
+  } else if (q.type === 'mn_to_zh') {
     document.getElementById('q-type-label').textContent = 'Хятад үгийг сонго';
     document.getElementById('quiz-card').innerHTML = `
       <div class="quiz-mn-word">${q.word.definition}</div>
       <div class="quiz-mn-sub">${q.word.pinyin}</div>`;
+    _renderChoices(q, area);
+
+  } else if (q.type === 'listen') {
+    document.getElementById('q-type-label').textContent = 'Сонсоод утгыг сонго';
+    document.getElementById('quiz-card').innerHTML = `
+      <button class="listen-btn" id="listen-play" onclick="playCurrentWord()">🔊</button>
+      <div class="quiz-pinyin" style="opacity:.4">_ _ _</div>`;
+    setTimeout(() => playCurrentWord(), 400);
+    _renderChoices(q, area);
+
+  } else if (q.type === 'tone') {
+    document.getElementById('q-type-label').textContent = 'Зөв тонг сонго';
+    document.getElementById('quiz-card').innerHTML = `
+      <div class="quiz-hanzi">${q.word.word}</div>
+      <div class="quiz-mn-sub" style="font-size:13px;margin-top:6px">${q.word.definition}</div>`;
+    _renderChoices(q, area, true);
   }
+}
 
-  const cont = document.getElementById('btn-cont');
-  cont.className='btn-continue hidden'; quiz.answered=false;
-
-  const area = document.getElementById('choices-area');
-  area.innerHTML='';
+function _renderChoices(q, area, bigText=false) {
   const choices = document.createElement('div'); choices.className='choices';
   q.options.forEach((opt,i) => {
     const btn = document.createElement('button'); btn.className='choice';
-    btn.innerHTML = `<span class="choice-key">${KEYS[i]}</span><span class="choice-text">${opt}</span>`;
+    const size = bigText ? 'font-size:20px;letter-spacing:1px' : '';
+    btn.innerHTML = `<span class="choice-key">${KEYS[i]}</span><span class="choice-text" style="${size}">${opt}</span>`;
     btn.onclick = () => checkAnswer(opt, btn);
     choices.appendChild(btn);
   });
   area.appendChild(choices);
+}
+
+function playCurrentWord() {
+  if (!quiz) return;
+  const q = quiz.questions[quiz.current];
+  const btn = document.getElementById('listen-play');
+  if (btn) { btn.classList.add('playing'); setTimeout(() => btn.classList.remove('playing'), 1500); }
+  speak(q.word.word);
 }
 
 function checkAnswer(chosen, btn) {
@@ -549,6 +655,7 @@ function nextQuestion() {
   quiz.current++;
   if (quiz.current >= quiz.questions.length) {
     if (!quiz.isReview && quiz.wrongWords.length>0) { startReview(); return; }
+    if (!quiz.isPlacement && !quiz.matchDone) { startMatch(); return; }
     finishLesson(); return;
   }
   renderQuestion();
@@ -563,6 +670,66 @@ function startReview() {
   document.getElementById('choices-area').innerHTML='';
   document.getElementById('quiz-card').innerHTML=`<div class="quiz-hanzi">🔄</div><div class="quiz-pinyin">Буруу үгсийг давтана</div>`;
   quiz.answered=true;
+}
+
+// ── MATCHING PAIRS ───────────────────────────────────────────────
+let matchState = null;
+function startMatch() {
+  const lesson = LESSONS[quiz.lessonIdx];
+  const words = lesson.words.slice(0,4); // 4 хос
+  const zhItems = words.map(w => ({ id:w.word, text:w.word, pair:w.definition, side:'zh' }));
+  const mnItems = words.map(w => ({ id:w.word, text:w.definition, pair:w.word, side:'mn' }));
+  matchState = {
+    items: [...zhItems, ...mnItems].sort(() => Math.random()-.5),
+    selected: null,
+    matched: [],
+  };
+  renderMatch();
+  showScreen('match');
+}
+
+function renderMatch() {
+  const grid = document.getElementById('match-grid');
+  grid.innerHTML = '';
+  matchState.items.forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'match-item' +
+      (matchState.matched.includes(item.id) ? ' matched' : '') +
+      (matchState.selected?.id === item.id && matchState.selected?.side === item.side ? ' selected' : '');
+    btn.textContent = item.text;
+    if (!matchState.matched.includes(item.id)) btn.onclick = () => selectMatch(item, btn);
+    grid.appendChild(btn);
+  });
+  // Бүгд таарсан бол continue харуулна
+  const allDone = matchState.matched.length === 4;
+  const cont = document.getElementById('btn-match-cont');
+  cont.className = allDone ? 'btn-continue green' : 'btn-continue hidden';
+}
+
+function selectMatch(item, btn) {
+  if (!matchState.selected) {
+    matchState.selected = item;
+    renderMatch(); return;
+  }
+  const prev = matchState.selected;
+  matchState.selected = null;
+  if (prev.id === item.id && prev.side !== item.side) {
+    // Зөв хос
+    matchState.matched.push(item.id);
+    showXpBurst(5);
+  } else {
+    // Буруу
+    btn.classList.add('wrong-shake');
+    setTimeout(() => btn.classList.remove('wrong-shake'), 300);
+  }
+  renderMatch();
+}
+
+function skipMatch() {
+  quiz.matchDone = true; finishLesson();
+}
+function finishMatch() {
+  quiz.matchDone = true; finishLesson();
 }
 
 function finishLesson() {
