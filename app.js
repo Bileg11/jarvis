@@ -843,6 +843,11 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => refreshJarvis(), 5 * 60 * 1000);
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // Хуучин SW бүгдийг unregister хийгээд шинийг бүртгэнэ
+    navigator.serviceWorker.getRegistrations().then(regs => {
+      regs.forEach(r => r.unregister());
+    }).then(() => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
   }
 });

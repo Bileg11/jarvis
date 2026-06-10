@@ -190,6 +190,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="hsk-vocab.js"></script>
 <script>
+// ── SW UNREGISTER (хуучин cache цэвэрлэнэ) ──────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  });
+}
+
 // ── FIREBASE INIT ────────────────────────────────────────────────
 window.addEventListener('load', () => {
   firebase.initializeApp({
