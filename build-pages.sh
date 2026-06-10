@@ -47,6 +47,12 @@ cat > _site/_headers <<'HEADERS'
   Cache-Control: no-cache, must-revalidate
 HEADERS
 
+# ── Redirects: /hsk → /hsk-signup.html ───────────────────────────
+cat > _site/_redirects <<'REDIRECTS'
+/hsk           /hsk-signup.html  302
+/hsk-app       /hsk-signup.html  302
+REDIRECTS
+
 # ── hsk.html болон бусад HTML-д ч cache-bust нэмэх ─────────────────
 for f in _site/*.html; do
   [ -f "$f" ] && sed -i.bak -E "s|(src=\"[a-zA-Z0-9_./-]+\.js)\"|\1?b=${BUILD_ID}\"|g; s|(href=\"[a-zA-Z0-9_./-]+\.css)\"|\1?b=${BUILD_ID}\"|g" "$f" && rm -f "$f.bak"
