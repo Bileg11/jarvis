@@ -256,7 +256,36 @@
     .os-mini-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 4px; }
     .os-mini-val   { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.85); }
     .os-mini-sub   { font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+
+    /* ── Execution Engine Live Widget ──────────────────────────── */
+    .exec-row        { display:flex; align-items:flex-start; gap:10px; padding:8px 0; }
+    .exec-row + .exec-row { border-top: 1px solid rgba(255,255,255,0.05); }
+    .exec-dot        { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+    .exec-dot-active { background:#22c55e; box-shadow:0 0 8px rgba(34,197,94,0.6); animation:exec-pulse 1.5s ease-in-out infinite; }
+    .exec-dot-elapsed{ background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.6); animation:exec-pulse 0.8s ease-in-out infinite; }
+    .exec-dot-pending{ background:rgba(255,255,255,0.2); }
+    @keyframes exec-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .exec-label      { font-size:13px; font-weight:600; color:rgba(255,255,255,0.85); }
+    .exec-countdown  { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px; }
+    .exec-countdown.active  { color:rgba(34,197,94,0.9); }
+    .exec-countdown.elapsed { color:rgba(239,68,68,0.9); }
+    .exec-range      { font-size:10px; color:rgba(255,255,255,0.3); margin-top:1px; }
+    .exec-prog-bg    { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:7px; overflow:hidden; }
+    .exec-prog-fill  { height:100%; background:linear-gradient(90deg,#22c55e,#86efac); border-radius:2px; transition:width .9s linear; }
+    .exec-done-all   { text-align:center; padding:10px 0; font-size:13px; color:rgba(34,197,94,0.7); }
+    #os-exec-widget.elapsed-mode { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.06); animation:exec-border-pulse 1s ease-in-out infinite; }
+    @keyframes exec-border-pulse { 0%,100%{border-color:rgba(239,68,68,0.35)} 50%{border-color:rgba(239,68,68,0.7)} }
   </style>
+
+  <!-- ── Execution Engine Live Widget ─────────────────────────── -->
+  <div class="v22-label" id="os-exec-label" style="display:none">⚡ Sprint Window</div>
+  <div class="v22-card" id="os-exec-widget" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div class="v22-title" style="margin-bottom:0;font-size:10px">⚡ EXECUTION ENGINE</div>
+      <span id="os-exec-live-dot" style="width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.7);display:inline-block"></span>
+    </div>
+    <div id="os-exec-body"></div>
+  </div>
 
   <!-- ── Sprint 1: JARVIS v2.2 Live Panel ───────────────────────── -->
   <div class="v22-label">📊 Дэлгэрэнгүй</div>
@@ -763,6 +792,155 @@
             .catch(function () {});
         }
       };
+
+      // ── Execution Engine Live Widget ──────────────────────────────
+      (function () {
+        var _wins      = [];
+        var _ticker    = null;
+        var _prevDone  = new Set();
+
+        function _todaySH() {
+          return new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+        }
+        function _fmtTime(iso) {
+          var d = new Date(iso);
+          return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+        }
+        function _fmtDur(ms) {
+          var abs = Math.abs(ms);
+          var h   = String(Math.floor(abs / 3600000)).padStart(2,'0');
+          var m   = String(Math.floor((abs % 3600000) / 60000)).padStart(2,'0');
+          var s   = String(Math.floor((abs % 60000) / 1000)).padStart(2,'0');
+          return h > '00' ? h + ':' + m + ':' + s : m + ':' + s;
+        }
+
+        function _render() {
+          var now     = Date.now();
+          var widget  = document.getElementById('os-exec-widget');
+          var label   = document.getElementById('os-exec-label');
+          var body    = document.getElementById('os-exec-body');
+          if (!widget || !body) return;
+
+          var active  = null, elapsed = null, pending = null;
+          var doneAll = true;
+          _wins.forEach(function (w) {
+            if (w.status === 'ACTIVE')   { active  = w; doneAll = false; }
+            if (w.status === 'ELAPSED')  { elapsed = w; doneAll = false; }
+            if (w.status === 'PENDING')  { if (!pending || new Date(w.start) < new Date(pending.start)) pending = w; doneAll = false; }
+            if (w.status !== 'COMPLETED' && w.status !== 'INTERCEPTED') doneAll = false;
+          });
+          // All COMPLETED / INTERCEPTED → doneAll
+          var completedCount = _wins.filter(function(w){ return w.status==='COMPLETED'||w.status==='INTERCEPTED'; }).length;
+          doneAll = completedCount === _wins.length && _wins.length > 0;
+
+          var html = '';
+
+          // ACTIVE — green countdown
+          if (active) {
+            var endMs  = new Date(active.end).getTime();
+            var left   = endMs - now;
+            var total  = new Date(active.end) - new Date(active.start);
+            var pct    = Math.min(100, Math.max(0, Math.round((1 - left / total) * 100)));
+            html += '<div class="exec-row">' +
+              '<div class="exec-dot exec-dot-active"></div>' +
+              '<div style="flex:1">' +
+                '<div class="exec-label">' + (active.label || active.task_id) + '</div>' +
+                '<div class="exec-countdown active">' + _fmtDur(left) + ' <span style="font-size:12px;font-weight:400;color:rgba(34,197,94,0.6)">үлдсэн</span></div>' +
+                '<div class="exec-range">' + _fmtTime(active.start) + ' → ' + _fmtTime(active.end) + '</div>' +
+                '<div class="exec-prog-bg"><div class="exec-prog-fill" style="width:' + pct + '%"></div></div>' +
+              '</div></div>';
+          }
+
+          // ELAPSED — red pulsing
+          if (elapsed) {
+            var overMs = now - new Date(elapsed.end).getTime();
+            html += '<div class="exec-row">' +
+              '<div class="exec-dot exec-dot-elapsed"></div>' +
+              '<div style="flex:1">' +
+                '<div class="exec-label">' + (elapsed.label || elapsed.task_id) + '</div>' +
+                '<div class="exec-countdown elapsed">+' + _fmtDur(overMs) + ' <span style="font-size:12px;font-weight:400;color:rgba(239,68,68,0.6)">хэтэрлээ</span></div>' +
+                '<div class="exec-range" style="color:rgba(239,68,68,0.5)">Telegram: <code style="background:rgba(239,68,68,0.1);padding:1px 5px;border-radius:4px">/done ' + elapsed.task_id + '</code></div>' +
+              '</div></div>';
+          }
+
+          // NEXT PENDING (зөвхөн active/elapsed байхгүй үед)
+          if (!active && !elapsed && pending) {
+            var toStart = new Date(pending.start).getTime() - now;
+            if (toStart > 0) {
+              html += '<div class="exec-row">' +
+                '<div class="exec-dot exec-dot-pending"></div>' +
+                '<div style="flex:1">' +
+                  '<div class="exec-label" style="color:rgba(255,255,255,0.4)">Дараагийн: ' + (pending.label || pending.task_id) + '</div>' +
+                  '<div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:3px">' + _fmtTime(pending.start) + '-д эхэлнэ · ' + _fmtDur(toStart) + ' үлдлээ</div>' +
+                '</div></div>';
+            }
+          }
+
+          // All done
+          if (doneAll) {
+            html = '<div class="exec-done-all">✅ Өнөөдрийн бүх цонх дууссан · ' + completedCount + '/' + _wins.length + '</div>';
+          }
+
+          if (!html && !doneAll) {
+            widget.style.display = 'none';
+            if (label) label.style.display = 'none';
+            return;
+          }
+
+          widget.style.display = '';
+          if (label) label.style.display = '';
+          body.innerHTML = html;
+
+          // ELAPSED border pulse
+          widget.classList.toggle('elapsed-mode', !!elapsed && !active);
+        }
+
+        function _startTicker() {
+          if (_ticker) return;
+          _ticker = setInterval(_render, 1000);
+        }
+        function _stopTicker() {
+          if (_ticker) { clearInterval(_ticker); _ticker = null; }
+        }
+
+        // onSnapshot — Execution Engine schedule
+        db.doc('schedules/' + _todaySH()).onSnapshot(function (snap) {
+          if (!snap.exists) {
+            _wins = [];
+            _stopTicker();
+            var w = document.getElementById('os-exec-widget');
+            var l = document.getElementById('os-exec-label');
+            if (w) w.style.display = 'none';
+            if (l) l.style.display = 'none';
+            return;
+          }
+          var data = snap.data();
+          if (!data.is_calibrated || !Array.isArray(data.windows) || !data.windows.length) {
+            _wins = [];
+            _stopTicker();
+            return;
+          }
+
+          // Completion flash: ACTIVE/ELAPSED → COMPLETED шилжсэн үед
+          var prevElapsed = _wins.filter(function(w){ return w.status==='ELAPSED'||w.status==='ACTIVE'; }).map(function(w){ return w.task_id; });
+          var newCompleted = data.windows.filter(function(w){
+            return (w.status==='COMPLETED'||w.status==='INTERCEPTED') && prevElapsed.indexOf(w.task_id) >= 0;
+          });
+          if (newCompleted.length) {
+            var widget = document.getElementById('os-exec-widget');
+            if (widget) {
+              widget.style.transition = 'background 0.3s';
+              widget.style.background = 'rgba(34,197,94,0.15)';
+              setTimeout(function(){ widget.style.background = ''; }, 1200);
+            }
+          }
+
+          _wins = data.windows;
+          _render();
+          var hasLive = _wins.some(function(w){ return w.status==='ACTIVE'||w.status==='ELAPSED'||w.status==='PENDING'; });
+          if (hasLive) _startTicker(); else _stopTicker();
+        });
+      })();
     })();
   </script>
 </body>
