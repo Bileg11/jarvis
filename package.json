@@ -16,7 +16,10 @@
   "devDependencies": {
     "electron": "^31.0.0",
     "electron-builder": "^24.13.3",
-    "puppeteer-core": "^25.1.0"
+    "html-minifier-terser": "^7.2.0",
+    "puppeteer-core": "^25.1.0",
+    "sharp": "^0.34.5",
+    "terser": "^5.48.0"
   },
   "build": {
     "appId": "mn.lfs.jarvis-os",
@@ -69,11 +72,16 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/icon.png",
@@ -90,7 +98,10 @@
       "shortcutName": "T.H.R.E.E. OS",
       "installerIcon": "assets/icon.png",
       "installerHeaderIcon": "assets/icon.png",
-      "installerLanguages": ["mn", "en"],
+      "installerLanguages": [
+        "mn",
+        "en"
+      ],
       "license": null,
       "uninstallDisplayName": "T.H.R.E.E. OS — Uninstall"
     }

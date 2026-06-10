@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
   /* ═══════════════════════════════════════════════════════════
@@ -1890,8 +1890,25 @@
     if(typeof clearChatHistory==='function')clearChatHistory();
     msgsEl.innerHTML='';showEmpty();
   }
-  window.syncChatFromFirestore=function(){
-    renderHistory();document.dispatchEvent(new Event('jarvis:ready'));
+  window.syncChatFromFirestore = async function() {
+    // Firestore-оос татаж localStorage-тай merge хийнэ (cross-device sync)
+    if (window.DB?.loadChatHistory) {
+      try {
+        const cloud = await window.DB.loadChatHistory();
+        if (cloud && cloud.length > 0) {
+          const local = JSON.parse(localStorage.getItem('jarvis_chat_history') || '[]');
+          if (cloud.length >= local.length) {
+            localStorage.setItem('jarvis_chat_history', JSON.stringify(cloud));
+            if (typeof _chatHistory !== 'undefined') {
+              _chatHistory.length = 0;
+              cloud.forEach(m => _chatHistory.push(m));
+            }
+          }
+        }
+      } catch(e) { console.warn('[Chat sync]', e); }
+    }
+    renderHistory();
+    document.dispatchEvent(new Event('jarvis:ready'));
   };
 
   // ═══════════════════════════════════════════════════════════
