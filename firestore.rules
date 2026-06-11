@@ -1,0 +1,40 @@
+rules_version = '2';
+// ── T.H.R.E.E. OS — Firestore Security Rules ──────────────────────
+// Зарчим: Хэрэглэгч ЗӨВХӨН өөрийн датад хүрнэ. Telegram bot / Railway
+// нь Admin SDK ашигладаг тул эдгээр rule-ийг бүрэн тойрно (server бичилт ажиллана).
+// Web client (browser) зөвхөн доорх rule-аар хязгаарлагдана.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Хэрэглэгчийн хувийн дата (finance, routines, hsk, meta г.м) ──
+    // Зөвхөн эзэн нь уншиж/бичнэ. Бусдын finance харах БОЛОМЖГҮЙ.
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── Challenge (Билэг vs Маралаа — хуваалцсан) ──
+    // Нэвтэрсэн хэрэглэгч уншина. Бичилт зөвхөн server (bot admin SDK).
+    match /challenge/{document=**} {
+      allow read:  if request.auth != null;
+      allow write: if false;
+    }
+
+    // ── Execution Engine schedules — уншина, server бичнэ ──
+    match /schedules/{document=**} {
+      allow read:  if request.auth != null;
+      allow write: if false;
+    }
+
+    // ── Server-only collections (client хүрэхгүй) ──
+    // telegram_lookup (chatId→uid), sprint_users (XP), telegram_inbox
+    // Эдгээрийг зөвхөн Admin SDK уншиж/бичнэ.
+    match /telegram_lookup/{document=**} { allow read, write: if false; }
+    match /sprint_users/{document=**}    { allow read, write: if false; }
+
+    // ── Default: бусад бүх замыг хориглоно (Admin SDK тойрно) ──
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

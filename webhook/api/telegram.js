@@ -3188,12 +3188,38 @@ module.exports.processOutbox    = processOutbox;
 // Server startup-д Билэгийн профайлыг seed хийнэ
 seedBilegProfile().catch(e => console.error('[Seed] startup error:', e.message));
 
+// ── update_id idempotency — Telegram retry-д команд давхар биелэхээс сэргийлнэ ──
+const _seenUpdates = new Set();
+const _seenOrder   = [];
+function _alreadyProcessed(updateId) {
+  if (updateId == null) return false;
+  if (_seenUpdates.has(updateId)) return true;
+  _seenUpdates.add(updateId); _seenOrder.push(updateId);
+  if (_seenOrder.length > 2000) { _seenUpdates.delete(_seenOrder.shift()); }
+  return false;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(200).send('J.A.R.V.I.S v2.2 OK');
+
+  // ── ХАМГААЛАЛТ 1: secret_token шалгана (fake update хориглоно) ──
+  // setWebhook дээр secret_token тохируулсан бол л шалгана (хоосон үед алгасна).
+  const SECRET = process.env.TG_WEBHOOK_SECRET;
+  if (SECRET && req.headers['x-telegram-bot-api-secret-token'] !== SECRET) {
+    console.warn('[Webhook] Буруу secret_token — татгалзав');
+    return res.status(401).json({ ok: false });
+  }
+
   res.status(200).json({ ok: true });
   try {
     const upd = req.body;
     if (!upd) return;
+
+    // ── ХАМГААЛАЛТ 2: update_id давхардал шалгана (idempotency) ──
+    if (_alreadyProcessed(upd.update_id)) {
+      console.log('[Webhook] Давхар update_id алгаслаа:', upd.update_id);
+      return;
+    }
 
     // ── Dynamic user routing ──────────────────────────────────────
     const rawChatId = String(
