@@ -21,3 +21,9 @@ Update JARVIS.app/
 
 # Cloudflare Pages build output
 _site/
+
+# Хувийн санхүүгийн дата — хэзээ ч commit хийхгүй
+stmt.pdf
+*.pdf
+支付宝交易明细*.csv
+fin_import.json

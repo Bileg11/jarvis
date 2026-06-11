@@ -13,7 +13,6 @@ cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.h
 
 # Ханз app
 cp hsk-vocab.js _site/ 2>/dev/null || true
-cp fin_import.json _site/ 2>/dev/null || true
 
 # Icons
 cp icon-192.png icon-512.png apple-touch-icon.png _site/ 2>/dev/null || true
