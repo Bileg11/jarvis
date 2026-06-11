@@ -295,6 +295,21 @@ body{
   </div>
 </div>
 
+<!-- GRAMMAR INTRO -->
+<div class="screen" id="screen-grammar">
+  <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:32px 24px;max-width:420px;margin:0 auto;width:100%">
+    <div style="text-align:center;font-size:48px;margin-bottom:8px">💡</div>
+    <div style="text-align:center;font-size:12px;font-weight:700;letter-spacing:1.5px;color:var(--gold);text-transform:uppercase;margin-bottom:20px">Дүрмийн зөвлөмж</div>
+    <div class="glassy" style="border-radius:20px;padding:24px;margin-bottom:24px">
+      <div id="gram-title" style="font-size:20px;font-weight:800;margin-bottom:6px"></div>
+      <div id="gram-pinyin" style="font-size:14px;color:var(--blue);font-weight:600;margin-bottom:16px"></div>
+      <div id="gram-body" style="font-size:15px;line-height:1.7;color:rgba(255,255,255,.88)"></div>
+      <div id="gram-example" style="margin-top:16px;padding:14px 16px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:12px;font-size:14px;line-height:1.6"></div>
+    </div>
+    <button class="btn-big green" style="max-width:none" onclick="startGrammarLesson()">Ойлголоо, эхэлье ➜</button>
+  </div>
+</div>
+
 <!-- RESULT -->
 <div class="screen" id="screen-result">
   <div class="result-icon" id="res-icon">🎉</div>
@@ -567,6 +582,25 @@ function makeQuestion(word, forceType) {
   return makeQuestion(word, 'zh_to_mn');
 }
 
+// ── ДҮРМИЙН ЗӨВЛӨМЖ (Монгол логикоор хятад дүрэм) ──────────────
+const GRAMMAR_TIPS = [
+  { t:'的 — харьяалал', p:'de', b:'Хятадын 的 нь Монголын <b>-ын/-ийн</b> залгавартай яг адил. Эзэмшил, харьяалал заана.', e:'我的书 = миний <b>ном</b> (我=би, 的=-ийн, 书=ном)' },
+  { t:'了 — дууссан үйлдэл', p:'le', b:'了 нь үйлдэл <b>хийгдэж дууссаныг</b> заана — Монголын <b>-лаа/-лээ</b> shig.', e:'我吃了 = би <b>идлээ</b> (吃=идэх, 了=-лээ)' },
+  { t:'Үгийн дараалал SVO', p:'word order', b:'Монгол: <b>Би хоол идне</b> (SOV). Хятад: <b>Би идэх хоол</b> (SVO). Үйл үг объектын <b>өмнө</b> ордог!', e:'我吃饭 = би идэх хоол (我=би, 吃=идэх, 饭=хоол)' },
+  { t:'在 — байрлал / одоо үргэлжлэх', p:'zài', b:'在 нь <b>-д/-т байх</b> (байрлал) эсвэл одоо <b>хийж байгааг</b> заана.', e:'我在家 = би <b>гэртээ</b> (在=-д, 家=гэр)' },
+  { t:'比 — харьцуулалт', p:'bǐ', b:'比 нь <b>-аас илүү</b> гэсэн харьцуулалт. A 比 B = A нь B-ээс илүү.', e:'我比他高 = би түүн<b>ээс өндөр</b> (比=-ээс, 高=өндөр)' },
+  { t:'会 / 能 / 可以 — чадвар', p:'huì/néng/kěyǐ', b:'会=сурсан чадвар, 能=бие махбодийн чадвар, 可以=зөвшөөрөл. Гурвуулаа <b>"чадна"</b>.', e:'我会说 = би ярьж <b>чадна</b> (会=чадах, 说=ярих)' },
+  { t:'因为...所以 — учир шалтгаан', p:'yīnwèi...suǒyǐ', b:'因为=<b>учир нь</b>, 所以=<b>тиймээс</b>. Монголтой яг адил бүтэц.', e:'因为累，所以睡 = <b>ядарсан учраас</b> унтав' },
+  { t:'虽然...但是 — хэдийгээр', p:'suīrán...dànshì', b:'虽然=<b>хэдийгээр</b>, 但是=<b>гэхдээ</b>. Эсрэг санааг холбоно.', e:'虽然难，但是有趣 = <b>хэцүү ч сонирхолтой</b>' },
+  { t:'把 — объектыг урагшлуулах', p:'bǎ', b:'把 нь объектыг үйл үгийн <b>өмнө</b> авчирч, түүн дээр <b>юу хийснийг</b> онцолно.', e:'把门关了 = <b>хаалгыг</b> хаав (把=-ыг, 关=хаах)' },
+  { t:'是...的 — онцлох бүтэц', p:'shì...de', b:'是...的 нь <b>хэзээ/хаана/яаж</b> болсныг онцолно. Аль хэдийн болсон үйлдэлд.', e:'我是昨天来的 = би <b>өчигдөр</b> ирсэн' },
+  { t:'吗 / 呢 — асуух нөхцөл', p:'ma / ne', b:'吗 нь <b>тийм/үгүй</b> асуулт (уу/үү). 呢 нь <b>харин чи?</b> гэсэн дагалдах асуулт.', e:'你好吗？ = чи сайн <b>уу</b>? (吗=уу/үү)' },
+  { t:'多 / 少 — хэр их', p:'duō / shǎo', b:'多=олон/их, 少=цөөн/бага. 多少=<b>хэд</b> (тоо асуух).', e:'多少钱？ = <b>хэдэн</b> төгрөг? (多少=хэд, 钱=мөнгө)' },
+  { t:'过 — туршлага', p:'guò', b:'过 нь <b>-ж үзсэн</b> туршлагыг заана — өмнө нэг удаа хийсэн.', e:'我去过 = би <b>очиж үзсэн</b> (去=явах, 过=-ж үзсэн)' },
+  { t:'要 — хүсэл / ирээдүй', p:'yào', b:'要 нь <b>хүсэх</b> эсвэл <b>болох гэж байгааг</b> (ирээдүй) заана.', e:'我要吃 = би идэх <b>гэсэн юм</b> (要=хүсэх)' },
+  { t:'得 — үйлдлийн чанар', p:'de', b:'得 нь үйлдлийг <b>яаж</b> хийснийг тодотгоно (сайн/хурдан гэх мэт).', e:'说得好 = сайн <b>ярьдаг</b> (说=ярих, 得=-аар, 好=сайн)' },
+];
+
 function startLesson(idx) {
   const hearts = state.hearts!==undefined ? state.hearts : MAX_HEARTS;
   if (hearts <= 0) { showToast('❤️ Амьдрал дууссан. Маргааш!'); return; }
@@ -576,6 +610,15 @@ function startLesson(idx) {
     current:0, hearts, xpEarned:0, correct:0, wrongWords:[], isReview:false, answered:false,
   };
   document.getElementById('review-badge').style.display='none';
+  // Хичээл бүрийн эхэнд дүрмийн зөвлөмж (ротацоор)
+  const tip = GRAMMAR_TIPS[idx % GRAMMAR_TIPS.length];
+  document.getElementById('gram-title').innerHTML   = tip.t;
+  document.getElementById('gram-pinyin').textContent = tip.p;
+  document.getElementById('gram-body').innerHTML    = tip.b;
+  document.getElementById('gram-example').innerHTML = '📝 ' + tip.e;
+  showScreen('grammar');
+}
+function startGrammarLesson() {
   showScreen('quiz'); renderQuestion();
 }
 
