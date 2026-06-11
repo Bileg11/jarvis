@@ -280,6 +280,7 @@ let _fDb = null, _fUid = null;
 let _txns = [];
 let _curFilter = 'all';
 let _dispCur = 'CNY';
+let _aiDone = false;
 let _monFilter = '';
 let _txType = 'expense';
 
@@ -321,18 +322,20 @@ async function finInit() {
         saveTxnsLocal(_txns);
         render();
         _setLiveDot(true);
+        // AI зөвлөгөө — дата ачаалагдсаны дараа нэг л удаа
+        if (!_aiDone) { _aiDone = true; getAiAdvice(); }
       }, () => {
         // Firestore холбогдохгүй бол localStorage-аас уна
         _setLiveDot(false);
         _txns = localTxns();
         render();
+        if (!_aiDone) { _aiDone = true; getAiAdvice(); }
       });
   } else {
     _txns = localTxns();
     render();
+    getAiAdvice();
   }
-
-  getAiAdvice();
 }
 
 function _setLiveDot(live) {
