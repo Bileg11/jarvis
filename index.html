@@ -802,11 +802,12 @@ canvas#reactor { display:block; will-change:transform; transform:translateZ(0); 
   /* Allow vertical scroll */
   html, body { overflow-y: auto; height: auto; min-height: 100vh; }
 
-  /* Top bar — compact */
+  /* Top bar — compact + iPhone safe-area (status bar давхцлыг арилгана) */
   .os-bar {
     position: fixed;
-    padding: 0 10px 0 14px;
-    height: var(--bar-h);
+    padding-left: 14px; padding-right: 10px;
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(var(--bar-h) + env(safe-area-inset-top, 0px));
     flex-wrap: nowrap;
   }
   .os-bar-status { display: none; }
