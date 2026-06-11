@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Нэвтрэх — T.H.R.E.E. OS</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0e16;color:#fff;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+body::before{content:'';position:fixed;top:-180px;left:50%;transform:translateX(-50%);width:500px;height:500px;background:radial-gradient(circle,rgba(0,229,255,.12),transparent 68%);pointer-events:none}
+.box{width:100%;max-width:380px;position:relative;z-index:1}
+.logo{text-align:center;margin-bottom:8px;font-size:13px;letter-spacing:3px;color:rgba(0,229,255,.7);font-weight:700}
+.title{text-align:center;font-size:26px;font-weight:800;margin-bottom:6px;letter-spacing:-.5px}
+.sub{text-align:center;font-size:13px;color:rgba(255,255,255,.5);margin-bottom:32px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:600;letter-spacing:.5px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:6px}
+.field input{width:100%;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);border-radius:12px;padding:14px 16px;font-size:15px;color:#fff;outline:none;transition:border-color .15s}
+.field input:focus{border-color:rgba(0,229,255,.5)}
+.btn{width:100%;padding:15px;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;background:linear-gradient(135deg,#00e5ff,#0091ea);color:#0a0e16;margin-top:8px}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:default}
+.err{font-size:13px;color:#ff6b6b;text-align:center;margin-top:14px;min-height:18px;line-height:1.4}
+.err.ok{color:#4ade80}
+.toggle{text-align:center;margin-top:20px;font-size:13px;color:rgba(255,255,255,.5)}
+.toggle a{color:#00e5ff;cursor:pointer;font-weight:600;text-decoration:none}
+.vpn-note{margin-top:24px;padding:12px 14px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;font-size:11px;color:rgba(251,191,36,.85);line-height:1.5;text-align:center}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="logo">T.H.R.E.E. OS</div>
+  <div class="title" id="form-title">Тавтай морил</div>
+  <div class="sub" id="form-sub">Үргэлжлүүлэхийн тулд нэвтэрнэ үү</div>
+
+  <div class="field">
+    <label>Email</label>
+    <input id="email" type="email" placeholder="you@email.com" autocomplete="email">
+  </div>
+  <div class="field">
+    <label>Нууц үг</label>
+    <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password">
+  </div>
+
+  <button class="btn" id="submit-btn" onclick="submitAuth()">Нэвтрэх</button>
+  <div class="err" id="err"></div>
+
+  <div class="toggle" id="toggle">
+    Бүртгэлгүй юу? <a onclick="setMode('signup')">Шинээр бүртгүүлэх</a>
+  </div>
+
+  <div class="vpn-note">
+    ⚠️ Хятадад байгаа бол VPN асаасан байх шаардлагатай<br>(Firebase Auth блоклогддог)
+  </div>
+</div>
+
+<script>
+let _mode = 'login';
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc",
+  authDomain: "jarvis-bileg.firebaseapp.com",
+  projectId: "jarvis-bileg",
+  storageBucket: "jarvis-bileg.firebasestorage.app",
+  messagingSenderId: "59304492638",
+  appId: "1:59304492638:web:9da4e7ceac790d1254becf"
+};
+
+window.addEventListener('load', () => {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  window._auth = firebase.auth();
+  // Аль хэдийн нэвтэрсэн бол шууд апп руу
+  _auth.onAuthStateChanged(u => {
+    if (u) location.replace(new URLSearchParams(location.search).get('next') || '/');
+  });
+});
+
+function setMode(m) {
+  _mode = m;
+  if (m === 'signup') {
+    document.getElementById('form-title').textContent = 'Бүртгүүлэх';
+    document.getElementById('form-sub').textContent = 'Шинэ T.H.R.E.E. OS бүртгэл үүсгэх';
+    document.getElementById('submit-btn').textContent = 'Бүртгүүлэх';
+    document.getElementById('toggle').innerHTML = 'Бүртгэлтэй юу? <a onclick="setMode(\'login\')">Нэвтрэх</a>';
+    document.getElementById('pass').setAttribute('autocomplete','new-password');
+  } else {
+    document.getElementById('form-title').textContent = 'Тавтай морил';
+    document.getElementById('form-sub').textContent = 'Үргэлжлүүлэхийн тулд нэвтэрнэ үү';
+    document.getElementById('submit-btn').textContent = 'Нэвтрэх';
+    document.getElementById('toggle').innerHTML = 'Бүртгэлгүй юу? <a onclick="setMode(\'signup\')">Шинээр бүртгүүлэх</a>';
+    document.getElementById('pass').setAttribute('autocomplete','current-password');
+  }
+  document.getElementById('err').textContent = '';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('email').value.trim();
+  const pass  = document.getElementById('pass').value;
+  const err   = document.getElementById('err');
+  const btn   = document.getElementById('submit-btn');
+  err.className = 'err'; err.textContent = '';
+
+  if (!email || !pass) { err.textContent = 'Email болон нууц үг оруулна уу'; return; }
+  if (pass.length < 6) { err.textContent = 'Нууц үг доод тал нь 6 тэмдэгт'; return; }
+
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const op = _mode === 'signup'
+      ? _auth.createUserWithEmailAndPassword(email, pass)
+      : _auth.signInWithEmailAndPassword(email, pass);
+    await Promise.race([
+      op,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('NET_TIMEOUT')), 20000)),
+    ]);
+    err.className = 'err ok';
+    err.textContent = '✅ Амжилттай! Чиглүүлж байна...';
+    setTimeout(() => location.replace(new URLSearchParams(location.search).get('next') || '/'), 600);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = _mode === 'signup' ? 'Бүртгүүлэх' : 'Нэвтрэх';
+    if (e.message === 'NET_TIMEOUT') err.textContent = '⏱ Сүлжээ хүрсэнгүй. VPN node солиод дахин үзнэ үү.';
+    else if (e.code === 'auth/email-already-in-use') err.textContent = 'Энэ email бүртгэлтэй байна. Нэвтэрнэ үү.';
+    else if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') err.textContent = 'Email эсвэл нууц үг буруу';
+    else if (e.code === 'auth/user-not-found') err.textContent = 'Бүртгэл олдсонгүй. Шинээр бүртгүүлнэ үү.';
+    else if (e.code === 'auth/invalid-email') err.textContent = 'Email буруу байна';
+    else if (e.code === 'auth/network-request-failed') err.textContent = '⏱ Сүлжээ хүрсэнгүй. VPN шалгана уу.';
+    else err.textContent = 'Алдаа: ' + (e.code || e.message);
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') submitAuth(); });
+</script>
+</body>
+</html>

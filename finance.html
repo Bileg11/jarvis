@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Санхүү — JARVIS</title>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -291,15 +291,55 @@ async function finInit() {
   if (window._db) {
     _fDb = window._db;
     await new Promise(resolve => {
-      const t = setTimeout(resolve, 4000);
-      firebase.auth().onAuthStateChanged(u => { clearTimeout(t); _fUid = u?.uid||null; resolve(); });
+      // Cold load дээр эхний callback null байж болзошгүй — бодит user хүлээнэ
+      const t = setTimeout(() => { _fUid = firebase.auth().currentUser?.uid || null; resolve(); }, 6000);
+      firebase.auth().onAuthStateChanged(u => {
+        if (u) { clearTimeout(t); _fUid = u.uid; resolve(); }
+        // null бол хүлээсээр — session сэргээгдэх эсвэл timeout
+      });
     });
+  }
+
+  // Импорт хүсэлт байгаа ч нэвтрээгүй бол → login руу чиглүүлнэ
+  if (!_fUid && new URLSearchParams(location.search).get('import') === 'alipay') {
+    showToast('Эхлээд нэвтэрнэ үү...');
+    setTimeout(() => location.href = 'login?next=' + encodeURIComponent('/finance?import=alipay'), 1200);
+    return;
+  }
+
+  // ── НЭГ УДААГИЙН ИМПОРТ (?import=alipay) ───────────────────────
+  if (_fDb && _fUid && new URLSearchParams(location.search).get('import') === 'alipay') {
+    try {
+      showToast('Alipay хуулга татаж байна...');
+      const res = await fetch('fin_import.json');
+      const txns = await res.json();
+      const col = _fDb.collection(`users/${_fUid}/finance/txns/records`);
+
+      // Хуучин банкны импорт (bank_import) байвал устгана — зөвхөн Alipay үлдээнэ
+      const old = await col.where('source','==','bank_import').get();
+      if (!old.empty) {
+        let db = _fDb.batch(), dn = 0;
+        for (const d of old.docs) { db.delete(d.ref); dn++; if(dn>=400){await db.commit();db=_fDb.batch();dn=0;} }
+        if (dn>0) await db.commit();
+        showToast(`Хуучин ${old.size} банкны гүйлгээ цэвэрлэв...`);
+      }
+
+      // Alipay бичих
+      let batch = _fDb.batch(), n = 0;
+      for (const t of txns) {
+        batch.set(col.doc(t.id), t); n++;
+        if (n >= 400) { await batch.commit(); batch = _fDb.batch(); n = 0; }
+      }
+      if (n > 0) await batch.commit();
+      showToast(`✅ ${txns.length} Alipay гүйлгээ импортлогдлоо!`);
+      history.replaceState(null, '', 'finance');
+    } catch (e) { showToast('Импорт алдаа: ' + e.message); }
   }
 
   if (_fDb && _fUid) {
     // Real-time listener — Telegram-аас ирсэн гүйлгээ шууд харагдана
     _fDb.collection(`users/${_fUid}/finance/txns/records`)
-      .orderBy('ts', 'desc').limit(200)
+      .orderBy('ts', 'desc').limit(1500)
       .onSnapshot(snap => {
         const incoming = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         // Telegram-аас шинэ гүйлгээ ирвэл toast харуулах
