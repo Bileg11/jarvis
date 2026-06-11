@@ -1,8 +1,8 @@
 {
-  "name": "J.A.R.V.I.S",
-  "short_name": "JARVIS",
-  "description": "Билэгийн хувийн OS",
-  "start_url": "./dashboard.html",
+  "name": "T.H.R.E.E. OS",
+  "short_name": "THREE OS",
+  "description": "The Holistic Routine Efficiency Ecosystem",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0a0a0a",
