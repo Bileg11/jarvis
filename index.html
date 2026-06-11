@@ -204,6 +204,35 @@ body.frosted .glass:not(#terminal-panel) {
 .os-nav-guide { opacity:.55; font-size:9px; }
 .os-nav-guide:hover { opacity:1; border-color:var(--yellow); color:var(--yellow); box-shadow:0 0 8px rgba(255,215,0,.5); }
 
+/* ── BURGER + MOBILE MENU (desktop-д нуугдсан) ──────────────────── */
+.os-burger { display:none; flex-direction:column; gap:4px; justify-content:center;
+  width:38px; height:32px; padding:7px 8px; background:rgba(var(--glow-rgb,0,229,255),.08);
+  border:1px solid var(--border); border-radius:7px; cursor:pointer; flex-shrink:0; }
+.os-burger span { display:block; height:2px; width:100%; background:var(--accent); border-radius:2px;
+  transition:transform .25s, opacity .25s; }
+.os-burger.open span:nth-child(1){ transform:translateY(6px) rotate(45deg); }
+.os-burger.open span:nth-child(2){ opacity:0; }
+.os-burger.open span:nth-child(3){ transform:translateY(-6px) rotate(-45deg); }
+
+.mobile-menu-bg { display:none; position:fixed; inset:0; z-index:299; background:rgba(0,0,0,.5);
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+.mobile-menu-bg.show { display:block; }
+.mobile-menu { display:none; position:fixed; z-index:300;
+  top:calc(var(--bar-h) + env(safe-area-inset-top,0px) + 8px); right:10px; left:10px;
+  padding:16px; border-radius:16px; }
+.mobile-menu.show { display:block; animation:mmIn .2s ease; }
+@keyframes mmIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+.mm-title { font-family:var(--hud); font-size:10px; letter-spacing:.2em; color:var(--text);
+  opacity:.6; margin-bottom:12px; }
+.mm-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.mm-item { display:flex; align-items:center; gap:10px; padding:14px 14px; border-radius:11px;
+  background:rgba(var(--glow-rgb,0,229,255),.06); border:1px solid var(--border);
+  border-top-color:rgba(255,255,255,.14);
+  color:var(--text-b); font-family:var(--mono); font-size:13px; letter-spacing:.06em;
+  cursor:pointer; transition:all .15s; }
+.mm-item:active { transform:scale(.96); background:rgba(var(--glow-rgb,0,229,255),.14); }
+.mm-item span { font-size:17px; }
+
 /* ── PAGE OVERLAY PANELS (SPA nav — no separate page loads) ─── */
 .os-page {
   position:fixed; top:var(--top-off); left:0; right:0; bottom:0;
@@ -814,9 +843,10 @@ canvas#reactor { display:block; will-change:transform; transform:translateZ(0); 
   }
   .os-bar-status { display: none; }
   .os-clock { font-size: 12px; min-width: 48px; letter-spacing: .08em; }
-  .os-nav-btn { font-size: 9px; padding: 3px 7px; letter-spacing: .04em; }
-  .os-nav-guide { display: none; }
-  .os-bar-nav { gap: 3px; }
+  /* Mobile: урт nav-ийг нуугаад burger харуулна */
+  .os-bar-nav { display: none !important; }
+  .os-nav-mesh { display: none !important; }
+  .os-burger { display: flex; }
 
   /* Grid — become vertical flexbox */
   .os-grid {
@@ -2909,6 +2939,28 @@ body[data-role="bileg"] #widget-mood { display: none !important; }
     <button class="os-nav-btn" onclick="openLM()" title="Layout Manager — хадгалсан layouts" style="border-color:rgba(168,85,247,.3);color:rgba(168,85,247,.7)">🎨 LAYOUTS</button>
     <button class="os-nav-btn" onclick="_setViewMode('focus')" title="Focus Chat горим руу шилжих" style="border-color:rgba(0,229,255,.4);color:var(--accent)">⬡ FOCUS</button>
     <button class="os-nav-btn" id="nav-settings" onclick="navTo('settings')" title="Тохиргоо — Theme, Background">⚙ SET</button>
+  </div>
+  <!-- Mobile burger -->
+  <button class="os-burger" id="os-burger" onclick="toggleMobileMenu()" aria-label="Цэс">
+    <span></span><span></span><span></span>
+  </button>
+</div>
+
+<!-- ── MOBILE MENU (burger) ──────────────────────────────────── -->
+<div class="mobile-menu-bg" id="mobile-menu-bg" onclick="closeMobileMenu()"></div>
+<div class="mobile-menu glass" id="mobile-menu">
+  <div class="mm-title">ЦЭС</div>
+  <div class="mm-grid">
+    <button class="mm-item" onclick="mmGo(()=>navTo('core'))"><span>⌂</span>CORE</button>
+    <button class="mm-item" onclick="mmGo(()=>navTo('intel'))"><span>⬡</span>INTEL</button>
+    <button class="mm-item" onclick="mmGo(()=>navTo('track'))"><span>◎</span>TRACK</button>
+    <button class="mm-item" onclick="mmGo(()=>navTo('profile'))"><span>◈</span>PROFILE</button>
+    <button class="mm-item" style="color:#7eb87e" onclick="mmGo(()=>location.href='learn')"><span>📚</span>HSK</button>
+    <button class="mm-item" style="color:#c4a064" onclick="mmGo(()=>location.href='finance')"><span>💰</span>FIN</button>
+    <button class="mm-item" onclick="mmGo(()=>navTo('guide'))"><span>?</span>GUIDE</button>
+    <button class="mm-item" style="color:rgba(168,85,247,.9)" onclick="mmGo(()=>openLM())"><span>🎨</span>LAYOUTS</button>
+    <button class="mm-item" onclick="mmGo(()=>_setViewMode('focus'))"><span>⬡</span>FOCUS</button>
+    <button class="mm-item" onclick="mmGo(()=>navTo('settings'))"><span>⚙</span>SET</button>
   </div>
 </div>
 
@@ -6995,6 +7047,19 @@ function _navBack() {
     navTo('core');
   }
 }
+
+// ── MOBILE BURGER MENU ─────────────────────────────────────────
+function toggleMobileMenu() {
+  const open = document.getElementById('mobile-menu').classList.toggle('show');
+  document.getElementById('mobile-menu-bg').classList.toggle('show', open);
+  document.getElementById('os-burger').classList.toggle('open', open);
+}
+function closeMobileMenu() {
+  document.getElementById('mobile-menu').classList.remove('show');
+  document.getElementById('mobile-menu-bg').classList.remove('show');
+  document.getElementById('os-burger').classList.remove('open');
+}
+function mmGo(fn) { closeMobileMenu(); try { fn(); } catch(e){} }
 
 function navTo(tab, _isBack) {
   const prev = _currentNavPage;
