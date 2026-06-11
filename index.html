@@ -55,6 +55,8 @@
   --hud:      'Orbitron', sans-serif;
   --body:     'Rajdhani', 'SF Pro Text', '-apple-system', sans-serif;
   --bar-h:    40px;
+  --safe-top: env(safe-area-inset-top, 0px);      /* iPhone notch/status bar */
+  --top-off:  calc(var(--bar-h) + var(--safe-top)); /* bar доорх контентын эхлэл */
   --col-l:    clamp(210px, 17vw, 280px);
   --col-r:    clamp(240px, 19vw, 320px);
   --neon:     0 0 8px rgba(0,229,255,.6), 0 0 22px rgba(0,229,255,.2);
@@ -145,11 +147,14 @@ body::after {
 
 /* ── TOP OS BAR ────────────────────────────────────────────────── */
 .os-bar {
-  position: fixed; top:0; left:0; right:0; height: var(--bar-h); z-index:200;
+  position: fixed; top:0; left:0; right:0; z-index:200;
+  /* iPhone safe-area: notch/status bar-ийн зайг тооцоолно */
+  height: calc(var(--bar-h) + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
   background: rgba(0,3,8,.95);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px 0 82px; /* 82px left: macOS traffic-light buttons clearance */
+  padding-left: 82px; padding-right: 14px; /* 82px: macOS traffic-light clearance */
   font-family: var(--hud); font-size: 11px; letter-spacing: .12em;
 }
 .os-bar-brand { color: var(--accent); font-weight:700; font-size:12px; letter-spacing:.18em;
@@ -180,7 +185,7 @@ body::after {
 
 /* ── PAGE OVERLAY PANELS (SPA nav — no separate page loads) ─── */
 .os-page {
-  position:fixed; top:var(--bar-h); left:0; right:0; bottom:0;
+  position:fixed; top:var(--top-off); left:0; right:0; bottom:0;
   background:var(--bg); z-index:50;
   display:none; flex-direction:column;
   overflow:hidden;
@@ -303,7 +308,7 @@ body::after {
 /* ── OS GRID ───────────────────────────────────────────────────── */
 .os-grid {
   position: fixed;
-  top: var(--bar-h); left: 0; right: 0;
+  top:var(--top-off); left: 0; right: 0;
   bottom: 0;
   display: grid;
   grid-template-columns: var(--col-l) 1fr var(--col-r);
@@ -799,7 +804,7 @@ canvas#reactor { display:block; will-change:transform; transform:translateZ(0); 
     flex-direction: column;
     height: auto;
     min-height: calc(100dvh - var(--bar-h));
-    margin-top: var(--bar-h);
+    margin-top:var(--top-off);
     overflow: visible;
   }
 
@@ -1993,7 +1998,7 @@ body.user-marlaa {
 
 /* ══ CHALLENGE HUD — Tactical Mission Control ══════════════════ */
 #challenge-hud-overlay {
-  position:fixed; top:var(--bar-h); left:0; right:0; bottom:0;
+  position:fixed; top:var(--top-off); left:0; right:0; bottom:0;
   z-index:2099; background:rgba(0,0,0,.72); display:none;
 }
 #challenge-hud-overlay.open { display:block; }
@@ -2236,7 +2241,7 @@ body[data-role="bileg"] #widget-mood { display: none !important; }
   box-shadow: 0 4px 20px rgba(0,0,0,.6);
 }
 #widget-canvas {
-  position: absolute; top: var(--bar-h); left: 0; right: 0; bottom: 0;
+  position: absolute; top:var(--top-off); left: 0; right: 0; bottom: 0;
   pointer-events: none;
 }
 #widget-canvas.active { pointer-events: all; }
@@ -5047,7 +5052,7 @@ document.addEventListener('jarvis:ready', ()=>{
 </script>
 
 <!-- ── T.H.R.E.E. TASK MATRIX OVERLAY ────────────────────────── -->
-<div id="matrix-overlay" style="display:none;position:fixed;top:var(--bar-h);left:0;right:0;bottom:0;z-index:80;background:var(--bg);flex-direction:column;overflow:hidden;transform:translateZ(0);">
+<div id="matrix-overlay" style="display:none;position:fixed;top:var(--top-off);left:0;right:0;bottom:0;z-index:80;background:var(--bg);flex-direction:column;overflow:hidden;transform:translateZ(0);">
   <div style="display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:40px;flex-shrink:0;border-bottom:1px solid var(--border);background:rgba(0,5,15,.95);">
     <span style="font-family:var(--hud);font-size:12px;color:var(--accent);letter-spacing:.14em;text-shadow:var(--neon)">◈ T.H.R.E.E. TASK MATRIX — COMMAND BOARD</span>
     <button onclick="document.getElementById('matrix-overlay').style.display='none'" style="font-family:var(--mono);font-size:10px;color:var(--text);background:rgba(0,229,255,.06);border:1px solid var(--border);border-radius:2px;padding:3px 10px;cursor:pointer;">← CLOSE</button>

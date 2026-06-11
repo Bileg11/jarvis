@@ -98,6 +98,80 @@ const JARVIS_THEMES = {
       '--neon-r':   '0 0 8px rgba(252,165,165,.5)',
     }
   },
+
+  // ── 🫧 LIQUID GLASS PALETTES — Apple-style, зөөлөн, шилэн ──────────
+  'glass-aurora': {
+    label: '🫧 AURORA GLASS',
+    reactor: { r:130, g:170, b:255 },
+    vars: {
+      '--accent':'#82aaff','--accent2':'#5c7cfa','--bg':'#0a0e1a',
+      '--glass':'rgba(40,55,95,0.45)','--glass2':'rgba(55,70,120,0.35)',
+      '--border':'rgba(140,170,255,0.22)','--border-h':'rgba(140,170,255,0.55)',
+      '--text':'#c8d4f0','--text-b':'#eaf0ff','--dim':'#1a2440',
+      '--neon':'0 0 16px rgba(130,170,255,.4)','--neon-a':'0 0 12px rgba(167,139,250,.4)',
+      '--neon-g':'0 0 12px rgba(110,231,183,.4)',
+    }
+  },
+  'glass-sunset': {
+    label: '🌅 SUNSET GLASS',
+    reactor: { r:255, g:150, b:120 },
+    vars: {
+      '--accent':'#ff9678','--accent2':'#f97362','--bg':'#1a0e0c',
+      '--glass':'rgba(80,40,35,0.45)','--glass2':'rgba(100,50,45,0.35)',
+      '--border':'rgba(255,150,120,0.22)','--border-h':'rgba(255,150,120,0.55)',
+      '--text':'#f0d4c8','--text-b':'#ffeae2','--dim':'#3a1f1a',
+      '--neon':'0 0 16px rgba(255,150,120,.4)','--neon-a':'0 0 12px rgba(251,191,36,.4)',
+      '--neon-g':'0 0 12px rgba(134,239,172,.4)',
+    }
+  },
+  'glass-ocean': {
+    label: '🌊 OCEAN GLASS',
+    reactor: { r:90, g:200, b:210 },
+    vars: {
+      '--accent':'#5ac8d2','--accent2':'#2ba8b8','--bg':'#06141a',
+      '--glass':'rgba(20,60,72,0.45)','--glass2':'rgba(28,75,90,0.35)',
+      '--border':'rgba(90,200,210,0.22)','--border-h':'rgba(90,200,210,0.55)',
+      '--text':'#c0e0e4','--text-b':'#e2f6f8','--dim':'#0e2c34',
+      '--neon':'0 0 16px rgba(90,200,210,.4)','--neon-a':'0 0 12px rgba(96,165,250,.4)',
+      '--neon-g':'0 0 12px rgba(110,231,183,.4)',
+    }
+  },
+  'glass-forest': {
+    label: '🌿 FOREST GLASS',
+    reactor: { r:130, g:200, b:140 },
+    vars: {
+      '--accent':'#82c88c','--accent2':'#5aa868','--bg':'#08140c',
+      '--glass':'rgba(25,55,35,0.45)','--glass2':'rgba(32,70,45,0.35)',
+      '--border':'rgba(130,200,140,0.22)','--border-h':'rgba(130,200,140,0.55)',
+      '--text':'#c8e4cc','--text-b':'#e4f6e8','--dim':'#102c18',
+      '--neon':'0 0 16px rgba(130,200,140,.4)','--neon-a':'0 0 12px rgba(251,191,36,.4)',
+      '--neon-g':'0 0 12px rgba(134,239,172,.4)',
+    }
+  },
+  'glass-rose': {
+    label: '🌸 ROSE GLASS',
+    reactor: { r:240, g:160, b:200 },
+    vars: {
+      '--accent':'#f0a0c8','--accent2':'#e879a8','--bg':'#160a12',
+      '--glass':'rgba(70,35,55,0.45)','--glass2':'rgba(88,42,68,0.35)',
+      '--border':'rgba(240,160,200,0.22)','--border-h':'rgba(240,160,200,0.55)',
+      '--text':'#f0d0e0','--text-b':'#ffe6f2','--dim':'#32142a',
+      '--neon':'0 0 16px rgba(240,160,200,.4)','--neon-a':'0 0 12px rgba(251,191,36,.4)',
+      '--neon-g':'0 0 12px rgba(134,239,172,.4)',
+    }
+  },
+  'glass-mono': {
+    label: '⚪ MONO GLASS',
+    reactor: { r:200, g:210, b:225 },
+    vars: {
+      '--accent':'#c8d2e1','--accent2':'#9aa6b8','--bg':'#0c0e12',
+      '--glass':'rgba(50,56,68,0.45)','--glass2':'rgba(64,72,86,0.35)',
+      '--border':'rgba(200,210,225,0.18)','--border-h':'rgba(200,210,225,0.45)',
+      '--text':'#c0c8d4','--text-b':'#eef2f8','--dim':'#1e242e',
+      '--neon':'0 0 14px rgba(200,210,225,.3)','--neon-a':'0 0 12px rgba(251,191,36,.4)',
+      '--neon-g':'0 0 12px rgba(134,239,172,.4)',
+    }
+  },
 };
 
 function applyTheme(themeId) {
