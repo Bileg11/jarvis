@@ -255,6 +255,14 @@ body{
     <h1>🈶 Монгол HSK</h1>
     <p id="path-sub">Хятад хэл Монголоор сур</p>
   </div>
+  <!-- Өдрийн SRS давталт banner -->
+  <div id="review-banner" class="glassy" style="display:none;margin:8px 16px 0;border-radius:16px;padding:16px 18px;align-items:center;justify-content:space-between;gap:12px;cursor:pointer" onclick="startSrsReview()">
+    <div>
+      <div style="font-size:15px;font-weight:800">🔄 Өнөөдрийн давталт</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px"><span id="review-count">0</span> үг давтах цаг боллоо</div>
+    </div>
+    <div style="background:var(--gold);color:#111;font-weight:800;font-size:14px;padding:10px 18px;border-radius:11px">Эхлэх ➜</div>
+  </div>
   <div id="path-container"></div>
 </div>
 
@@ -380,7 +388,33 @@ let state = loadLocal();
 let quiz  = null;
 
 function defaultState() {
-  return { completed:[], xp:0, hearts:MAX_HEARTS, streak:0, lastDate:'', onboarded:false };
+  return { completed:[], xp:0, hearts:MAX_HEARTS, streak:0, lastDate:'', onboarded:false, srs:{} };
+}
+
+// ── SPACED REPETITION (forgetting curve-ийг тэнцвэржүүлнэ) ───────
+// Level бүрийн давталтын зай (хоног): forgetting curve-д суурилсан
+const SRS_INTERVALS = [1, 1, 3, 7, 16, 35]; // level 0..5
+function _addDays(n) {
+  const d = new Date(Date.now() + n*86400000);
+  return d.toLocaleDateString('sv', { timeZone:'Asia/Shanghai' });
+}
+function updateSRS(wordKey, correct) {
+  if (!state.srs) state.srs = {};
+  const cur = state.srs[wordKey] || { level:0, due:todayStr() };
+  let lvl = cur.level;
+  if (correct) lvl = Math.min(5, lvl + 1);
+  else         lvl = Math.max(0, lvl - 2);   // буруу → огцом буцаана
+  state.srs[wordKey] = { level: lvl, due: _addDays(SRS_INTERVALS[lvl]) };
+}
+// Өнөөдөр давтах ёстой үгс (due <= today, аль хэдийн үзсэн)
+function dueWords() {
+  const today = todayStr();
+  const due = [];
+  for (const w of HSK_VOCAB_ALL) {
+    const s = state.srs?.[w.word];
+    if (s && s.due <= today) due.push(w);
+  }
+  return due;
 }
 function loadLocal() {
   try { return { ...defaultState(), ...JSON.parse(localStorage.getItem(LS_KEY)||'{}') }; }
@@ -495,6 +529,13 @@ function renderPath() {
   document.getElementById('stat-hearts').textContent = state.hearts!==undefined ? state.hearts : MAX_HEARTS;
   const done = (state.completed||[]).length;
   document.getElementById('path-sub').textContent = done>0 ? `${done}/${LESSONS.length} хичээл` : 'Хятад хэл Монголоор сур';
+  // SRS давталт banner
+  const due = dueWords();
+  const rb = document.getElementById('review-banner');
+  if (rb) {
+    if (due.length > 0) { rb.style.display='flex'; document.getElementById('review-count').textContent = due.length; }
+    else rb.style.display='none';
+  }
   const container = document.getElementById('path-container');
   container.innerHTML = '';
   let curLevel=null, row=null;
@@ -622,6 +663,22 @@ function startGrammarLesson() {
   showScreen('quiz'); renderQuestion();
 }
 
+// ── SRS DAILY REVIEW (forgetting curve давталт) ──────────────────
+function startSrsReview() {
+  const due = dueWords();
+  if (!due.length) { showToast('Өнөөдөр давтах үг алга 🎉'); return; }
+  // Хамгийн сул (level бага) үгсийг эхэнд, дээд тал нь 20 үг
+  due.sort((a,b)=>(state.srs[a.word]?.level||0)-(state.srs[b.word]?.level||0));
+  const words = due.slice(0, 20);
+  quiz = {
+    lessonIdx:-1, isPlacement:false, isSrs:true,
+    questions: words.map(makeQuestion),
+    current:0, hearts: MAX_HEARTS, xpEarned:0, correct:0, wrongWords:[], isReview:false, answered:false,
+  };
+  document.getElementById('review-badge').style.display='block';
+  showScreen('quiz'); renderQuestion();
+}
+
 function renderQuestion() {
   if (!quiz) return;
   const q = quiz.questions[quiz.current];
@@ -693,6 +750,9 @@ function checkAnswer(chosen, btn) {
   const cont = document.getElementById('btn-cont');
   document.querySelectorAll('.choice').forEach(b => b.classList.add('disabled'));
 
+  // SRS — үг бүрийн санах ойн түвшинг шинэчилнэ (forgetting curve)
+  updateSRS(q.word.word, ok);
+
   if (ok) {
     btn.classList.add('correct');
     quiz.xpEarned += XP_CORRECT; quiz.correct++;
@@ -716,7 +776,7 @@ function nextQuestion() {
   quiz.current++;
   if (quiz.current >= quiz.questions.length) {
     if (!quiz.isReview && quiz.wrongWords.length>0) { startReview(); return; }
-    if (!quiz.isPlacement && !quiz.matchDone) { startMatch(); return; }
+    if (!quiz.isPlacement && !quiz.isSrs && !quiz.matchDone) { startMatch(); return; }
     finishLesson(); return;
   }
   renderQuestion();
@@ -811,6 +871,18 @@ function finishMatch() {
 }
 
 function finishLesson() {
+  if (quiz.isSrs) {
+    // SRS давталт — XP өгөөд path руу (хичээл unlock хийхгүй, SRS аль хэдийн update хийсэн)
+    updateStreak(); state.xp=(state.xp||0)+quiz.xpEarned; state.hearts=quiz.hearts; persist();
+    const acc = Math.round((quiz.correct/Math.max(quiz.questions.length,1))*100);
+    document.getElementById('res-icon').textContent  = acc>=80?'🎉':'💪';
+    document.getElementById('res-title').textContent = 'Давталт дууслаа!';
+    document.getElementById('res-sub').textContent   = `${quiz.correct}/${quiz.questions.length} зөв · санах ой бэхжлээ`;
+    document.getElementById('res-xp').textContent     = '+'+quiz.xpEarned;
+    document.getElementById('res-acc').textContent    = acc+'%';
+    document.getElementById('res-streak').textContent = state.streak||0;
+    showScreen('result'); return;
+  }
   if (quiz.isPlacement) {
     // Placement result → unlock lessons
     const score = quiz.correct;
