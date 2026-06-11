@@ -27,3 +27,7 @@ stmt.pdf
 *.pdf
 支付宝交易明细*.csv
 fin_import.json
+*.png
+!icon-192.png
+!icon-512.png
+!apple-touch-icon.png
