@@ -126,6 +126,28 @@ canvas{max-height:210px}
 .btn-ai{background:rgba(96,144,192,.12);border:1px solid rgba(96,144,192,.3);color:var(--blue);border-radius:6px;padding:5px 14px;font-size:11px;cursor:pointer;transition:all .15s}
 .btn-ai:hover{background:rgba(96,144,192,.22)}
 
+/* Period tabs */
+.period-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+.period-tabs::-webkit-scrollbar{display:none}
+.period-tab{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surf);color:var(--text);white-space:nowrap;flex-shrink:0;transition:all .15s}
+.period-tab:hover{border-color:var(--border-h)}
+.period-tab.active{background:var(--green);border-color:var(--green);color:#0d1117}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px}
+.modal-bg.show{display:flex}
+.modal{background:var(--surf);border:1px solid var(--border-h);border-radius:16px;padding:24px;width:100%;max-width:380px;max-height:85vh;overflow-y:auto}
+.modal-title{font-size:16px;font-weight:700;color:var(--text-b);margin-bottom:4px}
+.modal-sub{font-size:12px;color:var(--text);opacity:.6;margin-bottom:20px}
+.budget-field{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.budget-field .icon{font-size:18px;width:26px;text-align:center}
+.budget-field .name{flex:1;font-size:14px;color:var(--text-b)}
+.budget-field input{width:100px;text-align:right}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions .btn{flex:1;justify-content:center}
+.date-field{margin-bottom:14px}
+.date-field label{display:block;font-size:11px;color:var(--text);opacity:.6;margin-bottom:5px}
+
 /* Toast */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;color:var(--text-b);opacity:0;transition:opacity .25s;pointer-events:none;z-index:99;white-space:nowrap}
 #toast.show{opacity:1}
@@ -146,6 +168,16 @@ canvas{max-height:210px}
       <div class="month-label" id="month-label">— сар</div>
       <div class="month-net" id="month-net" style="color:var(--green)">+0</div>
     </div>
+  </div>
+
+  <!-- Period tabs -->
+  <div class="period-tabs" id="period-tabs">
+    <button class="period-tab" data-p="7d"  onclick="setPeriod('7d',this)">7 хоног</button>
+    <button class="period-tab active" data-p="1m" onclick="setPeriod('1m',this)">1 сар</button>
+    <button class="period-tab" data-p="3m"  onclick="setPeriod('3m',this)">3 сар</button>
+    <button class="period-tab" data-p="6m"  onclick="setPeriod('6m',this)">6 сар</button>
+    <button class="period-tab" data-p="all" onclick="setPeriod('all',this)">Бүх</button>
+    <button class="period-tab" data-p="custom" onclick="openCustomRange(this)">📅 Custom</button>
   </div>
 
   <!-- Stats -->
@@ -259,8 +291,6 @@ canvas{max-height:210px}
           <button class="cur-tab" onclick="filterCur('CNY',this)">CNY</button>
           <button class="cur-tab" onclick="filterCur('MNT',this)">MNT</button>
         </div>
-        <select onchange="filterMonth(this.value)" id="month-filter" style="padding:4px 8px;font-size:11px;width:auto">
-        </select>
       </div>
     </div>
     <div class="txn-list" id="txn-list">
@@ -269,6 +299,39 @@ canvas{max-height:210px}
   </div>
 
 </div>
+<!-- Budget modal -->
+<div class="modal-bg" id="budget-modal">
+  <div class="modal">
+    <div class="modal-title">⚙ Сарын төсөв</div>
+    <div class="modal-sub">Категори тус бүрийн зарлагын хязгаар (CNY)</div>
+    <div id="budget-fields"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('budget-modal')">Болих</button>
+      <button class="btn btn-green" onclick="saveBudget()">Хадгалах</button>
+    </div>
+  </div>
+</div>
+
+<!-- Custom range modal -->
+<div class="modal-bg" id="range-modal">
+  <div class="modal">
+    <div class="modal-title">📅 Хугацаа сонгох</div>
+    <div class="modal-sub">Гүйлгээ харах огнооны интервал</div>
+    <div class="date-field">
+      <label>Эхлэх огноо</label>
+      <input type="date" id="range-from">
+    </div>
+    <div class="date-field">
+      <label>Дуусах огноо</label>
+      <input type="date" id="range-to">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('range-modal')">Болих</button>
+      <button class="btn btn-green" onclick="applyCustomRange()">Харах</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -281,13 +344,56 @@ let _txns = [];
 let _curFilter = 'all';
 let _dispCur = 'CNY';
 let _aiDone = false;
-let _monFilter = '';
+let _period = '1m';            // '7d' | '1m' | '3m' | '6m' | 'all' | 'custom'
+let _customRange = null;       // { from, to } (YYYY-MM-DD)
+
+// Сонгосон хугацааны эхлэлийн огноо (YYYY-MM-DD)
+function _periodRange() {
+  const now = new Date();
+  const toStr = d => d.toISOString().slice(0,10);
+  if (_period === 'custom' && _customRange) return { from: _customRange.from, to: _customRange.to };
+  if (_period === 'all') return { from: '0000-01-01', to: '9999-12-31' };
+  const days = { '7d':7, '1m':30, '3m':90, '6m':180 }[_period] || 30;
+  const start = new Date(now.getTime() - days*86400000);
+  return { from: toStr(start), to: toStr(now) };
+}
+function _periodLabel() {
+  return { '7d':'7 хоног', '1m':'1 сар', '3m':'3 сар', '6m':'6 сар', 'all':'Бүх хугацаа',
+           'custom': _customRange ? `${_customRange.from} → ${_customRange.to}` : 'Custom' }[_period];
+}
+
+function setPeriod(p, el) {
+  _period = p;
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  render();
+}
+function openCustomRange(el) {
+  const r = _periodRange();
+  document.getElementById('range-from').value = _customRange?.from || r.from;
+  document.getElementById('range-to').value   = _customRange?.to   || r.to;
+  document.getElementById('range-modal').classList.add('show');
+}
+function applyCustomRange() {
+  const from = document.getElementById('range-from').value;
+  const to   = document.getElementById('range-to').value;
+  if (!from || !to) { showToast('Огноо бүрэн оруулна уу'); return; }
+  _customRange = { from, to };
+  _period = 'custom';
+  document.querySelectorAll('.period-tab').forEach(t => t.classList.toggle('active', t.dataset.p === 'custom'));
+  closeModal('range-modal');
+  render();
+}
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 let _txType = 'expense';
 
 // ── Firebase init ─────────────────────────────────────────────────
 async function finInit() {
   updateMonthLabel();
   populateMonthFilter();
+  // Modal backdrop дарвал хаах
+  document.querySelectorAll('.modal-bg').forEach(m =>
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); }));
 
   if (window._db) {
     _fDb = window._db;
@@ -433,8 +539,9 @@ function _displayCur(monthTxns) {
 }
 
 function render() {
-  const month = _monFilter || todayMonth();
-  const monthTxns = _txns.filter(t => t.date?.startsWith(month));
+  // Хугацааны интервалаар шүүнэ
+  const { from, to } = _periodRange();
+  const monthTxns = _txns.filter(t => t.date && t.date >= from && t.date <= to);
   const filtered  = _curFilter === 'all' ? monthTxns : monthTxns.filter(t => t.currency === _curFilter);
   const dispCur   = _displayCur(monthTxns);
 
@@ -450,6 +557,8 @@ function render() {
   const ecur = document.getElementById('stat-expense-cur'); if (ecur) ecur.textContent = dispCur;
   document.getElementById('stat-savings').textContent = fmt(savMNT, 'MNT');
   document.getElementById('stat-txns').textContent    = monthTxns.length;
+  // Header badge — period label + net
+  document.getElementById('month-label').textContent  = _periodLabel();
   document.getElementById('month-net').textContent    = (net >= 0 ? '+' : '') + fmt(net, dispCur);
   document.getElementById('month-net').style.color    = net >= 0 ? 'var(--green)' : 'var(--red)';
 
@@ -530,25 +639,8 @@ function filterCur(cur, el) {
   render();
 }
 
-function filterMonth(val) { _monFilter = val; render(); }
-
-function populateMonthFilter() {
-  const sel = document.getElementById('month-filter');
-  const now = new Date();
-  for (let i = 0; i < 6; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const val = d.toISOString().slice(0,7);
-    const label = d.toLocaleDateString('mn-MN', {year:'numeric', month:'long'});
-    const opt = document.createElement('option');
-    opt.value = val; opt.textContent = label;
-    if (i === 0) opt.selected = true;
-    sel.appendChild(opt);
-  }
-}
-
+function populateMonthFilter() { /* period-tabs ашиглана — month dropdown устгасан */ }
 function updateMonthLabel() {
-  const label = new Date().toLocaleDateString('mn-MN', {year:'numeric', month:'long'});
-  document.getElementById('month-label').textContent = label;
   document.getElementById('stat-month-days').textContent = new Date().getDate() + '-ны өдөр';
 }
 
@@ -558,18 +650,28 @@ function editSavingsGoal() {
   if (val !== null) { localStorage.setItem(LS_SAVES, parseInt(val.replace(/,/g,''))||0); render(); }
 }
 
+const BUDGET_CATS = [
+  {k:'хоол',icon:'🍜'},{k:'тээвэр',icon:'🚇'},{k:'амьдрал',icon:'🏠'},
+  {k:'хувцас',icon:'👕'},{k:'боловсрол',icon:'📚'},{k:'тоглоом',icon:'🎮'},{k:'бусад',icon:'📦'},
+];
 function editBudget() {
   const budget = JSON.parse(localStorage.getItem(LS_BUDGET) || '{}');
-  const cats   = ['хоол','тээвэр','амьдрал','хувцас','боловсрол','тоглоом','бусад'];
-  const lines  = cats.map(c => `${c}: ${budget[c]||0}`).join('\n');
-  const input  = prompt('Сарын төсөв (CNY)\nФормат: категори: дүн', lines);
-  if (!input) return;
+  document.getElementById('budget-fields').innerHTML = BUDGET_CATS.map(c => `
+    <div class="budget-field">
+      <span class="icon">${c.icon}</span>
+      <span class="name">${c.k}</span>
+      <input type="number" id="bud-${c.k}" value="${budget[c.k]||''}" placeholder="0" min="0">
+    </div>`).join('');
+  document.getElementById('budget-modal').classList.add('show');
+}
+function saveBudget() {
   const newBudget = {};
-  input.split('\n').forEach(line => {
-    const [k, v] = line.split(':');
-    if (k && v) newBudget[k.trim()] = parseInt(v)||0;
+  BUDGET_CATS.forEach(c => {
+    const v = parseInt(document.getElementById('bud-'+c.k).value) || 0;
+    if (v > 0) newBudget[c.k] = v;
   });
   localStorage.setItem(LS_BUDGET, JSON.stringify(newBudget));
+  closeModal('budget-modal');
   render();
   showToast('✓ Төсөв хадгалагдлаа');
 }
@@ -658,20 +760,18 @@ async function getAiAdvice() {
   el.className = 'ai-advice-text loading';
   el.textContent = '⚙ Шинжилж байна...';
 
-  const month = _monFilter || todayMonth();
-  const mTxns = _txns.filter(t => t.date?.startsWith(month));
+  const { from, to } = _periodRange();
+  const mTxns = _txns.filter(t => t.date && t.date >= from && t.date <= to);
   const incomeCNY = mTxns.filter(t=>t.type==='income'&&t.currency===_dispCur).reduce((s,t)=>s+t.amount,0);
   const expCNY    = mTxns.filter(t=>t.type==='expense'&&t.currency===_dispCur).reduce((s,t)=>s+t.amount,0);
   const savMNT    = _txns.filter(t=>t.type==='savings'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
   const cats = {};
   mTxns.filter(t=>t.type==='expense'&&t.currency===_dispCur).forEach(t => { cats[t.category]=(cats[t.category]||0)+t.amount; });
   const catStr = Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`${c}: ¥${a.toFixed(0)}`).join(', ');
-  const daysIn = new Date().getDate();
-  const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth()+1, 0).getDate();
 
   const prompt = `Санхүүгийн шинжилгээ хийгээд зөвлөгөө өг.
 Хэрэглэгч: Билэг, 18 настай, Шанхайд амьдардаг Монгол залуу.
-Сар: ${month} (${daysIn}/${daysInMonth} өдөр өнгөрсөн)
+Хугацаа: ${_periodLabel()} (${from} → ${to})
 CNY орлого: ¥${incomeCNY} | CNY зарлага: ¥${expCNY} | Net: ${incomeCNY>=expCNY?'+':''}¥${(incomeCNY-expCNY).toFixed(0)}
 Зарлагын ангилал: ${catStr||'байхгүй'}
 MNT хуримтлал (нийт): ₮${savMNT.toLocaleString()}
