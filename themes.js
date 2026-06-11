@@ -189,6 +189,12 @@ function applyTheme(themeId) {
     // Update reactor color if it's running
     if (window._reactor) { window._reactor.tr = r; window._reactor.tg = g; window._reactor.tb = b; }
   }
+  // ── FROSTED GLASS toggle ───────────────────────────────────────
+  // Touch device (утас/таблет — lag байхгүй) ЭСВЭЛ glass theme сонгосон
+  // үед frosted blur асаана. Intel Mac desktop + cyber theme → унтраалттай.
+  const isTouch = window.matchMedia('(pointer: coarse)').matches;
+  const isGlass = themeId.startsWith('glass-');
+  document.body.classList.toggle('frosted', isTouch || isGlass);
   // Persist to Firestore
   if (window._db && window._auth?.currentUser) {
     window._db.doc('users/' + window._auth.currentUser.uid + '/settings/layout')

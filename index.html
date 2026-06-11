@@ -116,12 +116,21 @@ body::after {
 
 /* ── GLASS PANEL ──────────────────────────────────────────────── */
 .glass {
-  background: linear-gradient(160deg, rgba(0,14,36,.88) 0%, rgba(0,10,28,.78) 100%);
-  /* backdrop-filter removed — causes typing lag on Intel integrated GPU */
+  /* Theme өнгөтэй — accent glow-той металл ирмэг */
+  background: linear-gradient(160deg, var(--glass, rgba(0,14,36,.88)) 0%, var(--glass2, rgba(0,10,28,.78)) 100%);
   border: 1px solid var(--border);
   border-radius: 3px;
   position: relative;
-  box-shadow: 0 2px 20px rgba(0,0,0,.35), 0 0 20px rgba(0,229,255,.05), inset 0 1px 0 rgba(0,229,255,.08);
+  box-shadow: 0 2px 20px rgba(0,0,0,.35),
+              0 0 20px rgba(var(--glow-rgb,0,229,255),.06),
+              inset 0 1px 0 rgba(var(--glow-rgb,0,229,255),.10);
+}
+/* ── FROSTED GLASS (зөвхөн body.frosted үед — Apple liquid glass) ──
+   Intel Mac typing lag-аас сэргийлж #terminal-panel-ийг хасна.
+   body.frosted нь touch device эсвэл glass theme дээр л нэмэгдэнэ. */
+body.frosted .glass:not(#terminal-panel) {
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
 }
 
 /* HUD corner brackets */
