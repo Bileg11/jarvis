@@ -79,9 +79,15 @@ html, body {
 /* ── DEEP SPACE BACKGROUND ─────────────────────────────────────── */
 body {
   background:
-    radial-gradient(ellipse at 30% 20%, rgba(0,50,100,.18) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 80%, rgba(0,20,60,.15) 0%, transparent 45%),
-    var(--bg);
+    /* Зөөлөн vignette — захыг бараантуулж гол хэсгийг онцлоно (depth) */
+    radial-gradient(ellipse 125% 95% at 50% 38%, transparent 52%, rgba(0,0,0,.40) 100%),
+    /* Theme accent-аар гэрэлтэх ambient glow (premium гүн) */
+    radial-gradient(ellipse 80% 60% at 25% 12%, var(--glow-1, rgba(0,50,100,.18)) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 55% at 85% 88%, var(--glow-2, rgba(0,20,60,.12)) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 50% 45%, rgba(var(--glow-rgb, 0,229,255),.05) 0%, transparent 60%),
+    /* Суурь — цэвэр хар биш, дээрээс доош гүнзгийрэх gradient */
+    linear-gradient(165deg, color-mix(in srgb, var(--bg) 80%, #ffffff 5%) 0%, var(--bg) 50%, color-mix(in srgb, var(--bg) 86%, #000000 14%) 100%);
+  background-attachment: fixed;
 }
 
 /* Grid overlay */

@@ -180,10 +180,14 @@ function applyTheme(themeId) {
   const root = document.documentElement;
   Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
   localStorage.setItem('jarvis_theme', themeId);
-  // Update reactor color if it's running
-  if (window._reactor && theme.reactor) {
+  // ── Theme-aware ambient glow (background гүн өгнө) ──────────────
+  if (theme.reactor) {
     const { r, g, b } = theme.reactor;
-    window._reactor.tr = r; window._reactor.tg = g; window._reactor.tb = b;
+    root.style.setProperty('--glow-1',  `rgba(${r},${g},${b},0.30)`);
+    root.style.setProperty('--glow-2',  `rgba(${r},${g},${b},0.20)`);
+    root.style.setProperty('--glow-rgb', `${r},${g},${b}`);
+    // Update reactor color if it's running
+    if (window._reactor) { window._reactor.tr = r; window._reactor.tg = g; window._reactor.tb = b; }
   }
   // Persist to Firestore
   if (window._db && window._auth?.currentUser) {
