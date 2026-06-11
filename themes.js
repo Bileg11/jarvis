@@ -3,7 +3,7 @@
 
 const JARVIS_THEMES = {
   'stark-cyan': {
-    label: 'CYAN EDGE',
+    label: 'CYAN EDGE', glow: 1.15,
     reactor: { r:0, g:229, b:255 },
     vars: {
       '--accent':   '#00e5ff', '--accent2':  '#00b4cc',
@@ -17,7 +17,7 @@ const JARVIS_THEMES = {
     }
   },
   'amber': {
-    label: 'AMBER PROTOCOL',
+    label: 'AMBER PROTOCOL', glow: 1.15,
     reactor: { r:255, g:140, b:0 },
     vars: {
       '--accent':   '#ff8c00', '--accent2':  '#cc7000',
@@ -31,7 +31,7 @@ const JARVIS_THEMES = {
     }
   },
   'matrix': {
-    label: 'MATRIX GREEN',
+    label: 'MATRIX GREEN', glow: 1.2,
     reactor: { r:0, g:255, b:136 },
     vars: {
       '--accent':   '#00ff88', '--accent2':  '#00cc66',
@@ -45,7 +45,7 @@ const JARVIS_THEMES = {
     }
   },
   'red-alert': {
-    label: 'RED ALERT',
+    label: 'RED ALERT', glow: 1.25,
     reactor: { r:255, g:45, b:85 },
     vars: {
       '--accent':   '#ff2d55', '--accent2':  '#cc1133',
@@ -59,7 +59,7 @@ const JARVIS_THEMES = {
     }
   },
   'void': {
-    label: 'VOID PURPLE',
+    label: 'VOID PURPLE', glow: 1.1,
     reactor: { r:168, g:85, b:247 },
     vars: {
       '--accent':   '#a855f7', '--accent2':  '#7c3aed',
@@ -75,7 +75,7 @@ const JARVIS_THEMES = {
 
   // ── MARLAA BLOSSOM — Зөөлөн, пастел, хувийн ────────────────────
   'marlaa': {
-    label: '🌸 MARLAA — BLOSSOM',
+    label: '🌸 MARLAA — BLOSSOM', glow: 0.85,
     reactor: { r:249, g:168, b:197 },
     vars: {
       '--accent':   '#f9a8c5',   // cherry blossom pink
@@ -101,7 +101,7 @@ const JARVIS_THEMES = {
 
   // ── 🫧 LIQUID GLASS PALETTES — Apple-style, зөөлөн, шилэн ──────────
   'glass-aurora': {
-    label: '🫧 AURORA GLASS',
+    label: '🫧 AURORA GLASS', glow: 0.9,
     reactor: { r:130, g:170, b:255 },
     vars: {
       '--accent':'#82aaff','--accent2':'#5c7cfa','--bg':'#0a0e1a',
@@ -113,7 +113,7 @@ const JARVIS_THEMES = {
     }
   },
   'glass-sunset': {
-    label: '🌅 SUNSET GLASS',
+    label: '🌅 SUNSET GLASS', glow: 0.95,
     reactor: { r:255, g:150, b:120 },
     vars: {
       '--accent':'#ff9678','--accent2':'#f97362','--bg':'#1a0e0c',
@@ -125,7 +125,7 @@ const JARVIS_THEMES = {
     }
   },
   'glass-ocean': {
-    label: '🌊 OCEAN GLASS',
+    label: '🌊 OCEAN GLASS', glow: 0.9,
     reactor: { r:90, g:200, b:210 },
     vars: {
       '--accent':'#5ac8d2','--accent2':'#2ba8b8','--bg':'#06141a',
@@ -137,7 +137,7 @@ const JARVIS_THEMES = {
     }
   },
   'glass-forest': {
-    label: '🌿 FOREST GLASS',
+    label: '🌿 FOREST GLASS', glow: 0.9,
     reactor: { r:130, g:200, b:140 },
     vars: {
       '--accent':'#82c88c','--accent2':'#5aa868','--bg':'#08140c',
@@ -149,7 +149,7 @@ const JARVIS_THEMES = {
     }
   },
   'glass-rose': {
-    label: '🌸 ROSE GLASS',
+    label: '🌸 ROSE GLASS', glow: 0.95,
     reactor: { r:240, g:160, b:200 },
     vars: {
       '--accent':'#f0a0c8','--accent2':'#e879a8','--bg':'#160a12',
@@ -161,7 +161,7 @@ const JARVIS_THEMES = {
     }
   },
   'glass-mono': {
-    label: '⚪ MONO GLASS',
+    label: '⚪ MONO GLASS', glow: 0.7,
     reactor: { r:200, g:210, b:225 },
     vars: {
       '--accent':'#c8d2e1','--accent2':'#9aa6b8','--bg':'#0c0e12',
@@ -183,8 +183,9 @@ function applyTheme(themeId) {
   // ── Theme-aware ambient glow (background гүн өгнө) ──────────────
   if (theme.reactor) {
     const { r, g, b } = theme.reactor;
-    root.style.setProperty('--glow-1',  `rgba(${r},${g},${b},0.30)`);
-    root.style.setProperty('--glow-2',  `rgba(${r},${g},${b},0.20)`);
+    const gf = theme.glow != null ? theme.glow : 1;   // theme бүрийн glow эрчим
+    root.style.setProperty('--glow-1',  `rgba(${r},${g},${b},${(0.30*gf).toFixed(3)})`);
+    root.style.setProperty('--glow-2',  `rgba(${r},${g},${b},${(0.20*gf).toFixed(3)})`);
     root.style.setProperty('--glow-rgb', `${r},${g},${b}`);
     // Update reactor color if it's running
     if (window._reactor) { window._reactor.tr = r; window._reactor.tg = g; window._reactor.tb = b; }
