@@ -114,27 +114,29 @@ body::after {
   background-size: 200px 200px;
 }
 
-/* ── GLASS PANEL ──────────────────────────────────────────────── */
+/* ── GLASS PANEL — Apple Liquid Glass (4-layer sandwich) ────────── */
 .glass {
-  /* Theme өнгөтэй — accent glow-той металл ирмэг */
+  /* Давхарга 2: Тэжээгч өнгө (theme-aware, хагас тунгалаг) */
   background: linear-gradient(160deg, var(--glass, rgba(0,14,36,.88)) 0%, var(--glass2, rgba(0,10,28,.78)) 100%);
+  /* Давхарга 3: Specular highlight — дээд ирмэг тод (шил болгох нууц) */
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-top-color: rgba(255,255,255,.18);
+  border-radius: 8px;
   position: relative;
+  /* Давхарга 4: Давхар сүүдэр (depth) + дотор гэрэлтэлт */
   box-shadow:
-    0 4px 24px rgba(0,0,0,.45),                       /* хөвөх сүүдэр (depth) */
+    0 4px 30px rgba(0,0,0,.42),                       /* зөөлөн орон зайн сүүдэр */
     0 0 22px rgba(var(--glow-rgb,0,229,255),.07),     /* accent ambient glow */
-    inset 0 1px 0 rgba(255,255,255,.14),              /* дээд ирмэг — гэрэл (металл) */
-    inset 0 -1px 0 rgba(0,0,0,.30),                   /* доод ирмэг — сүүдэр */
-    inset 1px 0 0 rgba(255,255,255,.04),              /* зүүн ирмэг highlight */
-    inset -1px 0 0 rgba(0,0,0,.15);                   /* баруун ирмэг */
+    inset 0 1px 1px rgba(255,255,255,.12),            /* дотор talын гэрэлтэлт */
+    inset 0 -1px 0 rgba(0,0,0,.28);                   /* доод ирмэг гүн */
 }
-/* ── FROSTED GLASS (зөвхөн body.frosted үед — Apple liquid glass) ──
+/* ── FROSTED GLASS — Давхарга 1: blur + saturation (Apple recipe) ──
+   saturate 180% → ард байгаа өнгийг тодосгож шил мэт болгоно.
    Intel Mac typing lag-аас сэргийлж #terminal-panel-ийг хасна.
    body.frosted нь touch device эсвэл glass theme дээр л нэмэгдэнэ. */
 body.frosted .glass:not(#terminal-panel) {
-  backdrop-filter: blur(20px) saturate(1.6);
-  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  backdrop-filter: blur(30px) saturate(1.8);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8);
 }
 
 /* HUD corner brackets */
