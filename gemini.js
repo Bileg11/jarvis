@@ -4,10 +4,13 @@
 
 const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
 const CHAT_MODEL = 'gpt-4o';   // gpt-4o-mini Монголд сул байсан → gpt-4o илүү зөв (GitHub)
-// Default Railway proxy — proxy тохируулаагүй ч AI үргэлж ажиллана
-const RAILWAY_DEFAULT = 'https://jarvis-production-5842.up.railway.app';
+// Default chat proxy — Vercel (Railway-аас шилжүүлсэн: free + найдвартай).
+// chat-proxy/ фолдероос deploy хийгдсэн тусдаа Vercel project (LFS-тэй холихгүй).
+// Vercel project нэр = jarvis-chat-proxy → URL доорхтой таарах ёстой.
+// Хэрэв өөр нэрээр deploy хийвэл: Профайл → Proxy URL талбарт override хийж болно.
+const PROXY_DEFAULT = 'https://jarvis-chat-proxy.vercel.app';
 
-function _getProxyUrl()    { return (localStorage.getItem('jarvis_proxy_url')    || RAILWAY_DEFAULT).replace(/\/$/, ''); }
+function _getProxyUrl()    { return (localStorage.getItem('jarvis_proxy_url')    || PROXY_DEFAULT).replace(/\/$/, ''); }
 function _getChatKey()     { return localStorage.getItem('jarvis_chat_key')     || ''; }
 function _getProxySecret() { return localStorage.getItem('jarvis_proxy_secret') || ''; }
 

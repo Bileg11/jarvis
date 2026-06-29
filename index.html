@@ -3602,6 +3602,9 @@ class ArcReactor {
     ];
     this.flare  = 0;
     this.sweep  = 0;
+    this.load   = 0;   // PROC LOAD 0..1 — reactive spin/pulse
+    this.tLoad  = 0;   // target load (lerped)
+    this.tri    = 0;   // inner Stark triangle rotation
     this._last  = 0;
     this._raf   = null;
     this._stopped = false;
@@ -3627,6 +3630,7 @@ class ArcReactor {
     if (m==='active'||m==='drill') { this.tr=255;this.tg=120;this.tb=0; }
     else { this.tr=0;this.tg=229;this.tb=255; }
   }
+  setLoad(v) { this.tLoad = Math.max(0, Math.min(1, v)); }   // PROC LOAD 0..1
   triggerFlare(ms=700) { this.flare=ms; }
   _loop(ts) {
     if (this._stopped) return;
@@ -3640,13 +3644,15 @@ class ArcReactor {
     const c = `${Math.round(this.cr)},${Math.round(this.cg)},${Math.round(this.cb)}`;
     if (this.flare>0) this.flare -= dt;
     const flaring = this.flare > 0;
+    this.load += (this.tLoad - this.load) * 0.12;   // ease toward PROC LOAD
+    const spin = 1 + this.load * 1.2;                // reactor revs with load
     const ctx = this.ctx, cx = this.cx, cy = this.cy;
     ctx.clearRect(0, 0, this.W, this.W);
     const dts = dt / 600;
 
     // ── RINGS + NODES (NO shadowBlur per node — was 26 GPU composites/frame) ──
     this.rings.forEach(rg => {
-      rg.a += rg.spd * rg.dir * dts * (flaring ? 1.8 : 1) * Math.PI * 2;
+      rg.a += rg.spd * rg.dir * dts * (flaring ? 1.8 : 1) * spin * Math.PI * 2;
       ctx.beginPath();
       ctx.arc(cx, cy, rg.r, 0, Math.PI*2);
       ctx.strokeStyle = `rgba(${c},.22)`;
@@ -3675,8 +3681,38 @@ class ArcReactor {
     ctx.fillStyle = `rgba(${c},.07)`;
     ctx.fill();
 
+    // ── STARK COILS — ring of segments around the core (no shadow) ──
+    this.tri += dts * Math.PI * 0.4 * spin;
+    ctx.beginPath();
+    const COILS = 9;
+    for (let i = 0; i < COILS; i++) {
+      const a  = (i / COILS) * Math.PI * 2;
+      const ca = Math.cos(a), sa = Math.sin(a);
+      ctx.moveTo(cx + ca * 10, cy + sa * 10);
+      ctx.lineTo(cx + ca * 15, cy + sa * 15);
+    }
+    ctx.strokeStyle = `rgba(${c},${flaring ? .8 : .55})`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // ── INNER TRIANGLE — iconic reactor signature (rotates with load) ─
+    ctx.beginPath();
+    for (let i = 0; i < 3; i++) {
+      const a  = this.tri + i * (Math.PI * 2 / 3);
+      const px = cx + Math.cos(a) * 8.5;
+      const py = cy + Math.sin(a) * 8.5;
+      i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `rgba(${c},${flaring ? .9 : .6})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
     // ── CORE (single shadowBlur — only 1 GPU composite per frame) ─
-    const pulse = 1 + (flaring ? .12 : .04) * Math.sin(ts / 180);
+    // Breathing amplitude + speed scale with PROC LOAD and flaring.
+    const amp   = (flaring ? .12 : .04) + this.load * .10;
+    const rate  = 180 - this.load * 70;
+    const pulse = 1 + amp * Math.sin(ts / rate);
     const r = ctx.createRadialGradient(cx, cy, 0, cx, cy, 16 * pulse);
     r.addColorStop(0, `rgba(${c},${flaring ? .95 : .75})`);
     r.addColorStop(.5, `rgba(${c},.35)`);
@@ -3685,7 +3721,7 @@ class ArcReactor {
     ctx.arc(cx, cy, 16 * pulse, 0, Math.PI*2);
     ctx.fillStyle = r;
     ctx.shadowColor = `rgb(${c})`;
-    ctx.shadowBlur = flaring ? 22 : 12; // ONE shadow, not 26
+    ctx.shadowBlur = (flaring ? 22 : 12) + this.load * 10; // ONE shadow, not 26
     ctx.fill();
     ctx.shadowBlur = 0;
 
@@ -4859,6 +4895,7 @@ function _applySystemStats(d) {
   const cpuColor = d.cpu>80?'var(--red)':d.cpu>55?'var(--amber)':'var(--accent)';
   setV('t-cpu', d.cpu+'%');
   setW('t-cpu-bar', d.cpu);
+  _reactor?.setLoad(d.cpu/100);   // reactor revs with real CPU load
   const cpuBar = document.getElementById('t-cpu-bar');
   if (cpuBar) cpuBar.style.background = cpuColor;
 
@@ -4902,6 +4939,8 @@ function _startMockTelem() {
   const tick = () => {
     const cpu=nudge(_t.cpu), mem=nudge(_t.mem), ops=nudge(_t.ops), lat=nudge(_t.lat);
     setV('t-cpu',cpu.toFixed(1)+'%'); setW('t-cpu-bar',cpu);
+    _reactor?.setLoad(cpu/100);   // reactor revs with PROC LOAD
+
     setV('t-mem',mem.toFixed(1)+'%'); setW('t-mem-bar',mem);
     setV('t-ops',ops.toFixed(2)+' k/s'); setW('t-ops-bar',Math.min(100,ops/3.6*100));
     setV('t-lat',Math.round(lat)+'ms');

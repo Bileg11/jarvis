@@ -1,0 +1,6 @@
+{
+  "name": "jarvis-chat-proxy",
+  "version": "1.0.0",
+  "description": "JARVIS chat proxy — Vercel serverless (Railway-аас тусгаарласан, зөвхөн /chat relay)",
+  "private": true
+}

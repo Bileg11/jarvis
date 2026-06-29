@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/chat", "destination": "/api/chat" },
+    { "source": "/ping", "destination": "/api/ping" }
+  ],
+  "functions": {
+    "api/chat.js": { "maxDuration": 30 }
+  }
+}
