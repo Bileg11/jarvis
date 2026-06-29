@@ -59,6 +59,15 @@ module.exports = async (req, res) => {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
   if (!body) body = {};
 
+  // ── ABUSE / COST GUARDRAILS ──────────────────────────────────────
+  // Нээлттэй proxy тул нэг хүн token-ыг шавхахаас сэргийлнэ.
+  const msgs = Array.isArray(body.messages) ? body.messages : null;
+  if (!msgs || msgs.length === 0) return res.status(400).json({ error: 'messages шаардлагатай' });
+  if (msgs.length > 50)           return res.status(400).json({ error: 'Хэт олон мессеж (>50)' });
+  const totalChars = msgs.reduce((n, m) => n + ((m && typeof m.content === 'string') ? m.content.length : 0), 0);
+  if (totalChars > 40000)         return res.status(413).json({ error: 'Агуулга хэт урт (>40k тэмдэгт)' });
+  body.max_tokens = typeof body.max_tokens === 'number' ? Math.min(body.max_tokens, 1500) : 800;
+
   try {
     let data = null, status = 200;
     // 1) GitHub Models (Azure)
