@@ -10,6 +10,7 @@
 <script src="jarvis-config.js"></script>
 <script src="firebase-config.js"></script>
 <script src="hsk-vocab.js"></script>
+<script src="hsk-vocab-45.js"></script>
 <style>
   /* ── Base ─────────────────────────────────────────────── */
   :root {
@@ -452,7 +453,7 @@
       </div>
       <div id="mock-content">
         <div style="text-align:center;padding:20px 0">
-          <div style="font-size:13px;color:var(--text);opacity:.5;margin-bottom:16px">HSK3 формат дуурайлган шалгалт</div>
+          <div id="mock-desc" style="font-size:13px;color:var(--text);opacity:.5;margin-bottom:16px">HSK формат дуурайлган шалгалт</div>
           <button class="btn-add" onclick="initMock()" style="padding:12px 28px;font-size:14px">Шалгалт эхлүүлэх →</button>
         </div>
       </div>
@@ -487,7 +488,7 @@
 <script>
 // ── Data ──────────────────────────────────────────────────────────
 const EXAM_DATE     = window.JARVIS_EXAM_DATE; // jarvis-config.js — нэг эх сурвалж
-const HSK_MAX_LEVEL = 3; // HSK 3 → level 1-3 шүүнэ
+const HSK_MAX_LEVEL = 5; // HSK4 зорилго + HSK5 нөөц → level 1-5 шүүнэ
 const LS_WORDS   = 'jarvis_hsk_vault_cache';
 const LS_SESSION = 'jarvis_hsk_session_';
 const LS_STREAK  = 'jarvis_hsk_streak';
@@ -599,7 +600,7 @@ function _renderExamDays() {
 // ── HSK user profile ─────────────────────────────────────────────
 let _hskProduct = 'three';  // 'hsk' | 'three'
 let _hskPremium = false;
-let _hskTarget  = 3;
+let _hskTarget  = 4;
 let _hskName    = '';
 
 async function _loadHSKProfile() {
@@ -610,7 +611,7 @@ async function _loadHSKProfile() {
       const d     = snap.data();
       _hskProduct = d.product  || 'three';
       _hskPremium = d.premium  || false;
-      _hskTarget  = d.hsk_target || 3;
+      _hskTarget  = d.hsk_target || 4;
       _hskName    = d.name     || '';
     }
   } catch(e) { console.warn('[HSKProfile]', e.message); }
@@ -640,34 +641,43 @@ function _applyHSKUI() {
   }
 }
 
-// Auto-seed from HSK_VOCAB_ALL (client-side) when Firestore is empty
-async function _autoSeedVocab() {
-  if (!_hskDb || !_hskUid) return;
-  if (typeof HSK_VOCAB_ALL === 'undefined') return;
-  const maxLevel = (_hskProduct === 'hsk' && !_hskPremium) ? 1 : _hskTarget;
-  const words = HSK_VOCAB_ALL.filter(w => w.hsk_level <= maxLevel);
-  // Batch write to Firestore (batch of 400)
+// ── Seed helpers ─────────────────────────────────────────────────
+// Хэрэглэгчид хамаарах бүх үг (HSK_VOCAB_ALL-аас түвшингээр шүүсэн)
+function _seedTargetWords() {
+  if (typeof HSK_VOCAB_ALL === 'undefined') return [];
+  const maxLevel = (_hskProduct === 'hsk')
+    ? (_hskPremium ? _hskTarget : 1)
+    : HSK_MAX_LEVEL; // хувийн горим: HSK4 зорилго + HSK5 нөөц бүгд
+  return HSK_VOCAB_ALL.filter(w => w.hsk_level <= maxLevel);
+}
+
+// Firestore руу хэсэгчлэн бичнэ (batch limit 500 тул 400-аар)
+async function _seedWordsToFirestore(words) {
+  if (!_hskDb || !_hskUid || !words.length) return;
   try {
-    const batch = _hskDb.batch();
-    let count = 0;
-    words.forEach(w => {
-      const ref = _hskDb.doc('users/' + _hskUid + '/vocabulary/' + w.word);
-      batch.set(ref, {
-        word:          w.word,
-        pinyin:        w.pinyin,
-        definition:    w.definition,
-        hsk_level:     w.hsk_level,
-        mastery_level: 0,
-        added:         new Date().toISOString(),
-        source:        'auto_seed',
-      }, { merge: true });
-      count++;
-      // Firestore batch limit 500
-      if (count >= 400) return;
-    });
-    await batch.commit();
-    console.log('[HSK] Auto-seed:', words.length, 'words →', maxLevel, 'level');
+    for (let i = 0; i < words.length; i += 400) {
+      const batch = _hskDb.batch();
+      words.slice(i, i + 400).forEach(w => {
+        const ref = _hskDb.doc('users/' + _hskUid + '/vocabulary/' + w.word);
+        batch.set(ref, {
+          word:          w.word,
+          pinyin:        w.pinyin,
+          definition:    w.definition,
+          hsk_level:     w.hsk_level,
+          mastery_level: 0,
+          added:         new Date().toISOString(),
+          source:        'auto_seed',
+        }, { merge: true });
+      });
+      await batch.commit();
+    }
+    console.log('[HSK] Seed:', words.length, 'үг бичигдлээ');
   } catch(e) { console.warn('[HSK] Seed error:', e.message); }
+}
+
+// Firestore хоосон үед бүгдийг seed хийнэ
+async function _autoSeedVocab() {
+  await _seedWordsToFirestore(_seedTargetWords());
 }
 
 async function init() {
@@ -700,6 +710,21 @@ async function init() {
       await _autoSeedVocab();
       await _loadFromFirestore();
     }
+  } else if (_hskUid) {
+    // Top-up: шинээр нэмэгдсэн түвшний (HSK4/5) дутуу үгсийг нөхөж seed хийнэ
+    const have = new Set(_words.map(w => w.h));
+    const missing = _seedTargetWords().filter(w => !have.has(w.word));
+    if (missing.length) {
+      showToast('Шинэ үгс нэмж байна: ' + missing.length);
+      await _seedWordsToFirestore(missing);
+      await _loadFromFirestore();
+    }
+  }
+
+  // Mock exam тайлбарыг зорилгын түвшнээр
+  const mockDesc = document.getElementById('mock-desc');
+  if (mockDesc && window.JARVIS_EXAM_LEVEL) {
+    mockDesc.textContent = window.JARVIS_EXAM_LEVEL + ' формат дуурайлган шалгалт';
   }
 
   // Premium gate: free users зөвхөн HSK1 үзнэ
@@ -844,8 +869,10 @@ function initDrill() {
     return;
   }
   // SRS шүүлт: due → new → бусад
+  // Шинэ үгсийг доод түвшнээс эхлүүлнэ (HSK4 → HSK5), түвшин дотроо санамсаргүй
   const due  = words.filter(w => !w.mastered && _isDue(w)).sort(() => Math.random()-.5);
-  const newW = words.filter(w => !w.mastered && !_isDue(w) && !w.reviewed).sort(() => Math.random()-.5);
+  const newW = words.filter(w => !w.mastered && !_isDue(w) && !w.reviewed)
+                    .sort(() => Math.random()-.5).sort((a,b) => (a.level||4) - (b.level||4));
   const rest = words.filter(w => !w.mastered && !_isDue(w) && w.reviewed).sort(() => Math.random()-.5);
   _drillQueue  = [...due, ...newW, ...rest];
   _drillDueEnd = due.length;

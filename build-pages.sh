@@ -12,7 +12,7 @@ cp index.html jarvis-config.js app.js gemini.js firebase-config.js themes.js int
 cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html finance.html hsk-signup.html learn.html login.html _site/ 2>/dev/null || true
 
 # Ханз app
-cp hsk-vocab.js _site/ 2>/dev/null || true
+cp hsk-vocab.js hsk-vocab-45.js _site/ 2>/dev/null || true
 
 # Icons
 cp icon-192.png icon-512.png apple-touch-icon.png _site/ 2>/dev/null || true
