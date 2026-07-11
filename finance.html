@@ -779,7 +779,7 @@ MNT хуримтлал (нийт): ₮${savMNT.toLocaleString()}
 3-4 оноо бүхий практик, товч зөвлөгөө өг (монголоор). Тодорхой тоо ашигла. Аль ангилал хэт их, юу хэмнэх боломжтойг хэл.`;
 
   try {
-    const proxy  = (localStorage.getItem('jarvis_proxy_url') || 'https://jarvis-production-5842.up.railway.app').replace(/\/$/,'');
+    const proxy  = (localStorage.getItem('jarvis_proxy_url') || 'https://jarvis-chat-proxy.vercel.app').replace(/\/$/,'');
     const secret = localStorage.getItem('jarvis_proxy_secret') || '';
     const headers = { 'Content-Type': 'application/json' };
     if (secret) headers['x-jarvis-secret'] = secret;

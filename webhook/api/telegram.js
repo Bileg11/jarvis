@@ -31,6 +31,10 @@ const {
   clearDrillSession,
 } = require('./hsk3-coach');
 
+// Шалгалтын огноо/түвшин — энэ файлд ЗӨВХӨН ЭНД (client тал: jarvis-config.js)
+const EXAM_DATE_ISO = '2026-09-01T09:00:00+08:00';
+const EXAM_LEVEL    = 'HSK4';
+
 const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT    = process.env.TELEGRAM_ID;   // cron job-д ашиглана
 const UID        = process.env.USER_UID;       // cron job-д ашиглана (default)
@@ -42,7 +46,7 @@ const GEMINI_URL = GEMINI_KEY
 // ── BILEG SYSTEM INSTRUCTION (динамик — HSK хоног, challenge ctx) ─
 function getBilegSystem() {
   const hskDays = Math.max(0, Math.ceil(
-    (new Date('2026-06-28T09:00:00+08:00') - Date.now()) / 86400000
+    (new Date(EXAM_DATE_ISO) - Date.now()) / 86400000
   ));
   const urgency = hskDays <= 7  ? '🔴 ШҮРГЭЖ ИРЛ_ЭЭ — ' + hskDays + ' хоног үлдсэн! Яаралтай!'
                 : hskDays <= 20 ? '🟠 ЯАРАЛ БИЙ — ' + hskDays + ' хоног үлдсэн.'
@@ -72,7 +76,7 @@ function getBilegSystem() {
     `• TONE: 18 настай залуутай ярьж байгаа — найзынх шиг casual ч Stark-level precision.\n\n` +
 
     `## 4. HSK URGENCY 🎯\n` +
-    `HSK4 шалгалт: 2026/06/28. ${urgency}\n` +
+    `${EXAM_LEVEL} шалгалт: ${EXAM_DATE_ISO.slice(0,10)}. ${urgency}\n` +
     `• Хамааралтай үед энэ urgency-г хариулт дотроо дотооддоо тусга.\n` +
     `• Үг заахдаа: [Ханз + Пиньин + Монгол + Жишээ өгүүлбэр].\n` +
     `• HSK-г хүчээр оруулахгүй — асуусныг нь л хариул.\n\n` +
@@ -190,7 +194,7 @@ async function getFullContext(uid) {
 // Drill start, progress summary, weak word coaching-д ашиглана.
 function buildHSKPrompt({ profile = {}, progress = null, weakWords = [], mode = 'drill_end', drillResult = null }) {
   const hskDays = Math.max(0, Math.ceil(
-    (new Date('2026-06-28T09:00:00+08:00') - Date.now()) / 86400000
+    (new Date(EXAM_DATE_ISO) - Date.now()) / 86400000
   ));
   const urgencyTag = hskDays <= 7  ? 'ШҮРГЭЖ ИРЛЭЭ'
                    : hskDays <= 20 ? 'ЯАРАЛ БИЙ'

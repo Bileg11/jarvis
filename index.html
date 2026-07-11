@@ -3568,6 +3568,7 @@ body[data-role="bileg"] #widget-mood { display: none !important; }
 
 <div id="toast"></div>
 
+<script src="jarvis-config.js"></script>
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>
 <script src="gemini.js"></script>
@@ -3737,7 +3738,7 @@ let _msgCount= 0;
 let _telemInterval = null;
 let _startTs = Date.now();
 
-const EXAM_DATE = new Date('2026-06-28T09:00:00+08:00');
+const EXAM_DATE = window.JARVIS_EXAM_DATE; // jarvis-config.js — нэг эх сурвалж
 
 // Simulated telemetry base values
 const _telem = {
@@ -3810,7 +3811,7 @@ function runBootSequence() {
     (function(){
       const _hd = document.getElementById('hsk-days-left');
       if (_hd) {
-        const _d = Math.max(0, Math.floor((new Date('2026-06-28T09:00:00+08:00') - new Date()) / 86400000));
+        const _d = jarvisExamDays();
         _hd.textContent = _d + ' days';
         _hd.style.color = _d < 30 ? 'var(--red)' : _d < 60 ? 'var(--amber)' : 'var(--green)';
       }
@@ -4540,7 +4541,7 @@ async function termSend() {
       `HSK4 VOCAB     : ${hanM.val||0} / 300 words  (${hanM.pct||0}%)`,
       `FITNESS        : ${fitM.val||0} / 30 sessions`,
       `── EXAM COUNTDOWN ──────────────────────────────`,
-      `HSK4 2026-06-28: ${days}d ${hrs}h remaining`,
+      `${window.JARVIS_EXAM_LEVEL} ${window.JARVIS_EXAM_DATE_STR}: ${days}d ${hrs}h remaining`,
       `── VITALS ──────────────────────────────────────`,
       `CPU / MEM      : ${cpu}  /  ${mem}  |  uptime ${upStr}`,
       `── AI WEEKLY AUDIT ─────────────────────────────`,
@@ -5426,8 +5427,8 @@ function _buildMatrixCards() {
   });
 
   // HSK4 exam countdown
-  const days = Math.max(0, Math.floor((new Date('2026-06-28T09:00:00+08:00')-Date.now())/86400000));
-  cards.push({ id:'hsk_exam', label:`HSK4 Exam — ${days}d left`, tag:'DEADLINE', col: days<14?1:0, type:'deadline' });
+  const days = jarvisExamDays();
+  cards.push({ id:'hsk_exam', label:`${window.JARVIS_EXAM_LEVEL} Exam — ${days}d left`, tag:'DEADLINE', col: days<14?1:0, type:'deadline' });
 
   // GitHub tasks from localStorage (user can add via /matrix add <task>)
   const custom = (() => { try { return JSON.parse(localStorage.getItem('jarvis_matrix_custom')||'[]'); } catch { return []; } })();
@@ -6931,7 +6932,7 @@ function _populateVirtualModule(mod, bodyId) {
   // Auto-fill some live data
   if (mod.id === 'countdown') {
     const el = document.getElementById('vmod-countdown');
-    if (el) { const d = Math.max(0,Math.floor((new Date('2026-06-28')-new Date())/86400000)); el.textContent = d + ' DAYS'; }
+    if (el) { const d = jarvisExamDays(); el.textContent = d + ' DAYS'; }
   }
   if (mod.id === 'quote') {
     const el = document.getElementById('vmod-quote-text');
@@ -6961,7 +6962,7 @@ function _showDailyBrief() {
   if (!el) return;
 
   // ── 1. HSK Countdown ─────────────────────────────────────────
-  const EXAM  = new Date('2026-06-28T09:00:00+08:00');
+  const EXAM  = window.JARVIS_EXAM_DATE;
   const now   = new Date();
   const diff  = Math.max(0, EXAM - now);
   const days  = Math.floor(diff / 86400000);
@@ -9052,8 +9053,7 @@ let _hskProgress = null;
 async function _hskBlitzInit() {
   // FIX: days-left-ийг Firestore await-аас ӨМНӨ шууд тооцоод харуулна
   // (өмнө await-ийн дараа байсан тул "— days" удаан харагддаг байсан)
-  const HSK_DATE = new Date('2026-06-28T09:00:00+08:00');
-  const days = Math.max(0, Math.floor((HSK_DATE - new Date()) / 86400000));
+  const days = jarvisExamDays();
   const daysEl = document.getElementById('hsk-days-left');
   if (daysEl) {
     daysEl.textContent = days + ' days';
@@ -9083,7 +9083,7 @@ function _hskDefaultProgress() {
       reps: 0,
       nextReview: Date.now(),
     })),
-    exam_date: '2026-06-28',
+    exam_date: window.JARVIS_EXAM_DATE_STR,
     created_at: new Date().toISOString(),
   };
 }
@@ -9216,7 +9216,7 @@ function _hskFinishSelfTest() {
     _hskBuildStudySchedule();
   }
 
-  const HSK = new Date('2026-06-28'); const days = Math.max(1, Math.floor((HSK-new Date())/86400000));
+  const days = Math.max(1, jarvisExamDays());
   const perDay = Math.ceil(unknown.length / days);
 
   const content = document.getElementById('hsk-blitz-content');
@@ -9410,7 +9410,7 @@ function _hskRenderStats() {
             onchange="_hskUpdateSkill('${s}',+this.value)">
         </div>`).join('')}
       <div style="font-family:var(--mono);font-size:8px;color:var(--text);opacity:.4;margin-top:8px">
-        Дараагийн шалгалт: ${Math.max(0,Math.floor((new Date('2026-06-28')-new Date())/86400000))} хоног
+        Дараагийн шалгалт: ${jarvisExamDays()} хоног
       </div>
     </div>`;
 }
@@ -9441,8 +9441,7 @@ function _hskRenderSchedule() {
 
 function _hskBuildStudySchedule() {
   if (!_hskProgress) return;
-  const HSK_DATE = new Date('2026-06-28T09:00:00+08:00');
-  const days     = Math.max(1, Math.floor((HSK_DATE - new Date()) / 86400000));
+  const days     = Math.max(1, jarvisExamDays());
   const remaining = HSK4_BANK.length - (_hskProgress.mastered_ids?.length || 0);
   const newPerDay = Math.ceil(remaining / days);
   const today    = new Date();
@@ -9910,8 +9909,7 @@ const _aceEngine = (() => {
       catch { return {}; }
     })();
 
-    const HSK_DATE = new Date('2026-06-28T09:00:00+08:00');
-    const daysLeft = Math.max(0, Math.floor((HSK_DATE - now) / 86400000));
+    const daysLeft = jarvisExamDays();
     const callSign = localStorage.getItem('jarvis_callsign') || 'Boss';
 
     const checks = [];
@@ -10510,7 +10508,7 @@ function _fvRenderCard(type) {
   } else if (type === 'status') {
     const r = (() => { try { return JSON.parse(localStorage.getItem('jarvis_r') || '{}'); } catch { return {}; } })();
     const score = Math.round((r.exercise?20:0)+(r.hanzi?20:0)+(r.read?15:0)+(r.journal?10:0)+Math.min(25,(r.water||0)/8*25));
-    const HSK = new Date('2026-06-28'); const days = Math.max(0, Math.floor((HSK - new Date())/86400000));
+    const days = jarvisExamDays();
     body.innerHTML = `
       <div class="fv-status-row"><span class="k">Score</span><span class="v">${score}/100</span></div>
       <div class="fv-status-row"><span class="k">💪 Workout</span><span class="v">${r.exercise?'✓':'—'}</span></div>

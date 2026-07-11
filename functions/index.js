@@ -16,6 +16,9 @@ const fetch                = require('node-fetch');
 admin.initializeApp();
 const db = admin.firestore();
 
+// Шалгалтын огноо — энэ файлд ЗӨВХӨН ЭНД (client тал: jarvis-config.js)
+const EXAM_DATE_ISO = '2026-09-01T09:00:00+08:00';
+
 // ── Config Params ─────────────────────────────────────────────────
 // Set via: firebase functions:config:set telegram.bot_token="..." telegram.chat_id="..."
 // Or use Firebase Secret Manager in production
@@ -229,7 +232,7 @@ function buildMorningMsg(uid, routine, coachLevel) {
   if (done.length)  msg += '✅ Дууссан:\n' + done.join('\n') + '\n\n';
   if (miss.length)  msg += '⏳ Үлдсэн:\n' + miss.join('\n') + '\n\n';
 
-  const HSK_DATE = new Date('2026-06-28T09:00:00+08:00');
+  const HSK_DATE = new Date(EXAM_DATE_ISO);
   const days = Math.max(0, Math.floor((HSK_DATE - new Date()) / 86400000));
   msg += `📅 HSK 4 шалгалт: <b>${days} хоног</b> үлдсэн\n`;
   msg += '\n<i>— A.C.E. Core · T.H.R.E.E. OS</i>';
@@ -307,7 +310,7 @@ exports.eveningCheck = onSchedule(
 
           if (!missed.length) return; // All done, no need to ping
 
-          const HSK_DATE = new Date('2026-06-28T09:00:00+08:00');
+          const HSK_DATE = new Date(EXAM_DATE_ISO);
           const days = Math.max(0, Math.floor((HSK_DATE - new Date()) / 86400000));
 
           const msg = coachLevel === 4

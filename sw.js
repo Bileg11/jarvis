@@ -1,7 +1,7 @@
-const CACHE = 'jarvis-v23';
+const CACHE = 'jarvis-v24';
 // Зөвхөн static asset cache хийнэ — HTML navigation-д ХҮРЭХГҮЙ
 const ASSETS = [
-  './style.css', './app.js', './gemini.js', './intel.js', './firebase-config.js',
+  './style.css', './jarvis-config.js', './app.js', './gemini.js', './intel.js', './firebase-config.js',
   './hsk-vocab.js', './manifest.json',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png',
 ];

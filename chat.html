@@ -1094,6 +1094,7 @@
 
   </div>
 
+  <script src="jarvis-config.js"></script>
   <script src="app.js"></script>
   <script src="gemini.js"></script>
   <script src="intel.js"></script>
@@ -1107,7 +1108,7 @@
   const LVL_COLOR  = {1:'#60a5fa',2:'#34d399',3:'#fbbf24',4:'#fb923c',5:'#f87171',6:'#a78bfa'};
   const LVL_SYM    = {1:'◎',2:'◉',3:'◈',4:'▣',5:'⬡',6:'✦'};
   const SRS        = {1:1,2:2,3:4,4:8,5:14};
-  const EXAM_DATE  = new Date('2026-06-28T09:00:00+08:00');
+  const EXAM_DATE  = window.JARVIS_EXAM_DATE; // jarvis-config.js — нэг эх сурвалж
   const DAILY_GOAL = 20;
 
   // ── DOM Refs ─────────────────────────────────────────────────
