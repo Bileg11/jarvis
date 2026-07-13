@@ -346,6 +346,7 @@ body{
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="jarvis-config.js"></script>
 <script src="hsk-vocab.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
@@ -354,11 +355,8 @@ if ('serviceWorker' in navigator) {
 
 // ── FIREBASE ─────────────────────────────────────────────────────
 window.addEventListener('load', () => {
-  firebase.initializeApp({
-    apiKey:     'AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc',
-    authDomain: 'jarvis-bileg.firebaseapp.com',
-    projectId:  'jarvis-bileg',
-  });
+  // Config нь jarvis-config.js-д (нэг эх сурвалж)
+  firebase.initializeApp(window.FIREBASE_CONFIG);
   window._auth = firebase.auth();
   window._db   = firebase.firestore();
   _auth.onAuthStateChanged(user => {

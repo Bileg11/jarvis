@@ -6,6 +6,18 @@
 //   webhook/api/telegram.js, webhook/api/hsk3-coach.js, functions/index.js
 //   — файл бүрийн дээд талд EXAM_DATE_ISO const бий, тэндээ соль.
 
+// Firebase project config — БАС НЭГ Л ЭХ СУРВАЛЖ (өмнө нь 3 файлд давхардсан байсан).
+// firebase-config.js, login.html, learn.html бүгд эндээс уншина.
+// АНХААР: firebase-config.js-ээс ӨМНӨ ачаалагдсан байх ёстой.
+window.FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc",
+  authDomain:        "jarvis-bileg.firebaseapp.com",
+  projectId:         "jarvis-bileg",
+  storageBucket:     "jarvis-bileg.firebasestorage.app",
+  messagingSenderId: "59304492638",
+  appId:             "1:59304492638:web:9da4e7ceac790d1254becf"
+};
+
 window.JARVIS_EXAM_LEVEL    = 'HSK4';
 window.JARVIS_EXAM_DATE_STR = '2026-09-01';
 window.JARVIS_EXAM_DATE     = new Date('2026-09-01T09:00:00+08:00');

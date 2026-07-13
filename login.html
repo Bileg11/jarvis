@@ -6,6 +6,7 @@
 <title>Нэвтрэх — T.H.R.E.E. OS</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="jarvis-config.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <style>
@@ -59,17 +60,9 @@ body::before{content:'';position:fixed;top:-180px;left:50%;transform:translateX(
 
 <script>
 let _mode = 'login';
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc",
-  authDomain: "jarvis-bileg.firebaseapp.com",
-  projectId: "jarvis-bileg",
-  storageBucket: "jarvis-bileg.firebasestorage.app",
-  messagingSenderId: "59304492638",
-  appId: "1:59304492638:web:9da4e7ceac790d1254becf"
-};
-
+// Config нь jarvis-config.js-д (нэг эх сурвалж)
 window.addEventListener('load', () => {
-  firebase.initializeApp(FIREBASE_CONFIG);
+  firebase.initializeApp(window.FIREBASE_CONFIG);
   window._auth = firebase.auth();
   // Аль хэдийн нэвтэрсэн бол шууд апп руу
   _auth.onAuthStateChanged(u => {

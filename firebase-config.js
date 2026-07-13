@@ -1,11 +1,6 @@
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyA0AwSRMmKQsRfLoY9CreGKrm3CXn0FHTc",
-  authDomain:        "jarvis-bileg.firebaseapp.com",
-  projectId:         "jarvis-bileg",
-  storageBucket:     "jarvis-bileg.firebasestorage.app",
-  messagingSenderId: "59304492638",
-  appId:             "1:59304492638:web:9da4e7ceac790d1254becf"
-};
+// Config нь jarvis-config.js-д (нэг эх сурвалж) — түүнийг ӨМНӨ нь ачаална
+const FIREBASE_CONFIG = window.FIREBASE_CONFIG;
+if (!FIREBASE_CONFIG) console.error('[Firebase] jarvis-config.js ачаалагдаагүй байна — script дарааллаа шалга');
 
 firebase.initializeApp(FIREBASE_CONFIG);
 
