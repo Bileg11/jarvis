@@ -27,3 +27,14 @@ window.JARVIS_EXAM_LABEL    = window.JARVIS_EXAM_LEVEL + ' — ' + window.JARVIS
 window.jarvisExamDays = function () {
   return Math.max(0, Math.floor((window.JARVIS_EXAM_DATE - Date.now()) / 86400000));
 };
+
+// ── MIGRATION (2026-07): Railway унтарсан ─────────────────────────
+// Хуучин Railway proxy override localStorage-д үлдсэн бол автоматаар
+// цэвэрлэнэ → бүх хуудас шинэ Vercel default руу залгагдана.
+try {
+  const _oldProxy = localStorage.getItem('jarvis_proxy_url') || '';
+  if (/railway\.app/i.test(_oldProxy)) {
+    localStorage.removeItem('jarvis_proxy_url');
+    console.log('[Migration] Хуучин Railway proxy URL цэвэрлэгдлээ');
+  }
+} catch {}
