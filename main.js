@@ -283,10 +283,10 @@ ipcMain.handle('chat-completion', async (_, { url, headers, body }) => {
 
 // ── Sprint 36: World via Railway proxy (Node fetch — CORS-гүй, найдвартай)
 // Renderer browser fetch CORS-д баригдвал энэ IPC ашиглана.
-// Railway US-д тул Хятадаас хүрдэг (BBC шиг block биш).
-const RAILWAY_DEFAULT = 'https://jarvis-production-5842.up.railway.app';
+// Vercel US-д тул Хятадаас хүрдэг (BBC шиг block биш).
+const WORLD_PROXY_DEFAULT = 'https://jarvis-chat-proxy.vercel.app';
 ipcMain.handle('fetch-world-proxy', async (_, proxyUrl) => {
-  const base = (proxyUrl || RAILWAY_DEFAULT).replace(/\/$/, '');
+  const base = (proxyUrl || WORLD_PROXY_DEFAULT).replace(/\/$/, '');
   try {
     const body = await _fetchUrl(`${base}/world`, 15000);
     return JSON.parse(body);

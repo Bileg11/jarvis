@@ -7544,11 +7544,11 @@ async function _fvWorldSummary() {
   document.getElementById('fv-empty')?.style.setProperty('display', 'none');
   const loading = _fvAddMsg('ace', '<span style="opacity:.6">🌐 Дэлхийн мэдээ татаж байна… <span style="opacity:.5">(15с timeout)</span></span>');
 
-  // 1. Fetch world feeds + FX. Хятадаас BBC блоклогддог тул Railway (US)
-  //    proxy дамжуулна. Default Railway URL — proxy тохируулаагүй ч ажиллана.
+  // 1. Fetch world feeds + FX. Хятадаас BBC блоклогддог тул Vercel (US)
+  //    proxy дамжуулна. Default Vercel URL — proxy тохируулаагүй ч ажиллана.
   let world = null, fx = null;
-  const RAILWAY = 'https://jarvis-production-5842.up.railway.app';
-  const proxy = (localStorage.getItem('jarvis_proxy_url') || RAILWAY).replace(/\/$/, '');
+  const WORLD_PROXY = 'https://jarvis-chat-proxy.vercel.app';
+  const proxy = (localStorage.getItem('jarvis_proxy_url') || WORLD_PROXY).replace(/\/$/, '');
 
   // FX (parallel, timeout-той)
   const fxP = window.jarvisAPI?.fetchFX

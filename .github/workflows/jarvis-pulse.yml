@@ -1,0 +1,49 @@
+name: JARVIS Pulse
+
+# Railway server.js-ийн cron-уудын орлуулалт (Railway унтарсан):
+#   */5  — Execution Engine tick + outbox + checkpoints
+#   0 7  — 15:00 Шанхай: HSK өдрийн сануулга
+#   1 14 — 22:01 Шанхай: өдрийн тайлан (recap)
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+    - cron: '0 7 * * *'
+    - cron: '1 14 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'tick | hsk | recap'
+        default: 'tick'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  pulse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: webhook/package-lock.json
+      - run: npm ci --prefix webhook
+
+      - name: Determine mode
+        id: mode
+        run: |
+          MODE=tick
+          [ "${{ github.event.schedule }}" = "0 7 * * *" ]  && MODE=hsk
+          [ "${{ github.event.schedule }}" = "1 14 * * *" ] && MODE=recap
+          [ -n "${{ github.event.inputs.mode }}" ] && MODE="${{ github.event.inputs.mode }}"
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+
+      - name: Run pulse (${{ steps.mode.outputs.mode }})
+        env:
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+          USER_UID:                  ${{ secrets.USER_UID }}
+          GEMINI_API_KEY:            ${{ secrets.GEMINI_API_KEY }}
+        run: node webhook/pulse.js ${{ steps.mode.outputs.mode }}

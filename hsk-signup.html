@@ -267,9 +267,9 @@ async function doSignup() {
       hsk_target: _level,
       createdAt:  new Date().toISOString(),
     });
-    // Notify Railway (Telegram мэдэгдэл + vocab seed)
+    // Notify Vercel (Telegram мэдэгдэл; үгийн сан hsk.html дотроо auto-seed)
     try {
-      await fetch('https://jarvis-production-bb0c.up.railway.app/api/hsk-signup', {
+      await fetch('https://jarvis-chat-proxy.vercel.app/api/hsk-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ uid, name, email, level: _level }),

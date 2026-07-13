@@ -64,9 +64,8 @@ function getBilegSystem() {
     `## 2. USER PROFILE\n` +
     `• 18 настай Монгол залуу, Шанхайд ганцаараа амьдардаг.\n` +
     `• Бизнес: LFS Shanghai (Монгол аялагчдад VIP туслалцаа).\n` +
-    `• Tech stack: React, Firebase, Node.js, Railway, GitHub.\n` +
-    `• Зорилго: AI-г тултал ашиглах · LFS-г бодит бизнес болгох · HSK100%.\n` +
-    `• June Challenge: Маралаатай хамт 06/01–06/30 өдөр бүрийн дасгалжуулалт.\n\n` +
+    `• Tech stack: React, Firebase, Node.js, Vercel, GitHub Actions.\n` +
+    `• Зорилго: AI-г тултал ашиглах · LFS-г бодит бизнес болгох · ${EXAM_LEVEL}-ийг ${EXAM_DATE_ISO.slice(0,10)} гэхэд авах.\n\n` +
 
     `## 3. CORE PRINCIPLES\n` +
     `• ШУУД & ШИГДСЭН: Цөм рүү нь дайр. Оршил, "Мэдээж", "Тэгвэл", "Маш сайн асуулт" — ХОРИОТОЙ.\n` +
@@ -3183,10 +3182,8 @@ async function sendGlowupNudge(slot) {
   }
 }
 
-module.exports.sendGlowupNudge  = sendGlowupNudge;
-module.exports.sendCheckpoints  = sendCheckpoints;
-module.exports.sendDailyRecap   = sendDailyRecap;
-module.exports.processOutbox    = processOutbox;
+// (exports нь доор — module.exports = handler оноолтын ДАРАА байх ёстой,
+//  эс бөгөөс дахин оноолт эдгээрийг устгадаг байсан баг байв)
 
 // ── WEBHOOK HANDLER ───────────────────────────────────────────────
 // Server startup-д Билэгийн профайлыг seed хийнэ
@@ -3289,6 +3286,10 @@ module.exports = async (req, res) => {
 module.exports.sendWeeklyReport = sendWeeklyReport;
 module.exports.sendBrief        = sendBrief;
 module.exports.sendHSKReminder  = sendHSKReminder;
+module.exports.sendGlowupNudge  = sendGlowupNudge;
+module.exports.sendCheckpoints  = sendCheckpoints;
+module.exports.sendDailyRecap   = sendDailyRecap;
+module.exports.processOutbox    = processOutbox;
 
 // ── HSK DAILY REMINDER — 15:00 Шанхай ────────────────────────────
 async function sendHSKReminder() {
