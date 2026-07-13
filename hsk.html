@@ -343,7 +343,7 @@
   <!-- ── TAB: VAULT ── -->
   <div class="tab-panel active" id="panel-vault">
     <div id="seed-banner" style="display:none;background:rgba(196,160,100,.08);border:1px solid rgba(196,160,100,.3);border-radius:8px;padding:12px 16px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:12px">
-      <span style="font-size:12px;color:#c4a064">⚠ Үгийн сан хоосон байна — HSK 1-6 (2094 үг) татах уу?</span>
+      <span style="font-size:12px;color:#c4a064">⚠ Үгийн сан хоосон байна — HSK үгийн сан бүтнээр татах уу?</span>
       <button onclick="seedFromBrowser()" style="background:#c4a064;color:#0d1117;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">📥 Татах</button>
     </div>
     <div class="card">
@@ -1286,15 +1286,11 @@ async function seedFromBrowser() {
   const btn = document.querySelector('#seed-banner button');
   if (btn) { btn.textContent = '⏳ Татаж байна...'; btn.disabled = true; }
   if (!_hskDb || !_hskUid) { showToast('Нэвтрэх шаардлагатай'); return; }
-  let count = 0;
   try {
-    for (const w of HSK_SEED_SAMPLE) {
-      await _hskDb.doc(`users/${_hskUid}/vocabulary/${w.word}`).set({
-        ...w, mastery_level: 0, source: 'hsk_page_seed', added: today()
-      }, { merge: true });
-      count++;
-    }
-    showToast(`✓ ${count} үг нэмэгдлээ — Bot-д /seed_hsk явуулахад 2094 бүгд орно`);
+    // Бүтэн жагсаалтыг (түвшингээр шүүсэн) seed хийнэ — жижиг sample биш
+    const words = _seedTargetWords();
+    await _seedWordsToFirestore(words);
+    showToast(`✓ ${words.length} үг нэмэгдлээ`);
     document.getElementById('seed-banner').style.display = 'none';
     await loadTxns_stub(); // vocab reload
   } catch(e) { showToast('Алдаа: ' + e.message); }
