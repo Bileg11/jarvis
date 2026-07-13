@@ -6,7 +6,7 @@ rm -rf _site
 mkdir -p _site
 
 # Үндсэн web файлууд
-cp index.html jarvis-config.js app.js gemini.js firebase-config.js themes.js intel.js style.css sw.js manifest.json icon.svg _site/ 2>/dev/null || true
+cp index.html index.css jarvis-config.js app.js gemini.js firebase-config.js themes.js intel.js hsk4-bank.js style.css sw.js manifest.json icon.svg _site/ 2>/dev/null || true
 
 # HTML хуудаснууд
 cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html finance.html hsk-signup.html learn.html login.html _site/ 2>/dev/null || true
@@ -31,7 +31,7 @@ done
 
 # ── MINIFY JS ───────────────────────────────────────────────────
 echo "📦 Minifying JS..."
-for f in _site/jarvis-config.js _site/app.js _site/gemini.js _site/firebase-config.js _site/intel.js _site/themes.js; do
+for f in _site/jarvis-config.js _site/app.js _site/gemini.js _site/firebase-config.js _site/intel.js _site/themes.js _site/hsk4-bank.js; do
   [ -f "$f" ] && npx terser "$f" --compress --mangle --output "$f" 2>/dev/null && echo "  ✓ $(basename $f)" || true
 done
 
