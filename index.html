@@ -4285,7 +4285,10 @@ function _populateVirtualModule(mod, bodyId) {
   }
 }
 
-const _navMap = { intel:'chat', track:'tracker', profile:'profile', guide:'guide' };
+// .html өргөтгөлтэй байх ЁСТОЙ — main.js loadPage зөвхөн бүтэн нэр зөвшөөрдөг
+// (Electron-д PROFILE/INTEL товч ажилладаггүй байсны шалтгаан). Web fallback
+// доороо .replace(/\.html$/,'')-ээр өргөтгөлгүй болгодог тул web-д ч зөв.
+const _navMap = { intel:'chat.html', track:'tracker.html', profile:'profile.html', guide:'guide.html' };
 
 // ══════════════════════════════════════════════════════════════════
 // SPRINT 29 — DAILY BRIEFING POPUP

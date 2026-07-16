@@ -365,6 +365,20 @@ function createWindow() {
 }
 
 // ── APP LIFECYCLE ────────────────────────────────────────────────
+// ДАВХАР НЭЭЛТ ХОРИГЛОНО: хоёр instance нэг userData хуваалцахад
+// cache lock зөрчилдөж хоёр дахь цонх CSS-гүй эвдэрхий гардаг байсан.
+// Хоёр дахь удаа нээхэд байгаа цонхоо гаргаж ирнэ.
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show(); mainWindow.focus();
+    }
+  });
+}
+
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   createWindow();
