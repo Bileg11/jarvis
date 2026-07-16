@@ -843,11 +843,19 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(() => refreshJarvis(), 5 * 60 * 1000);
 
   if ('serviceWorker' in navigator) {
-    // Хуучин SW бүгдийг unregister хийгээд шинийг бүртгэнэ
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(r => r.unregister());
-    }).then(() => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {});
-    });
+    if (location.protocol === 'file:') {
+      // ELECTRON: SW огт хэрэггүй (файлууд дискнээс шууд уншигдана).
+      // Гэмтсэн SW cache нь file:// дээр бүх asset-ийг ERR_FAILED болгож
+      // апп CSS-гүй нээгддэг байсан тул бүртгэлийг цэвэрлээд ДАХИЖ бүртгэхгүй.
+      navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(() => {});
+      caches?.keys?.().then(ks => ks.forEach(k => caches.delete(k))).catch(() => {});
+    } else {
+      // WEB: хуучин SW бүгдийг unregister хийгээд шинийг бүртгэнэ
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(r => r.unregister());
+      }).then(() => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
   }
 });
