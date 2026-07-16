@@ -28,6 +28,12 @@ window.jarvisExamDays = function () {
   return Math.max(0, Math.floor((window.JARVIS_EXAM_DATE - Date.now()) / 86400000));
 };
 
+// Хуудасны зам: Electron-д .html өргөтгөлтэй, вэбэд өргөтгөлгүй
+// (Cloudflare /learn.html → /learn redirect хийдэг тул вэбэд өргөтгөлгүй нь зөв)
+window.jarvisHref = function (name) {
+  return window.jarvisAPI ? name + '.html' : name;
+};
+
 // ── MIGRATION (2026-07): Railway унтарсан ─────────────────────────
 // Хуучин Railway proxy override localStorage-д үлдсэн бол автоматаар
 // цэвэрлэнэ → бүх хуудас шинэ Vercel default руу залгагдана.
