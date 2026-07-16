@@ -316,9 +316,6 @@ function createWindow() {
     show: false,
   });
 
-  // Sprint 36: clear renderer cache on launch so code updates always load fresh
-  mainWindow.webContents.session.clearCache().catch(() => {});
-
   // Sprint 38 DEBUG: renderer console + crash/hang-г terminal log руу дамжуулах
   mainWindow.webContents.on('console-message', (_e, level, message) => {
     if (level >= 2) console.log(`[renderer:ERR] ${String(message).slice(0,200)}`);
@@ -327,7 +324,12 @@ function createWindow() {
   mainWindow.webContents.on('unresponsive', () => console.log('[renderer UNRESPONSIVE — freeze!]'));
   mainWindow.webContents.on('responsive', () => console.log('[renderer responsive again]'));
 
-  mainWindow.loadFile('index.html');
+  // Sprint 36 FIX: clearCache-ийг loadFile-тэй ЗЭРЭГ ажиллуулахад уралдаан
+  // үүсч index.css хааяа ачаалагдалгүй апп "нүцгэн" гардаг байсан.
+  // Одоо cache цэвэрлэж ДУУССАНЫ дараа л хуудсаа ачаална.
+  mainWindow.webContents.session.clearCache()
+    .catch(() => {})
+    .then(() => mainWindow.loadFile('index.html'));
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
