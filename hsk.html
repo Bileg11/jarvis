@@ -60,6 +60,16 @@
     overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
   }
   .tabs::-webkit-scrollbar { display:none; }
+  /* Баруун талд дахин таб байгааг мэдрүүлэх бүдгэрэл */
+  .tabs-wrap { position:relative; margin-bottom:var(--sp-5); }
+  .tabs-wrap .tabs { margin-bottom:0; }
+  .tabs-wrap::after {
+    content:''; position:absolute; right:1px; top:1px; bottom:1px; width:44px;
+    pointer-events:none; border-radius:0 var(--r-lg) var(--r-lg) 0;
+    background:linear-gradient(90deg, transparent, var(--surface));
+    opacity:1; transition:opacity var(--t-fast);
+  }
+  .tabs-wrap.at-end::after { opacity:0; }
   .tab {
     flex:1 0 auto; min-height:44px; padding:0 var(--sp-4); text-align:center; cursor:pointer;
     border-radius:var(--r-md); white-space:nowrap;
@@ -368,7 +378,7 @@
   </div>
 
   <!-- Tabs -->
-  <div class="tabs">
+  <div class="tabs-wrap"><div class="tabs">
     <button class="tab active" onclick="switchTab('vault')">📚 Үгийн сан</button>
     <button class="tab" onclick="switchTab('session')">🔥 Session</button>
     <button class="tab" onclick="switchTab('drill')">⚡ Drill</button>
@@ -379,7 +389,7 @@
     <button class="tab" onclick="switchTab('cram')">🔥 Cram</button>
     <button class="tab" onclick="switchTab('mock')">📝 Mock</button>
     <button class="tab" id="tab-game" onclick="location.href=(window.jarvisHref?window.jarvisHref('learn'):'learn')">🎮 Ханз тоглоом</button>
-  </div>
+  </div></div>
 
   <!-- ── TAB: VAULT ── -->
   <!-- СУРАХ ГАДАРГУУ: Шөнийн самбарт энэ хэсэг цайвар цаас болно -->
@@ -540,6 +550,19 @@
 <div id="toast"></div>
 
 <script>
+// Табын мөр төгсгөлд хүрсэн эсэхийг мэдэрч бүдгэрлийг нууна
+(function () {
+  var wrap = document.querySelector('.tabs-wrap'), row = wrap && wrap.querySelector('.tabs');
+  if (!wrap || !row) return;
+  function upd() {
+    var atEnd = row.scrollLeft + row.clientWidth >= row.scrollWidth - 2;
+    wrap.classList.toggle('at-end', atEnd || row.scrollWidth <= row.clientWidth);
+  }
+  row.addEventListener('scroll', upd, { passive: true });
+  window.addEventListener('resize', upd);
+  upd();
+})();
+
 // Доод цэсний холбоос — Electron дээр .html өргөтгөлтэй байх ёстой
 ['progress','jarvis','day','me'].forEach(function(k){
   var el = document.getElementById('nav-' + k);
