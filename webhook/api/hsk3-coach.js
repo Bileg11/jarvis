@@ -2241,7 +2241,7 @@ async function getProgress(uid) {
     const snap = await dbPersonal.collection(`users/${uid}/vocabulary`).get();
     if (snap.empty) return null;
 
-    const examDate  = new Date('2026-09-01T09:00:00+08:00'); // HSK4 зорилго — telegram.js EXAM_DATE_ISO-той ижил байлга
+    const examDate  = new Date('2026-10-01T09:00:00+08:00'); // HSK4 зорилго — telegram.js EXAM_DATE_ISO-той ижил байлга
     const daysLeft  = Math.ceil((examDate - Date.now()) / 86400000);
 
     // Per-level tally

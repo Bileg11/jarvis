@@ -32,7 +32,7 @@ const {
 } = require('./hsk3-coach');
 
 // Шалгалтын огноо/түвшин — энэ файлд ЗӨВХӨН ЭНД (client тал: jarvis-config.js)
-const EXAM_DATE_ISO = '2026-09-01T09:00:00+08:00';
+const EXAM_DATE_ISO = '2026-10-01T09:00:00+08:00';
 const EXAM_LEVEL    = 'HSK4';
 
 const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN_JARVIS;

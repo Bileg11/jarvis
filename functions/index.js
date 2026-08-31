@@ -17,7 +17,7 @@ admin.initializeApp();
 const db = admin.firestore();
 
 // Шалгалтын огноо — энэ файлд ЗӨВХӨН ЭНД (client тал: jarvis-config.js)
-const EXAM_DATE_ISO = '2026-09-01T09:00:00+08:00';
+const EXAM_DATE_ISO = '2026-10-01T09:00:00+08:00';
 
 // ── Config Params ─────────────────────────────────────────────────
 // Set via: firebase functions:config:set telegram.bot_token="..." telegram.chat_id="..."

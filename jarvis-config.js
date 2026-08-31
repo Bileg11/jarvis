@@ -19,8 +19,8 @@ window.FIREBASE_CONFIG = {
 };
 
 window.JARVIS_EXAM_LEVEL    = 'HSK4';
-window.JARVIS_EXAM_DATE_STR = '2026-09-01';
-window.JARVIS_EXAM_DATE     = new Date('2026-09-01T09:00:00+08:00');
+window.JARVIS_EXAM_DATE_STR = '2026-10-01';
+window.JARVIS_EXAM_DATE     = new Date('2026-10-01T09:00:00+08:00');
 window.JARVIS_EXAM_LABEL    = window.JARVIS_EXAM_LEVEL + ' — ' + window.JARVIS_EXAM_DATE_STR;
 
 // Шалгалт хүртэл үлдсэн хоног (хамгийн багадаа 0)
