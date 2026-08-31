@@ -1,0 +1,351 @@
+/* ══════════════════════════════════════════════════════════════════
+   JARVIS — ДИЗАЙНЫ НЭГДСЭН УДИРДЛАГА
+   ══════════════════════════════════════════════════════════════════
+   Аппын БҮХ өнгө, хэлбэр, үсэг, зай ЭНД тодорхойлогдоно.
+   Хуудсууд шууд өнгө бичихгүй — зөвхөн эндхийн хувьсагчийг ашиглана.
+   Ингэснээр дүр төрх солиход бүх апп нэг дор өөрчлөгдөнө.
+
+   ГУРВАН ДҮР ТӨРХ (ертөнц):
+     data-world="paper"   → А · Цаас ба бэх
+     data-world="night"   → Б · Шөнийн самбар   ← ҮНДСЭН
+     data-world="bright"  → В · Тод
+
+   ШӨНИЙН САМБАР доторх өнгө сонголт:
+     data-accent="cyan" | "amber" | "matrix" | "red" | "void"
+
+   Хэрэглэх: <html data-world="night" data-accent="cyan">
+   (theme.js үүнийг автоматаар тавина)
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── ХЭМЖЭЭС: гурван ертөнцөд нийтлэг ────────────────────────────
+   Зай, үсгийн хэмжээ нь дүр төрхөөс хамаарахгүй — эдгээр нь
+   уншигдацын шаардлага, зөвхөн нэг л удаа тодорхойлогдоно. */
+:root {
+  /* Зайн шат — 4px суурьтай */
+  --sp-1: 4px;   --sp-2: 8px;   --sp-3: 12px;  --sp-4: 16px;
+  --sp-5: 20px;  --sp-6: 24px;  --sp-7: 32px;  --sp-8: 48px;
+
+  /* Үсгийн хэмжээний шат */
+  --fs-xs:  11px;   /* шошго, тайлбар */
+  --fs-sm:  13px;
+  --fs-md:  15px;   /* үндсэн текст */
+  --fs-lg:  17px;
+  --fs-xl:  21px;
+  --fs-2xl: 26px;
+  --fs-3xl: 34px;
+
+  /* Ханзны хэмжээ — дэлгэцэд тааруулж уян хатан */
+  --fs-hanzi-xl: clamp(88px, 26vw, 140px);  /* карт — гол ханз */
+  --fs-hanzi-lg: clamp(64px, 20vw, 104px);  /* тест асуулт */
+  --fs-hanzi-md: clamp(48px, 15vw, 72px);   /* өгүүлбэр */
+  --fs-hanzi-sm: 30px;                       /* жагсаалтын мөр */
+
+  /* Мөр хоорондын зай */
+  --lh-tight: 1.25;
+  --lh-body:  1.6;
+  --lh-cn:    1.75;   /* ханзанд задгай мөр хэрэгтэй */
+
+  /* Хүрэх талбайн хамгийн бага хэмжээ — хуруунд */
+  --tap: 48px;
+
+  /* Хөдөлгөөний хугацаа */
+  --t-fast: .15s;
+  --t-med:  .25s;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   А · ЦААС БА БЭХ
+   Ханз бичих дэвтрийн цаас. Тайван, дулаахан, уншихад хамгийн хялбар.
+   ══════════════════════════════════════════════════════════════════ */
+[data-world="paper"] {
+  --warn-soft:     rgba(154,111,31,.10);
+  --bg:            #F7F7F4;
+  --surface:       #FFFFFF;
+  --surface-2:     #F1F1ED;
+  --border:        #DEDFD8;
+  --border-strong: #BFC3B8;
+
+  --text:          #1A1C19;
+  --text-2:        #4C5049;
+  --text-3:        #63685F;
+
+  --accent:        #2E6B57;
+  --accent-text:   #2E6B57;   /* текстэд — дэвсгэр дүүргэхэд --accent */
+  --accent-ink:    #FFFFFF;
+  --accent-soft:   rgba(46,107,87,.09);
+  --accent-shadow: transparent;
+  --track:         #E4E5DE;
+
+
+  --ok:            #2E6B57;
+  --ok-soft:       rgba(46,107,87,.10);
+  --warn:          #9A6F1F;
+  --danger:        #B03A2E;
+  --danger-soft:   rgba(176,58,46,.09);
+
+  --r-sm: 6px;  --r-md: 9px;  --r-lg: 14px;  --r-pill: 999px;
+
+  --font-ui:    system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-hanzi: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono:  ui-monospace, 'SF Mono', 'DM Mono', 'Fira Mono', monospace;
+
+  --w-body: 400;  --w-med: 500;  --w-bold: 600;  --w-cta: 600;
+
+  --sh-1:   0 1px 2px rgba(26,28,25,.05);
+  --sh-2:   0 1px 3px rgba(26,28,25,.06), 0 8px 22px rgba(26,28,25,.07);
+  --sh-btn: none;
+  --btn-press: translateY(0);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   Б · ШӨНИЙН САМБАР  ← ҮНДСЭН
+   JARVIS хэвээрээ, гэхдээ цэгцтэй. Гэрэлтэлт байхгүй.
+   ГОЛ САНАА: апп харанхуй — сурах дэлгэц нь цайвар цаас.
+   ══════════════════════════════════════════════════════════════════ */
+[data-world="night"] {
+  --warn-soft:     rgba(229,161,60,.13);
+  --bg:            #0E1116;
+  --surface:       #171C22;
+  --surface-2:     #1E242B;
+  --border:        #252C34;
+  --border-strong: #3A444F;
+
+  --text:          #E4EAF0;
+  --text-2:        #9BA5B1;
+  --text-3:        #8792A0;
+
+  /* --accent-ийг доорх data-accent блокууд тавина (үндсэн нь cyan) */
+  --accent:        #3FB6C8;
+  --accent-text:   #3FB6C8;
+  --accent-ink:    #05171B;
+  --accent-soft:   rgba(63,182,200,.13);
+  --accent-shadow: transparent;
+  --track:         #232A32;
+
+
+  --ok:            #4ADE80;
+  --ok-soft:       rgba(74,222,128,.12);
+  --warn:          #E5A13C;
+  --danger:        #F2705C;
+  --danger-soft:   rgba(242,112,92,.12);
+
+  --r-sm: 3px;  --r-md: 5px;  --r-lg: 8px;  --r-pill: 999px;
+
+  --font-ui:    system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-hanzi: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono:  ui-monospace, 'SF Mono', 'DM Mono', 'Fira Mono', monospace;
+
+  --w-body: 400;  --w-med: 500;  --w-bold: 600;  --w-cta: 600;
+
+  --sh-1:   0 1px 2px rgba(0,0,0,.35);
+  --sh-2:   0 1px 3px rgba(0,0,0,.4), 0 10px 26px rgba(0,0,0,.35);
+  --sh-btn: none;
+  --btn-press: translateY(0);
+}
+
+/* ── Шөнийн самбарын өнгө сонголт ────────────────────────────────
+   Хуучин 12 theme-ийн дуртай өнгөнүүд энд амьд үлдэнэ.
+   (Цайвар цаасан дээрх хувилбарыг доод талын СУРАХ ГАДАРГУУ хэсэг заана.) */
+[data-world="night"][data-accent="cyan"]   { --accent:#3FB6C8; --accent-text:#3FB6C8; --accent-ink:#05171B; --accent-soft:rgba(63,182,200,.13); }
+[data-world="night"][data-accent="amber"]  { --accent:#E5A13C; --accent-text:#E5A13C; --accent-ink:#241703; --accent-soft:rgba(229,161,60,.13); }
+[data-world="night"][data-accent="matrix"] { --accent:#4ADE80; --accent-text:#4ADE80; --accent-ink:#04210F; --accent-soft:rgba(74,222,128,.13); }
+[data-world="night"][data-accent="red"]    { --accent:#F2705C; --accent-text:#F2705C; --accent-ink:#2A0B06; --accent-soft:rgba(242,112,92,.13); }
+[data-world="night"][data-accent="void"]   { --accent:#A98CF5; --accent-text:#A98CF5; --accent-ink:#150A2E; --accent-soft:rgba(169,140,245,.13); }
+
+/* ══════════════════════════════════════════════════════════════════
+   В · ТОД
+   Бүдүүн бөөрөнхий товч, зузаан үсэг, доогуур сүүдэр.
+   Хамгийн хурдан ойлгогддог. Хүүхэд, ахмад хэн ч андуурахгүй.
+   ══════════════════════════════════════════════════════════════════ */
+[data-world="bright"] {
+  --warn-soft:     rgba(217,119,6,.11);
+  --bg:            #FFFFFF;
+  --surface:       #FFFFFF;
+  --surface-2:     #F6F7F9;
+  --border:        #E6E8EC;
+  --border-strong: #CBD0D8;
+
+  --text:          #161A20;
+  --text-2:        #5C6470;
+  --text-3:        #6B7380;
+
+  --accent:        #F0821E;
+  --accent-text:   #A45208;   /* улбар шар цагаан дээр уншигдахгүй тул бараан */
+  --accent-ink:    #FFFFFF;
+  --accent-soft:   rgba(240,130,30,.11);
+  --accent-shadow: #C4650F;
+  --track:         #EDEFF2;
+
+
+  --ok:            #16A34A;
+  --ok-soft:       rgba(22,163,74,.11);
+  --warn:          #D97706;
+  --danger:        #DC2626;
+  --danger-soft:   rgba(220,38,38,.10);
+
+  --r-sm: 10px;  --r-md: 15px;  --r-lg: 20px;  --r-pill: 999px;
+
+  --font-ui:    'Nunito', system-ui, -apple-system, sans-serif;
+  --font-hanzi: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono:  ui-monospace, 'SF Mono', monospace;
+
+  --w-body: 600;  --w-med: 700;  --w-bold: 800;  --w-cta: 900;
+
+  --sh-1:   0 1px 2px rgba(22,26,32,.06);
+  --sh-2:   0 2px 4px rgba(22,26,32,.06), 0 10px 24px rgba(22,26,32,.07);
+  --sh-btn: 0 4px 0 var(--accent-shadow);
+  --btn-press: translateY(3px);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   НИЙТЛЭГ ЭЛЕМЕНТҮҮД — гурван ертөнцөд адилхан ажиллана
+   ══════════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+
+body.ds {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  font-weight: var(--w-body);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Товч ──────────────────────────────────────────────────────── */
+.ds-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-2);
+  min-height: var(--tap); padding: 0 var(--sp-5);
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--surface); color: var(--text);
+  font-family: var(--font-ui); font-size: var(--fs-md); font-weight: var(--w-cta);
+  cursor: pointer; transition: background var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+.ds-btn:hover { border-color: var(--border-strong); }
+.ds-btn:active { transform: var(--btn-press); }
+.ds-btn--primary {
+  background: var(--accent); color: var(--accent-ink);
+  border-color: transparent; box-shadow: var(--sh-btn);
+}
+.ds-btn--primary:active { box-shadow: none; }
+.ds-btn--danger { color: var(--danger); border-color: var(--danger); background: var(--danger-soft); }
+.ds-btn--block { width: 100%; }
+
+/* ── Карт ──────────────────────────────────────────────────────── */
+.ds-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: var(--sp-5); box-shadow: var(--sh-1);
+}
+
+/* ── Оролт ─────────────────────────────────────────────────────── */
+.ds-input {
+  width: 100%; min-height: var(--tap); padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: var(--r-md); color: var(--text);
+  font-family: var(--font-ui); font-size: var(--fs-md);
+}
+.ds-input:focus { outline: none; border-color: var(--accent); }
+.ds-input--hanzi { font-family: var(--font-hanzi); font-size: var(--fs-xl); }
+
+/* ── Явцын мөр ─────────────────────────────────────────────────── */
+.ds-track { height: 8px; border-radius: var(--r-pill); background: var(--track); overflow: hidden; }
+.ds-track > i { display: block; height: 100%; background: var(--accent); border-radius: var(--r-pill); transition: width var(--t-med); }
+
+/* ── Шошго ─────────────────────────────────────────────────────── */
+.ds-label {
+  font-family: var(--font-mono); font-size: var(--fs-xs);
+  letter-spacing: .1em; text-transform: uppercase; color: var(--text-3);
+}
+
+/* ── СУРАХ ГАДАРГУУ ────────────────────────────────────────────────
+   Шөнийн самбарт энэ хэсэг цайвар болно — уншилтын гол шийдэл. */
+/* ══════════════════════════════════════════════════════════════════
+   СУРАХ ГАДАРГУУ
+   ══════════════════════════════════════════════════════════════════
+   Ханз уншиж, дасгал хийдэг хэсэг. ГУРВАН ертөнцөд БҮГДЭД нь цайвар —
+   судалгаагаар харанхуй дэвсгэр уншилтыг 12% хүртэл удаашруулдаг.
+   Шөнийн самбарт апп харанхуй хэвээр, зөвхөн энэ хэсэг цайвар болно.
+
+   ⚠ Утгыг ШУУД бичсэн шалтгаан: var()-ыг давхарлан (ертөнц → гадаргуу →
+   элемент) ашиглавал хөтөч дүр төрх солиход өнгийг шинэчилдэггүй.
+   Ертөнц бүрт нэг блок — өөрчлөх үед гурвууланг нь хамт засна.
+   ══════════════════════════════════════════════════════════════════ */
+.ds-study {
+  /* Утга илэрхийлэх өнгө — гадаргуу цайвар тул бараан хувилбар */
+  --ok:          #1E7A44;  --ok-soft:     rgba(30,122,68,.10);
+  --warn:        #8A6212;  --warn-soft:   rgba(138,98,18,.10);
+  --danger:      #A83A2B;  --danger-soft: rgba(168,58,43,.09);
+  --accent-ink:  #FFFFFF;
+  --sh-1: 0 1px 2px rgba(20,23,26,.05);
+  --sh-2: 0 1px 3px rgba(20,23,26,.06), 0 8px 22px rgba(20,23,26,.07);
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* А · Цаас — апп аль хэдийн цайвар, гадаргуу цэвэр цагаан */
+[data-world="paper"] .ds-study {
+  --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F4F4F0;
+  --border:#E4E5DE; --border-strong:#C9CCC1;
+  --text:#151714; --text-2:#565B59; --text-3:#5E635A;
+  --accent:#2E6B57; --accent-text:#2E6B57; --track:#E4E5DE;
+}
+
+/* Б · Шөнийн самбар — ЭНЭ БОЛ ГОЛ САНАА: харанхуй апп дотор цайвар цаас */
+[data-world="night"] .ds-study {
+  --bg:#F8F9F6; --surface:#FFFFFF; --surface-2:#F1F3EE;
+  --border:#DDE0DA; --border-strong:#C4C8BE;
+  --text:#14171A; --text-2:#565B59; --text-3:#63685F;
+  --accent:#1A6C79; --accent-text:#1A6C79; --track:#E1E4DD;
+}
+/* Сонгосон өнгө нь цайвар цаасан дээр уншигдахаар бараан хувилбартай */
+[data-world="night"][data-accent="cyan"]   .ds-study { --accent:#1E7A88; }
+[data-world="night"][data-accent="amber"]  .ds-study { --accent:#8A6212; }
+[data-world="night"][data-accent="matrix"] .ds-study { --accent:#1E7A44; --accent-text:#1E7A44; }
+[data-world="night"][data-accent="red"]    .ds-study { --accent:#A83A2B; }
+[data-world="night"][data-accent="void"]   .ds-study { --accent:#5B3FB8; }
+
+/* В · Тод — апп цагаан, гадаргуу мөн цагаан */
+[data-world="bright"] .ds-study {
+  --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F6F7F9;
+  --border:#E6E8EC; --border-strong:#CBD0D8;
+  --text:#161A20; --text-2:#565D68; --text-3:#646C79;
+  --accent:#A45208; --accent-text:#A45208; --track:#EDEFF2;
+}
+
+.ds-hanzi {
+  font-family: var(--font-hanzi); font-weight: 500;
+  line-height: var(--lh-tight); letter-spacing: .05em;
+  color: var(--text);
+}
+.ds-hanzi--xl { font-size: var(--fs-hanzi-xl); }
+.ds-hanzi--lg { font-size: var(--fs-hanzi-lg); }
+.ds-hanzi--md { font-size: var(--fs-hanzi-md); }
+.ds-hanzi--sm { font-size: var(--fs-hanzi-sm); }
+.ds-pinyin { font-family: var(--font-mono); font-size: var(--fs-xl); color: var(--accent-text); font-weight: var(--w-med); }
+.ds-mean   { font-size: var(--fs-lg); color: var(--text-2); }
+
+/* ── ДООД ЦЭС — 5 хаалга ───────────────────────────────────────── */
+.ds-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--surface); border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.ds-nav a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; min-height: 58px; text-decoration: none;
+  color: var(--text-3); font-size: var(--fs-xs); font-weight: var(--w-med);
+  transition: color var(--t-fast);
+}
+.ds-nav a .ni { font-size: 19px; line-height: 1; font-family: var(--font-hanzi); }
+.ds-nav a:hover { color: var(--text-2); }
+.ds-nav a.on { color: var(--accent-text); font-weight: var(--w-bold); }
+.ds-nav-space { height: calc(58px + env(safe-area-inset-bottom, 0px)); }
+
+/* ── Хүртээмж ──────────────────────────────────────────────────── */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
