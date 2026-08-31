@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.json">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -564,11 +564,11 @@
     left: 50%; transform: translateX(-50%);
   }
   .fc-hanzi {
-    font-size: 64px; font-weight: 400; color: #fff;
-    text-shadow: 0 0 28px rgba(0,255,255,.3);
-    line-height: 1; letter-spacing: 8px; margin-bottom: 2px;
+    font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    font-size: clamp(84px,22vw,120px); font-weight: 500; color: #fff;
+    line-height: 1.05; letter-spacing: .06em; margin-bottom: 6px;
   }
-  .fc-pinyin { font-size: 18px; color: var(--accent); letter-spacing: 2px; font-weight: 500; }
+  .fc-pinyin { font-size: 26px; color: var(--accent); letter-spacing: 2px; font-weight: 500; }
   .fc-sep {
     width: 50%; height: 1px;
     background: linear-gradient(90deg, transparent, var(--border-h), transparent);
@@ -717,7 +717,7 @@
   }
   .tdi-icon { font-family: 'Orbitron', monospace; font-size: 30px; color: var(--green); text-shadow: var(--neon-g); animation: tdiPulse .45s ease-out; }
   .tdi-title { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; letter-spacing: 4px; color: var(--green); text-shadow: var(--neon-g); margin-top: 8px; }
-  .tdi-word { font-size: 32px; color: rgba(0,255,136,.7); margin-top: 6px; letter-spacing: 8px; }
+  .tdi-word { font-family:'Noto Sans SC','PingFang SC',sans-serif; font-size: 46px; font-weight:500; color: rgba(0,255,136,.85); margin-top: 8px; letter-spacing: .06em; }
   @keyframes tdiPulse { 0% { transform: scale(1.5); } 100% { transform: scale(1); } }
 
   /* ── MISC ────────────────────────────────────────────────── */
@@ -841,7 +841,12 @@
     .bar-title { font-size: 10px; letter-spacing: 1.5px; }
     .chat-input { font-size: 16px; } /* prevent iOS zoom */
   }
-  </style>
+  
+/* ── Ханз дарж дуудлага сонсох ── */
+.cn-speakable { cursor:pointer; transition:opacity .15s, transform .15s; }
+.cn-speakable:hover { opacity:.75; }
+.cn-speakable.speaking { transform:scale(1.06); }
+</style>
 </head>
 <body>
   <div class="noise-layer"></div>
@@ -1095,6 +1100,7 @@
   </div>
 
   <script src="jarvis-config.js"></script>
+  <script src="speak.js"></script>
   <script src="app.js"></script>
   <script src="gemini.js"></script>
   <script src="intel.js"></script>
@@ -2089,6 +2095,10 @@
   // SPRINT 31 — CHAT INPUT POSITION + FLOATING WIDGET
   // ══════════════════════════════════════════════════════════════
 
+  // Floating input-ийн хувьсагчид — доорх дуудлагаас ӨМНӨ тодорхойлогдох ёстой
+  let _floatEl = null;
+  let _isDragging = false, _dragOX = 0, _dragOY = 0;
+
   (function _initInputPosition() {
     const pos = localStorage.getItem('jarvis_input_pos') || 'bottom';
     _applyChatInputPos(pos);
@@ -2122,8 +2132,6 @@
   }
 
   // ── Floating Input ─────────────────────────────────────────────
-  let _floatEl = null;
-  let _isDragging = false, _dragOX = 0, _dragOY = 0;
 
   function _showFloatingInput() {
     if (_floatEl && document.body.contains(_floatEl)) {

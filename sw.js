@@ -1,16 +1,29 @@
-const CACHE = 'jarvis-v25';
-// Зөвхөн static asset cache хийнэ — HTML navigation-д ХҮРЭХГҮЙ
-const ASSETS = [
-  './style.css', './index.css', './jarvis-config.js', './app.js', './gemini.js', './intel.js', './firebase-config.js',
+// ══════════════════════════════════════════════════════════════════
+// JARVIS Service Worker
+// ══════════════════════════════════════════════════════════════════
+// ЧУХАЛ ӨӨРЧЛӨЛТ (2026-09): өмнө нь энэ файл "cache-first" байсан —
+// нэг удаа хадгалсан код ҮҮРД хадгалагдаж, шинэ хувилбар хэрэглэгчид
+// хүрдэггүй байсан. (Тиймээс шалгалтын огноо, шинэ функц зэрэг
+// шинэчлэлт хуучин хэрэглэгчид харагддаггүй байв.)
+//
+// Одоо: код/стиль → "network-first" (үргэлж шинийг авна, интернэт
+// тасарвал л хадгалсныг ашиглана). Дата/зураг → "cache-first" (хурдан).
+const CACHE = 'jarvis-v26';
+
+// Хурдан ачаалах ёстой, ховор өөрчлөгддөг файлууд
+const STATIC_ASSETS = [
   './hsk-vocab.js', './hsk-vocab-45.js', './hsk4-bank.js', './manifest.json',
   './icon-192.png', './icon-512.png', './apple-touch-icon.png',
 ];
+
+// Байнга шинэчлэгддэг код — ҮРГЭЛЖ шинийг нь авах ёстой
+const FRESH_PATTERN = /\/(app|gemini|intel|speak|themes|firebase-config|jarvis-config|main)\.js$|\.css$/;
 
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(cache =>
-      Promise.allSettled(ASSETS.map(url => cache.add(url)))
+      Promise.allSettled(STATIC_ASSETS.map(url => cache.add(url)))
     )
   );
 });
@@ -27,14 +40,38 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
 
-  // HTML navigation (хуудас солих) → ҮРГЭЛЖ network. SW хүрэхгүй.
-  // Ингэснээр clean URL redirect, шинэ deploy алдаагүй ажиллана.
-  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) {
-    return; // browser өөрөө network-аас авна
+  // HTML хуудас → ҮРГЭЛЖ network. SW хүрэхгүй.
+  if (req.mode === 'navigate' || (req.headers.get('accept') || '').includes('text/html')) return;
+
+  const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return;   // гадны файлд хүрэхгүй
+
+  // ── Код / стиль → network-first ────────────────────────────────
+  // Шинэ хувилбар байвал ҮРГЭЛЖ түүнийг авна. Офлайн үед хадгалсныг өгнө.
+  if (FRESH_PATTERN.test(url.pathname)) {
+    e.respondWith(
+      fetch(req).then(res => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      }).catch(() => caches.match(req))
+    );
+    return;
   }
 
-  // Static asset → cache-first (хурд, offline)
+  // ── Дата / зураг → cache-first (хурд), хажуугаар нь шинэчилнэ ──
   e.respondWith(
-    caches.match(req).then(cached => cached || fetch(req)).catch(() => fetch(req))
+    caches.match(req).then(cached => {
+      const network = fetch(req).then(res => {
+        if (res && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
+        }
+        return res;
+      }).catch(() => cached);
+      return cached || network;
+    })
   );
 });

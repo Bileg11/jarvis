@@ -1565,10 +1565,11 @@ body.user-marlaa {
 .hsk-flashcard:hover { border-color: var(--accent); background: rgba(0,229,255,.06); }
 .hsk-flashcard.flipped .hsk-meaning { display: block; }
 .hsk-fc-hanzi {
-  font-family: 'Orbitron', serif; font-size: 32px;
-  color: var(--accent); text-shadow: var(--neon); letter-spacing: .04em;
+  font-family: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 54px; font-weight: 500; line-height: 1.1;
+  color: #eafcff; letter-spacing: .06em;
 }
-.hsk-fc-pinyin { font-family: var(--mono); font-size: 10px; color: var(--text); }
+.hsk-fc-pinyin { font-family: var(--mono); font-size: 16px; color: var(--accent); letter-spacing:.04em; }
 .hsk-meaning {
   display: none; font-family: var(--mono); font-size: 11px;
   color: var(--text-b); margin-top: 4px;
@@ -2620,3 +2621,8 @@ body[data-role="bileg"] #widget-mood { display: none !important; }
   width: 100%; accent-color: var(--accent); height: 4px;
   background: var(--dim); border-radius: 2px; outline: none; cursor: pointer;
 }
+
+/* ── Ханз дарж дуудлага сонсох ── */
+.cn-speakable { cursor:pointer; transition:opacity .15s, transform .15s; }
+.cn-speakable:hover { opacity:.75; }
+.cn-speakable.speaking { transform:scale(1.06); }

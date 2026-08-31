@@ -6,7 +6,7 @@ rm -rf _site
 mkdir -p _site
 
 # Үндсэн web файлууд
-cp index.html index.css jarvis-config.js app.js gemini.js firebase-config.js themes.js intel.js hsk4-bank.js style.css sw.js manifest.json icon.svg _site/ 2>/dev/null || true
+cp speak.js index.html index.css jarvis-config.js app.js gemini.js firebase-config.js themes.js intel.js hsk4-bank.js style.css sw.js manifest.json icon.svg _site/ 2>/dev/null || true
 
 # HTML хуудаснууд
 cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html finance.html hsk-signup.html learn.html login.html _site/ 2>/dev/null || true

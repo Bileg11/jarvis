@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Ханз — Монгол HSK</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -120,8 +123,8 @@ body{
   position:relative;overflow:hidden;
 }
 .quiz-card::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(74,222,128,.1),transparent);border-radius:50%}
-.quiz-hanzi{font-size:64px;font-weight:800;line-height:1.1;margin-bottom:12px;position:relative;z-index:1}
-.quiz-pinyin{font-size:18px;color:var(--blue);font-weight:600;letter-spacing:.5px;position:relative;z-index:1}
+.quiz-hanzi{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;font-size:clamp(84px,24vw,124px);font-weight:500;line-height:1.05;letter-spacing:.06em;margin-bottom:16px;position:relative;z-index:1}
+.quiz-pinyin{font-size:26px;color:var(--blue);font-weight:600;letter-spacing:.5px;position:relative;z-index:1}
 .quiz-mn-word{font-size:28px;font-weight:700;margin-bottom:8px;color:#fff}
 .quiz-mn-sub{font-size:14px;color:var(--text2)}
 
@@ -196,6 +199,11 @@ body{
 /* TOAST */
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--border);border-radius:14px;padding:12px 20px;font-size:13px;color:var(--text2);z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(10px)}
 .toast.show{opacity:1}
+
+/* ── Ханз дарж дуудлага сонсох ── */
+.cn-speakable { cursor:pointer; transition:opacity .15s, transform .15s; }
+.cn-speakable:hover { opacity:.75; }
+.cn-speakable.speaking { transform:scale(1.06); }
 </style>
 </head>
 <body>
@@ -920,5 +928,6 @@ function showScreen(name) {
   document.getElementById('screen-'+name).classList.add('active');
 }
 </script>
+<script src="speak.js"></script>
 </body>
 </html>

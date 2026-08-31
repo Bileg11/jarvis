@@ -95,8 +95,9 @@ function renderDate() {
   const MONTHS = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар',
                   '7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
   const now = new Date();
-  document.getElementById('date-txt').textContent =
-    `${DAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}`;
+  const el = document.getElementById('date-txt');
+  if (!el) return;   // энэ элементгүй хуудсанд (chat.html) init тасрахаас сэргийлнэ
+  el.textContent = `${DAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}`;
 }
 
 // ── ROUTINE ───────────────────────────────────────────────────────
@@ -217,8 +218,10 @@ function renderStreaks() {
 
 function renderRoutine() {
   const r = loadRoutine();
-  document.getElementById('w-num').textContent = r.water;
-  document.getElementById('ri-water').classList.toggle('done', r.water >= 8);
+  const wNum = document.getElementById('w-num');
+  if (!wNum) return;   // routine widget байхгүй хуудсанд алгасна
+  wNum.textContent = r.water;
+  document.getElementById('ri-water')?.classList.toggle('done', r.water >= 8);
   ['exercise','hanzi','read','journal'].forEach(k => {
     document.getElementById('ri-' + k).classList.toggle('done', !!r[k]);
   });
@@ -472,7 +475,9 @@ function renderFeed() {
   rest.push(cardQuote());
 
   const ordered = [...shuffle(priority), ...shuffle(rest)];
-  document.getElementById('feed').innerHTML = ordered.join('');
+  const feedEl = document.getElementById('feed');
+  if (!feedEl) return;   // feed байхгүй хуудсанд алгасна
+  feedEl.innerHTML = ordered.join('');
   observeCards();
 }
 
