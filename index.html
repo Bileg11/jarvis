@@ -597,26 +597,6 @@
       </div>
     </div>
 
-    <!-- SPRINT 38: WIDGET — Driving Progress (Marlaa) -->
-    <div class="glass hud-br" id="widget-driving">
-      <div class="drv-header">
-        <span style="font-family:var(--hud);font-size:9px;letter-spacing:.14em;color:var(--accent)">🚗 DRIVING COURSE</span>
-        <span class="hdr-tag" id="drv-pct-tag">0%</span>
-      </div>
-      <div class="drv-progress-row">
-        <div class="drv-stats">
-          <span>SESSION <span id="drv-current">0</span> / <span id="drv-total">60</span></span>
-          <span id="drv-streak-label">🔥 0 week streak</span>
-        </div>
-        <div class="drv-bar-wrap"><div class="drv-bar-fill" id="drv-bar" style="width:0%"></div></div>
-      </div>
-      <div class="drv-exam" id="drv-exam-label">📅 Шалгалт: — өдөр үлдсэн</div>
-      <div class="drv-btns">
-        <button class="drv-btn drv-btn-add" onclick="_drvAddSession()">+ Хичээл нэмэх</button>
-        <button class="drv-btn drv-btn-set" onclick="_drvSetTotal()">⚙ Тохиргоо</button>
-      </div>
-    </div>
-
     <!-- SPRINT 38: WIDGET — Skincare Routine (Marlaa) -->
     <div class="glass hud-br gauge-left" id="widget-skincare">
       <div class="panel-hdr">✨ SKINCARE ROUTINE <span class="hdr-tag" id="sk-date-tag">TODAY</span></div>
@@ -3925,7 +3905,7 @@ const LAYOUTS = {
     name: 'MARLAA BLOSSOM',
     colLeft: ['routine'],
     colCenter: ['terminal'],
-    colRight: ['widget-june-challenge','widget-life-logic','widget-route','widget-driving','widget-gym','widget-skincare','widget-habit-ring','widget-mood'],
+    colRight: ['widget-june-challenge','widget-life-logic','widget-route','widget-gym','widget-skincare','widget-habit-ring','widget-mood'],
     hide: ['widget-hsk','widget-hsk-blitz','widget-missions','widget-intel','widget-fx'],
   },
 };
@@ -3939,7 +3919,7 @@ function applyLayout(id) {
   localStorage.setItem('jarvis_layout_id', id);
 
   // Show/hide right-side widgets
-  const allWidgets = ['widget-missions','widget-hsk','widget-hsk-blitz','widget-fx','widget-intel','widget-gym','widget-route','widget-june-challenge','widget-life-logic','widget-driving','widget-skincare','widget-habit-ring','widget-mood'];
+  const allWidgets = ['widget-missions','widget-hsk','widget-hsk-blitz','widget-fx','widget-intel','widget-gym','widget-route','widget-june-challenge','widget-life-logic','widget-skincare','widget-habit-ring','widget-mood'];
   allWidgets.forEach(wid => {
     const el = document.getElementById(wid);
     if (!el) return;
@@ -8126,60 +8106,6 @@ function _chudLog(msg) {
 // SPRINT 38 — MARLAA WIDGETS
 // ══════════════════════════════════════════════════════════════════
 
-// ── 1. DRIVING PROGRESS ──────────────────────────────────────────
-function _drvData() {
-  try { return JSON.parse(localStorage.getItem('jarvis_driving') || '{}'); } catch { return {}; }
-}
-function _drvSave(d) { localStorage.setItem('jarvis_driving', JSON.stringify(d)); }
-
-function _drvRender() {
-  const d = _drvData();
-  const current  = d.current  || 0;
-  const total    = d.total    || 60;
-  const examDate = d.examDate || null;
-  const pct      = total ? Math.round(current / total * 100) : 0;
-
-  document.getElementById('drv-current')?.setAttribute('data-v', current);
-  if (document.getElementById('drv-current'))  document.getElementById('drv-current').textContent  = current;
-  if (document.getElementById('drv-total'))    document.getElementById('drv-total').textContent    = total;
-  if (document.getElementById('drv-pct-tag'))  document.getElementById('drv-pct-tag').textContent  = pct + '%';
-  if (document.getElementById('drv-bar'))      document.getElementById('drv-bar').style.width      = pct + '%';
-
-  const examEl = document.getElementById('drv-exam-label');
-  if (examEl && examDate) {
-    const days = Math.max(0, Math.ceil((new Date(examDate) - Date.now()) / 86400000));
-    examEl.textContent = `📅 Шалгалт: ${days} өдөр үлдсэн`;
-  } else if (examEl) {
-    examEl.textContent = '📅 Шалгалт: тохируулаагүй';
-  }
-
-  // Week streak (last 7 days session count from log)
-  const log = d.log || [];
-  const weekAgo = new Date(Date.now() - 7*86400000).toISOString().slice(0,10);
-  const weekSessions = log.filter(dt => dt >= weekAgo).length;
-  const streakEl = document.getElementById('drv-streak-label');
-  if (streakEl) streakEl.textContent = `🔥 ${weekSessions} / 7 days`;
-}
-
-function _drvAddSession() {
-  const d = _drvData();
-  d.current = Math.min((d.current || 0) + 1, d.total || 60);
-  if (!d.log) d.log = [];
-  d.log.push(new Date().toISOString().slice(0,10));
-  _drvSave(d); _drvRender();
-  _mrHabitRender();
-  if (typeof showToast === 'function') showToast('🚗 Хичээл нэмэгдлээ — ' + d.current + ' / ' + (d.total || 60));
-}
-
-function _drvSetTotal() {
-  const d   = _drvData();
-  const tot = prompt('Нийт хичээлийн тоо:', d.total || 60);
-  const ex  = prompt('Шалгалтын огноо (YYYY-MM-DD):', d.examDate || '');
-  if (tot) d.total    = parseInt(tot) || 60;
-  if (ex)  d.examDate = ex.trim();
-  _drvSave(d); _drvRender();
-}
-
 // ── 2. SKINCARE ROUTINE ───────────────────────────────────────────
 const SK_AM = ['🧼 Цэвэрлэгч', '💧 Тоник', '☀️ SPF / Тоосго'];
 const SK_PM = ['🧼 Цэвэрлэгч', '✨ Сэрум', '🌙 Чийгшүүлэгч'];
@@ -8225,7 +8151,6 @@ function _skRender() {
 const HR_HABITS = [
   { id:'challenge', label:'CHALLENGE', color:'on' },
   { id:'gym',       label:'GYM',       color:'on' },
-  { id:'driving',   label:'ЖОЛОО',     color:'on' },
   { id:'skincare',  label:'АРЬС',      color:'on-pink' },
 ];
 
@@ -8247,11 +8172,6 @@ function _mrHabitRender() {
           const am = SK_AM.filter((_,i) => sk.am?.[i]).length;
           const pm = SK_PM.filter((_,i) => sk.pm?.[i]).length;
           on = (am + pm) >= 3;
-        } catch {}
-      } else if (h.id === 'driving') {
-        try {
-          const drv = JSON.parse(localStorage.getItem('jarvis_driving') || '{}');
-          on = (drv.log || []).includes(day);
         } catch {}
       } else if (h.id === 'gym') {
         try {
@@ -8292,7 +8212,6 @@ function _moodRender() {
 // ── Init Marlaa widgets on boot ───────────────────────────────────
 function _marlaaWidgetsInit() {
   if ((localStorage.getItem('jarvis_user_role') || 'bileg') !== 'marlaa') return;
-  _drvRender();
   _skRender();
   _mrHabitRender();
   _moodRender();

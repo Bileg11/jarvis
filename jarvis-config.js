@@ -44,3 +44,12 @@ try {
     console.log('[Migration] Хуучин Railway proxy URL цэвэрлэгдлээ');
   }
 } catch {}
+
+// ── MIGRATION (2026-09): ЖОЛОО widget устгагдсан ──────────────────
+// Хуучин жолооны сургуулийн дата localStorage-д үлдсэн бол цэвэрлэнэ.
+try {
+  if (localStorage.getItem('jarvis_driving') !== null) {
+    localStorage.removeItem('jarvis_driving');
+    console.log('[Migration] Жолооны widget-ийн үлдэгдэл дата цэвэрлэгдлээ');
+  }
+} catch {}

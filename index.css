@@ -2181,27 +2181,12 @@ body[data-role="marlaa"] #widget-intel,
 body[data-role="marlaa"] #widget-fx { display: none !important; }
 
 /* Маралаад л харагдах */
-body[data-role="bileg"] #widget-driving,
 body[data-role="bileg"] #widget-skincare,
 body[data-role="bileg"] #widget-habit-ring,
 body[data-role="bileg"] #widget-mood { display: none !important; }
 
 /* Маралаагийн widget-ууд — default харагдахгүй, role-оор идэвхждэг */
-#widget-driving, #widget-skincare, #widget-habit-ring, #widget-mood { display: none; }
-
-/* ── Driving Progress widget ── */
-.drv-header { display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid var(--border); }
-.drv-progress-row { padding:8px 10px; }
-.drv-bar-wrap { height:6px; background:rgba(255,255,255,.07); border-radius:3px; overflow:hidden; margin:6px 0; }
-.drv-bar-fill { height:100%; background:var(--accent); border-radius:3px; transition:width .5s ease; box-shadow:0 0 6px rgba(var(--accent-rgb,0,229,255),.4); }
-.drv-stats { display:flex; justify-content:space-between; font-family:var(--mono); font-size:9px; color:var(--text); opacity:.6; }
-.drv-exam { font-family:var(--hud); font-size:9px; letter-spacing:.1em; color:var(--amber,#fbbf24); padding:4px 10px 6px; }
-.drv-btns { display:flex; gap:5px; padding:5px 10px; border-top:1px solid var(--border); }
-.drv-btn { flex:1; font-family:var(--mono); font-size:9px; padding:5px; border-radius:3px; cursor:pointer; text-align:center; transition:all .15s; }
-.drv-btn-add { background:rgba(0,229,255,.08); border:1px solid var(--border); color:var(--accent); }
-.drv-btn-add:hover { border-color:var(--accent); background:rgba(0,229,255,.14); }
-.drv-btn-set { background:none; border:1px dashed var(--border); color:var(--text); opacity:.6; font-size:8px; }
-.drv-btn-set:hover { opacity:1; }
+#widget-skincare, #widget-habit-ring, #widget-mood { display: none; }
 
 /* ── Skincare tracker ── */
 .sk-section { padding:6px 10px; }
