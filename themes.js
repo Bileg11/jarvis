@@ -174,33 +174,41 @@ const JARVIS_THEMES = {
   },
 };
 
+// ══════════════════════════════════════════════════════════════════
+// ⚠ ЭНЭ ФАЙЛ ОДОО ЗӨВХӨН ГҮҮР
+// ══════════════════════════════════════════════════════════════════
+// Өнгө одоо design-system.css-д төвлөрсөн, theme.js удирддаг.
+// Хуучин 12 theme нь "Шөнийн самбар" доторх 5 өнгө болж хувирсан.
+// applyTheme() хуучин нэрийг шинэ өнгө рүү хөрвүүлж дамжуулна —
+// ингэснээр /theme команд, onboarding зэрэг хуучин код ажилласаар байна.
+
+// Хуучин theme → шинэ өнгө
+const _THEME_TO_ACCENT = {
+  'stark-cyan':'cyan', 'amber':'amber', 'matrix':'matrix', 'red-alert':'red', 'void':'void',
+  'marlaa':'red', 'glass-aurora':'cyan', 'glass-sunset':'amber', 'glass-ocean':'cyan',
+  'glass-forest':'matrix', 'glass-rose':'red', 'glass-mono':'cyan',
+  'aurora':'cyan', 'sunset':'amber', 'ocean':'cyan', 'forest':'matrix', 'rose':'red', 'mono':'cyan',
+};
+
 function applyTheme(themeId) {
-  const theme = JARVIS_THEMES[themeId];
-  if (!theme) return false;
-  const root = document.documentElement;
-  Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+  if (!JARVIS_THEMES[themeId]) return false;
+  const accent = _THEME_TO_ACCENT[themeId] || 'cyan';
+  if (window.jarvisTheme) {
+    // Ертөнцийг нь хөндөхгүй — зөвхөн өнгийг нь солино.
+    window.jarvisTheme.set(null, accent);
+  }
   localStorage.setItem('jarvis_theme', themeId);
-  // ── Theme-aware ambient glow (background гүн өгнө) ──────────────
-  if (theme.reactor) {
-    const { r, g, b } = theme.reactor;
-    const gf = theme.glow != null ? theme.glow : 1;   // theme бүрийн glow эрчим
-    root.style.setProperty('--glow-1',  `rgba(${r},${g},${b},${(0.30*gf).toFixed(3)})`);
-    root.style.setProperty('--glow-2',  `rgba(${r},${g},${b},${(0.20*gf).toFixed(3)})`);
-    root.style.setProperty('--glow-rgb', `${r},${g},${b}`);
-    // Update reactor color if it's running
-    if (window._reactor) { window._reactor.tr = r; window._reactor.tg = g; window._reactor.tb = b; }
+
+  // Reactor анимацийн өнгө (canvas — CSS-ээр удирдагдахгүй)
+  const theme = JARVIS_THEMES[themeId];
+  if (theme.reactor && window._reactor) {
+    window._reactor.tr = theme.reactor.r;
+    window._reactor.tg = theme.reactor.g;
+    window._reactor.tb = theme.reactor.b;
   }
-  // ── FROSTED GLASS toggle ───────────────────────────────────────
-  // Touch device (утас/таблет — lag байхгүй) ЭСВЭЛ glass theme сонгосон
-  // үед frosted blur асаана. Intel Mac desktop + cyber theme → унтраалттай.
-  const isTouch = window.matchMedia('(pointer: coarse)').matches;
-  const isGlass = themeId.startsWith('glass-');
-  document.body.classList.toggle('frosted', isTouch || isGlass);
-  // Persist to Firestore
-  if (window._db && window._auth?.currentUser) {
-    window._db.doc('users/' + window._auth.currentUser.uid + '/settings/layout')
-      .set({ theme: themeId }, { merge: true }).catch(() => {});
-  }
+
+  // Утас/таблет дээр frosted blur
+  document.body.classList.toggle('frosted', window.matchMedia('(pointer: coarse)').matches);
   return true;
 }
 

@@ -20,7 +20,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<link rel="stylesheet" href="index.css">
+<link rel="stylesheet" href="design-system.css">
+  <link rel="stylesheet" href="index.css">
 </head>
 <body>
 
@@ -98,7 +99,7 @@
       <div class="step-indicator">STEP 03 / 05 — AESTHETICS</div>
       <div class="theme-selector-grid">
         <div class="theme-card selected" id="tc-stark-cyan" onclick="selectTheme('stark-cyan')">
-          <div class="theme-mini-layout" style="background:#000308;border:1px solid #00e5ff22">
+          <div class="theme-mini-layout" style="background:var(--bg);border:1px solid #00e5ff22">
             <div class="tml-bar" style="background:linear-gradient(90deg,#001520,#00e5ff18)"></div>
             <div class="tml-grid">
               <div class="tml-col-l"><div class="tml-panel" style="background:#00e5ff12"></div><div class="tml-panel" style="background:#00e5ff08"></div></div>
@@ -301,6 +302,7 @@
     <button class="os-nav-btn os-nav-guide" id="nav-guide" onclick="navTo('guide')" title="Хэрэглэгчийн гарын авлага">? GUIDE</button>
     <button class="os-nav-btn" onclick="openLM()" title="Layout Manager — хадгалсан layouts" style="border-color:rgba(168,85,247,.3);color:rgba(168,85,247,.7)">🎨 LAYOUTS</button>
     <button class="os-nav-btn" onclick="_setViewMode('focus')" title="Focus Chat горим руу шилжих" style="border-color:rgba(0,229,255,.4);color:var(--accent)">⬡ FOCUS</button>
+    <button class="os-nav-btn" onclick="jarvisTheme.open()" title="Дүр төрх солих" aria-label="Дүр төрх солих">◐</button>
     <button class="os-nav-btn" id="nav-settings" onclick="navTo('settings')" title="Тохиргоо — Theme, Background">⚙ SET</button>
   </div>
   <!-- Mobile burger -->
@@ -911,7 +913,8 @@
 
 <div id="toast"></div>
 
-<script src="jarvis-config.js"></script>
+<script src="theme.js"></script>
+  <script src="jarvis-config.js"></script>
   <script src="speak.js"></script>
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>
@@ -8223,7 +8226,7 @@ if (typeof showToast === 'undefined') {
   window.showToast = function(msg, ms = 2400) {
     const t = document.createElement('div');
     t.style.cssText = `position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
-      background:rgba(0,10,28,.97);border:1px solid var(--border-h);border-radius:4px;
+      background:var(--surface);border:1px solid var(--border-h);border-radius:4px;
       padding:8px 16px;font:10px/1.5 var(--mono);color:var(--text-b);z-index:9998;
       box-shadow:0 4px 20px rgba(0,0,0,.5);animation:notif-in .2s ease;pointer-events:none;`;
     t.textContent = msg;

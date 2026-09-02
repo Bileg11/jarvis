@@ -58,6 +58,12 @@
    Ханз бичих дэвтрийн цаас. Тайван, дулаахан, уншихад хамгийн хялбар.
    ══════════════════════════════════════════════════════════════════ */
 [data-world="paper"] {
+  --accent-rgb: 46,107,87;
+  --text-rgb: 26,28,25;
+  --ok-rgb: 46,107,87;
+  --warn-rgb: 154,111,31;
+  --danger-rgb: 176,58,46;
+
   --warn-soft:     rgba(154,111,31,.10);
   --bg:            #F7F7F4;
   --surface:       #FFFFFF;
@@ -103,6 +109,12 @@
    ГОЛ САНАА: апп харанхуй — сурах дэлгэц нь цайвар цаас.
    ══════════════════════════════════════════════════════════════════ */
 [data-world="night"] {
+  --accent-rgb: 63,182,200;
+  --text-rgb: 228,234,240;
+  --ok-rgb: 74,222,128;
+  --warn-rgb: 229,161,60;
+  --danger-rgb: 242,112,92;
+
   --warn-soft:     rgba(229,161,60,.13);
   --bg:            #0E1116;
   --surface:       #171C22;
@@ -146,11 +158,11 @@
 /* ── Шөнийн самбарын өнгө сонголт ────────────────────────────────
    Хуучин 12 theme-ийн дуртай өнгөнүүд энд амьд үлдэнэ.
    (Цайвар цаасан дээрх хувилбарыг доод талын СУРАХ ГАДАРГУУ хэсэг заана.) */
-[data-world="night"][data-accent="cyan"]   { --accent:#3FB6C8; --accent-text:#3FB6C8; --accent-ink:#05171B; --accent-soft:rgba(63,182,200,.13); }
-[data-world="night"][data-accent="amber"]  { --accent:#E5A13C; --accent-text:#E5A13C; --accent-ink:#241703; --accent-soft:rgba(229,161,60,.13); }
-[data-world="night"][data-accent="matrix"] { --accent:#4ADE80; --accent-text:#4ADE80; --accent-ink:#04210F; --accent-soft:rgba(74,222,128,.13); }
-[data-world="night"][data-accent="red"]    { --accent:#F2705C; --accent-text:#F2705C; --accent-ink:#2A0B06; --accent-soft:rgba(242,112,92,.13); }
-[data-world="night"][data-accent="void"]   { --accent:#A98CF5; --accent-text:#A98CF5; --accent-ink:#150A2E; --accent-soft:rgba(169,140,245,.13); }
+[data-world="night"][data-accent="cyan"]   { --accent-rgb:63,182,200; --accent:#3FB6C8; --accent-text:#3FB6C8; --accent-ink:#05171B; --accent-soft:rgba(63,182,200,.13); }
+[data-world="night"][data-accent="amber"]  { --accent-rgb:229,161,60; --accent:#E5A13C; --accent-text:#E5A13C; --accent-ink:#241703; --accent-soft:rgba(229,161,60,.13); }
+[data-world="night"][data-accent="matrix"] { --accent-rgb:74,222,128; --accent:#4ADE80; --accent-text:#4ADE80; --accent-ink:#04210F; --accent-soft:rgba(74,222,128,.13); }
+[data-world="night"][data-accent="red"]    { --accent-rgb:242,112,92; --accent:#F2705C; --accent-text:#F2705C; --accent-ink:#2A0B06; --accent-soft:rgba(242,112,92,.13); }
+[data-world="night"][data-accent="void"]   { --accent-rgb:169,140,245; --accent:#A98CF5; --accent-text:#A98CF5; --accent-ink:#150A2E; --accent-soft:rgba(169,140,245,.13); }
 
 /* ══════════════════════════════════════════════════════════════════
    В · ТОД
@@ -158,6 +170,12 @@
    Хамгийн хурдан ойлгогддог. Хүүхэд, ахмад хэн ч андуурахгүй.
    ══════════════════════════════════════════════════════════════════ */
 [data-world="bright"] {
+  --accent-rgb: 240,130,30;
+  --text-rgb: 22,26,32;
+  --ok-rgb: 22,163,74;
+  --warn-rgb: 217,119,6;
+  --danger-rgb: 220,38,38;
+
   --warn-soft:     rgba(217,119,6,.11);
   --bg:            #FFFFFF;
   --surface:       #FFFFFF;
@@ -289,7 +307,7 @@ body.ds {
   --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F4F4F0;
   --border:#E4E5DE; --border-strong:#C9CCC1;
   --text:#151714; --text-2:#565B59; --text-3:#5E635A;
-  --accent:#2E6B57; --accent-text:#2E6B57; --track:#E4E5DE;
+  --accent:#2E6B57; --accent-text:#2E6B57; --accent-rgb:46,107,87; --text-rgb:21,23,20; --track:#E4E5DE;
 }
 
 /* Б · Шөнийн самбар — ЭНЭ БОЛ ГОЛ САНАА: харанхуй апп дотор цайвар цаас */
@@ -297,7 +315,7 @@ body.ds {
   --bg:#F8F9F6; --surface:#FFFFFF; --surface-2:#F1F3EE;
   --border:#DDE0DA; --border-strong:#C4C8BE;
   --text:#14171A; --text-2:#565B59; --text-3:#63685F;
-  --accent:#1A6C79; --accent-text:#1A6C79; --track:#E1E4DD;
+  --accent:#1A6C79; --accent-text:#1A6C79; --accent-rgb:26,108,121; --text-rgb:20,23,26; --track:#E1E4DD;
 }
 /* Сонгосон өнгө нь цайвар цаасан дээр уншигдахаар бараан хувилбартай */
 [data-world="night"][data-accent="cyan"]   .ds-study { --accent:#1E7A88; }
@@ -311,7 +329,7 @@ body.ds {
   --bg:#FFFFFF; --surface:#FFFFFF; --surface-2:#F6F7F9;
   --border:#E6E8EC; --border-strong:#CBD0D8;
   --text:#161A20; --text-2:#565D68; --text-3:#646C79;
-  --accent:#A45208; --accent-text:#A45208; --track:#EDEFF2;
+  --accent:#A45208; --accent-text:#A45208; --accent-rgb:164,82,8; --text-rgb:22,26,32; --track:#EDEFF2;
 }
 
 .ds-hanzi {
