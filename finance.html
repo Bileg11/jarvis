@@ -11,6 +11,7 @@
 <script src="firebase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
   <script src="theme.js"></script>
   <style>
 :root {
@@ -816,14 +817,6 @@ finInit();
 </script>
 
 <!-- ДООД ЦЭС — 5 хаалга -->
-<div class="ds-nav-space"></div>
-<nav class="ds-nav" aria-label="Үндсэн цэс">
-  <a id="dsn-learn" href="hsk"><span class="ni">学</span>Сурах</a>
-  <a id="dsn-prog"  href="dashboard"><span class="ni">📊</span>Явц</a>
-  <a id="dsn-ai"    href="chat"><span class="ni">✦</span>JARVIS</a>
-  <a id="dsn-day"   href="life"><span class="ni">日</span>Өдөр</a>
-  <a id="dsn-me"    href="profile"><span class="ni">我</span>Би</a>
-</nav>
 <script>
 (function(){
   var here = (location.pathname.split('/').pop()||'index').replace('.html','');
@@ -836,5 +829,6 @@ finInit();
   });
 })();
 </script>
+<script src="jarvis-shell.js" data-page="finance"></script>
 </body>
 </html>

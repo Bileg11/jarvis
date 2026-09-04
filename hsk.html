@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
 <script src="theme.js"></script>
 <script src="jarvis-config.js"></script>
 <script src="speak.js"></script>
@@ -535,17 +536,9 @@
   </div>
   </div><!-- /study-area -->
 
-  <div class="ds-nav-space"></div>
 </div>
 
 <!-- ДООД ЦЭС — 5 хаалга. Эрхий хуруунд хүрэх зайд. -->
-<nav class="ds-nav" aria-label="Үндсэн цэс">
-  <a href="#" class="on" aria-current="page"><span class="ni">学</span>Сурах</a>
-  <a id="nav-progress" href="dashboard"><span class="ni">📊</span>Явц</a>
-  <a id="nav-jarvis"   href="chat"><span class="ni">✦</span>JARVIS</a>
-  <a id="nav-day"      href="life"><span class="ni">日</span>Өдөр</a>
-  <a id="nav-me"       href="profile"><span class="ni">我</span>Би</a>
-</nav>
 
 <div id="toast"></div>
 
@@ -1826,5 +1819,6 @@ async function sendConvMsg() {
 // ── Boot ──────────────────────────────────────────────────────────
 init();
 </script>
+<script src="jarvis-shell.js" data-page="hsk"></script>
 </body>
 </html>
