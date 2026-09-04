@@ -10,21 +10,23 @@
 <script src="jarvis-config.js"></script>
 <script src="firebase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<style>
+<link rel="stylesheet" href="design-system.css">
+  <script src="theme.js"></script>
+  <style>
 :root {
-  --bg:      #0d1117;
-  --surf:    #131920;
+  --bg:      var(--bg);
+  --surf:    var(--surface);
   --surf2:   #1a2230;
   --border:  rgba(100,120,100,.18);
   --border-h:rgba(100,120,100,.35);
-  --green:   #7eb87e;
+  --green:   var(--ok);
   --green2:  #4a9a4a;
-  --red:     #c47060;
-  --amber:   #c4a064;
-  --blue:    #6090c0;
-  --text:    #bcc8b8;
-  --text-b:  #dde8d8;
-  --dim:     rgba(255,255,255,.05);
+  --red:     var(--danger);
+  --amber:   var(--warn);
+  --blue:    var(--accent);
+  --text:    var(--text-2);
+  --text-b:  var(--text);
+  --dim:     rgba(var(--text-rgb),.05);
   --r:       10px;
   --sans:    system-ui,-apple-system,sans-serif;
   --mono:    'DM Mono','Fira Mono',monospace;
@@ -35,8 +37,8 @@ body{background:var(--bg);color:var(--text-b);font-family:var(--sans);font-size:
 ::-webkit-scrollbar-thumb{background:var(--border-h);border-radius:2px}
 
 .page{max-width:900px;margin:0 auto;padding:24px 16px 60px}
-.live-dot{width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;margin-left:7px;vertical-align:middle;transition:background .4s}
-.live-dot.on{background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.7);animation:live-pulse 2s ease-in-out infinite}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--danger);display:inline-block;margin-left:7px;vertical-align:middle;transition:background .4s}
+.live-dot.on{background:var(--ok);box-shadow:0 0 6px rgba(var(--ok-rgb),0.7);animation:live-pulse 2s ease-in-out infinite}
 @keyframes live-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* Header */
@@ -79,7 +81,7 @@ body{background:var(--bg);color:var(--text-b);font-family:var(--sans);font-size:
 select,input{background:var(--surf2);border:1px solid var(--border);border-radius:6px;color:var(--text-b);font-size:13px;padding:8px 10px;outline:none;transition:border .15s;font-family:var(--sans);width:100%}
 select:focus,input:focus{border-color:var(--green)}
 .btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
-.btn-green{background:var(--green);color:#0d1117}
+.btn-green{background:var(--green);color:var(--bg)}
 .btn-green:hover{background:var(--green2)}
 .btn-red{background:rgba(196,112,96,.12);border:1px solid var(--red);color:var(--red)}
 .btn-red:hover{background:rgba(196,112,96,.22)}
@@ -124,15 +126,15 @@ canvas{max-height:210px}
 .ai-advice-text{font-size:13px;color:var(--text-b);line-height:1.7;white-space:pre-line;min-height:40px}
 .ai-advice-text.loading{opacity:.4;animation:pulse 1.2s ease infinite}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:.7}}
-.btn-ai{background:rgba(96,144,192,.12);border:1px solid rgba(96,144,192,.3);color:var(--blue);border-radius:6px;padding:5px 14px;font-size:11px;cursor:pointer;transition:all .15s}
-.btn-ai:hover{background:rgba(96,144,192,.22)}
+.btn-ai{background:rgba(var(--accent-rgb),.12);border:1px solid rgba(var(--accent-rgb),.3);color:var(--blue);border-radius:6px;padding:5px 14px;font-size:11px;cursor:pointer;transition:all .15s}
+.btn-ai:hover{background: var(--accent)}
 
 /* Period tabs */
 .period-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
 .period-tabs::-webkit-scrollbar{display:none}
 .period-tab{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surf);color:var(--text);white-space:nowrap;flex-shrink:0;transition:all .15s}
 .period-tab:hover{border-color:var(--border-h)}
-.period-tab.active{background:var(--green);border-color:var(--green);color:#0d1117}
+.period-tab.active{background:var(--green);border-color:var(--green);color:var(--bg)}
 
 /* Modal */
 .modal-bg{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px}
@@ -687,7 +689,7 @@ function showToast(msg, ms=2200) {
 let _chartDonut = null;
 let _chartBar   = null;
 
-const CAT_COLORS = ['#7eb87e','#c4a064','#6090c0','#c47060','#a87ec8','#7ec4c0','#c07e9a','#9ab87e'];
+const CAT_COLORS = ['var(--ok)','var(--warn)','var(--accent)','var(--danger)','#a87ec8','#7ec4c0','#c07e9a','#9ab87e'];
 
 function renderCharts(monthTxns) {
   renderDonut(monthTxns);
@@ -709,11 +711,11 @@ function renderDonut(monthTxns) {
   if (_chartDonut) _chartDonut.destroy();
   _chartDonut = new Chart(ctx, {
     type: 'doughnut',
-    data: { labels, datasets: [{ data, backgroundColor: CAT_COLORS, borderWidth: 1, borderColor: '#131920' }] },
+    data: { labels, datasets: [{ data, backgroundColor: CAT_COLORS, borderWidth: 1, borderColor: 'var(--surface)' }] },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'bottom', labels: { color: '#bcc8b8', font: { size: 11 }, padding: 10, boxWidth: 12 } },
+        legend: { position: 'bottom', labels: { color: 'var(--text-2)', font: { size: 11 }, padding: 10, boxWidth: 12 } },
         tooltip: { callbacks: { label: ctx => ` ¥${ctx.raw.toLocaleString()} (${Math.round(ctx.raw/ctx.dataset.data.reduce((a,b)=>a+b,0)*100)}%)` } }
       },
       cutout: '62%',
@@ -740,16 +742,16 @@ function renderBarChart() {
     data: {
       labels: months,
       datasets: [
-        { label: 'Орлого', data: incomes,  backgroundColor: 'rgba(126,184,126,.6)', borderRadius: 4 },
+        { label: 'Орлого', data: incomes,  backgroundColor: 'rgba(var(--ok-rgb),.6)', borderRadius: 4 },
         { label: 'Зарлага', data: expenses, backgroundColor: 'rgba(196,112,96,.6)',  borderRadius: 4 },
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#bcc8b8', font:{size:11}, boxWidth:12 } } },
+      plugins: { legend: { labels: { color: 'var(--text-2)', font:{size:11}, boxWidth:12 } } },
       scales: {
-        x: { ticks: { color: '#bcc8b8', font:{size:10} }, grid: { color: 'rgba(255,255,255,.05)' } },
-        y: { ticks: { color: '#bcc8b8', font:{size:10}, callback: v => '¥'+v }, grid: { color: 'rgba(255,255,255,.05)' } }
+        x: { ticks: { color: 'var(--text-2)', font:{size:10} }, grid: { color: 'rgba(var(--text-rgb),.05)' } },
+        y: { ticks: { color: 'var(--text-2)', font:{size:10}, callback: v => '¥'+v }, grid: { color: 'rgba(var(--text-rgb),.05)' } }
       }
     }
   });
@@ -811,6 +813,28 @@ MNT хуримтлал (нийт): ₮${savMNT.toLocaleString()}
 // ── Boot ──────────────────────────────────────────────────────────
 setType('expense');
 finInit();
+</script>
+
+<!-- ДООД ЦЭС — 5 хаалга -->
+<div class="ds-nav-space"></div>
+<nav class="ds-nav" aria-label="Үндсэн цэс">
+  <a id="dsn-learn" href="hsk"><span class="ni">学</span>Сурах</a>
+  <a id="dsn-prog"  href="dashboard"><span class="ni">📊</span>Явц</a>
+  <a id="dsn-ai"    href="chat"><span class="ni">✦</span>JARVIS</a>
+  <a id="dsn-day"   href="life"><span class="ni">日</span>Өдөр</a>
+  <a id="dsn-me"    href="profile"><span class="ni">我</span>Би</a>
+</nav>
+<script>
+(function(){
+  var here = (location.pathname.split('/').pop()||'index').replace('.html','');
+  var map = { hsk:'dsn-learn', learn:'dsn-learn', dashboard:'dsn-prog', chat:'dsn-ai',
+              life:'dsn-day', tracker:'dsn-day', profile:'dsn-me', finance:'dsn-me' };
+  ['dsn-learn','dsn-prog','dsn-ai','dsn-day','dsn-me'].forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    if (window.jarvisHref) el.href = window.jarvisHref(el.getAttribute('href'));
+    if (map[here]===id) { el.classList.add('on'); el.setAttribute('aria-current','page'); }
+  });
+})();
 </script>
 </body>
 </html>

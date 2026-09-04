@@ -8,6 +8,8 @@
   <title>Life — Jarvis</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
   <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="design-system.css">
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -46,8 +48,8 @@
 
     /* ── JARVIS OVERVIEW ─────────────────────────────────────────── */
     .overview-card {
-      background: linear-gradient(135deg, rgba(124,92,252,0.12) 0%, rgba(96,165,250,0.06) 100%);
-      border: 1px solid rgba(124,92,252,0.25);
+      background: linear-gradient(135deg, rgba(var(--accent-rgb),0.12) 0%, rgba(var(--accent-rgb),0.06) 100%);
+      border: 1px solid rgba(var(--accent-rgb),0.25);
       border-radius: 18px;
       padding: 14px 16px;
       margin-bottom: 14px;
@@ -68,7 +70,7 @@
     @keyframes pulse-ov {
       0%,100%{ opacity:1; } 50%{ opacity:0.4; }
     }
-    .ov-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; }
+    .ov-title { font-size: 11px; font-weight: 700; letter-spacing: 2px; color: var(--accent-text); text-transform: uppercase; }
     .ov-refresh {
       margin-left: auto;
       background: none; border: none;
@@ -110,10 +112,10 @@
       font-size: 18px;
       flex-shrink: 0;
     }
-    .icon-lfs      { background: rgba(240,180,41,0.15);  border: 1px solid rgba(240,180,41,0.3); }
-    .icon-study    { background: rgba(96,165,250,0.12);  border: 1px solid rgba(96,165,250,0.3); }
-    .icon-business { background: rgba(74,222,128,0.12);  border: 1px solid rgba(74,222,128,0.3); }
-    .icon-fitness  { background: rgba(248,113,113,0.12); border: 1px solid rgba(248,113,113,0.3); }
+    .icon-lfs      { background: rgba(var(--warn-rgb),0.15);  border: 1px solid rgba(var(--warn-rgb),0.3); }
+    .icon-study    { background: rgba(var(--accent-rgb),0.12);  border: 1px solid rgba(var(--accent-rgb),0.3); }
+    .icon-business { background: rgba(var(--ok-rgb),0.12);  border: 1px solid rgba(var(--ok-rgb),0.3); }
+    .icon-fitness  { background: rgba(var(--danger-rgb),0.12); border: 1px solid rgba(var(--danger-rgb),0.3); }
 
     .sec-meta { flex: 1; min-width: 0; }
     .sec-name { font-size: 15px; font-weight: 700; }
@@ -126,10 +128,10 @@
       border-radius: 20px;
       white-space: nowrap;
     }
-    .badge-gold   { background: rgba(240,180,41,0.15); color: #f0b429; }
-    .badge-blue   { background: rgba(96,165,250,0.15); color: #60a5fa; }
-    .badge-green  { background: rgba(74,222,128,0.15); color: #4ade80; }
-    .badge-red    { background: rgba(248,113,113,0.15); color: #f87171; }
+    .badge-gold   { background: rgba(var(--warn-rgb),0.15); color: var(--text); }
+    .badge-blue   { background: rgba(var(--accent-rgb),0.15); color: var(--text); }
+    .badge-green  { background: rgba(var(--ok-rgb),0.15); color: var(--text); }
+    .badge-red    { background: rgba(var(--danger-rgb),0.15); color: var(--text); }
 
     .sec-chevron {
       color: var(--text-3);
@@ -157,17 +159,17 @@
       gap: 6px;
       width: 100%;
       padding: 11px;
-      background: rgba(240,180,41,0.08);
-      border: 1px dashed rgba(240,180,41,0.3);
+      background: rgba(var(--warn-rgb),0.08);
+      border: 1px dashed rgba(var(--warn-rgb),0.3);
       border-radius: 12px;
-      color: #f0b429;
+      color: var(--text);
       font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       margin-bottom: 12px;
       transition: background 0.2s;
     }
-    .add-order-btn:active { background: rgba(240,180,41,0.15); }
+    .add-order-btn:active { background: rgba(var(--warn-rgb),0.15); }
 
     /* Add order form */
     .order-form {
@@ -193,15 +195,15 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    .fi:focus { border-color: rgba(240,180,41,0.5); }
+    .fi:focus { border-color:var(--warn); }
     .fi::placeholder { color: var(--text-3); }
     select.fi { appearance: none; -webkit-appearance: none; }
     select.fi option { background: #1a1a2e; }
     .form-actions { display: flex; gap: 8px; }
     .btn-add {
       flex: 1;
-      background: linear-gradient(135deg, #b7791f, #f0b429);
-      color: #000;
+      background: linear-gradient(135deg, var(--warn), var(--warn));
+      color:var(--accent-ink);
       border: none;
       border-radius: 10px;
       padding: 10px;
@@ -237,10 +239,10 @@
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .status-pending   { background: #f0b429; }
-    .status-confirmed { background: #60a5fa; box-shadow: 0 0 6px #60a5fa; }
-    .status-done      { background: #4ade80; }
-    .status-cancelled { background: #f87171; }
+    .status-pending   { background: var(--warn); }
+    .status-confirmed { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+    .status-done      { background: var(--ok); }
+    .status-cancelled { background: var(--danger); }
 
     .order-info { flex: 1; min-width: 0; }
     .order-name    { font-size: 14px; font-weight: 600; }
@@ -249,7 +251,7 @@
     .order-price {
       font-size: 13px;
       font-weight: 700;
-      color: #f0b429;
+      color: var(--warn);
       white-space: nowrap;
     }
 
@@ -290,7 +292,7 @@
       padding: 10px;
       text-align: center;
     }
-    .lfs-stat-val { font-size: 20px; font-weight: 800; color: #f0b429; }
+    .lfs-stat-val { font-size: 20px; font-weight: 800; color: var(--warn); }
     .lfs-stat-lbl { font-size: 10px; color: var(--text-3); margin-top: 2px; }
 
     /* ── NOTES SECTIONS (study, business, fitness) ────────────────── */
@@ -323,7 +325,7 @@
       background: var(--accent);
       border: none;
       border-radius: 10px;
-      color: #fff;
+      color:var(--accent-ink);
       font-size: 12px;
       font-weight: 700;
       padding: 8px 16px;
@@ -351,9 +353,9 @@
       transition: all 0.15s;
     }
     .fitness-chip.active {
-      background: rgba(248,113,113,0.15);
-      border-color: rgba(248,113,113,0.4);
-      color: #f87171;
+      background: rgba(var(--danger-rgb),0.15);
+      border-color: var(--text);
+      color: var(--danger);
     }
     .fitness-chip:active { transform: scale(0.97); }
 
@@ -474,7 +476,7 @@
       <div class="section-body">
         <div class="prog-row">
           <span class="prog-label">汉字</span>
-          <div class="prog-bar"><div class="prog-fill" id="hz-prog" style="background:#60a5fa;width:0%"></div></div>
+          <div class="prog-bar"><div class="prog-fill" id="hz-prog" style="background:var(--accent);width:0%"></div></div>
           <span class="prog-val" id="hz-prog-val">0/300</span>
         </div>
         <textarea class="notes-ta" id="study-notes"
@@ -485,7 +487,7 @@
 • Унших: 3-р бүлэг дууссан..."></textarea>
         <div class="notes-footer">
           <span class="notes-ts" id="study-ts"></span>
-          <button class="notes-save-btn" onclick="saveNotes('study')" style="background:#60a5fa">Хадгалах</button>
+          <button class="notes-save-btn" onclick="saveNotes('study')" style="background:var(--accent)">Хадгалах</button>
         </div>
       </div>
     </div>
@@ -510,7 +512,7 @@
 • Дараагийн алхам: landing page шинэчлэх..."></textarea>
         <div class="notes-footer">
           <span class="notes-ts" id="business-ts"></span>
-          <button class="notes-save-btn" onclick="saveNotes('business')" style="background:#4ade80;color:#000">Хадгалах</button>
+          <button class="notes-save-btn" onclick="saveNotes('business')" style="background:var(--ok);color:var(--accent-ink)">Хадгалах</button>
         </div>
       </div>
     </div>
@@ -536,7 +538,7 @@
         </div>
         <div class="prog-row">
           <span class="prog-label">Энэ сар</span>
-          <div class="prog-bar"><div class="prog-fill" id="fit-prog" style="background:#f87171;width:0%"></div></div>
+          <div class="prog-bar"><div class="prog-fill" id="fit-prog" style="background:var(--danger);width:0%"></div></div>
           <span class="prog-val" id="fit-prog-val">0/30</span>
         </div>
         <textarea class="notes-ta" id="fitness-notes" style="min-height:80px"
@@ -546,7 +548,7 @@
 • Protein: 120g идсэн..."></textarea>
         <div class="notes-footer">
           <span class="notes-ts" id="fitness-ts"></span>
-          <button class="notes-save-btn" onclick="saveNotes('fitness')" style="background:#f87171">Хадгалах</button>
+          <button class="notes-save-btn" onclick="saveNotes('fitness')" style="background:var(--danger)">Хадгалах</button>
         </div>
       </div>
     </div>
@@ -917,5 +919,7 @@ Fitness: ${fitC.map(c=>LABELS_FIT[c]).join(', ') || 'тэмдэглэгдээг�
     buildOverview();
   });
   </script>
+
+
 </body>
 </html>

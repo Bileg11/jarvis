@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system.css">
+<script src="theme.js"></script>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,39 +17,30 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#fff;min-height:100vh;overflow-x:hidden;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:var(--accent-ink);min-height:100vh;overflow-x:hidden;
   /* Premium gradient + ambient glow (T.H.R.E.E. OS shig depth) */
   background:
     radial-gradient(ellipse 120% 90% at 50% 35%, transparent 50%, rgba(0,0,0,.45) 100%),
-    radial-gradient(ellipse 80% 60% at 25% 8%, rgba(74,222,128,.16) 0%, transparent 55%),
-    radial-gradient(ellipse 70% 55% at 85% 92%, rgba(96,165,250,.12) 0%, transparent 50%),
-    linear-gradient(165deg, #131a26 0%, #0d131d 55%, #090d15 100%);
+    radial-gradient(ellipse 80% 60% at 25% 8%, rgba(var(--ok-rgb),.16) 0%, transparent 55%),
+    radial-gradient(ellipse 70% 55% at 85% 92%, rgba(var(--accent-rgb),.12) 0%, transparent 50%),
+    linear-gradient(165deg, var(--surface) 0%, var(--surface) 55%, var(--surface) 100%);
   background-attachment:fixed;
 }
 .screen{display:none;min-height:100vh;flex-direction:column}
 .screen.active{display:flex}
-:root{
-  --green:#4ade80;--green-dim:rgba(74,222,128,.15);--green-border:rgba(74,222,128,.5);
-  --red:#f87171;--red-dim:rgba(248,113,113,.15);--red-border:rgba(248,113,113,.5);
-  --blue:#60a5fa;--gold:#fbbf24;
-  --card:rgba(255,255,255,.06);--border:rgba(255,255,255,.12);
-  --text2:rgba(255,255,255,.55);--text3:rgba(255,255,255,.28);
-  /* Glass surfaces — frosted + металл ирмэг */
-  --surface:rgba(40,52,72,.55);--surface2:rgba(55,68,90,.6);
-  --glass-bd:rgba(255,255,255,.10);--glass-top:rgba(255,255,255,.16);
-}
+:root{/* ⚠ ӨНГӨ design-system.css-ээс */}
 /* Frosted glass mixin — gauge/card бүрт */
 .glassy{
   background:var(--surface);
   backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);
   border:1px solid var(--glass-bd);border-top-color:var(--glass-top);
-  box-shadow:0 4px 24px rgba(0,0,0,.35),inset 0 1px 1px rgba(255,255,255,.10);
+  box-shadow:0 4px 24px rgba(0,0,0,.35),inset 0 1px 1px rgba(var(--text-rgb),.10);
 }
 
 /* LOADING */
 #screen-loading{align-items:center;justify-content:center;gap:16px}
 .loading-logo{font-size:56px}
-.loading-spinner{width:40px;height:40px;border:3px solid rgba(74,222,128,.2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+.loading-spinner{width:40px;height:40px;border:3px solid rgba(var(--ok-rgb),.2);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* LOGIN */
@@ -55,7 +48,7 @@ body{
 .login-logo{font-size:64px;margin-bottom:16px}
 .login-title{font-size:30px;font-weight:800;margin-bottom:8px;letter-spacing:-.5px}
 .login-sub{font-size:15px;color:var(--text2);margin-bottom:48px;line-height:1.6}
-.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:320px;padding:16px 24px;background:#fff;color:#111;border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;transition:transform .15s,opacity .15s;box-shadow:0 4px 24px rgba(0,0,0,.3)}
+.btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:320px;padding:16px 24px;background:#fff;color:var(--surface);border:none;border-radius:16px;font-size:16px;font-weight:700;cursor:pointer;transition:transform .15s,opacity .15s;box-shadow:0 4px 24px rgba(0,0,0,.3)}
 .btn-google:active{transform:scale(.97);opacity:.9}
 .btn-google svg{width:22px;height:22px;flex-shrink:0}
 .login-note{font-size:12px;color:var(--text3);margin-top:24px;line-height:1.7}
@@ -80,10 +73,10 @@ body{
 .placement-sub{font-size:13px;color:var(--text2);margin-top:4px}
 
 /* TOPBAR */
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;gap:12px;position:sticky;top:0;background:rgba(15,19,29,.72);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);z-index:10;border-bottom:1px solid var(--border)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 20px 12px;gap:12px;position:sticky;top:0;background:var(--surface);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);z-index:10;border-bottom:1px solid var(--border)}
 .topbar-stat{display:flex;align-items:center;gap:5px;font-size:14px;font-weight:700}
 .topbar-stat span{font-size:18px}
-.topbar-avatar{width:32px;height:32px;border-radius:50%;background:rgba(74,222,128,.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;overflow:hidden;font-weight:700}
+.topbar-avatar{width:32px;height:32px;border-radius:50%;background:rgba(var(--ok-rgb),.15);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;overflow:hidden;font-weight:700}
 .topbar-avatar img{width:100%;height:100%;object-fit:cover}
 
 /* PATH */
@@ -96,11 +89,11 @@ body{
 .path-row{display:flex;justify-content:center;gap:14px;padding:0 16px 12px;flex-wrap:wrap}
 .lesson-btn{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-weight:700;font-size:11px;transition:transform .15s;position:relative}
 .lesson-btn:active{transform:scale(.92)}
-.lesson-btn.done{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 4px 16px rgba(34,197,94,.4)}
-.lesson-btn.current{background:linear-gradient(135deg,#4ade80,#22c55e);color:#111;box-shadow:0 0 0 4px rgba(74,222,128,.25),0 4px 20px rgba(74,222,128,.4);animation:pulse 2s infinite}
-.lesson-btn.locked{background:var(--surface);color:var(--text3);cursor:default;border:2px solid rgba(255,255,255,.08)}
+.lesson-btn.done{background:linear-gradient(135deg,var(--ok),#16a34a);color:var(--accent-ink);box-shadow:0 4px 16px rgba(var(--ok-rgb),.4)}
+.lesson-btn.current{background:linear-gradient(135deg,var(--ok),var(--ok));color:var(--surface);box-shadow:0 0 0 4px rgba(var(--ok-rgb),.25),0 4px 20px rgba(var(--ok-rgb),.4);animation:pulse 2s infinite}
+.lesson-btn.locked{background:var(--surface);color:var(--text3);cursor:default;border:2px solid rgba(var(--text-rgb),.08)}
 .lesson-num{font-size:9px;opacity:.75}
-@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(74,222,128,.25),0 6px 20px rgba(74,222,128,.4)}50%{box-shadow:0 0 0 8px rgba(74,222,128,.1),0 6px 20px rgba(74,222,128,.3)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 4px rgba(var(--ok-rgb),.25),0 6px 20px rgba(var(--ok-rgb),.4)}50%{box-shadow:0 0 0 8px rgba(var(--ok-rgb),.1),0 6px 20px rgba(var(--ok-rgb),.3)}}
 .star-badge{position:absolute;top:-5px;right:-5px;width:22px;height:22px;background:var(--gold);border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid #111827}
 
 /* QUIZ */
@@ -108,24 +101,24 @@ body{
 .quiz-header{padding:14px 20px 10px;display:flex;align-items:center;gap:12px}
 .quiz-close{width:36px;height:36px;border-radius:50%;background:var(--surface);border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text2);flex-shrink:0}
 .quiz-progress{flex:1;height:10px;background:var(--surface2);border-radius:8px;overflow:hidden}
-.quiz-progress-fill{height:100%;background:linear-gradient(90deg,#4ade80,#22c55e);border-radius:8px;transition:width .4s ease}
+.quiz-progress-fill{height:100%;background:linear-gradient(90deg,var(--ok),var(--ok));border-radius:8px;transition:width .4s ease}
 .hearts{display:flex;gap:3px;font-size:20px;flex-shrink:0}
 
 .quiz-body{flex:1;display:flex;flex-direction:column;padding:16px 20px 8px}
 .q-type-label{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:14px}
-.quiz-review-badge{display:inline-block;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:var(--gold);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:12px}
+.quiz-review-badge{display:inline-block;background:rgba(var(--warn-rgb),.12);border:1px solid rgba(var(--warn-rgb),.3);color:var(--gold);font-size:11px;font-weight:700;padding:4px 12px;border-radius:20px;margin-bottom:12px}
 
 /* WORD CARD */
 .quiz-card{
-  background:linear-gradient(135deg,rgba(74,222,128,.08) 0%,rgba(96,165,250,.06) 100%);
-  border:1px solid rgba(74,222,128,.2);
+  background:linear-gradient(135deg,rgba(var(--ok-rgb),.08) 0%,rgba(var(--accent-rgb),.06) 100%);
+  border:1px solid rgba(var(--ok-rgb),.2);
   border-radius:24px;padding:32px 24px;text-align:center;margin-bottom:20px;
   position:relative;overflow:hidden;
 }
-.quiz-card::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(74,222,128,.1),transparent);border-radius:50%}
+.quiz-card::before{content:'';position:absolute;top:-40px;right:-40px;width:120px;height:120px;background:radial-gradient(circle,rgba(var(--ok-rgb),.1),transparent);border-radius:50%}
 .quiz-hanzi{font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;font-size:clamp(84px,24vw,124px);font-weight:500;line-height:1.05;letter-spacing:.06em;margin-bottom:16px;position:relative;z-index:1}
 .quiz-pinyin{font-size:26px;color:var(--blue);font-weight:600;letter-spacing:.5px;position:relative;z-index:1}
-.quiz-mn-word{font-size:28px;font-weight:700;margin-bottom:8px;color:#fff}
+.quiz-mn-word{font-size:28px;font-weight:700;margin-bottom:8px;color:var(--accent-ink)}
 .quiz-mn-sub{font-size:14px;color:var(--text2)}
 
 /* CHOICES */
@@ -134,21 +127,21 @@ body{
   background:var(--surface);backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);border:1.5px solid var(--glass-bd);border-top-color:var(--glass-top);border-radius:16px;
   padding:16px 20px;text-align:left;font-size:16px;font-weight:600;
   cursor:pointer;transition:all .15s;min-height:56px;
-  display:flex;align-items:center;gap:14px;color:#fff;
+  display:flex;align-items:center;gap:14px;color:var(--accent-ink);
 }
 .choice:active{transform:scale(.98)}
-.choice:hover{border-color:rgba(255,255,255,.25);background:var(--surface2)}
-.choice-key{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0}
+.choice:hover{border-color:var(--text-2);background:var(--surface2)}
+.choice-key{width:28px;height:28px;border-radius:8px;background:rgba(var(--text-rgb),.1);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0}
 .choice-text{flex:1}
 .choice.correct{background:var(--green-dim);border-color:var(--green-border);color:var(--green)}
-.choice.correct .choice-key{background:rgba(74,222,128,.2);color:var(--green)}
+.choice.correct .choice-key{background: var(--ok);color:var(--green)}
 .choice.wrong{background:var(--red-dim);border-color:var(--red-border);color:var(--red)}
-.choice.wrong .choice-key{background:rgba(248,113,113,.2);color:var(--red)}
+.choice.wrong .choice-key{background: var(--danger);color:var(--red)}
 .choice.disabled{cursor:default}
 
 /* TYPING */
-.type-input{width:100%;background:var(--surface);border:2px solid var(--border);border-radius:16px;padding:16px 20px;font-size:18px;font-weight:600;color:#fff;outline:none;text-align:center;transition:border-color .15s}
-.type-input:focus{border-color:rgba(74,222,128,.5)}
+.type-input{width:100%;background:var(--surface);border:2px solid var(--border);border-radius:16px;padding:16px 20px;font-size:18px;font-weight:600;color:var(--accent-ink);outline:none;text-align:center;transition:border-color .15s}
+.type-input:focus{border-color:var(--ok)}
 .type-input.correct{border-color:var(--green);background:var(--green-dim);color:var(--green)}
 .type-input.wrong{border-color:var(--red);background:var(--red-dim);color:var(--red)}
 .type-hint{text-align:center;font-size:13px;color:var(--text3);margin-top:8px}
@@ -160,9 +153,9 @@ body{
 .quiz-footer{padding:12px 20px 32px}
 .btn-continue{width:100%;padding:18px;border-radius:16px;border:none;font-size:16px;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.3px}
 .btn-continue.hidden{visibility:hidden}
-.btn-continue.green{background:linear-gradient(135deg,#4ade80,#22c55e);color:#111;box-shadow:0 4px 16px rgba(74,222,128,.3)}
-.btn-continue.red{background:var(--red);color:#fff}
-.btn-continue.gold{background:var(--gold);color:#111}
+.btn-continue.green{background:linear-gradient(135deg,var(--ok),var(--ok));color:var(--surface);box-shadow:0 4px 16px rgba(var(--ok-rgb),.3)}
+.btn-continue.red{background:var(--red);color:var(--accent-ink)}
+.btn-continue.gold{background:var(--gold);color:var(--surface)}
 
 /* RESULT */
 #screen-result{align-items:center;justify-content:center;text-align:center;padding:40px 24px}
@@ -175,29 +168,29 @@ body{
 .result-stat-num{font-size:28px;font-weight:800;color:var(--green)}
 .result-stat-lbl{font-size:11px;color:var(--text3);margin-top:3px}
 .btn-big{width:100%;max-width:320px;padding:18px;border-radius:16px;border:none;font-size:17px;font-weight:700;cursor:pointer;margin-top:10px;transition:all .15s}
-.btn-big.green{background:linear-gradient(135deg,#4ade80,#22c55e);color:#111;box-shadow:0 4px 16px rgba(74,222,128,.3)}
+.btn-big.green{background:linear-gradient(135deg,var(--ok),var(--ok));color:var(--surface);box-shadow:0 4px 16px rgba(var(--ok-rgb),.3)}
 .btn-big.ghost{background:var(--surface);border:1px solid var(--border);color:var(--text2)}
 
 /* FAIL */
 #screen-fail{align-items:center;justify-content:center;text-align:center;padding:40px 24px;gap:0}
 
 /* LISTEN */
-.listen-btn{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,rgba(96,165,250,.15),rgba(96,165,250,.05));border:2px solid rgba(96,165,250,.4);font-size:40px;cursor:pointer;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.listen-btn:active{transform:scale(.92);background:rgba(96,165,250,.25)}
-.listen-btn.playing{border-color:var(--blue);box-shadow:0 0 0 8px rgba(96,165,250,.15);animation:listenPulse 1s infinite}
-@keyframes listenPulse{0%,100%{box-shadow:0 0 0 8px rgba(96,165,250,.15)}50%{box-shadow:0 0 0 16px rgba(96,165,250,.05)}}
+.listen-btn{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,rgba(var(--accent-rgb),.15),rgba(var(--accent-rgb),.05));border:2px solid rgba(var(--accent-rgb),.4);font-size:40px;cursor:pointer;margin:0 auto 24px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.listen-btn:active{transform:scale(.92);background: var(--accent)}
+.listen-btn.playing{border-color:var(--blue);box-shadow:0 0 0 8px rgba(var(--accent-rgb),.15);animation:listenPulse 1s infinite}
+@keyframes listenPulse{0%,100%{box-shadow:0 0 0 8px rgba(var(--accent-rgb),.15)}50%{box-shadow:0 0 0 16px rgba(var(--accent-rgb),.05)}}
 
 /* MATCH */
 .match-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
 .match-item{background:var(--surface);backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);border:1.5px solid var(--glass-bd);border-top-color:var(--glass-top);border-radius:14px;padding:14px 10px;text-align:center;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;min-height:52px;display:flex;align-items:center;justify-content:center}
 .match-item:active{transform:scale(.96)}
-.match-item.selected{border-color:var(--blue);background:rgba(96,165,250,.12);color:var(--blue)}
+.match-item.selected{border-color:var(--blue);background:rgba(var(--accent-rgb),.12);color:var(--blue)}
 .match-item.matched{border-color:var(--green-border);background:var(--green-dim);color:var(--green);cursor:default}
 .match-item.wrong-shake{animation:shake .3s ease}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 
 /* TOAST */
-.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:rgba(17,24,39,.95);border:1px solid var(--border);border-radius:14px;padding:12px 20px;font-size:13px;color:var(--text2);z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(10px)}
+.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 20px;font-size:13px;color:var(--text2);z-index:100;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(10px)}
 .toast.show{opacity:1}
 
 /* ── Ханз дарж дуудлага сонсох ── */
@@ -256,7 +249,7 @@ body{
   <div class="topbar">
     <div class="topbar-stat"><span>🔥</span><span id="stat-streak">0</span></div>
     <div class="topbar-stat" style="color:var(--gold)"><span>⚡</span><span id="stat-xp">0</span> XP</div>
-    <div class="topbar-stat" style="color:#f87171"><span>❤️</span><span id="stat-hearts">3</span></div>
+    <div class="topbar-stat" style="color:var(--danger)"><span>❤️</span><span id="stat-hearts">3</span></div>
     <div class="topbar-avatar" id="user-avatar" onclick="showUserMenu()">👤</div>
   </div>
   <div class="path-header">
@@ -269,7 +262,7 @@ body{
       <div style="font-size:15px;font-weight:800">🔄 Өнөөдрийн давталт</div>
       <div style="font-size:12px;color:var(--text2);margin-top:2px"><span id="review-count">0</span> үг давтах цаг боллоо</div>
     </div>
-    <div style="background:var(--gold);color:#111;font-weight:800;font-size:14px;padding:10px 18px;border-radius:11px">Эхлэх ➜</div>
+    <div style="background:var(--gold);color:var(--surface);font-weight:800;font-size:14px;padding:10px 18px;border-radius:11px">Эхлэх ➜</div>
   </div>
   <div id="path-container"></div>
 </div>
@@ -319,8 +312,8 @@ body{
     <div class="glassy" style="border-radius:20px;padding:24px;margin-bottom:24px">
       <div id="gram-title" style="font-size:20px;font-weight:800;margin-bottom:6px"></div>
       <div id="gram-pinyin" style="font-size:14px;color:var(--blue);font-weight:600;margin-bottom:16px"></div>
-      <div id="gram-body" style="font-size:15px;line-height:1.7;color:rgba(255,255,255,.88)"></div>
-      <div id="gram-example" style="margin-top:16px;padding:14px 16px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:12px;font-size:14px;line-height:1.6"></div>
+      <div id="gram-body" style="font-size:15px;line-height:1.7;color:var(--text-2)"></div>
+      <div id="gram-example" style="margin-top:16px;padding:14px 16px;background:rgba(var(--ok-rgb),.08);border:1px solid rgba(var(--ok-rgb),.2);border-radius:12px;font-size:14px;line-height:1.6"></div>
     </div>
     <button class="btn-big green" style="max-width:none" onclick="startGrammarLesson()">Ойлголоо, эхэлье ➜</button>
   </div>
@@ -345,7 +338,7 @@ body{
   <div style="font-size:80px;margin-bottom:20px">💔</div>
   <div style="font-size:28px;font-weight:800;margin-bottom:8px">Амьдрал дууслаа</div>
   <div style="font-size:15px;color:var(--text2);margin-bottom:36px">Маргааш дахин орж ирнэ үү!</div>
-  <button class="btn-big" style="background:var(--red);color:#fff;max-width:320px" onclick="retryLesson()">Дахин оролдох</button>
+  <button class="btn-big" style="background:var(--red);color:var(--accent-ink);max-width:320px" onclick="retryLesson()">Дахин оролдох</button>
   <button class="btn-big ghost" style="margin-top:10px;max-width:320px" onclick="goPath()">Буцах</button>
 </div>
 
@@ -929,5 +922,27 @@ function showScreen(name) {
 }
 </script>
 <script src="speak.js"></script>
+
+<!-- ДООД ЦЭС — 5 хаалга -->
+<div class="ds-nav-space"></div>
+<nav class="ds-nav" aria-label="Үндсэн цэс">
+  <a id="dsn-learn" href="hsk"><span class="ni">学</span>Сурах</a>
+  <a id="dsn-prog"  href="dashboard"><span class="ni">📊</span>Явц</a>
+  <a id="dsn-ai"    href="chat"><span class="ni">✦</span>JARVIS</a>
+  <a id="dsn-day"   href="life"><span class="ni">日</span>Өдөр</a>
+  <a id="dsn-me"    href="profile"><span class="ni">我</span>Би</a>
+</nav>
+<script>
+(function(){
+  var here = (location.pathname.split('/').pop()||'index').replace('.html','');
+  var map = { hsk:'dsn-learn', learn:'dsn-learn', dashboard:'dsn-prog', chat:'dsn-ai',
+              life:'dsn-day', tracker:'dsn-day', profile:'dsn-me', finance:'dsn-me' };
+  ['dsn-learn','dsn-prog','dsn-ai','dsn-day','dsn-me'].forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    if (window.jarvisHref) el.href = window.jarvisHref(el.getAttribute('href'));
+    if (map[here]===id) { el.classList.add('on'); el.setAttribute('aria-current','page'); }
+  });
+})();
+</script>
 </body>
 </html>

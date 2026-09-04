@@ -188,8 +188,8 @@
   --text-3:        #6B7380;
 
   --accent:        #F0821E;
-  --accent-text:   #A45208;   /* улбар шар цагаан дээр уншигдахгүй тул бараан */
-  --accent-ink:    #FFFFFF;
+  --accent-text:   #A45208;   /* улбар шар дээр бичихэд — цагаан уншигдахгүй */
+  --accent-ink:    #241300;   /* улбар шар ДЭВСГЭР дээрх текст — бараан нь зөв */
   --accent-soft:   rgba(240,130,30,.11);
   --accent-shadow: #C4650F;
   --track:         #EDEFF2;
@@ -264,7 +264,7 @@ body.ds {
   border-radius: var(--r-md); color: var(--text);
   font-family: var(--font-ui); font-size: var(--fs-md);
 }
-.ds-input:focus { outline: none; border-color: var(--accent); }
+.ds-input:focus { outline: none; border-color: var(--accent-text); }
 .ds-input--hanzi { font-family: var(--font-hanzi); font-size: var(--fs-xl); }
 
 /* ── Явцын мөр ─────────────────────────────────────────────────── */
@@ -366,4 +366,20 @@ body.ds {
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+/* ── Сонголтын жагсаалт — хөтчийн анхдагч өнгө дизайнаас гажихаас сэргийлнэ ── */
+select, option {
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+}
+select { min-height: var(--tap); border: 1px solid var(--border); border-radius: var(--r-md); padding: 0 var(--sp-3); }
+
+/* ── Хүрэх талбайн баталгаа ────────────────────────────────────────
+   Дарж болох ямар ч элемент хуруунд хүрэхээс жижиг байж болохгүй.
+   (Дүрсэн товчнууд харагдах хэмжээгээ хадгална, зөвхөн талбай нэмэгдэнэ.) */
+button, a[href], [role="button"], summary { touch-action: manipulation; }
+button:not(.tab):not(.nav-item):not([class*="icon"]):not([class*="close"]) {
+  min-height: 40px;
 }

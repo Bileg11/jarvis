@@ -4,19 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>T.H.R.E.E. OS — Гарын авлага</title>
-<style>
+<link rel="stylesheet" href="design-system.css">
+  <script src="theme.js"></script>
+  <style>
 :root {
   --bg:      #000308;
   --bg2:     #040a14;
-  --accent:  #00e5ff;
+  --accent:  var(--accent);
   --accent2: #00b4cc;
-  --gold:    #d4af37;
-  --green:   #00ff88;
+  --gold:    var(--warn);
+  --green:   var(--ok);
   --red:     #ff3c50;
   --text:    #c8dcea;
   --text2:   rgba(180,210,230,.55);
-  --border:  rgba(0,229,255,.12);
-  --glass:   rgba(0,10,28,.82);
+  --border:  rgba(var(--accent-rgb),.12);
+  --glass:   var(--surface);
 }
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 html { scroll-behavior:smooth; }
@@ -32,8 +34,8 @@ body {
 body::before {
   content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
   background-image:
-    linear-gradient(rgba(0,229,255,.015) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(0,229,255,.015) 1px,transparent 1px);
+    linear-gradient(rgba(var(--accent-rgb),.015) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(var(--accent-rgb),.015) 1px,transparent 1px);
   background-size:48px 48px;
 }
 
@@ -46,9 +48,9 @@ body::before {
   padding:0 24px;
   display:flex; align-items:center; gap:16px; height:52px;
 }
-.logo { font-family:'Courier New',monospace; font-size:11px; color:var(--accent); letter-spacing:.25em; font-weight:700; }
+.logo { font-family:'Courier New',monospace; font-size:11px; color:var(--accent-text); letter-spacing:.25em; font-weight:700; }
 .logo span { color:var(--text2); font-weight:400; }
-.top-badge { background:rgba(0,229,255,.08); border:1px solid var(--border); border-radius:3px; padding:2px 8px; font-size:9px; color:var(--accent2); letter-spacing:.12em; }
+.top-badge { background:rgba(var(--accent-rgb),.08); border:1px solid var(--border); border-radius:3px; padding:2px 8px; font-size:9px; color:var(--accent2); letter-spacing:.12em; }
 
 /* ── SIDEBAR ── */
 .layout { display:flex; position:relative; }
@@ -69,7 +71,7 @@ body::before {
   text-decoration:none; border-left:2px solid transparent;
   transition:all .15s;
 }
-.sidebar a:hover, .sidebar a.active { color:var(--accent); border-left-color:var(--accent); background:rgba(0,229,255,.04); }
+.sidebar a:hover, .sidebar a.active { color:var(--accent-text); border-left-color:var(--accent-text); background:rgba(var(--accent-rgb),.04); }
 
 /* ── MAIN CONTENT ── */
 .main { flex:1; min-width:0; padding:40px 48px 80px; max-width:860px; position:relative; z-index:1; }
@@ -79,9 +81,9 @@ body::before {
   text-align:center; padding:60px 20px 48px;
   border-bottom:1px solid var(--border); margin-bottom:48px;
 }
-.hero-badge { display:inline-block; background:rgba(0,229,255,.08); border:1px solid rgba(0,229,255,.2); border-radius:20px; padding:5px 16px; font-size:10px; letter-spacing:.2em; color:var(--accent); margin-bottom:20px; }
-.hero h1 { font-size:36px; font-weight:700; color:#fff; letter-spacing:.04em; margin-bottom:10px; }
-.hero h1 span { color:var(--accent); }
+.hero-badge { display:inline-block; background:rgba(var(--accent-rgb),.08); border:1px solid rgba(var(--accent-rgb),.2); border-radius:20px; padding:5px 16px; font-size:10px; letter-spacing:.2em; color: var(--text); margin-bottom:20px; }
+.hero h1 { font-size:36px; font-weight:700; color:var(--accent-ink); letter-spacing:.04em; margin-bottom:10px; }
+.hero h1 span { color:var(--accent-text); }
 .hero p { font-size:14px; color:var(--text2); max-width:520px; margin:0 auto; line-height:1.8; }
 .hero-platforms { display:flex; gap:12px; justify-content:center; margin-top:24px; flex-wrap:wrap; }
 .platform-badge {
@@ -94,8 +96,8 @@ body::before {
 /* ── SECTIONS ── */
 .section { margin-bottom:56px; scroll-margin-top:72px; }
 .section-label { font-size:9px; letter-spacing:.25em; color:var(--accent2); margin-bottom:10px; }
-.section h2 { font-size:22px; font-weight:700; color:#fff; margin-bottom:6px; }
-.section h3 { font-size:16px; font-weight:600; color:var(--accent); margin:28px 0 12px; }
+.section h2 { font-size:22px; font-weight:700; color:var(--accent-ink); margin-bottom:6px; }
+.section h3 { font-size:16px; font-weight:600; color:var(--accent-text); margin:28px 0 12px; }
 .section h4 { font-size:13px; font-weight:600; color:var(--gold); margin:20px 0 8px; letter-spacing:.05em; }
 .divider { height:1px; background:var(--border); margin:32px 0; }
 
@@ -106,7 +108,7 @@ body::before {
   background:transparent; color:var(--text2); font-size:12px; cursor:pointer;
   transition:all .15s; letter-spacing:.05em;
 }
-.tab-btn.active { background:rgba(0,229,255,.1); border-color:var(--accent); color:var(--accent); }
+.tab-btn.active { background:rgba(var(--accent-rgb),.1); border-color: var(--text); color:var(--accent-text); }
 .tab-content { display:none; }
 .tab-content.active { display:block; }
 
@@ -118,9 +120,9 @@ body::before {
 .step-num {
   counter-increment:step;
   flex-shrink:0; width:32px; height:32px;
-  background:rgba(0,229,255,.1); border:1px solid rgba(0,229,255,.25);
+  background:rgba(var(--accent-rgb),.1); border:1px solid rgba(var(--accent-rgb),.25);
   border-radius:50%; display:flex; align-items:center; justify-content:center;
-  font-size:12px; font-weight:700; color:var(--accent); font-family:'Courier New',monospace;
+  font-size:12px; font-weight:700; color: var(--text); font-family:'Courier New',monospace;
 }
 .step-num::after { content:counter(step); }
 .step-body h4 { margin-top:0; }
@@ -133,33 +135,33 @@ body::before {
   display:flex; gap:12px; align-items:flex-start;
 }
 .callout-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
-.callout.info  { background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.15); }
-.callout.warn  { background:rgba(255,140,0,.06);  border:1px solid rgba(255,140,0,.2); }
-.callout.ok    { background:rgba(0,255,136,.06);  border:1px solid rgba(0,255,136,.2); }
+.callout.info  { background:rgba(var(--accent-rgb),.06); border:1px solid rgba(var(--accent-rgb),.15); }
+.callout.warn  { background:rgba(var(--warn-rgb),.06);  border:1px solid rgba(var(--warn-rgb),.2); }
+.callout.ok    { background:rgba(var(--ok-rgb),.06);  border:1px solid rgba(var(--ok-rgb),.2); }
 .callout.tip   { background:rgba(212,175,55,.06); border:1px solid rgba(212,175,55,.2); }
 
 /* ── CODE BLOCKS ── */
 .code-block {
-  background:#020c18; border:1px solid rgba(0,229,255,.12);
+  background:var(--bg); border:1px solid rgba(var(--accent-rgb),.12);
   border-radius:6px; padding:14px 18px; margin:12px 0;
   font-family:'Courier New',monospace; font-size:13px;
   color:#7dd3fc; overflow-x:auto; line-height:1.6;
 }
-.code-block .cmd  { color:var(--accent); }
-.code-block .cmt  { color:rgba(0,229,255,.35); }
+.code-block .cmd  { color:var(--accent-text); }
+.code-block .cmt  { color:var(--accent-text); }
 .code-block .ok   { color:var(--green); }
-.code-block .warn { color:#ff8c00; }
+.code-block .warn { color:var(--warn); }
 
 /* ── COMMAND TABLE ── */
 .cmd-table { width:100%; border-collapse:collapse; margin:12px 0; font-size:13px; }
 .cmd-table th {
   text-align:left; padding:8px 14px;
-  background:rgba(0,229,255,.06); border-bottom:1px solid var(--border);
+  background:rgba(var(--accent-rgb),.06); border-bottom:1px solid var(--border);
   font-size:10px; letter-spacing:.12em; color:var(--accent2); font-weight:600;
 }
-.cmd-table td { padding:8px 14px; border-bottom:1px solid rgba(0,229,255,.05); vertical-align:top; }
-.cmd-table tr:hover td { background:rgba(0,229,255,.03); }
-.cmd-table td:first-child { font-family:'Courier New',monospace; color:var(--accent); white-space:nowrap; }
+.cmd-table td { padding:8px 14px; border-bottom:1px solid rgba(var(--accent-rgb),.05); vertical-align:top; }
+.cmd-table tr:hover td { background:rgba(var(--accent-rgb),.03); }
+.cmd-table td:first-child { font-family:'Courier New',monospace; color:var(--accent-text); white-space:nowrap; }
 .cmd-table td:last-child { color:var(--text2); }
 
 /* ── FEATURE CARDS ── */
@@ -169,20 +171,20 @@ body::before {
   border-radius:8px; padding:16px;
   transition:border-color .2s;
 }
-.feature-card:hover { border-color:rgba(0,229,255,.3); }
+.feature-card:hover { border-color:var(--accent-text); }
 .feature-card .icon { font-size:24px; margin-bottom:8px; }
-.feature-card h4 { margin:0 0 4px; color:var(--accent); font-size:13px; }
+.feature-card h4 { margin:0 0 4px; color:var(--accent-text); font-size:13px; }
 .feature-card p  { color:var(--text2); font-size:11px; line-height:1.6; }
 
 /* ── SCREENSHOT PLACEHOLDER ── */
 .screen-mock {
-  background:#020c18; border:1px solid var(--border);
+  background:var(--bg); border:1px solid var(--border);
   border-radius:10px; padding:20px;
   margin:16px 0; text-align:center;
   font-family:'Courier New',monospace; font-size:11px;
-  color:rgba(0,229,255,.4); line-height:2;
+  color:var(--accent-text); line-height:2;
 }
-.screen-mock .bar { background:rgba(0,229,255,.05); border-radius:4px; padding:6px 12px; margin-bottom:12px; display:flex; gap:8px; align-items:center; }
+.screen-mock .bar { background:rgba(var(--accent-rgb),.05); border-radius:4px; padding:6px 12px; margin-bottom:12px; display:flex; gap:8px; align-items:center; }
 .screen-mock .dot { width:10px; height:10px; border-radius:50%; }
 .screen-mock .dot.r { background:#ff5f57; }
 .screen-mock .dot.y { background:#ffbd2e; }
@@ -194,7 +196,7 @@ body::before {
   padding:14px 0; cursor:pointer; display:flex; justify-content:space-between;
   align-items:center; font-size:14px; color:var(--text); user-select:none;
 }
-.faq-q:hover { color:var(--accent); }
+.faq-q:hover { color:var(--accent-text); }
 .faq-q .arrow { font-size:10px; color:var(--text2); transition:transform .2s; }
 .faq-item.open .arrow { transform:rotate(90deg); }
 .faq-a { display:none; padding:0 0 14px; font-size:13px; color:var(--text2); line-height:1.8; }
@@ -202,10 +204,10 @@ body::before {
 
 /* ── KEYBOARD SHORTCUT ── */
 kbd {
-  display:inline-block; background:rgba(0,229,255,.08);
-  border:1px solid rgba(0,229,255,.2); border-bottom-width:2px;
+  display:inline-block; background:rgba(var(--accent-rgb),.08);
+  border:1px solid rgba(var(--accent-rgb),.2); border-bottom-width:2px;
   border-radius:4px; padding:2px 8px;
-  font-family:'Courier New',monospace; font-size:11px; color:var(--accent);
+  font-family:'Courier New',monospace; font-size:11px; color: var(--text);
 }
 
 /* ── TOC INDICATOR ── */
@@ -218,7 +220,7 @@ kbd {
   .hero h1 { font-size:26px; }
   .hero { padding:40px 16px 32px; }
   .toc-mobile { display:block; background:var(--glass); border:1px solid var(--border); border-radius:8px; padding:14px; margin-bottom:28px; }
-  .toc-mobile summary { cursor:pointer; color:var(--accent); font-size:13px; }
+  .toc-mobile summary { cursor:pointer; color:var(--accent-text); font-size:13px; }
   .toc-mobile a { display:block; padding:5px 0; font-size:12px; color:var(--text2); text-decoration:none; }
   .feature-grid { grid-template-columns:1fr 1fr; }
 }
@@ -234,8 +236,8 @@ kbd {
 <div class="top-bar">
   <!-- Sprint 32: Universal Nav Mesh -->
   <div style="display:flex;gap:4px;align-items:center">
-    <button id="back-btn" onclick="goBack()" style="background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.2);border-radius:2px;color:rgba(0,229,255,.6);font-size:9px;letter-spacing:.08em;padding:3px 8px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;" onmouseover="this.style.borderColor='#00e5ff';this.style.color='#00e5ff';" onmouseout="this.style.borderColor='rgba(0,229,255,.2)';this.style.color='rgba(0,229,255,.6)';">← BACK</button>
-    <button onclick="goHome()" style="background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.2);border-radius:2px;color:rgba(0,255,136,.6);font-size:9px;letter-spacing:.08em;padding:3px 8px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;" onmouseover="this.style.borderColor='#00ff88';this.style.color='#00ff88';" onmouseout="this.style.borderColor='rgba(0,255,136,.2)';this.style.color='rgba(0,255,136,.6)';">🏠 HOME</button>
+    <button id="back-btn" onclick="goBack()" style="background:rgba(var(--accent-rgb),.04);border:1px solid rgba(var(--accent-rgb),.2);border-radius:2px;color: var(--text);font-size:9px;letter-spacing:.08em;padding:3px 8px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent-text)';" onmouseout="this.style.borderColor='rgba(var(--accent-rgb),.2)';this.style.color='rgba(var(--accent-rgb),.6)';">← BACK</button>
+    <button onclick="goHome()" style="background:rgba(var(--ok-rgb),.04);border:1px solid rgba(var(--ok-rgb),.2);border-radius:2px;color: var(--text);font-size:9px;letter-spacing:.08em;padding:3px 8px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s;" onmouseover="this.style.borderColor='var(--ok)';this.style.color='var(--ok)';" onmouseout="this.style.borderColor='rgba(var(--ok-rgb),.2)';this.style.color='rgba(var(--ok-rgb),.6)';">🏠 HOME</button>
   </div>
   <div class="logo">T.H.R.E.E. <span>OS</span></div>
   <div class="top-badge">ГАРЫН АВЛАГА</div>
@@ -317,7 +319,7 @@ kbd {
 <div class="section" id="what-is">
   <div class="section-label">ТАНИЛЦУУЛГА</div>
   <h2>T.H.R.E.E. OS гэж юу вэ?</h2>
-  <p>T.H.R.E.E. OS бол чиний <strong style="color:#fff">хувийн "Үйлдлийн систем"</strong> — апп дотроо дөрвөн том зүйлийг нэгэн дороос хийнэ:</p>
+  <p>T.H.R.E.E. OS бол чиний <strong style="color:var(--accent-ink)">хувийн "Үйлдлийн систем"</strong> — апп дотроо дөрвөн том зүйлийг нэгэн дороос хийнэ:</p>
 
   <div class="feature-grid" style="margin-top:20px;">
     <div class="feature-card">
@@ -583,7 +585,7 @@ kbd {
       <div class="step-num"></div>
       <div class="step-body">
         <h4>Activation Key оруулах → Neural Boot</h4>
-        <p>Хүлээн авсан нэвтрэх түлхүүрийг оруулна. Формат: <code style="color:var(--accent);font-family:monospace">STARK-JARVIS-XXXX</code></p>
+        <p>Хүлээн авсан нэвтрэх түлхүүрийг оруулна. Формат: <code style="color:var(--accent-text);font-family:monospace">STARK-JARVIS-XXXX</code></p>
         <p style="margin-top:6px;color:var(--text2);font-size:13px">✓ Key баталгаажвал <strong>~3 секундын Neural Boot Animation</strong> эхэлнэ. Дэлгэц дүүрэн 70+ нод/хэлхээтэй мэдрэлийн сүлжээ зурагдаж, Arc Reactor цөм дэлгэцийн төв дунд гарч ирнэ. Дуусмагц Wizard руу автоматаар шилжинэ.</p>
       </div>
     </div>
@@ -616,9 +618,9 @@ kbd {
         <h4>Telegram Sync — 2 алхам (заавал биш)</h4>
         <p style="margin-bottom:8px">Telegram ботоо холбовол утсаасаа Coach мэдэгдэл хүлээн авах, HSK drill хийх боломжтой болно.</p>
         <div style="background:rgba(0,136,204,.07);border:1px solid rgba(0,136,204,.18);border-radius:6px;padding:12px 14px;font-size:13px;line-height:1.8">
-          <strong style="color:rgba(100,180,255,.9);font-size:10px;letter-spacing:.12em">АЛХАМ 1:</strong><br>
+          <strong style="color:var(--accent-text);font-size:10px;letter-spacing:.12em">АЛХАМ 1:</strong><br>
           Telegram нээж <strong>@ThreeOSBot</strong>-г хайгаад <strong>/start</strong> дарна уу<br><br>
-          <strong style="color:rgba(100,180,255,.9);font-size:10px;letter-spacing:.12em">АЛХАМ 2:</strong><br>
+          <strong style="color:var(--accent-text);font-size:10px;letter-spacing:.12em">АЛХАМ 2:</strong><br>
           Апп-ын дэлгэц дээр харагдах холболтын кодыг (жишээ: <code style="color:var(--gold);font-family:monospace">THREE-AB12CD34</code>) хуулж бот руу илгэгдэнэ<br><br>
           <strong style="color:var(--green);font-size:10px;letter-spacing:.12em">АВТОМАТ ХОЛБОЛТ:</strong><br>
           Бот код хүлээн авмагц систем автоматаар таньж, дэлгэцийн статус <span style="color:var(--green)">"✓ CONNECTED — Telegram linked!"</span> болж шинэчлэгдэнэ
@@ -664,14 +666,14 @@ kbd {
   <div class="screen-mock">
     <div class="bar">
       <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-      <span style="margin-left:8px;color:rgba(0,229,255,.4)">TERMINAL — A.C.E. INTERFACE</span>
+      <span style="margin-left:8px;color:var(--accent-text)">TERMINAL — A.C.E. INTERFACE</span>
     </div>
     <div style="text-align:left;padding:8px">
-      <span style="color:var(--accent)">ONLINE</span> &nbsp; <span style="color:var(--green)">AI READY</span> &nbsp; <span style="color:#ff8c00">SHANGHAI</span><br><br>
-      <span style="color:rgba(0,229,255,.6)">&gt;&gt; T.H.R.E.E. OS v28.0 — A.C.E. CORE ACTIVE</span><br>
-      <span style="color:rgba(0,229,255,.6)">&gt;&gt; Welcome back, Boss. A.C.E. is online.</span><br><br>
-      <span style="color:var(--text2)">Boss@THREE_OS:~$ </span><span style="color:#fff">Өнөөдөр юу хийх вэ?</span><br>
-      <span style="color:rgba(0,229,255,.35)">[A.C.E.]</span> <span style="color:var(--text2)">Boss, өнөөдрийн score 40/100 байна. Дасгал болон 汉字 хийгдэж...</span>
+      <span style="color:var(--accent-text)">ONLINE</span> &nbsp; <span style="color:var(--green)">AI READY</span> &nbsp; <span style="color:var(--warn)">SHANGHAI</span><br><br>
+      <span style="color:var(--accent-text)">&gt;&gt; T.H.R.E.E. OS v28.0 — A.C.E. CORE ACTIVE</span><br>
+      <span style="color:var(--accent-text)">&gt;&gt; Welcome back, Boss. A.C.E. is online.</span><br><br>
+      <span style="color:var(--text2)">Boss@THREE_OS:~$ </span><span style="color:var(--accent-ink)">Өнөөдөр юу хийх вэ?</span><br>
+      <span style="color:var(--accent-text)">[A.C.E.]</span> <span style="color:var(--text2)">Boss, өнөөдрийн score 40/100 байна. Дасгал болон 汉字 хийгдэж...</span>
     </div>
   </div>
 
@@ -679,7 +681,7 @@ kbd {
   <ul style="color:var(--text2);font-size:13px;line-height:2;padding-left:20px;">
     <li>Терминалын доод мөрөнд курсор байна — шууд бичиж эхэлнэ</li>
     <li><kbd>Enter</kbd> — мессеж илгээх</li>
-    <li><kbd>/</kbd> — команд гэдгийг заана (жишээ: <code style="color:var(--accent);font-family:monospace">/theme</code>)</li>
+    <li><kbd>/</kbd> — команд гэдгийг заана (жишээ: <code style="color:var(--accent-text);font-family:monospace">/theme</code>)</li>
     <li><strong>Монгол хэлээр</strong> чөлөөтэй яриг — A.C.E. монголоор хариулна</li>
   </ul>
 
@@ -735,7 +737,7 @@ kbd {
 
   <div class="callout tip">
     <span class="callout-icon">💡</span>
-    <div>Routine тэмдэглэхийг огт дурсамжгүй байвал Telegram bot-оор өдрийн анхааруулга тохируулж болно — <a href="#setup" style="color:var(--accent)">Telegram Sync</a> хэсэг харна уу.</div>
+    <div>Routine тэмдэглэхийг огт дурсамжгүй байвал Telegram bot-оор өдрийн анхааруулга тохируулж болно — <a href="#setup" style="color:var(--accent-text)">Telegram Sync</a> хэсэг харна уу.</div>
   </div>
 </div>
 
@@ -746,7 +748,7 @@ kbd {
   <p><strong>INTEL</strong> товч дарахад HSK Command Center нээгдэнэ. Хятад үгийн сан, дасгал, ахиц харах боломжтой.</p>
 
   <h3>Drill (дасгал)</h3>
-  <p style="color:var(--text2);font-size:13px;">Terminal дотор <code style="color:var(--accent);font-family:monospace">/drill</code> гэж бичиж HSK-ийн хурдан шалгалт эхлүүлж болно.</p>
+  <p style="color:var(--text2);font-size:13px;">Terminal дотор <code style="color:var(--accent-text);font-family:monospace">/drill</code> гэж бичиж HSK-ийн хурдан шалгалт эхлүүлж болно.</p>
 
   <div class="code-block">
     <span class="cmd">Boss@THREE_OS:~$</span> /drill<br>
@@ -757,7 +759,7 @@ kbd {
   </div>
 
   <h3>Telegram-аас drill хийх</h3>
-  <p style="color:var(--text2);font-size:13px;">Telegram bot холбосон бол утаснаасаа <code style="color:var(--accent);font-family:monospace">/drill</code> командаар хэзээ ч HSK drill хийж болно. Үр дүн нь компьютерийн аппд синк болно.</p>
+  <p style="color:var(--text2);font-size:13px;">Telegram bot холбосон бол утаснаасаа <code style="color:var(--accent-text);font-family:monospace">/drill</code> командаар хэзээ ч HSK drill хийж болно. Үр дүн нь компьютерийн аппд синк болно.</p>
 
   <div class="callout info">
     <span class="callout-icon">📅</span>
@@ -797,7 +799,7 @@ kbd {
     <span class="callout-icon">💡</span>
     <div>
       <strong>Уншихад тухтай байдлын тухай</strong><br>
-      T.H.R.E.E. OS-ийн бүх сэдвүүд (Themes) нь урт хугацаанд код бичих, ажиллахад нүд чилээхгүй байх үүднээс <strong>өндөр контрасттай, неон гэрэлтсэн тод үсгийн кодчлолтой</strong> хийгдсэн. <code style="font-family:monospace;color:var(--accent)">--text-b: #daeeff</code> өнгийн тод цагаан текст болон <code style="font-family:monospace;color:var(--accent)">neon-glow</code> эффект нь арын харанхуй фонтой тод ялгаатай байхаар тусгайлан тохируулагдсан байна.
+      T.H.R.E.E. OS-ийн бүх сэдвүүд (Themes) нь урт хугацаанд код бичих, ажиллахад нүд чилээхгүй байх үүднээс <strong>өндөр контрасттай, неон гэрэлтсэн тод үсгийн кодчлолтой</strong> хийгдсэн. <code style="font-family:monospace;color:var(--accent-text)">--text-b: #daeeff</code> өнгийн тод цагаан текст болон <code style="font-family:monospace;color:var(--accent-text)">neon-glow</code> эффект нь арын харанхуй фонтой тод ялгаатай байхаар тусгайлан тохируулагдсан байна.
     </div>
   </div>
 </div>
@@ -819,21 +821,21 @@ kbd {
   </table>
 
   <h3>2. Үсгийн хэмжээ (Global Scaling)</h3>
-  <p style="color:var(--text2);font-size:13px">Слайдерийг 11px–18px хооронд гулсуулахад апп-ын <strong>бүх виджетийн текст</strong> — HSK countdown, telemetry тоо, чат мессеж, panel гарчиг — пропорционалиар томорч жижигрэнэ. Нэг CSS variable (<code style="font-family:monospace;color:var(--accent)">--main-font-size</code>) тохируулахаар ажилладаг.</p>
+  <p style="color:var(--text2);font-size:13px">Слайдерийг 11px–18px хооронд гулсуулахад апп-ын <strong>бүх виджетийн текст</strong> — HSK countdown, telemetry тоо, чат мессеж, panel гарчиг — пропорционалиар томорч жижигрэнэ. Нэг CSS variable (<code style="font-family:monospace;color:var(--accent-text)">--main-font-size</code>) тохируулахаар ажилладаг.</p>
 
   <div class="screen-mock">
     <div class="bar">
       <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
-      <span style="margin-left:8px;color:rgba(0,229,255,.4)">⚙ QUICK SETTINGS</span>
+      <span style="margin-left:8px;color:var(--accent-text)">⚙ QUICK SETTINGS</span>
     </div>
     <div style="text-align:left;padding:10px;font-size:12px;line-height:2">
       <span style="color:var(--text2)">TYPOGRAPHY</span><br>
-      <span style="color:rgba(0,229,255,.5)">[ JetBrains Mono ▾ ]</span>
+      <span style="color:var(--accent-text)">[ JetBrains Mono ▾ ]</span>
       &nbsp;&nbsp;
-      <span style="color:rgba(0,229,255,.5)">FONT SIZE — 13px ▶────●──── 18px</span><br>
+      <span style="color:var(--accent-text)">FONT SIZE — 13px ▶────●──── 18px</span><br>
       <span style="color:var(--text2)">CHAT INPUT POSITION</span><br>
-      <span style="color:var(--accent)">[⬇ BOTTOM]</span>
-      <span style="color:rgba(0,229,255,.35)"> [⬆ TOP] [✦ FLOAT]</span>
+      <span style="color:var(--accent-text)">[⬇ BOTTOM]</span>
+      <span style="color:var(--accent-text)"> [⬆ TOP] [✦ FLOAT]</span>
     </div>
   </div>
 
@@ -843,11 +845,11 @@ kbd {
   <table class="cmd-table">
     <tr><th>Горим</th><th>Тайлбар</th></tr>
     <tr>
-      <td><strong style="color:var(--accent)">⬇ BOTTOM</strong></td>
+      <td><strong style="color:var(--accent-text)">⬇ BOTTOM</strong></td>
       <td>Уламжлалт байрлал. Чат цонхны хамгийн доор — Discord, Slack шиг.</td>
     </tr>
     <tr>
-      <td><strong style="color:var(--accent)">⬆ TOP</strong></td>
+      <td><strong style="color:var(--accent-text)">⬆ TOP</strong></td>
       <td>Терминал хэлбэр. Оролт дээр, хариулт доор — хакер terminal шиг.</td>
     </tr>
     <tr>
@@ -928,7 +930,7 @@ kbd {
   <ul style="color:var(--text2);font-size:13px;line-height:2;padding-left:20px;margin-top:12px;">
     <li>Drag mode идэвхжсэний дараа widget-ийн <strong>header хэсгийг чирж</strong> байрлалыг өөрчилнэ</li>
     <li>Хэд хэдэн widget давхардуулан тавьж болно</li>
-    <li>Дахин <code style="color:var(--accent);font-family:monospace">/drag</code> → хэвийн байрлалд буцна</li>
+    <li>Дахин <code style="color:var(--accent-text);font-family:monospace">/drag</code> → хэвийн байрлалд буцна</li>
   </ul>
 </div>
 
@@ -1055,7 +1057,7 @@ kbd {
       1. Дэлгэцийн дээд баруун талын <strong>PROFILE</strong> товч дарна<br>
       2. "AI Token" хэсэгт <strong>GitHub Models token</strong> эсвэл Proxy URL оруулна<br>
       3. Хадгалаад дахин terminal ашиглана<br><br>
-      GitHub Models token үнэгүй авах: <a href="https://github.com/marketplace/models" target="_blank" style="color:var(--accent)">github.com/marketplace/models</a>
+      GitHub Models token үнэгүй авах: <a href="https://github.com/marketplace/models" target="_blank" style="color:var(--accent-text)">github.com/marketplace/models</a>
     </div>
   </div>
 
@@ -1066,7 +1068,7 @@ kbd {
     </div>
     <div class="faq-a">
       Free tier дээр өдөрт 20 AI хүсэлт хийж болно. Маргааш 00:00 цагаас дахин шинэчлэгдэнэ.<br><br>
-      Хэрэв илүү хэрэгтэй бол: <code style="color:var(--accent);font-family:monospace">/upgrade</code> гэж бичиж Pro tier мэдээлэл авна.
+      Хэрэв илүү хэрэгтэй бол: <code style="color:var(--accent-text);font-family:monospace">/upgrade</code> гэж бичиж Pro tier мэдээлэл авна.
     </div>
   </div>
 
@@ -1112,7 +1114,7 @@ kbd {
     <div class="faq-a">
       Утсаар HSK drill хийхийн тулд Telegram bot холбох хэрэгтэй:<br>
       1. PROFILE хуудаснаас Telegram bot token оруулна<br>
-      2. Telegram дээр ботоо нээж <code style="color:var(--accent);font-family:monospace">/drill</code> бичнэ<br>
+      2. Telegram дээр ботоо нээж <code style="color:var(--accent-text);font-family:monospace">/drill</code> бичнэ<br>
       Үр дүн нь компьютерийн апптай синк болно.
     </div>
   </div>
@@ -1164,7 +1166,7 @@ kbd {
 
 <!-- FOOTER -->
 <div style="margin-top:60px;padding:24px 0;border-top:1px solid var(--border);text-align:center;">
-  <div style="font-family:'Courier New',monospace;font-size:10px;color:rgba(0,229,255,.25);letter-spacing:.2em;">
+  <div style="font-family:'Courier New',monospace;font-size:10px;color:var(--accent-text);letter-spacing:.2em;">
     T.H.R.E.E. OS v28.0 — Tactical High-performance & Real-time Efficiency Engine<br>
     Developed by Bileg · A.C.E. Core Active
   </div>

@@ -20,7 +20,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:      #000814;
+  --bg:      var(--surface);
   --bg2:     #040d1a;
   --bg3:     #071828;
   --accent:  #00e5ff;
@@ -87,7 +87,7 @@ html, body {
    PAGE 1 — COVER
 ══════════════════════════════════════ */
 .cover {
-  background: linear-gradient(160deg, #000814 0%, #000d22 40%, #001428 100%);
+  background: linear-gradient(160deg, var(--surface) 0%, var(--surface) 40%, var(--surface) 100%);
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   text-align: center;
@@ -110,7 +110,7 @@ html, body {
 .cover-title {
   font-family: var(--mono);
   font-size: 38px; font-weight: 900; letter-spacing: .12em;
-  color: var(--accent);
+  color: var(--accent-text);
   text-shadow: 0 0 30px rgba(0,229,255,.7), 0 0 60px rgba(0,229,255,.3);
   line-height: 1.1; margin-bottom: 3mm;
 }
@@ -176,7 +176,7 @@ html, body {
   line-height: 1.8;
 }
 .cover-ace-intro .ace-name {
-  color: var(--accent); font-family: var(--mono);
+  color: var(--accent-text); font-family: var(--mono);
   font-weight: 700; letter-spacing: .1em;
 }
 
@@ -213,7 +213,7 @@ html, body {
 .section-title {
   font-family: var(--mono);
   font-size: 16px; font-weight: 700;
-  color: var(--accent); letter-spacing: .15em;
+  color: var(--accent-text); letter-spacing: .15em;
   margin-bottom: 6mm;
   display: flex; align-items: center; gap: 3mm;
 }
@@ -255,7 +255,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
   font-family: var(--mono); font-size: 9px; font-weight: 700;
   letter-spacing: .2em; margin-bottom: 2mm;
 }
-.box-cyan  .box-label { color: var(--accent); }
+.box-cyan  .box-label { color: var(--accent-text); }
 .box-gold  .box-label { color: var(--gold); }
 .box-green .box-label { color: var(--green); }
 .box-amber .box-label { color: var(--amber); }
@@ -275,7 +275,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
   border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--mono); font-size: 9px;
-  color: var(--accent); font-weight: 700;
+  color: var(--accent-text); font-weight: 700;
   background: rgba(0,229,255,.06);
 }
 .step-body { flex: 1; padding-top: 0.5mm; }
@@ -303,7 +303,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
 .cmd-table tr:last-child td { border-bottom: none; }
 .cmd-name {
   font-family: var(--mono); font-size: 11px;
-  color: var(--accent); font-weight: 700;
+  color: var(--accent-text); font-weight: 700;
   white-space: nowrap;
 }
 .cmd-desc { color: var(--text); }
@@ -322,7 +322,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
 .feat-icon { font-size: 18px; margin-bottom: 2mm; }
 .feat-name {
   font-family: var(--mono); font-size: 10px;
-  color: var(--accent); letter-spacing: .12em;
+  color: var(--accent-text); letter-spacing: .12em;
   font-weight: 700; margin-bottom: 2mm;
 }
 .feat-desc { font-size: 11.5px; color: var(--text); line-height: 1.65; }
@@ -342,7 +342,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
 .decode-row:last-child { border-bottom: none; }
 .decode-letter {
   font-family: var(--mono); font-size: 24px; font-weight: 900;
-  color: var(--accent); width: 12mm; flex-shrink: 0; text-align: center;
+  color: var(--accent-text); width: 12mm; flex-shrink: 0; text-align: center;
   text-shadow: 0 0 15px rgba(0,229,255,.5);
 }
 .decode-word {
@@ -381,7 +381,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
   vertical-align: top;
 }
 .plan-name  { color: var(--gold); font-weight: 700; }
-.plan-price { color: var(--accent); font-family: var(--mono); font-weight: 700; }
+.plan-price { color: var(--accent-text); font-family: var(--mono); font-weight: 700; }
 .plan-feat  { color: var(--text); }
 
 /* ── TOC ── */
@@ -443,7 +443,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
 /* ── SCREEN ONLY (hide on print) ── */
 .print-btn {
   position: fixed; top: 20px; right: 20px; z-index: 9999;
-  background: #00e5ff; color: #000814;
+  background: #00e5ff; color: var(--surface);
   border: none; border-radius: 4px;
   padding: 10px 20px; font-weight: 700; font-size: 13px;
   cursor: pointer; letter-spacing: .08em;
@@ -1385,7 +1385,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
       </thead>
       <tbody>
         <tr>
-          <td><div class="cmd-name" style="color:var(--accent);">stark-cyan</div></td>
+          <td><div class="cmd-name" style="color:var(--accent-text);">stark-cyan</div></td>
           <td><div class="cmd-desc">Цэнхэр гэрэл — үндсэн tema</div></td>
           <td><div class="cmd-ex">Ихэнх ажилд</div></td>
         </tr>
@@ -1737,7 +1737,7 @@ p em { color: var(--gold); font-style: normal; font-weight: 500; }
     <div class="divider"></div>
 
     <div style="text-align:center;padding:6mm 0;">
-      <div style="font-family:var(--mono);font-size:30px;color:var(--accent);margin-bottom:3mm;text-shadow:0 0 20px rgba(0,229,255,.5);">⬡</div>
+      <div style="font-family:var(--mono);font-size:30px;color:var(--accent-text);margin-bottom:3mm;text-shadow:0 0 20px rgba(0,229,255,.5);">⬡</div>
       <div style="font-family:var(--mono);font-size:11px;color:var(--accent2);letter-spacing:.3em;margin-bottom:2mm;">T.H.R.E.E. OS — БҮРЭН ГАРЫН АВЛАГА</div>
       <div style="font-size:12px;color:var(--dim);">Зохиогч: Bileg · Shanghai, 2026 · v1.0.0 Sprint 28</div>
       <div style="margin-top:3mm;font-size:11px;color:var(--dim);">Энэ баримт бичиг нь T.H.R.E.E. OS хэрэглэгчдэд зориулсан бөгөөд чөлөөтэй тараах боломжтой.</div>

@@ -11,6 +11,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="JARVIS">
+  <link rel="stylesheet" href="design-system.css">
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -19,64 +21,65 @@
     /* ── JARVIS v2.2 Live Panel ────────────────────────────────────── */
     .v22-label {
       font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
-      color: rgba(124,92,252,0.7); text-transform: uppercase;
+      color:var(--accent-text); text-transform: uppercase;
       padding: 18px 14px 8px; position: relative; z-index: 1;
     }
     .v22-card {
-      background: rgba(255,255,255,0.04);
+      background: rgba(var(--text-rgb),0.04);
       backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07);
+      border: 1px solid rgba(var(--text-rgb),0.08);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(var(--text-rgb),0.07);
       border-radius: 16px; padding: 16px; margin: 0 14px 10px;
       position: relative; z-index: 1;
     }
     .v22-title {
       font-size: 10px; font-weight: 700; letter-spacing: 1px;
-      color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 12px;
+      color:var(--text-2); text-transform: uppercase; margin-bottom: 12px;
     }
     .v22-task-item {
       display: flex; align-items: flex-start; gap: 8px;
-      padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-      font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.4;
+      padding: 7px 0; border-bottom: 1px solid rgba(var(--text-rgb),0.05);
+      font-size: 13px; color:var(--text-2); line-height: 1.4;
     }
     .v22-task-item:last-child { border-bottom: none; }
-    .v22-task-num { color: rgba(255,255,255,0.25); font-size: 11px; min-width: 16px; padding-top: 1px; }
+    .v22-task-num { color:var(--text-2); font-size: 11px; min-width: 16px; padding-top: 1px; }
     .v22-hsk-bar-bg {
-      background: rgba(255,255,255,0.1); border-radius: 4px; height: 6px; overflow: hidden; margin: 8px 0 6px;
+      background: rgba(var(--text-rgb),0.1); border-radius: 4px; height: 6px; overflow: hidden; margin: 8px 0 6px;
     }
     .v22-hsk-bar-fill {
-      height: 100%; background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      height: 100%; background: linear-gradient(90deg, var(--accent), #06b6d4);
       border-radius: 4px; transition: width 0.6s ease; width: 0%;
     }
     .v22-lfs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
     .v22-lfs-item {
-      background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px 8px; text-align: center;
+      background: rgba(var(--text-rgb),0.04); border-radius: 10px; padding: 10px 8px; text-align: center;
     }
-    .v22-lfs-num { font-size: 20px; font-weight: 700; color: rgba(124,92,252,0.9); }
-    .v22-lfs-lbl { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+    .v22-lfs-num { font-size: 20px; font-weight: 700; color:var(--accent-text); }
+    .v22-lfs-lbl { font-size: 10px; color:var(--text-2); margin-top: 2px; }
 
     /* ── Sprint 7: Red Alert Overlay ──────────────────────────────── */
     #jarvis-red-alert {
       display: none; position: fixed; inset: 0; z-index: 9999;
-      background: rgba(220,38,38,0.12); backdrop-filter: blur(4px);
-      border: 2px solid rgba(220,38,38,0.6);
+      background: var(--surface); backdrop-filter: blur(4px);
+      border: 2px solid rgba(var(--danger-rgb),0.6);
       animation: jarvis-pulse 1.2s ease-in-out infinite;
+      color: var(--text);
     }
     #jarvis-red-alert.active { display: flex; align-items: center; justify-content: center; }
     @keyframes jarvis-pulse {
-      0%,100% { border-color: rgba(220,38,38,0.6); }
+      0%,100% { border-color:var(--danger); }
       50%      { border-color: rgba(252,165,165,0.9); }
     }
     .red-alert-box {
-      background: #1a0505; border: 1.5px solid rgba(220,38,38,0.8);
+      background: #1a0505; border: 1.5px solid rgba(var(--danger-rgb),0.8);
       border-radius: 16px; padding: 24px 28px; text-align: center;
-      max-width: 320px; width: 90%; box-shadow: 0 0 40px rgba(220,38,38,0.3);
+      max-width: 320px; width: 90%; box-shadow: 0 0 40px rgba(var(--danger-rgb),0.3);
     }
-    .red-alert-box h2 { color: #ef4444; font-size: 16px; margin-bottom: 6px; }
+    .red-alert-box h2 { color: var(--danger); font-size: 16px; margin-bottom: 6px; }
     .red-alert-box .alert-sender { font-size: 12px; color: rgba(252,165,165,0.8); margin-bottom: 6px; }
-    .red-alert-box .alert-msg { font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 16px; line-height: 1.5; }
+    .red-alert-box .alert-msg { font-size: 12px; color:var(--text-2); margin-bottom: 16px; line-height: 1.5; }
     .red-alert-resolve {
-      padding: 10px 28px; background: #dc2626; border: none; border-radius: 10px;
+      padding: 10px 28px; background: var(--danger); border: none; border-radius: 10px;
       color: white; font-size: 13px; font-weight: 600; cursor: pointer;
     }
   </style>
@@ -86,7 +89,7 @@
       position: fixed;
       top: -180px; left: 50%; transform: translateX(-50%);
       width: 500px; height: 500px;
-      background: radial-gradient(circle, rgba(124,92,252,0.15) 0%, transparent 68%);
+      background: radial-gradient(circle, rgba(var(--accent-rgb),0.15) 0%, transparent 68%);
       pointer-events: none; z-index: 0;
     }
 
@@ -98,19 +101,19 @@
     .period-tabs::-webkit-scrollbar { display: none; }
     .p-tab {
       padding: 9px 20px; border-radius: 44px;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(var(--text-rgb),0.1);
+      background: rgba(var(--text-rgb),0.06);
       backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(var(--text-rgb),0.08);
       color: var(--text-2); font-size: 13px; font-weight: 600;
       cursor: pointer; white-space: nowrap; flex-shrink: 0;
       transition: all 0.2s;
     }
     .p-tab.active {
-      background: rgba(124,92,252,0.3);
-      border-color: rgba(124,92,252,0.5);
-      box-shadow: 0 0 16px rgba(124,92,252,0.25), inset 0 1px 0 rgba(255,255,255,0.12);
-      color: #fff;
+      background: var(--accent);
+      border-color:var(--accent-text);
+      box-shadow: 0 0 16px rgba(var(--accent-rgb),0.25), inset 0 1px 0 rgba(var(--text-rgb),0.12);
+      color:var(--accent-ink);
     }
 
     /* Stat grid */
@@ -119,10 +122,10 @@
       gap: 10px; padding: 0 14px 14px; position: relative; z-index: 1;
     }
     .stat-card {
-      background: rgba(255,255,255,0.04);
+      background: rgba(var(--text-rgb),0.04);
       backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07);
+      border: 1px solid rgba(var(--text-rgb),0.08);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(var(--text-rgb),0.07);
       border-radius: var(--r-card); padding: 16px;
     }
     .stat-num { font-size: 28px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
@@ -131,10 +134,10 @@
 
     /* Chart card */
     .chart-card {
-      background: rgba(255,255,255,0.04);
+      background: rgba(var(--text-rgb),0.04);
       backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07);
+      border: 1px solid rgba(var(--text-rgb),0.08);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(var(--text-rgb),0.07);
       border-radius: var(--r-card); padding: 18px 16px 14px;
       margin: 0 14px 12px; position: relative; z-index: 1;
     }
@@ -157,15 +160,15 @@
     .summary-table { margin: 0 14px 12px; position: relative; z-index: 1; }
     .sum-row {
       display: flex; align-items: center; padding: 12px 16px;
-      background: rgba(255,255,255,0.04);
+      background: rgba(var(--text-rgb),0.04);
       backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-      border: 1px solid rgba(255,255,255,0.08);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07);
+      border: 1px solid rgba(var(--text-rgb),0.08);
+      box-shadow: inset 0 1px 0 rgba(var(--text-rgb),0.07);
       border-radius: 14px; margin-bottom: 8px; gap: 12px;
     }
     .sum-icon  { font-size: 22px; }
     .sum-label { flex: 1; font-size: 14px; font-weight: 600; }
-    .sum-val   { font-size: 16px; font-weight: 700; color: var(--accent); }
+    .sum-val   { font-size: 16px; font-weight: 700; color: var(--accent-text); }
     .sum-sub   { font-size: 11px; color: var(--text-3); text-align: right; }
 
     .no-data {
@@ -212,7 +215,7 @@
   <div class="v22-card" id="os-today-panel">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div class="v22-title" style="margin-bottom:0">📅 <span id="os-date">—</span></div>
-      <div id="os-score-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(124,92,252,0.15);color:rgba(124,92,252,0.9);letter-spacing:0.5px">— / 100</div>
+      <div id="os-score-badge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(var(--accent-rgb),0.15);color: var(--text);letter-spacing:0.5px">— / 100</div>
     </div>
 
     <!-- Routine row -->
@@ -245,40 +248,40 @@
 
   <style>
     .os-routine-chip {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(var(--text-rgb),0.04);
+      border: 1px solid rgba(var(--text-rgb),0.06);
       border-radius: 10px; padding: 8px 4px; text-align: center;
       font-size: 18px; line-height: 1.4; transition: all 0.25s;
     }
-    .os-routine-chip span { display:block; font-size: 9px; color: rgba(255,255,255,0.35); margin-top: 2px; letter-spacing: 0.3px; }
-    .os-routine-chip.done { background: rgba(34,197,94,0.12); border-color: rgba(34,197,94,0.3); }
-    .os-routine-chip.done span { color: rgba(34,197,94,0.7); }
+    .os-routine-chip span { display:block; font-size: 9px; color:var(--text-2); margin-top: 2px; letter-spacing: 0.3px; }
+    .os-routine-chip.done { background: rgba(var(--ok-rgb),0.12); border-color: var(--text); }
+    .os-routine-chip.done span { color:var(--ok); }
     .os-mini-card {
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+      background: rgba(var(--text-rgb),0.04); border: 1px solid rgba(var(--text-rgb),0.06);
       border-radius: 10px; padding: 10px 8px; text-align: center;
     }
-    .os-mini-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 4px; }
-    .os-mini-val   { font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.85); }
-    .os-mini-sub   { font-size: 9px; color: rgba(255,255,255,0.3); margin-top: 2px; }
+    .os-mini-label { font-size: 9px; font-weight: 700; letter-spacing: 1px; color:var(--text-2); text-transform: uppercase; margin-bottom: 4px; }
+    .os-mini-val   { font-size: 16px; font-weight: 700; color:var(--text-2); }
+    .os-mini-sub   { font-size: 9px; color:var(--text-2); margin-top: 2px; }
 
     /* ── Execution Engine Live Widget ──────────────────────────── */
     .exec-row        { display:flex; align-items:flex-start; gap:10px; padding:8px 0; }
-    .exec-row + .exec-row { border-top: 1px solid rgba(255,255,255,0.05); }
+    .exec-row + .exec-row { border-top: 1px solid rgba(var(--text-rgb),0.05); }
     .exec-dot        { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
-    .exec-dot-active { background:#22c55e; box-shadow:0 0 8px rgba(34,197,94,0.6); animation:exec-pulse 1.5s ease-in-out infinite; }
-    .exec-dot-elapsed{ background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.6); animation:exec-pulse 0.8s ease-in-out infinite; }
-    .exec-dot-pending{ background:rgba(255,255,255,0.2); }
+    .exec-dot-active { background:var(--ok); box-shadow:0 0 8px rgba(var(--ok-rgb),0.6); animation:exec-pulse 1.5s ease-in-out infinite; }
+    .exec-dot-elapsed{ background:var(--danger); box-shadow:0 0 8px rgba(var(--danger-rgb),0.6); animation:exec-pulse 0.8s ease-in-out infinite; }
+    .exec-dot-pending{ background:rgba(var(--text-rgb),0.2); }
     @keyframes exec-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .exec-label      { font-size:13px; font-weight:600; color:rgba(255,255,255,0.85); }
+    .exec-label      { font-size:13px; font-weight:600; color:var(--text-2); }
     .exec-countdown  { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:1px; }
-    .exec-countdown.active  { color:rgba(34,197,94,0.9); }
-    .exec-countdown.elapsed { color:rgba(239,68,68,0.9); }
-    .exec-range      { font-size:10px; color:rgba(255,255,255,0.3); margin-top:1px; }
-    .exec-prog-bg    { height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:7px; overflow:hidden; }
-    .exec-prog-fill  { height:100%; background:linear-gradient(90deg,#22c55e,#86efac); border-radius:2px; transition:width .9s linear; }
-    .exec-done-all   { text-align:center; padding:10px 0; font-size:13px; color:rgba(34,197,94,0.7); }
-    #os-exec-widget.elapsed-mode { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.06); animation:exec-border-pulse 1s ease-in-out infinite; }
-    @keyframes exec-border-pulse { 0%,100%{border-color:rgba(239,68,68,0.35)} 50%{border-color:rgba(239,68,68,0.7)} }
+    .exec-countdown.active  { color:var(--ok); }
+    .exec-countdown.elapsed { color:var(--danger); }
+    .exec-range      { font-size:10px; color:var(--text-2); margin-top:1px; }
+    .exec-prog-bg    { height:4px; background:rgba(var(--text-rgb),0.08); border-radius:2px; margin-top:7px; overflow:hidden; }
+    .exec-prog-fill  { height:100%; background:linear-gradient(90deg,var(--ok),#86efac); border-radius:2px; transition:width .9s linear; }
+    .exec-done-all   { text-align:center; padding:10px 0; font-size:13px; color:var(--ok); }
+    #os-exec-widget.elapsed-mode { border-color:var(--danger); background: rgba(var(--danger-rgb),0.06); animation:exec-border-pulse 1s ease-in-out infinite; }
+    @keyframes exec-border-pulse { 0%,100%{border-color:var(--danger)} 50%{border-color:var(--danger)} }
   </style>
 
   <!-- ── Execution Engine Live Widget ─────────────────────────── -->
@@ -286,7 +289,7 @@
   <div class="v22-card" id="os-exec-widget" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
       <div class="v22-title" style="margin-bottom:0;font-size:10px">⚡ EXECUTION ENGINE</div>
-      <span id="os-exec-live-dot" style="width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.7);display:inline-block"></span>
+      <span id="os-exec-live-dot" style="width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px rgba(var(--ok-rgb),0.7);display:inline-block"></span>
     </div>
     <div id="os-exec-body"></div>
   </div>
@@ -297,7 +300,7 @@
   <!-- Tasks -->
   <div class="v22-card">
     <div class="v22-title">📋 Хийх зүйлүүд</div>
-    <div id="v22-task-list" style="color:rgba(255,255,255,0.35);font-size:13px">
+    <div id="v22-task-list" style="color:var(--text-2);font-size:13px">
       Нэвтэрч орно уу...
     </div>
   </div>
@@ -306,13 +309,13 @@
   <div class="v22-card">
     <div class="v22-title">🈶 HSK Readiness Progress</div>
     <div style="display:flex;align-items:baseline;gap:8px">
-      <span id="v22-hsk-score" style="font-size:28px;font-weight:700;color:rgba(59,130,246,0.9)">—</span>
-      <span style="font-size:12px;color:rgba(255,255,255,0.3)">/100 дундаж</span>
+      <span id="v22-hsk-score" style="font-size:28px;font-weight:700;color:var(--accent-text)">—</span>
+      <span style="font-size:12px;color:var(--text-2)">/100 дундаж</span>
     </div>
     <div class="v22-hsk-bar-bg">
       <div class="v22-hsk-bar-fill" id="v22-hsk-bar"></div>
     </div>
-    <div id="v22-hsk-sub" style="font-size:11px;color:rgba(255,255,255,0.3)">Дата байхгүй</div>
+    <div id="v22-hsk-sub" style="font-size:11px;color:var(--text-2)">Дата байхгүй</div>
   </div>
 
   <!-- LFS Статистик (sendDailyReport-ийн дараа sync болно) -->
@@ -332,7 +335,7 @@
         <div class="v22-lfs-lbl">Орлого ₮</div>
       </div>
     </div>
-    <div style="font-size:10px;color:rgba(255,255,255,0.2);margin-top:8px">
+    <div style="font-size:10px;color:var(--text-2);margin-top:8px">
       Өдрийн тайлангийн дараа шинэчлэгдэнэ (22:00)
     </div>
   </div>
@@ -340,7 +343,7 @@
   <!-- Routine Streak (last 7 days) -->
   <div class="v22-card" style="margin-bottom:80px">
     <div class="v22-title">🔥 Streak (сүүлийн 7 хоног)</div>
-    <div id="v22-streak-grid" style="color:rgba(255,255,255,0.35);font-size:13px">
+    <div id="v22-streak-grid" style="color:var(--text-2);font-size:13px">
       Уншиж байна...
     </div>
   </div>
@@ -513,7 +516,7 @@
         <!-- STAT GRID -->
         <div class="stat-grid">
           <div class="stat-card">
-            <div class="stat-num" style="color:var(--accent)">${fml(avgWater)}</div>
+            <div class="stat-num" style="color:var(--accent-text)">${fml(avgWater)}</div>
             <div class="stat-lbl">💧 Дундаж ус</div>
             <div class="stat-sub">Хамгийн их: ${fml(bestWater)}</div>
           </div>
@@ -618,7 +621,7 @@
             var el = document.getElementById('v22-task-list');
             if (!el) return;
             if (!tasks.length) {
-              el.innerHTML = '<span style="color:rgba(34,197,94,0.8)">✅ Бүх зүйл хийгдсэн</span>';
+              el.innerHTML = '<span style="color:var(--ok)">✅ Бүх зүйл хийгдсэн</span>';
               return;
             }
             el.innerHTML = tasks.map(function (t, i) {
@@ -687,10 +690,10 @@
             for (var i = 0; i < 7; i++) {
               if (dayData[i] && dayData[i][key]) streak++;
             }
-            html += '<div style="text-align:center;padding:8px 4px;background:rgba(255,255,255,0.04);border-radius:10px">';
+            html += '<div style="text-align:center;padding:8px 4px;background:rgba(var(--text-rgb),0.04);border-radius:10px">';
             html += '<div style="font-size:18px">' + LABELS[key] + '</div>';
-            html += '<div style="font-size:16px;font-weight:700;color:rgba(124,92,252,0.9)">' + streak + '</div>';
-            html += '<div style="font-size:9px;color:rgba(255,255,255,0.25)">/7</div>';
+            html += '<div style="font-size:16px;font-weight:700;color:var(--accent-text)">' + streak + '</div>';
+            html += '<div style="font-size:9px;color:var(--text-2)">/7</div>';
             html += '</div>';
           });
           html += '</div>';
@@ -733,8 +736,8 @@
           var badge = document.getElementById('os-score-badge');
           if (badge) {
             badge.textContent = score + ' / 100';
-            badge.style.background = score === 100 ? 'rgba(34,197,94,0.2)' : 'rgba(124,92,252,0.15)';
-            badge.style.color      = score === 100 ? 'rgba(34,197,94,0.9)' : 'rgba(124,92,252,0.9)';
+            badge.style.background = score === 100 ? 'rgba(var(--ok-rgb),0.2)' : 'rgba(var(--accent-rgb),0.15)';
+            badge.style.color      = score === 100 ? 'rgba(var(--ok-rgb),0.9)' : 'rgba(var(--accent-rgb),0.9)';
           }
         }
         db.doc('users/' + uid + '/routines/' + today).onSnapshot(function (snap) {
@@ -794,7 +797,7 @@
             var sub    = document.getElementById('os-fin-sub');
             if (val) {
               val.textContent = (net >= 0 ? '+' : '') + '¥' + net.toFixed(0);
-              val.style.color = net >= 0 ? 'rgba(34,197,94,0.85)' : 'rgba(239,68,68,0.85)';
+              val.style.color = net >= 0 ? 'rgba(var(--ok-rgb),0.85)' : 'rgba(var(--danger-rgb),0.85)';
             }
             if (sub) sub.textContent = '¥' + expCNY.toFixed(0) + ' зарцуулсан';
           });
@@ -863,7 +866,7 @@
               '<div class="exec-dot exec-dot-active"></div>' +
               '<div style="flex:1">' +
                 '<div class="exec-label">' + (active.label || active.task_id) + '</div>' +
-                '<div class="exec-countdown active">' + _fmtDur(left) + ' <span style="font-size:12px;font-weight:400;color:rgba(34,197,94,0.6)">үлдсэн</span></div>' +
+                '<div class="exec-countdown active">' + _fmtDur(left) + ' <span style="font-size:12px;font-weight:400;color:var(--ok)">үлдсэн</span></div>' +
                 '<div class="exec-range">' + _fmtTime(active.start) + ' → ' + _fmtTime(active.end) + '</div>' +
                 '<div class="exec-prog-bg"><div class="exec-prog-fill" style="width:' + pct + '%"></div></div>' +
               '</div></div>';
@@ -876,8 +879,8 @@
               '<div class="exec-dot exec-dot-elapsed"></div>' +
               '<div style="flex:1">' +
                 '<div class="exec-label">' + (elapsed.label || elapsed.task_id) + '</div>' +
-                '<div class="exec-countdown elapsed">+' + _fmtDur(overMs) + ' <span style="font-size:12px;font-weight:400;color:rgba(239,68,68,0.6)">хэтэрлээ</span></div>' +
-                '<div class="exec-range" style="color:rgba(239,68,68,0.5)">Telegram: <code style="background:rgba(239,68,68,0.1);padding:1px 5px;border-radius:4px">/done ' + elapsed.task_id + '</code></div>' +
+                '<div class="exec-countdown elapsed">+' + _fmtDur(overMs) + ' <span style="font-size:12px;font-weight:400;color:var(--danger)">хэтэрлээ</span></div>' +
+                '<div class="exec-range" style="color:var(--danger)">Telegram: <code style="background:rgba(var(--danger-rgb),0.1);padding:1px 5px;border-radius:4px">/done ' + elapsed.task_id + '</code></div>' +
               '</div></div>';
           }
 
@@ -888,8 +891,8 @@
               html += '<div class="exec-row">' +
                 '<div class="exec-dot exec-dot-pending"></div>' +
                 '<div style="flex:1">' +
-                  '<div class="exec-label" style="color:rgba(255,255,255,0.4)">Дараагийн: ' + (pending.label || pending.task_id) + '</div>' +
-                  '<div style="font-size:11px;color:rgba(255,255,255,0.25);margin-top:3px">' + _fmtTime(pending.start) + '-д эхэлнэ · ' + _fmtDur(toStart) + ' үлдлээ</div>' +
+                  '<div class="exec-label" style="color:var(--text-2)">Дараагийн: ' + (pending.label || pending.task_id) + '</div>' +
+                  '<div style="font-size:11px;color:var(--text-2);margin-top:3px">' + _fmtTime(pending.start) + '-д эхэлнэ · ' + _fmtDur(toStart) + ' үлдлээ</div>' +
                 '</div></div>';
             }
           }
@@ -948,7 +951,7 @@
             var widget = document.getElementById('os-exec-widget');
             if (widget) {
               widget.style.transition = 'background 0.3s';
-              widget.style.background = 'rgba(34,197,94,0.15)';
+              widget.style.background = 'rgba(var(--ok-rgb),0.15)';
               setTimeout(function(){ widget.style.background = ''; }, 1200);
             }
           }
@@ -961,5 +964,7 @@
       })();
     })();
   </script>
+
+
 </body>
 </html>
