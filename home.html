@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jarvis">
+<meta name="theme-color" content="#111519">
+<title>Өнөөдөр — Jarvis</title>
+<link rel="icon" href="icon.svg">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script src="jarvis-config.js"></script>
+<link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
+<script src="theme.js"></script>
+</head>
+<body class="ds">
+
+<main class="jv-page">
+
+  <header class="jv-head">
+    <div class="jv-date" id="h-date">—</div>
+    <h1 class="jv-title" id="h-greet">Сайн байна уу</h1>
+  </header>
+
+  <!-- ── Гурван тоо ─────────────────────────────────────────────── -->
+  <section class="jv-stats" aria-label="Өнөөдрийн байдал">
+    <div class="jv-stat">
+      <div class="jv-stat-label">Өнөөдрийн оноо</div>
+      <div><span class="jv-stat-num" id="s-score">0</span><span class="jv-stat-unit">/100</span></div>
+      <div class="ds-track jv-stat-bar"><i id="s-score-bar" style="width:0%"></i></div>
+    </div>
+    <div class="jv-stat">
+      <div class="jv-stat-label" id="s-exam-label">Шалгалт хүртэл</div>
+      <div><span class="jv-stat-num" id="s-exam">—</span><span class="jv-stat-unit">хоног</span></div>
+    </div>
+    <div class="jv-stat">
+      <div class="jv-stat-label">Тасралтгүй</div>
+      <div><span class="jv-stat-num" id="s-streak">0</span><span class="jv-stat-unit">хоног</span></div>
+    </div>
+  </section>
+
+  <!-- ── Дараа нь юу хийх вэ ────────────────────────────────────── -->
+  <section class="jv-block">
+    <div class="jv-sec">
+      <h2>Дараа нь юу хийх вэ</h2>
+      <span id="a-count"></span>
+    </div>
+    <div class="jv-acts" id="a-list"></div>
+  </section>
+
+  <!-- ── Долоо хоногийн явц ─────────────────────────────────────── -->
+  <section class="jv-block">
+    <div class="jv-sec">
+      <h2>Сүүлийн 7 хоног</h2>
+      <span id="w-avg"></span>
+    </div>
+    <div class="jv-card">
+      <div class="jv-week" id="w-week"></div>
+    </div>
+  </section>
+
+</main>
+
+<script src="jarvis-shell.js" data-page="home"></script>
+<script>
+'use strict';
+
+// ── Огноо туслах ──────────────────────────────────────────────────
+function jvDay(offset) {
+  var d = new Date();
+  d.setDate(d.getDate() - (offset || 0));
+  return d.getFullYear() + '-' +
+         String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+}
+function jvToday() { return jvDay(0); }
+
+// ── Өдрийн дэвтэр — index.html-тэй ЯГ ижил түлхүүр, ижил бүтэц ────
+function jvLoad() {
+  try {
+    var s = JSON.parse(localStorage.getItem('jarvis_r'));
+    if (s && s.date === jvToday()) return s;
+  } catch (e) {}
+  return { date: jvToday(), water: 0, exercise: false, hanzi: false, read: false, journal: false };
+}
+function jvSave(r) {
+  localStorage.setItem('jarvis_r', JSON.stringify(r));
+  localStorage.setItem('jarvis_r_' + r.date, JSON.stringify(r));
+  try { window.DB && window.DB.saveRoutine && window.DB.saveRoutine(r); } catch (e) {}
+}
+
+// Онооны томьёо — app.js-ийн getDailyScore()-той ижил
+function jvScore(r, dateStr) {
+  if (!r) return 0;
+  var s = Math.round((Math.min(r.water || 0, 8) / 8) * 25);
+  if (r.exercise) s += 20;
+  if (r.hanzi)    s += 20;
+  if (r.read)     s += 15;
+  if (r.journal)  s += 10;
+  try {
+    var log = JSON.parse(localStorage.getItem('jarvis_log_' + (dateStr || jvToday())) || 'null');
+    if (log && log.shower) s += 10;
+  } catch (e) {}
+  return Math.min(100, s);
+}
+
+function jvStreak() {
+  // HSK давталтын тасралтгүй хоног (hsk.html-ийн түлхүүр)
+  try {
+    var s = JSON.parse(localStorage.getItem('jarvis_hsk_streak') || 'null');
+    if (s && typeof s.count === 'number') {
+      var ok = s.last === jvToday() || s.last === jvDay(1);
+      return ok ? s.count : 0;
+    }
+  } catch (e) {}
+  return 0;
+}
+
+// ── Толгой ────────────────────────────────────────────────────────
+(function head() {
+  var days = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+  var d = new Date();
+  document.getElementById('h-date').textContent =
+    days[d.getDay()] + ' · ' + (d.getMonth() + 1) + '-р сарын ' + d.getDate();
+
+  var name = '';
+  try { name = localStorage.getItem('jarvis_callsign') || localStorage.getItem('jarvis_name') || ''; } catch (e) {}
+  var h = d.getHours();
+  var hello = h < 5 ? 'Сайхан амраарай' : h < 12 ? 'Өглөөний мэнд' : h < 18 ? 'Өдрийн мэнд' : 'Оройн мэнд';
+  document.getElementById('h-greet').textContent = hello + (name ? ', ' + name : '');
+})();
+
+// ── Гурван тоо ────────────────────────────────────────────────────
+function renderStats() {
+  var r = jvLoad();
+  var sc = jvScore(r);
+  document.getElementById('s-score').textContent = sc;
+  document.getElementById('s-score-bar').style.width = sc + '%';
+
+  var lbl = document.getElementById('s-exam-label');
+  var lvl = window.JARVIS_EXAM_LEVEL || 'Шалгалт';
+  lbl.textContent = lvl + ' хүртэл';
+  document.getElementById('s-exam').textContent =
+    window.jarvisExamDays ? window.jarvisExamDays() : '—';
+
+  document.getElementById('s-streak').textContent = jvStreak();
+}
+
+// ── Дараа нь юу хийх вэ ───────────────────────────────────────────
+// Дараалал: хийгээгүй нь дээр, хийсэн нь доор. Хамгийн эхнийх нь
+// тодруулагдана — "яг одоо үүнийг хий" гэсэн ганц зөвлөмж.
+var ACTS = [
+  { key: 'hanzi',    icon: 'hsk',     name: '20 шинэ үг цээжил', note: '10 минут', go: 'hsk' },
+  { key: 'water',    icon: 'water',   name: 'Ус уу' },
+  { key: 'exercise', icon: 'gym',     name: 'Дасгал хий',        note: '45 минут' },
+  { key: 'read',     icon: 'book',    name: 'Ном унш',           note: '20 хуудас' },
+  { key: 'journal',  icon: 'pen',     name: 'Тэмдэглэл бич',     note: 'Өдрийн эцэст', go: 'life' },
+];
+
+var EXTRA_ICONS = {
+  water: '<path d="M12 3.5s6 6.3 6 10.2a6 6 0 0 1-12 0C6 9.8 12 3.5 12 3.5z"/>',
+  gym:   '<path d="M4 9v6M7 7v10M17 7v10M20 9v6M7 12h10"/>',
+  book:  '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 18.5h15"/>',
+  pen:   '<path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17z"/><path d="M13.5 6.5l4 4"/>',
+  check: '<path d="M5 12.5 10 17.5 19 7.5"/>',
+  arrow: '<path d="M5 12h13"/><path d="M13 6.5 18.5 12 13 17.5"/>',
+};
+function ico(name) {
+  var body = EXTRA_ICONS[name];
+  if (body) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" ' +
+           'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>';
+  }
+  return window.jarvisShell.icon(name);
+}
+
+function renderActs() {
+  var r = jvLoad();
+  var list = document.getElementById('a-list');
+  var todo = [], done = [];
+
+  ACTS.forEach(function (a) {
+    var isDone = a.key === 'water' ? (r.water >= 8) : !!r[a.key];
+    (isDone ? done : todo).push({ a: a, done: isDone });
+  });
+
+  document.getElementById('a-count').textContent =
+    done.length + ' / ' + ACTS.length + ' хийгдсэн';
+
+  if (todo.length === 0) {
+    list.innerHTML =
+      '<div class="jv-clear"><b>Өнөөдрийн ажил дууслаа</b>' +
+      'Бүх зүйл хийгдсэн байна. Сайхан амраарай.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  todo.concat(done).forEach(function (it, i) {
+    var a = it.a, first = (i === 0 && !it.done);
+    var note = a.note || '';
+    if (a.key === 'water') note = r.water + ' / 8 аяга';
+
+    var el = document.createElement(a.go && !it.done ? 'a' : 'div');
+    el.className = 'jv-act' + (first ? ' jv-act--next' : '') + (it.done ? ' jv-act--done' : '');
+    if (a.go && !it.done) el.href = window.jarvisShell.href(a.go);
+
+    var side = it.done ? ''
+      : a.key === 'water'
+        ? '<button class="jv-mini" data-water="1" aria-label="Нэг аяга ус нэмэх">+1</button>'
+        : a.go
+          ? '<span class="jv-act-side">' + ico('arrow') + '</span>'
+          : '<button class="jv-mini" data-done="' + a.key + '">Хийсэн</button>';
+
+    el.innerHTML =
+      '<span class="jv-act-ico">' + ico(it.done ? 'check' : a.icon) + '</span>' +
+      '<span class="jv-act-body">' +
+        '<span class="jv-act-name">' + a.name + '</span>' +
+        (note ? '<span class="jv-act-note">' + note + '</span>' : '') +
+      '</span>' + side;
+
+    list.appendChild(el);
+  });
+}
+
+// Товч дарах — нэг сонсогч бүх мөрд
+document.getElementById('a-list').addEventListener('click', function (e) {
+  var w = e.target.closest('[data-water]');
+  var d = e.target.closest('[data-done]');
+  if (!w && !d) return;
+  e.preventDefault();
+  var r = jvLoad();
+  if (w) r.water = Math.min(8, (r.water || 0) + 1);
+  if (d) r[d.getAttribute('data-done')] = true;
+  jvSave(r);
+  renderAll();
+});
+
+// ── Долоо хоногийн явц ────────────────────────────────────────────
+function renderWeek() {
+  var names = ['Ня','Да','Мя','Лх','Пү','Ба','Бя'];
+  var box = document.getElementById('w-week');
+  var total = 0, counted = 0;
+  box.innerHTML = '';
+
+  for (var i = 6; i >= 0; i--) {
+    var key = jvDay(i);
+    var r = null;
+    try { r = JSON.parse(localStorage.getItem('jarvis_r_' + key) || 'null'); } catch (e) {}
+    if (i === 0) r = jvLoad();
+    var sc = jvScore(r, key);
+    if (r) { total += sc; counted++; }
+
+    var dt = new Date(); dt.setDate(dt.getDate() - i);
+    var col = document.createElement('div');
+    col.className = 'jv-day' + (i === 0 ? ' jv-day--today' : '');
+    col.innerHTML =
+      '<div class="jv-day-bar" title="' + sc + '/100"><i style="height:' + Math.max(sc, 3) + '%"></i></div>' +
+      '<div class="jv-day-name">' + names[dt.getDay()] + '</div>';
+    box.appendChild(col);
+  }
+  document.getElementById('w-avg').textContent =
+    counted ? 'Дундаж ' + Math.round(total / counted) + '/100' : 'Дата хараахан алга';
+}
+
+function renderAll() { renderStats(); renderActs(); renderWeek(); }
+renderAll();
+
+// Шөнө дундын дараа хуудсыг шинэчилнэ
+setInterval(function () {
+  if (jvLoad().date !== jvToday()) renderAll();
+}, 60000);
+</script>
+
+</body>
+</html>

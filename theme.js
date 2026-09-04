@@ -16,6 +16,8 @@
   if (window.jarvisTheme) return;
 
   var WORLDS = [
+    { id: 'calm',   name: 'Тайван',          cn: '静',  sub: 'Цэвэрхэн, зөөлөн — санал болгож байна',
+      swatch: ['#111519', '#191E24', '#5AA0FF', '#E8EDF2'] },
     { id: 'paper',  name: 'Цаас',            cn: '纸',  sub: 'Тайван, уншихад хамгийн хялбар',
       swatch: ['#F7F7F4', '#FFFFFF', '#2E6B57', '#1A1C19'] },
     { id: 'night',  name: 'Шөнийн самбар',   cn: '夜',  sub: 'JARVIS — сурах дэлгэц цайвар',
@@ -32,7 +34,7 @@
     { id: 'void',   name: 'Ягаан',  color: '#A98CF5' },
   ];
 
-  var DEFAULT_WORLD  = 'night';
+  var DEFAULT_WORLD  = 'calm';
   var DEFAULT_ACCENT = 'cyan';
   var K_WORLD = 'jarvis_world', K_ACCENT = 'jarvis_accent';
 
@@ -67,6 +69,19 @@
   }
   migrate();
 
+  // ── ШИЛЖИЛТ (2026-09): "Шөнийн самбар" → "Тайван" ──────────────
+  // Шинэ цэвэрхэн дүр төрх үндсэн болсон. Хэрэглэгч хүсвэл
+  // Дүр төрх цэснээс хуучин руугаа буцаж болно.
+  try {
+    if (!localStorage.getItem('jarvis_world_calm_v1')) {
+      localStorage.setItem('jarvis_world_calm_v1', '1');
+      if ((localStorage.getItem(K_WORLD) || 'night') === 'night') {
+        localStorage.setItem(K_WORLD, 'calm');
+        localStorage.setItem(K_ACCENT, 'cyan');
+      }
+    }
+  } catch (e) {}
+
   var world  = read(K_WORLD,  DEFAULT_WORLD,  worldIds);
   var accent = read(K_ACCENT, DEFAULT_ACCENT, accentIds);
 
@@ -90,7 +105,7 @@
     if (world === 'bright') loadBrightFont();
     if (document.body) document.body.classList.add('ds');
     // Хөтчийн өөрийн UI-г (нэвтрэх талбар, гүйлгэх зурвас) тааруулна
-    r.style.colorScheme = (world === 'night') ? 'dark' : 'light';
+    r.style.colorScheme = (world === 'night' || world === 'calm') ? 'dark' : 'light';
 
     // Дүр төрх солиход хөтөч зарим өнгийг хуучнаар нь үлдээдэг тул
     // бүх хуудсыг нэг кадрын дотор дахин тооцоолуулна (нүдэнд харагдахгүй).
@@ -193,7 +208,7 @@
       el.setAttribute('aria-pressed', el.dataset.a === accent ? 'true' : 'false');
     });
     var acc = sheet.querySelector('.tp-acc');
-    if (acc) acc.classList.toggle('show', world === 'night');
+    if (acc) acc.classList.toggle('show', world === 'night' || world === 'calm');
   }
 
   function open() {

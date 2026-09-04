@@ -1,0 +1,191 @@
+/* ══════════════════════════════════════════════════════════════════
+   JARVIS — БҮРХҮҮЛ (SHELL)
+   ══════════════════════════════════════════════════════════════════
+   Бүх хуудсанд нийтлэг: 5 хаалганы цэс, хуудасны хүрээ, картууд.
+   Утсан дээр цэс ДООД талд, компьютер дээр ДЭЭД талд гарна.
+   Өнгө бүгд design-system.css-ээс ирнэ — энд шууд өнгө бичихгүй.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Хуудасны хүрээ ────────────────────────────────────────────── */
+.jv-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: var(--sp-5) var(--sp-4) var(--sp-8);
+}
+/* Утсан дээр доод талд хөвдөг Jarvis товчны зай үлдээнэ */
+@media (max-width: 759px) {
+  .jv-page { padding-bottom: calc(var(--sp-8) + 46px); }
+}
+@media (min-width: 760px) {
+  .jv-page { padding: var(--sp-7) var(--sp-6) var(--sp-8); }
+}
+
+/* ══ ЦЭС — 5 хаалга ═══════════════════════════════════════════════ */
+
+/* Утас: доод талд бэхлэгдсэн */
+.jv-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.jv-nav a {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; min-height: 56px; text-decoration: none;
+  color: var(--text-3); font-size: var(--fs-xs); font-weight: var(--w-med);
+  transition: color var(--t-fast);
+}
+.jv-nav a svg { width: 21px; height: 21px; stroke-width: 1.7; }
+.jv-nav a.on { color: var(--accent-text); }
+.jv-nav-space { height: calc(56px + env(safe-area-inset-bottom, 0px)); }
+
+/* Брэнд нэр зөвхөн компьютер дээр — доорх media query нээнэ */
+.jv-nav .jv-brand { display: none; }
+
+/* Компьютер: дээд талд эгнээ */
+@media (min-width: 760px) {
+  .jv-nav {
+    position: sticky; top: 0; bottom: auto;
+    display: flex; align-items: center; gap: var(--sp-1);
+    justify-content: flex-start;
+    border-top: none; border-bottom: 1px solid var(--border);
+    padding: var(--sp-3) var(--sp-6);
+  }
+  .jv-nav .jv-brand {
+    display: flex; align-items: center; gap: var(--sp-2);
+    font-size: var(--fs-md); font-weight: var(--w-bold);
+    color: var(--text); margin-right: var(--sp-5); text-decoration: none;
+  }
+  .jv-nav .jv-brand svg { width: 20px; height: 20px; color: var(--accent-text); }
+  .jv-nav a {
+    flex-direction: row; gap: var(--sp-2);
+    min-height: 38px; padding: 0 var(--sp-4);
+    border-radius: var(--r-md); font-size: var(--fs-sm);
+  }
+  .jv-nav a:hover { color: var(--text); background: var(--surface-2); }
+  .jv-nav a.on { background: var(--accent-soft); color: var(--accent-text); font-weight: var(--w-bold); }
+  .jv-nav a svg { width: 17px; height: 17px; }
+  .jv-nav-space { display: none; }
+}
+
+/* ══ ХУУДАСНЫ ТОЛГОЙ ═════════════════════════════════════════════ */
+.jv-head { margin-bottom: var(--sp-6); }
+.jv-date { font-size: var(--fs-sm); color: var(--text-2); margin-bottom: 2px; }
+.jv-title {
+  font-size: var(--fs-2xl); font-weight: var(--w-bold);
+  line-height: var(--lh-tight); margin: 0;
+}
+.jv-sub { font-size: var(--fs-sm); color: var(--text-2); margin: var(--sp-2) 0 0; }
+
+/* ══ ТООНЫ ХӨЗӨР ═════════════════════════════════════════════════ */
+.jv-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3); margin-bottom: var(--sp-7);
+}
+.jv-stat {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: var(--sp-4);
+  text-decoration: none; color: inherit; display: block;
+}
+.jv-stat-label { font-size: var(--fs-xs); color: var(--text-2); margin-bottom: var(--sp-2); }
+.jv-stat-num { font-size: var(--fs-3xl); font-weight: var(--w-bold); line-height: 1; }
+.jv-stat-unit { font-size: var(--fs-sm); color: var(--text-3); font-weight: var(--w-body); margin-left: 3px; }
+.jv-stat-bar { margin-top: var(--sp-3); }
+/* Нэрс нь 2 мөр болвол гурван хөзрийн тоо жигд эгнэнэ */
+@media (max-width: 560px) {
+  .jv-stat-label { min-height: 3.2em; }
+}
+@media (max-width: 420px) {
+  .jv-stat { padding: var(--sp-3); }
+  .jv-stat-num { font-size: var(--fs-2xl); }
+}
+
+/* ══ ХЭСГИЙН ГАРЧИГ ══════════════════════════════════════════════ */
+.jv-sec {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin: 0 0 var(--sp-3);
+}
+.jv-sec h2 { font-size: var(--fs-md); font-weight: var(--w-bold); margin: 0; }
+.jv-sec span { font-size: var(--fs-sm); color: var(--text-3); }
+
+/* ══ ҮЙЛДЛИЙН МӨР — "дараа нь юу хийх вэ" ════════════════════════ */
+.jv-acts { display: flex; flex-direction: column; gap: var(--sp-3); }
+.jv-act {
+  display: flex; align-items: center; gap: var(--sp-4);
+  width: 100%; text-align: left;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: var(--sp-4) var(--sp-4);
+  color: var(--text); font-family: var(--font-ui); font-size: var(--fs-md);
+  cursor: pointer; text-decoration: none;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.jv-act:hover { border-color: var(--border-strong); }
+.jv-act--next { border-color: var(--accent); background: var(--accent-soft); }
+.jv-act-ico {
+  flex: 0 0 auto; width: 38px; height: 38px; border-radius: var(--r-md);
+  background: var(--surface-2); color: var(--text-2);
+  display: flex; align-items: center; justify-content: center;
+}
+.jv-act--next .jv-act-ico { background: var(--accent); color: var(--accent-ink); }
+.jv-act-ico svg { width: 20px; height: 20px; }
+.jv-act-body { flex: 1; min-width: 0; }
+.jv-act-name { display: block; font-weight: var(--w-med); }
+.jv-act-note { display: block; font-size: var(--fs-sm); color: var(--text-2); margin-top: 2px; }
+.jv-act-side { flex: 0 0 auto; display: flex; align-items: center; gap: var(--sp-2); color: var(--text-3); }
+.jv-act-side svg { width: 20px; height: 20px; }
+.jv-act--next .jv-act-side { color: var(--accent-text); }
+.jv-act--done { opacity: .55; }
+.jv-act--done .jv-act-name { text-decoration: line-through; }
+.jv-act--done .jv-act-ico { background: var(--ok-soft); color: var(--ok); }
+
+/* Мөрөн доторх жижиг товч (ус +1 гэх мэт) */
+.jv-mini {
+  min-width: 40px; min-height: 34px; padding: 0 var(--sp-3);
+  border: 1px solid var(--border-strong); border-radius: var(--r-sm);
+  background: var(--surface-2); color: var(--text);
+  font-family: var(--font-ui); font-size: var(--fs-md); font-weight: var(--w-med);
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+}
+.jv-mini:hover { border-color: var(--accent); color: var(--accent-text); }
+
+/* ══ БҮГД ХИЙГДСЭН ═══════════════════════════════════════════════ */
+.jv-clear {
+  border: 1px dashed var(--border-strong); border-radius: var(--r-lg);
+  padding: var(--sp-6) var(--sp-4); text-align: center; color: var(--text-2);
+}
+.jv-clear b { display: block; color: var(--text); font-size: var(--fs-lg); margin-bottom: var(--sp-2); }
+
+/* ══ 7 ХОНОГИЙН ЯВЦ ══════════════════════════════════════════════ */
+.jv-week { display: flex; gap: var(--sp-2); }
+.jv-day { flex: 1; text-align: center; }
+.jv-day-bar {
+  height: 46px; border-radius: var(--r-sm); background: var(--surface-2);
+  display: flex; align-items: flex-end; overflow: hidden;
+}
+.jv-day-bar > i { display: block; width: 100%; background: var(--accent); border-radius: var(--r-sm); transition: height var(--t-med); }
+.jv-day-name { font-size: var(--fs-xs); color: var(--text-3); margin-top: var(--sp-2); }
+.jv-day--today .jv-day-name { color: var(--accent-text); font-weight: var(--w-bold); }
+
+/* ══ JARVIS ТОВЧ — хөвдөг ═══════════════════════════════════════ */
+.jv-ace {
+  position: fixed; right: var(--sp-4); z-index: 55;
+  bottom: calc(56px + var(--sp-4) + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  min-height: 46px; padding: 0 var(--sp-5);
+  border: none; border-radius: var(--r-pill);
+  background: var(--accent); color: var(--accent-ink);
+  font-family: var(--font-ui); font-size: var(--fs-sm); font-weight: var(--w-cta);
+  box-shadow: var(--sh-2); cursor: pointer; text-decoration: none;
+}
+.jv-ace svg { width: 18px; height: 18px; }
+@media (min-width: 760px) {
+  .jv-ace { bottom: var(--sp-6); right: var(--sp-6); }
+}
+
+/* ══ КАРТ ════════════════════════════════════════════════════════ */
+.jv-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-lg); padding: var(--sp-5);
+}
+.jv-block { margin-bottom: var(--sp-7); }
