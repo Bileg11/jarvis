@@ -376,6 +376,86 @@
 .hk-day-b > i { display:block; height:100%; background:var(--accent); border-radius:var(--r-pill); }
 .hk-day-n { flex:0 0 56px; text-align:right; font-size:var(--fs-sm); font-variant-numeric:tabular-nums; }
 .hk-day-n.zero { color:var(--text-3); }
+
+/* ══ ХЯТАД — ЦЭС (юу хийхээ сонгох дэлгэц) ═══════════════════════ */
+/* Өнөөдрийн зорилт — нэг карт дээр тоо, зурвас, тайлбар */
+.hk-goal {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:var(--sp-5); margin-bottom:var(--sp-5);
+}
+.hk-goal-top { display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-3); margin-bottom:var(--sp-3); font-size:var(--fs-sm); color:var(--text-2); }
+.hk-goal-n { font-size:var(--fs-lg); color:var(--text-3); font-variant-numeric:tabular-nums; }
+.hk-goal-n b { font-size:var(--fs-2xl); font-weight:var(--w-bold); color:var(--text); }
+.hk-goal-sub { font-size:var(--fs-sm); color:var(--text-2); margin-top:var(--sp-3); }
+
+/* Гол үйлдэл — дэлгэц дээрх хамгийн том, хамгийн тод зүйл */
+.hk-go {
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-4);
+  width:100%; min-height:68px; padding:0 var(--sp-6); margin-bottom:var(--sp-4);
+  border:none; border-radius:var(--r-lg);
+  background:var(--accent); color:var(--accent-ink);
+  font-family:var(--font-ui); font-size:var(--fs-lg); font-weight:var(--w-cta);
+  cursor:pointer; text-align:left;
+}
+.hk-go:hover { filter:brightness(1.06); }
+.hk-go-a { font-size:var(--fs-xl); }
+
+/* Дөрвөн хөзөр — 2×2 */
+.hk-tiles { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-3); }
+@media (min-width:760px) { .hk-tiles { grid-template-columns:repeat(4,1fr); } }
+.hk-tile {
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  min-height:104px; padding:var(--sp-4);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  color:var(--text); font-family:var(--font-ui); cursor:pointer; text-align:left;
+  transition:border-color var(--t-fast);
+}
+.hk-tile:hover { border-color:var(--accent); }
+.hk-tile-i { font-family:var(--font-hanzi); font-size:22px; color:var(--accent-text); line-height:1.2; margin-bottom:var(--sp-2); }
+.hk-tile-n { font-size:var(--fs-md); font-weight:var(--w-med); }
+.hk-tile-s { font-size:var(--fs-sm); color:var(--text-2); }
+
+/* Явц — стриктэй мөр */
+.hk-prog {
+  display:flex; align-items:center; gap:var(--sp-4);
+  width:100%; margin-top:var(--sp-3); padding:var(--sp-4) var(--sp-5);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  color:var(--text); font-family:var(--font-ui); cursor:pointer; text-align:left;
+  transition:border-color var(--t-fast);
+}
+.hk-prog:hover { border-color:var(--accent); }
+.hk-prog-n { font-size:var(--fs-2xl); font-weight:var(--w-bold); color:var(--accent-text);
+  line-height:1; font-variant-numeric:tabular-nums; flex:0 0 auto; }
+.hk-prog-b { flex:1; min-width:0; }
+.hk-prog-b b { display:block; font-size:var(--fs-md); font-weight:var(--w-med); }
+.hk-prog-b i { display:block; font-style:normal; font-size:var(--fs-sm); color:var(--text-2); }
+.hk-prog-a { color:var(--text-3); font-size:var(--fs-lg); }
+
+/* Бусад — намуухан жагсаалт */
+.hk-more { display:flex; flex-direction:column; gap:1px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); overflow:hidden; }
+.hk-more button {
+  display:flex; align-items:baseline; gap:var(--sp-4);
+  width:100%; min-height:52px; padding:var(--sp-3) var(--sp-5);
+  background:none; border:none; border-bottom:1px solid var(--border);
+  color:var(--text); font-family:var(--font-ui); cursor:pointer; text-align:left;
+}
+.hk-more button:last-child { border-bottom:none; }
+.hk-more button:hover { background:var(--surface-2); }
+.hk-more b { font-size:var(--fs-md); font-weight:var(--w-med); flex:0 0 auto; }
+.hk-more i { font-style:normal; font-size:var(--fs-sm); color:var(--text-2); margin-left:auto; text-align:right; }
+
+/* Буцах мөр */
+#hk-back { display:flex; align-items:center; gap:var(--sp-4); margin-bottom:var(--sp-4); }
+#hk-back button {
+  min-height:40px; padding:0 var(--sp-4);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md);
+  color:var(--text); font-family:var(--font-ui); font-size:var(--fs-sm); cursor:pointer;
+}
+#hk-back button:hover { border-color:var(--border-strong); }
+#hk-back span { font-size:var(--fs-md); font-weight:var(--w-med); }
 </style>
 </head>
 <body>
@@ -412,40 +492,79 @@
     </a>
   </div>
 
-  <!-- Гурван тоо -->
-  <section class="jv-stats" aria-label="Хятад хэлний байдал">
-    <div class="jv-stat">
-      <div class="jv-stat-label">Өнөөдөр давтсан</div>
-      <div><span class="jv-stat-num" id="stat-today">0</span><span class="jv-stat-unit">үг</span></div>
+  <!-- Өнөөдрийн зорилт — нэг л карт, давхардалгүй -->
+  <div class="hk-goal">
+    <div class="hk-goal-top">
+      <span>Өнөөдрийн зорилт</span>
+      <span class="hk-goal-n"><b id="stat-today">0</b> / <span id="plan-target">—</span></span>
     </div>
-    <div class="jv-stat">
-      <div class="jv-stat-label">Мэддэг болсон</div>
-      <div><span class="jv-stat-num" id="stat-mastered">0</span><span class="jv-stat-unit" id="stat-total-unit">/ 0</span></div>
-    </div>
-    <div class="jv-stat">
-      <div class="jv-stat-label">Тасралтгүй</div>
-      <div><span class="jv-stat-num" id="stat-streak">0</span><span class="jv-stat-unit">хоног</span></div>
-    </div>
-  </section>
-  <span id="stat-total" hidden>0</span>
-
-  <!-- Өдрийн зорилт -->
-  <div class="jv-act jv-act--next" style="margin-bottom:var(--sp-6)">
-    <span class="jv-act-body">
-      <span class="jv-act-name">Өдрийн зорилт — <b id="plan-target">—</b> үг</span>
-      <span class="jv-act-note" id="plan-sub">Тооцоолж байна...</span>
-    </span>
+    <div class="ds-track"><i id="hk-goal-bar" style="width:0%"></i></div>
+    <div class="hk-goal-sub" id="plan-sub">Тооцоолж байна...</div>
   </div>
 
-  <!-- Таван хэсэг -->
-  <div class="hk-groups" role="tablist" aria-label="Хятад хэлний хэсгүүд">
-    <button class="hk-group on" data-group="learn"   onclick="switchGroup('learn')">Сурах</button>
-    <button class="hk-group"    data-group="review"  onclick="switchGroup('review')">Давтах</button>
-    <button class="hk-group"    data-group="exam"    onclick="switchGroup('exam')">Шалгах</button>
-    <button class="hk-group"    data-group="speak"   onclick="switchGroup('speak')">Ярих</button>
-    <button class="hk-group"    data-group="prog"    onclick="switchGroup('prog')">Явц</button>
+  <!-- updateStats() эдгээрийг бичдэг — цэсэнд өөр газар харагдана -->
+  <span id="stat-mastered" hidden>0</span><span id="stat-total" hidden>0</span>
+  <span id="stat-total-unit" hidden></span><span id="stat-streak" hidden>0</span>
+
+  <!-- ══ ЦЭС — юу хийхээ энд сонгоно ══════════════════════════ -->
+  <div id="hk-menu">
+
+    <!-- Гол үйлдэл -->
+    <button class="hk-go" onclick="openAct('session')">
+      <span class="hk-go-t" id="hk-go-label">Өнөөдрийн үг</span>
+      <span class="hk-go-a">→</span>
+    </button>
+
+    <!-- Дөрвөн хөзөр -->
+    <div class="hk-tiles">
+      <button class="hk-tile" onclick="openAct('drill')">
+        <span class="hk-tile-i">复</span>
+        <span class="hk-tile-n">Давтах</span>
+        <span class="hk-tile-s" id="tile-drill">үг хүлээж байна</span>
+      </button>
+      <button class="hk-tile" onclick="openAct('test')">
+        <span class="hk-tile-i">试</span>
+        <span class="hk-tile-n">Шалгалт</span>
+        <span class="hk-tile-s">Богино тест</span>
+      </button>
+      <button class="hk-tile" onclick="openAct('conversation')">
+        <span class="hk-tile-i">说</span>
+        <span class="hk-tile-n">Ярилцах</span>
+        <span class="hk-tile-s">AI-тай</span>
+      </button>
+      <button class="hk-tile" onclick="location.href=(window.jarvisHref?jarvisHref('learn'):'learn')">
+        <span class="hk-tile-i">汉</span>
+        <span class="hk-tile-n">Ханз бичих</span>
+        <span class="hk-tile-s">Тоглоомоор</span>
+      </button>
+    </div>
+
+    <!-- Явц -->
+    <button class="hk-prog" onclick="openAct('progress')">
+      <span class="hk-prog-n" id="hk-prog-streak">0</span>
+      <span class="hk-prog-b">
+        <b>хоног тасралтгүй</b>
+        <i>Явцаа бүтнээр харах</i>
+      </span>
+      <span class="hk-prog-a">→</span>
+    </button>
+
+    <!-- Бусад -->
+    <div class="jv-sec" style="margin-top:var(--sp-6)"><h2>Бусад</h2></div>
+    <div class="hk-more">
+      <button onclick="openAct('vault')"><b>Үгийн сан</b><i id="more-vault">— үг</i></button>
+      <button onclick="openAct('weakspot')"><b>Сул үгс</b><i>Алддаг үгсээ давтах</i></button>
+      <button onclick="openAct('sentence')"><b>Өгүүлбэр зохиох</b><i>Мэддэг үгээрээ</i></button>
+      <button onclick="openAct('mock')"><b>Дуурайлган шалгалт</b><i>40 асуулт · 60 минут</i></button>
+      <button onclick="openAct('cram')"><b>Cram</b><i>Эрчимжүүлсэн давталт</i></button>
+    </div>
   </div>
-  <div class="hk-subs" id="hk-subs"></div>
+
+  <!-- Үйлдэл нээгдэхэд гарч ирэх буцах мөр -->
+  <div id="hk-back" style="display:none">
+    <button onclick="backToMenu()">← Буцах</button>
+    <span id="hk-back-title"></span>
+  </div>
 
   <!-- ── TAB: VAULT ── -->
   <!-- СУРАХ ГАДАРГУУ: Шөнийн самбарт энэ хэсэг цайвар цаас болно -->
@@ -914,7 +1033,7 @@ async function init() {
   updatePlan();
   renderVault();
 
-  switchGroup('learn');   // ачаалахад "Сурах" хэсэг нээгдэнэ
+  backToMenu();   // ачаалахад цэс гарна
 
   const src = _hskUid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
   console.log('[HSK] Эх сурвалж:', src);
@@ -937,6 +1056,7 @@ function updateStats() {
   const tu = document.getElementById('stat-total-unit');
   if (tu) tu.textContent = '/ ' + words.length;
   renderDailyChart();
+  renderMenu();
   if (document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
 }
 
@@ -954,55 +1074,55 @@ function updatePlan() {
 }
 
 // ── Tab switching ─────────────────────────────────────────────────
-// ── Хэсэг солих ───────────────────────────────────────────────────
-// Дээд эгнээнд 5 хэсэг. Хэсэг бүр доороо 1-3 сонголттой.
-// Өмнө нь 10 таб нэг эгнээнд шахагдаж, дэлгэцнээс халиад байсан.
-const HK_GROUPS = {
-  learn:  { subs:[ {id:'session', label:'Өнөөдрийн хичээл'},
-                   {id:'vault',   label:'Үгийн сан'},
-                   {id:'game',    label:'Ханз тоглоом'} ] },
-  review: { subs:[ {id:'drill',    label:'Хурдан давталт'},
-                   {id:'weakspot', label:'Сул үгс'},
-                   {id:'cram',     label:'Cram — эрчимжүүлсэн'} ] },
-  exam:   { subs:[ {id:'test', label:'Богино шалгалт'},
-                   {id:'mock', label:'Бүтэн шалгалт (60 мин)'} ] },
-  speak:  { subs:[ {id:'sentence',     label:'Өгүүлбэр зохиох'},
-                   {id:'conversation', label:'Яриа дадлага'} ] },
-  prog:   { subs:[] },
+// ── Цэс ба үйлдэл ─────────────────────────────────────────────────
+// Хуудас нээгдэхэд ЦЭС гарна: нэг том товч, дөрвөн хөзөр, бусад.
+// Ямар нэгийг дарахад тэр үйлдэл нээгдэж, дээр нь "← Буцах" гарна.
+// (Өмнө нь 10 таб нэг эгнээнд шахагдаж, дэлгэцнээс халиад байсан.)
+const HK_TITLES = {
+  session:'Өнөөдрийн үг', vault:'Үгийн сан', drill:'Давтах',
+  weakspot:'Сул үгс', cram:'Cram', test:'Шалгалт',
+  mock:'Дуурайлган шалгалт', sentence:'Өгүүлбэр зохиох',
+  conversation:'Ярилцах', progress:'Явц',
 };
 
-let _hkGroup = 'learn';
-
-function switchGroup(g, sub) {
-  if (!HK_GROUPS[g]) return;
-  _hkGroup = g;
-  document.querySelectorAll('.hk-group').forEach(b =>
-    b.classList.toggle('on', b.dataset.group === g));
-
-  const subs = HK_GROUPS[g].subs;
-  const bar  = document.getElementById('hk-subs');
-  const pick = sub || (subs[0] && subs[0].id) || 'progress';
-
-  // Ганц сонголттой хэсэгт товчны эгнээ харуулах шаардлагагүй
-  bar.innerHTML = subs.length > 1 ? subs.map(x =>
-    '<button class="hk-sub' + (x.id === pick ? ' on' : '') + '" ' +
-    'onclick="switchGroup(\'' + g + '\',\'' + x.id + '\')">' + x.label + '</button>').join('') : '';
-
-  switchTab(pick);
+function _hkFocus(on) {
+  // Дасгал хийж байхад дэлгэц цэвэр байх ёстой:
+  // хөвдөг Jarvis товч "Мэднэ" товчийг халхалдаг тул нуугдана.
+  const ace  = document.querySelector('.jv-ace');
+  const goal = document.querySelector('.hk-goal');
+  if (ace)  ace.style.display  = on ? 'none' : '';
+  if (goal) goal.style.display = on ? 'none' : '';
 }
 
+function backToMenu() {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector('.study-area').style.display = 'none';
+  document.getElementById('hk-back').style.display = 'none';
+  document.getElementById('hk-menu').style.display = '';
+  _hkFocus(false);
+  renderMenu();
+  window.scrollTo(0, 0);
+}
+
+function openAct(name) {
+  document.getElementById('hk-menu').style.display = 'none';
+  const back = document.getElementById('hk-back');
+  back.style.display = 'flex';
+  document.getElementById('hk-back-title').textContent = HK_TITLES[name] || '';
+  _hkFocus(true);
+  switchTab(name);
+  window.scrollTo(0, 0);
+}
+
+// Хуучин нэрсийг хадгална — өөр газраас дуудагдсан хэвээр байж болзошгүй
+function switchGroup(g, sub) { openAct(sub || 'session'); }
+
 function switchTab(name) {
-  // "Ханз тоглоом" бол тусдаа хуудас
-  if (name === 'game') {
-    location.href = window.jarvisHref ? window.jarvisHref('learn') : 'learn';
-    return;
-  }
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   const panel = document.getElementById('panel-' + name);
   panel?.classList.add('active');
 
   // Цайвар "сурах гадаргуу" — зөвхөн доторх хэсэг идэвхтэй үед харагдана
-  // (Явц нь гадна байдаг тул хоосон цагаан хайрцаг үлдэхээс сэргийлнэ)
   const study = document.querySelector('.study-area');
   if (study) study.style.display = study.contains(panel) ? '' : 'none';
 
@@ -1014,6 +1134,31 @@ function switchTab(name) {
   if (name === 'conversation') initConversation();
   if (name === 'cram')         initCram();
   if (name === 'progress')     renderProgress();
+}
+
+// Цэсний тоонуудыг шинэчлэх
+function renderMenu() {
+  const words  = getWords();
+  const due    = words.filter(w => !w.mastered).length;
+  const perDay = Math.max(1, Math.ceil(due / Math.max(1, Math.ceil((EXAM_DATE - Date.now())/86400000))));
+
+  const go = document.getElementById('hk-go-label');
+  if (go) go.textContent = 'Өнөөдрийн ' + perDay + ' үг';
+
+  const td = document.getElementById('tile-drill');
+  if (td) td.textContent = due + ' үг хүлээж байна';
+
+  const mv = document.getElementById('more-vault');
+  if (mv) mv.textContent = words.length + ' үг';
+
+  const ps = document.getElementById('hk-prog-streak');
+  if (ps) ps.textContent = getStreak().count;
+
+  const bar = document.getElementById('hk-goal-bar');
+  if (bar) {
+    const done = getSession().known || 0;
+    bar.style.width = Math.min(100, Math.round(done / perDay * 100)) + '%';
+  }
 }
 
 // ── ЯВЦ — өмнөх өдрүүд, харьцуулалт ───────────────────────────────
