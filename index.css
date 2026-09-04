@@ -371,7 +371,7 @@ body.frosted .glass:not(#terminal-panel) {
 .r-switch:active { transform: scale(.96); }
 .r-icon { font-size: 18px; line-height:1; }
 .r-label { font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:var(--text-2); }
-.r-state  { font-family:var(--hud); font-size:8px; letter-spacing:.1em; color:var(--surface-2); }
+.r-state  { font-family:var(--hud); font-size:8px; letter-spacing:.1em; color:var(--text-2); }
 .r-switch.done .r-state { color: var(--accent-text); text-shadow: none; }
 
 /* Water control */
