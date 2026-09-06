@@ -22,6 +22,11 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <link rel="stylesheet" href="design-system.css">
   <link rel="stylesheet" href="index.css">
+<script src="jarvis-config.js"></script>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
 
@@ -914,7 +919,6 @@
 <div id="toast"></div>
 
 <script src="theme.js"></script>
-  <script src="jarvis-config.js"></script>
   <script src="speak.js"></script>
 <script src="firebase-config.js"></script>
 <script src="app.js"></script>
@@ -1536,7 +1540,7 @@ async function _savePlanToFirestore(btn) {
   btn.textContent = '...';
   if (status) status.textContent = 'Системд хадгалж байна...';
 
-  const dateStr = plan.date || new Date().toISOString().slice(0,10);
+  const dateStr = plan.date || jarvisDay();
 
   try {
     // Save to users/{uid}/dailyPlans/{YYYY-MM-DD}
@@ -1803,7 +1807,7 @@ async function termSend() {
   // /plan — өнөөдрийн life plan (Sprint 34)
   if (text === '/plan') {
     addTermLine('user', text);
-    const today = new Date().toISOString().slice(0,10);
+    const today = jarvisDay();
     const plan  = window._llCurrentPlan || JSON.parse(localStorage.getItem('jarvis_plan_' + today) || 'null')?.confirmed;
     if (!plan?.length) {
       addTermLine('warn', '>> Өнөөдрийн хуваарь байхгүй. Pre-flight дарж үүсгэнэ үү.');
@@ -1929,7 +1933,7 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
   // /stats — өнөөдрийн API usage харах
   if (text === '/stats' || text === '/usage') {
     addTermLine('user', text);
-    const today    = new Date().toISOString().split('T')[0];
+    const today    = jarvisDay();
     const msgCount = parseInt(localStorage.getItem('jarvis_msg_' + today) || '0');
     const limit    = 20;
     const pct      = Math.round(msgCount / limit * 100);
@@ -3695,7 +3699,7 @@ function _renderRouteWidget() {
   if (hdr) hdr.textContent = `${now.getMonth()+1}/${now.getDate()}`;
 
   // Load from saved plan if exists, else show placeholder
-  const today = now.toISOString().split('T')[0];
+  const today = jarvisDay(now);
   const planKey = `jarvis_plan_${today}`;
   const planJson = localStorage.getItem(planKey);
   const body = document.getElementById('route-body');
@@ -4279,7 +4283,7 @@ const _navMap = { intel:'chat.html', track:'tracker.html', profile:'profile.html
 // Shows once per calendar day after boot. Stark-style alert window.
 // ══════════════════════════════════════════════════════════════════
 function _showDailyBrief() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = jarvisDay();
   if (localStorage.getItem('jarvis_brief_' + today)) return; // already seen today
 
   const el = document.getElementById('daily-brief');
@@ -4376,7 +4380,7 @@ function _showDailyBrief() {
 }
 
 function _closeDailyBrief() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = jarvisDay();
   localStorage.setItem('jarvis_brief_' + today, '1');
   const el = document.getElementById('daily-brief');
   if (!el) return;
@@ -5009,7 +5013,7 @@ document.addEventListener('DOMContentLoaded', () => {
   _fvInit();
 
   // Start checkpoint engine if today's plan exists
-  const _todayKey = 'jarvis_plan_' + new Date().toISOString().slice(0,10);
+  const _todayKey = 'jarvis_plan_' + jarvisDay();
   try {
     const _todayPlan = JSON.parse(localStorage.getItem(_todayKey) || 'null');
     if (_todayPlan?.confirmed?.length) {
@@ -5094,12 +5098,12 @@ function _glowupSaveConfig(cfg) {
 
 // Today's completion state: { "catId:taskIdx": true }
 function _glowupToday(date) {
-  date = date || new Date().toISOString().slice(0,10);
+  date = date || jarvisDay();
   try { return JSON.parse(localStorage.getItem('jarvis_glowup_' + date) || '{}'); }
   catch { return {}; }
 }
 function _glowupToggle(catId, taskIdx) {
-  const date = new Date().toISOString().slice(0,10);
+  const date = jarvisDay();
   const state = _glowupToday(date);
   const key = catId + ':' + taskIdx;
   state[key] = !state[key];
@@ -5151,7 +5155,7 @@ function closeGlowup() {
 
 function _glowupRenderDash() {
   if (_glowupEditMode) { _glowupRenderEdit(); return; }
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
 
   // ── Dual versus header ──────────────────────────────────────────
   const versus = document.getElementById('gu-versus');
@@ -5283,7 +5287,7 @@ async function _challengeRender() {
   document.getElementById('ch-global-pct').textContent = globalPct + '%';
 
   // Load scores from Firestore (own + partner) — or localStorage fallback
-  const today   = now.toISOString().slice(0,10);
+  const today   = jarvisDay(now);
   const scores  = await _loadChallengeScores(today);
 
   // Render user cards
@@ -5327,7 +5331,7 @@ async function _challengeRender() {
 
 // ── Save today's challenge score to Firestore ─────────────────────
 function _challengeSaveScore(role) {
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   const goalDef = CHALLENGE_GOALS[role];
   if (!goalDef?.checkFn) return;
   const score = goalDef.checkFn();
@@ -5383,7 +5387,7 @@ function _overdueCheck() {
   const plan = window._llCurrentPlan;
   if (!plan?.length) return;
   const now = Date.now();
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
 
   plan.forEach((task, idx) => {
     if (task.done) return; // already confirmed ✓
@@ -5522,7 +5526,7 @@ function _checkpointTick() {
 
   const now     = new Date();
   const nowMin  = now.getHours() * 60 + now.getMinutes();
-  const today   = now.toISOString().slice(0,10);
+  const today   = jarvisDay(now);
 
   // Update next checkpoint label
   let nextLabel = '';
@@ -5620,7 +5624,7 @@ function _processTelegramDone(taskId) {
   }
   window._llCurrentPlan[idx].done = true;
   _llRenderTimeline(window._llCurrentPlan);
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   DB.saveDayPlan?.(today, { confirmed: window._llCurrentPlan });
 
   // Update challenge score immediately
@@ -5647,7 +5651,7 @@ window._processTelegramDone = _processTelegramDone;
 async function _sprintStatusTerminal() {
   const uid = window._uid?.();
   if (!uid || !window._db) { addTermLine('warn', '>> Firestore нэвтрээгүй. Profile-д нэвтэрнэ үү.'); return; }
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   try {
     const [uSnap, sSnap, cSnap] = await Promise.all([
       window._db.doc(`sprint_users/${uid}`).get(),
@@ -5675,7 +5679,7 @@ async function _sprintStatusTerminal() {
 async function _sprintDoneTerminal(taskId) {
   const uid = window._uid?.();
   if (!uid || !window._db) { addTermLine('warn', '>> Firestore нэвтрээгүй.'); return; }
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   try {
     const ref = window._db.doc(`schedules/${today}`);
     const snap = await ref.get();
@@ -5879,7 +5883,7 @@ function _formatTime(mins) {
 
 // ── Life Logic widget init & render ──────────────────────────────
 function _llInit() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   document.getElementById('ll-date-tag').textContent = today.slice(5);
   _llLoadAndRender(today);
 
@@ -5953,7 +5957,7 @@ function _llMarkDone(idx) {
   }
 
   _llRenderTimeline(window._llCurrentPlan);
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   DB.saveDayPlan?.(today, { confirmed: window._llCurrentPlan });
 }
 
@@ -6426,7 +6430,7 @@ function _hskFinishSelfTest() {
     });
     _hskProgress.self_test_done = true;
     _hskProgress.self_test_count = total;
-    _hskProgress.self_test_date = new Date().toISOString().slice(0,10);
+    _hskProgress.self_test_date = jarvisDay();
     DB.saveHSKProgress?.(_hskProgress);
     _hskBuildStudySchedule();
   }
@@ -6552,7 +6556,7 @@ function _hskRate(rating) {
 }
 
 async function _saveHSKSession() {
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   const session = {
     date: today,
     correct: _hskSessionStats.correct,
@@ -6643,7 +6647,7 @@ function _hskRenderSchedule() {
   const schedule = window._hskSchedule || [];
   if (!schedule.length) { content.innerHTML = `<div style="padding:12px;font-family:var(--mono);font-size:9px;color:var(--text);opacity:.4;text-align:center">Хуваарь тооцоологдоогүй байна.</div>`; return; }
 
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   content.innerHTML = `<div class="hsk-day-plan">
     ${schedule.slice(0,10).map(d => `
       <div class="hsk-day-row${d.date === today ? ' today' : ''}">
@@ -6664,7 +6668,7 @@ function _hskBuildStudySchedule() {
   window._hskSchedule = Array.from({ length: Math.min(days, 30) }, (_, i) => {
     const d    = new Date(today);
     d.setDate(d.getDate() + i);
-    const date = d.toISOString().slice(0, 10);
+    const date = jarvisDay(d);
     return {
       date,
       new_words:    Math.min(newPerDay, 20),
@@ -7357,7 +7361,7 @@ function _tgHandleCommand(text) {
     const s    = CHALLENGE_GOALS[role]?.checkFn?.() || { pct:0 };
     _queueTelegramOutbox(`📊 Өнөөдрийн score: <b>${s.pct}%</b>`, 'score_reply', null, null);
   } else if (lower === '/status') {
-    const today = new Date().toISOString().slice(0,10);
+    const today = jarvisDay();
     const r = JSON.parse(localStorage.getItem('jarvis_r') || '{}');
     const done = [r.exercise&&'💪',r.hanzi&&'汉',r.read&&'📖',r.journal&&'📓'].filter(Boolean);
     _queueTelegramOutbox(
@@ -7834,7 +7838,7 @@ function closeChallengeHud() {
   _chudUnsubs = [];
 }
 
-function _chudToday() { return new Date().toISOString().slice(0, 10); }
+function _chudToday() { return jarvisDay(); }
 
 function _chudStart() {
   const today = _chudToday();
@@ -8114,7 +8118,7 @@ function _chudLog(msg) {
 const SK_AM = ['🧼 Цэвэрлэгч', '💧 Тоник', '☀️ SPF / Тоосго'];
 const SK_PM = ['🧼 Цэвэрлэгч', '✨ Сэрум', '🌙 Чийгшүүлэгч'];
 
-function _skToday() { return new Date().toISOString().slice(0,10); }
+function _skToday() { return jarvisDay(); }
 function _skData()  { try { return JSON.parse(localStorage.getItem('jarvis_skincare_' + _skToday()) || '{}'); } catch { return {}; } }
 function _skSave(d) { localStorage.setItem('jarvis_skincare_' + _skToday(), JSON.stringify(d)); }
 
@@ -8161,10 +8165,10 @@ const HR_HABITS = [
 function _mrHabitRender() {
   const grid = document.getElementById('hr-grid');
   if (!grid) return;
-  const today = new Date().toISOString().slice(0,10);
+  const today = jarvisDay();
   const days  = Array.from({length:7}, (_,i) => {
     const d = new Date(Date.now() - (6-i)*86400000);
-    return d.toISOString().slice(0,10);
+    return jarvisDay(d);
   });
 
   grid.innerHTML = HR_HABITS.map(h => {
@@ -8199,7 +8203,7 @@ function _mrHabitRender() {
 // ── 4. MOOD / VIBE ────────────────────────────────────────────────
 const MOOD_LABELS = { '😴':'Ядарсан', '😤':'Хэцүү', '😊':'Хэвийн', '🔥':'Ид хүч', '🌟':'Тэргүүн' };
 
-function _moodToday() { return new Date().toISOString().slice(0,10); }
+function _moodToday() { return jarvisDay(); }
 function _moodPick(vibe) {
   localStorage.setItem('jarvis_mood_' + _moodToday(), vibe);
   _moodRender();

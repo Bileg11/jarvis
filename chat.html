@@ -886,6 +886,11 @@
   .os-grid { top: 63px !important; bottom: 0 !important; }
 }
 </style>
+<script src="jarvis-config.js"></script>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
   <div class="noise-layer"></div>
@@ -1141,7 +1146,6 @@
   <link rel="stylesheet" href="design-system.css">
 <link rel="stylesheet" href="jarvis-shell.css">
   <script src="theme.js"></script>
-  <script src="jarvis-config.js"></script>
   <script src="speak.js"></script>
   <script src="app.js"></script>
   <script src="gemini.js"></script>
@@ -1491,7 +1495,7 @@
   }
 
   function updateDailyProgress() {
-    const today   = new Date().toISOString().split('T')[0];
+    const today   = jarvisDay();
     const reviewed= _allWords.filter(w => w.last_reviewed?.startsWith(today)).length;
     const mastered= _allWords.filter(w => (w.mastery_level||1)===5).length;
     const total   = _allWords.length;
@@ -1829,7 +1833,7 @@
       </div>`;
     }).join('');
 
-    const dateStr = plan.date || new Date().toISOString().split('T')[0];
+    const dateStr = plan.date || jarvisDay();
     const label   = (plan.label || 'MISSION SCHEDULE').replace(/</g,'&lt;');
 
     // Unique card id for calendar export functions
@@ -1863,7 +1867,7 @@
   // Google Calendar URL export — opens in browser
   function _exportGcal(plan) {
     if (!plan || !plan.timeline || !plan.timeline.length) return;
-    const dateStr = (plan.date || new Date().toISOString().split('T')[0]).replace(/-/g,'');
+    const dateStr = (plan.date || jarvisDay()).replace(/-/g,'');
     const first   = plan.timeline[0];
     const last    = plan.timeline[plan.timeline.length - 1];
     const startDT = dateStr + 'T' + (first.startTime || '08:00').replace(':','') + '00';
@@ -1889,7 +1893,7 @@
   // Apple Calendar .ics file generation + download
   function _exportIcs(plan) {
     if (!plan || !plan.timeline || !plan.timeline.length) return;
-    const dateStr = (plan.date || new Date().toISOString().split('T')[0]).replace(/-/g,'');
+    const dateStr = (plan.date || jarvisDay()).replace(/-/g,'');
     const lines   = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//THREE-OS//Bileg//EN'];
 
     plan.timeline.forEach((e, i) => {

@@ -457,6 +457,10 @@
 #hk-back button:hover { border-color:var(--border-strong); }
 #hk-back span { font-size:var(--fs-md); font-weight:var(--w-med); }
 </style>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
 <div class="page">

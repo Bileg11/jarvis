@@ -23,6 +23,17 @@ window.JARVIS_EXAM_DATE_STR = '2026-10-01';
 window.JARVIS_EXAM_DATE     = new Date('2026-10-01T09:00:00+08:00');
 window.JARVIS_EXAM_LABEL    = window.JARVIS_EXAM_LEVEL + ' — ' + window.JARVIS_EXAM_DATE_STR;
 
+// ── ӨДРИЙН ЗААГ — ОРОН НУТГИЙН ЦАГААР ────────────────────────────
+// toISOString() нь UTC өгдөг. Шанхай UTC+8 тул орон нутгийн
+// 00:00–08:00 цагт хийсэн зүйл "өчигдөр" гэж бүртгэгдэж,
+// streak тасарч, өдрийн бүртгэл буруу өдөрт ордог байв.
+window.jarvisDay = function (d) {
+  d = d || new Date();
+  return d.getFullYear() + '-' +
+         String(d.getMonth() + 1).padStart(2, '0') + '-' +
+         String(d.getDate()).padStart(2, '0');
+};
+
 // Шалгалт хүртэл үлдсэн хоног (хамгийн багадаа 0)
 window.jarvisExamDays = function () {
   return Math.max(0, Math.floor((window.JARVIS_EXAM_DATE - Date.now()) / 86400000));

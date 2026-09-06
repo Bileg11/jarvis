@@ -156,6 +156,10 @@ canvas{max-height:210px}
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:10px 18px;font-size:13px;color:var(--text-b);opacity:0;transition:opacity .25s;pointer-events:none;z-index:99;white-space:nowrap}
 #toast.show{opacity:1}
 </style>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
 <div class="page">
@@ -354,7 +358,7 @@ let _customRange = null;       // { from, to } (YYYY-MM-DD)
 // Сонгосон хугацааны эхлэлийн огноо (YYYY-MM-DD)
 function _periodRange() {
   const now = new Date();
-  const toStr = d => d.toISOString().slice(0,10);
+  const toStr = d => jarvisDay(d);
   if (_period === 'custom' && _customRange) return { from: _customRange.from, to: _customRange.to };
   if (_period === 'all') return { from: '0000-01-01', to: '9999-12-31' };
   const days = { '7d':7, '1m':30, '3m':90, '6m':180 }[_period] || 30;
@@ -508,7 +512,7 @@ function addTxn() {
     currency,
     category,
     note,
-    date:     new Date().toISOString().slice(0,10),
+    date:     jarvisDay(),
     ts:       new Date().toISOString(),
     source:   'web',
   };

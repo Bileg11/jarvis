@@ -102,7 +102,7 @@ function renderDate() {
 
 // ── ROUTINE ───────────────────────────────────────────────────────
 
-function getToday() { return new Date().toISOString().split('T')[0]; }
+function getToday() { return jarvisDay(); }
 
 function loadRoutine() {
   try {
@@ -140,7 +140,7 @@ function getStreak(key) {
   for (let i = 0; i < 60; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = jarvisDay(d);
     const r = JSON.parse(localStorage.getItem('jarvis_r_' + dateStr) || 'null');
     if (!r) break;
     const done = key === 'water' ? r.water >= 8 : !!r[key];
@@ -160,7 +160,7 @@ function get7DayStats() {
   for (let i = 1; i <= 7; i++) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const r = JSON.parse(localStorage.getItem('jarvis_r_' + d.toISOString().split('T')[0]) || 'null');
+    const r = JSON.parse(localStorage.getItem('jarvis_r_' + jarvisDay(d)) || 'null');
     if (!r) continue;
     stats.days++;
     ['exercise','hanzi','read','journal'].forEach(k => { if (r[k]) stats.items[k]++; });
@@ -489,7 +489,7 @@ function loadTodayLog() {
 
 function loadYesterdayLog() {
   const d = new Date(); d.setDate(d.getDate() - 1);
-  try { return JSON.parse(localStorage.getItem('jarvis_log_' + d.toISOString().split('T')[0])) || null; } catch { return null; }
+  try { return JSON.parse(localStorage.getItem('jarvis_log_' + jarvisDay(d))) || null; } catch { return null; }
 }
 
 function fmtH(hours) {

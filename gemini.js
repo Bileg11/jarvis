@@ -208,7 +208,7 @@ if (window._auth) {
 }
 
 // ── RATE LIMIT HELPERS ────────────────────────────────────────────
-function _getTodayKey() { return 'jarvis_msg_' + new Date().toISOString().split('T')[0]; }
+function _getTodayKey() { return 'jarvis_msg_' + jarvisDay(); }
 
 function _checkRateLimit() {
   const key   = _getTodayKey();
@@ -573,17 +573,17 @@ function _checkGogginsAlert() {
   const r   = (typeof loadRoutine === 'function') ? loadRoutine() : {};
   const h   = new Date().getHours();
   // After 9pm: if exercise not done, trigger full alert
-  if (h >= 21 && !r.exercise && !localStorage.getItem('jarvis_goggins_warned_' + new Date().toISOString().slice(0,10))) {
+  if (h >= 21 && !r.exercise && !localStorage.getItem('jarvis_goggins_warned_' + jarvisDay())) {
     _triggerGogginsAlert('Дасгал хийгдэлгүй шөнө болжээ, Boss. Goggins: "Stay Hard." Одоо хийхгүй бол хэзээ хийх вэ?');
   }
   // After 11pm: if hanzi not done
-  if (h >= 23 && !r.hanzi && !localStorage.getItem('jarvis_goggins_hanzi_' + new Date().toISOString().slice(0,10))) {
+  if (h >= 23 && !r.hanzi && !localStorage.getItem('jarvis_goggins_hanzi_' + jarvisDay())) {
     _triggerGogginsAlert('HSK drill хийгдэлгүй шөнийн 11 цаг болжээ. Шалгалт ойртож байна. Яг одоо 10 минут зар.');
   }
 }
 
 function _triggerGogginsAlert(msg) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = jarvisDay();
   // Mark as shown to avoid spam
   localStorage.setItem('jarvis_goggins_warned_' + today, '1');
 
