@@ -176,9 +176,7 @@
       '  font-family:inherit;color:var(--text);transition:border-color .15s}',
       '.tp-w:hover{border-color:var(--border-strong)}',
       '.tp-w.on{border-color:var(--accent)}',
-      '.tp-prev{height:74px;border-radius:var(--r-sm);overflow:hidden;position:relative;font-size:0;white-space:nowrap}',
-      '.tp-prev span{display:inline-block;width:25%;height:100%;vertical-align:top}',
-      '.tp-prev b{position:absolute;left:8px;bottom:6px;font-family:var(--font-hanzi);font-size:26px;font-weight:500;line-height:1}',
+      '.tp-prev{display:block;width:100%;height:74px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border)}',
       '.tp-n{font-size:var(--fs-md);font-weight:var(--w-bold);display:flex;align-items:center;gap:6px}',
       '.tp-n i{font-style:normal;color:var(--accent);font-size:var(--fs-sm)}',
       '.tp-d{font-size:var(--fs-xs);color:var(--text-2);line-height:1.45}',
@@ -224,11 +222,38 @@
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-label', 'Дүр төрх сонгох');
 
+    // Дээж нь ЗУРААС биш, аппын жижиг загвар — тухайн дүр төрхөөр
+    // яг ямар харагдахыг нэг харцаар ойлгоно.
+    function preview(w) {
+      var bg = w.swatch[0], surf = w.swatch[1], acc = w.swatch[2], txt = w.swatch[3];
+      return '<svg class="tp-prev" viewBox="0 0 120 74" preserveAspectRatio="none" ' +
+             'role="img" aria-label="' + w.name + ' дүр төрхийн жишээ">' +
+        '<rect width="120" height="74" fill="' + bg + '"/>' +
+        // дээд эгнээ
+        '<rect width="120" height="12" fill="' + surf + '"/>' +
+        '<rect x="6" y="5" width="14" height="3" rx="1.5" fill="' + acc + '"/>' +
+        '<rect x="26" y="5.5" width="10" height="2" rx="1" fill="' + txt + '" opacity=".35"/>' +
+        '<rect x="40" y="5.5" width="10" height="2" rx="1" fill="' + txt + '" opacity=".35"/>' +
+        // гурван тоо
+        '<rect x="6"  y="17" width="34" height="16" rx="3" fill="' + surf + '"/>' +
+        '<rect x="44" y="17" width="34" height="16" rx="3" fill="' + surf + '"/>' +
+        '<rect x="82" y="17" width="32" height="16" rx="3" fill="' + surf + '"/>' +
+        '<rect x="10" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+        '<rect x="48" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+        '<rect x="86" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+        // гол товч
+        '<rect x="6" y="38" width="108" height="13" rx="3" fill="' + acc + '"/>' +
+        // мөрүүд
+        '<rect x="6" y="55" width="108" height="7" rx="2" fill="' + surf + '"/>' +
+        '<rect x="6" y="65" width="108" height="7" rx="2" fill="' + surf + '"/>' +
+        '<rect x="10" y="57.5" width="26" height="2" rx="1" fill="' + txt + '" opacity=".5"/>' +
+        '<rect x="10" y="67.5" width="20" height="2" rx="1" fill="' + txt + '" opacity=".5"/>' +
+        '</svg>';
+    }
+
     var worldsHtml = WORLDS.map(function (w) {
-      var bars = w.swatch.map(function (c) { return '<span style="background:' + c + '"></span>'; }).join('');
       return '<button class="tp-w" data-w="' + w.id + '">' +
-             '<div class="tp-prev">' + bars +
-               '<b style="color:' + w.swatch[3] + '">' + w.cn + '</b></div>' +
+             preview(w) +
              '<div class="tp-n">' + w.name + (w.id === DEFAULT_WORLD ? ' <i>үндсэн</i>' : '') + '</div>' +
              '<div class="tp-d">' + w.sub + '</div></button>';
     }).join('');

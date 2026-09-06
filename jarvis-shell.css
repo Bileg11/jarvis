@@ -189,3 +189,75 @@
   border-radius: var(--r-lg); padding: var(--sp-5);
 }
 .jv-block { margin-bottom: var(--sp-7); }
+
+/* ══ ДООРООС ГАРАХ САМБАР ════════════════════════════════════════ */
+.jv-sheet-back {
+  position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.55);
+  opacity: 0; transition: opacity var(--t-med);
+}
+.jv-sheet-back.in { opacity: 1; }
+.jv-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 91;
+  background: var(--surface); border-top: 1px solid var(--border);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+  padding: var(--sp-5) var(--sp-4) calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+  max-height: 88vh; overflow-y: auto;
+  transform: translateY(100%); transition: transform var(--t-med) cubic-bezier(.2,.8,.2,1);
+}
+.jv-sheet.in { transform: translateY(0); }
+@media (min-width: 720px) {
+  .jv-sheet {
+    left: 50%; right: auto; bottom: auto; top: 50%; width: 520px; max-width: calc(100vw - 32px);
+    border: 1px solid var(--border); border-radius: var(--r-lg);
+    transform: translate(-50%,-46%); opacity: 0;
+  }
+  .jv-sheet.in { transform: translate(-50%,-50%); opacity: 1; }
+}
+.jv-sheet-grip { width: 38px; height: 4px; border-radius: 99px; background: var(--border-strong); margin: 0 auto var(--sp-4); }
+@media (min-width: 720px) { .jv-sheet-grip { display: none; } }
+.jv-sheet h2 { font-size: var(--fs-xl); font-weight: var(--w-bold); margin: 0 0 var(--sp-1); }
+.jv-sheet p.sub { font-size: var(--fs-sm); color: var(--text-2); margin: 0 0 var(--sp-5); }
+.jv-sheet-done {
+  width: 100%; min-height: var(--tap); margin-top: var(--sp-6);
+  border: none; border-radius: var(--r-md);
+  background: var(--accent); color: var(--accent-ink);
+  font-family: var(--font-ui); font-size: var(--fs-md); font-weight: var(--w-cta); cursor: pointer;
+}
+
+/* Самбар доторх элементүүд */
+.jv-field { margin-bottom: var(--sp-5); }
+.jv-field > label { display: block; font-size: var(--fs-sm); color: var(--text-2); margin-bottom: var(--sp-2); }
+.jv-num {
+  display: flex; align-items: center; gap: var(--sp-3);
+}
+.jv-num input {
+  flex: 1; min-width: 0; min-height: var(--tap); padding: 0 var(--sp-4);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md);
+  color: var(--text); font-family: var(--font-ui); font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
+}
+.jv-num input:focus { outline: none; border-color: var(--accent); }
+.jv-num span { font-size: var(--fs-sm); color: var(--text-3); flex: 0 0 auto; }
+
+/* Сонголтын товчнууд */
+.jv-chips { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.jv-chip {
+  min-height: 40px; padding: 0 var(--sp-4);
+  border: 1px solid var(--border); border-radius: var(--r-pill);
+  background: var(--surface-2); color: var(--text-2);
+  font-family: var(--font-ui); font-size: var(--fs-sm); cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast);
+}
+.jv-chip:hover { border-color: var(--border-strong); color: var(--text); }
+.jv-chip.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-text); font-weight: var(--w-med); }
+
+/* Долоо хоногийн төлөвлөгөө */
+.jv-plan { display: flex; flex-direction: column; gap: 1px; }
+.jv-plan-row {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-2) 0; border-bottom: 1px solid var(--border);
+}
+.jv-plan-row:last-child { border-bottom: none; }
+.jv-plan-row > b { flex: 0 0 64px; font-size: var(--fs-sm); font-weight: var(--w-med); color: var(--text-2); }
+.jv-plan-row.today > b { color: var(--accent-text); }
+.jv-plan-row select { flex: 1; min-width: 0; min-height: 40px; font-size: var(--fs-sm); }

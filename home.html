@@ -95,7 +95,8 @@ function jvSave(r) {
 // Онооны томьёо — app.js-ийн getDailyScore()-той ижил
 function jvScore(r, dateStr) {
   if (!r) return 0;
-  var s = Math.round((Math.min(r.water || 0, 8) / 8) * 25);
+  var cups = (typeof jvCups === 'function') ? jvCups() : 8;
+  var s = Math.round((Math.min(r.water || 0, cups) / cups) * 25);
   if (r.exercise) s += 20;
   if (r.hanzi)    s += 20;
   if (r.read)     s += 15;
@@ -117,6 +118,159 @@ function jvStreak() {
     }
   } catch (e) {}
   return 0;
+}
+
+
+// ══ ТОХИРГОО ═══════════════════════════════════════════════════════
+// Ус: өдрийн зорилт (мл) ба нэг аяганы хэмжээ (мл).
+// Анхдагч 2000/250 = 8 аяга — өмнөх зан төлөвтэй яг адилхан үлдэнэ.
+function jvCfg() {
+  var d = { goalMl: 2000, cupMl: 250 };
+  try {
+    var c = JSON.parse(localStorage.getItem('jarvis_water_cfg') || 'null');
+    if (c && c.goalMl > 0 && c.cupMl > 0) return c;
+  } catch (e) {}
+  return d;
+}
+function jvSaveCfg(c) { localStorage.setItem('jarvis_water_cfg', JSON.stringify(c)); }
+function jvCups() { var c = jvCfg(); return Math.max(1, Math.round(c.goalMl / c.cupMl)); }
+function jvLitre(ml) {
+  return (ml >= 1000 ? (ml / 1000).toFixed(ml % 1000 === 0 ? 0 : 1) + ' л'
+                     : ml + ' мл');
+}
+
+// ══ ДАСГАЛ ═════════════════════════════════════════════════════════
+var JV_WORKOUTS = ['Цээж','Нуруу','Хөл','Мөр','Гар','Гэдэс','Бүтэн бие','Гүйлт','Алхалт','Амралт'];
+
+function jvPlan() {
+  try {
+    var p = JSON.parse(localStorage.getItem('jarvis_workout_plan') || 'null');
+    if (p) return p;
+  } catch (e) {}
+  return { 0:'Амралт', 1:'Цээж', 2:'Нуруу', 3:'Хөл', 4:'Мөр', 5:'Бүтэн бие', 6:'Амралт' };
+}
+function jvSavePlan(p) { localStorage.setItem('jarvis_workout_plan', JSON.stringify(p)); }
+function jvTodayPlan() { return jvPlan()[new Date().getDay()] || ''; }
+
+function jvLog(dateStr) {
+  try { return JSON.parse(localStorage.getItem('jarvis_workout_' + (dateStr || jvToday())) || 'null'); }
+  catch (e) { return null; }
+}
+function jvSaveLog(log) {
+  localStorage.setItem('jarvis_workout_' + jvToday(), JSON.stringify(log));
+}
+
+// ══ ДООРООС ГАРАХ САМБАР ═══════════════════════════════════════════
+var _sheet = null, _sheetBack = null;
+function jvSheet(title, sub, bodyHtml, onDone) {
+  jvCloseSheet();
+  _sheetBack = document.createElement('div');
+  _sheetBack.className = 'jv-sheet-back';
+  _sheetBack.addEventListener('click', jvCloseSheet);
+
+  _sheet = document.createElement('div');
+  _sheet.className = 'jv-sheet';
+  _sheet.setAttribute('role', 'dialog');
+  _sheet.innerHTML = '<div class="jv-sheet-grip"></div><h2>' + title + '</h2>' +
+                     '<p class="sub">' + sub + '</p>' + bodyHtml +
+                     '<button class="jv-sheet-done">Болсон</button>';
+
+  document.body.appendChild(_sheetBack);
+  document.body.appendChild(_sheet);
+  requestAnimationFrame(function () {
+    _sheetBack.classList.add('in'); _sheet.classList.add('in');
+  });
+  _sheet.querySelector('.jv-sheet-done').addEventListener('click', function () {
+    if (onDone) onDone(_sheet);
+    jvCloseSheet();
+    renderAll();
+  });
+  document.addEventListener('keydown', _sheetKey);
+}
+function _sheetKey(e) { if (e.key === 'Escape') jvCloseSheet(); }
+function jvCloseSheet() {
+  document.removeEventListener('keydown', _sheetKey);
+  [_sheet, _sheetBack].forEach(function (el) {
+    if (!el) return;
+    el.classList.remove('in');
+    setTimeout(function () { el.remove(); }, 250);
+  });
+  _sheet = _sheetBack = null;
+}
+
+// ── Усны самбар ───────────────────────────────────────────────────
+function jvWaterSheet() {
+  var c = jvCfg(), r = jvLoad();
+  jvSheet('Ус', 'Өдрийн зорилтоо болон аяганыхаа хэмжээг тохируул.',
+    '<div class="jv-field"><label>Өдрийн зорилт</label>' +
+      '<div class="jv-num"><input id="w-goal" type="number" min="200" max="6000" step="100" value="' + c.goalMl + '"><span>мл</span></div></div>' +
+    '<div class="jv-field"><label>Нэг аяга / шил</label>' +
+      '<div class="jv-num"><input id="w-cup" type="number" min="50" max="1500" step="50" value="' + c.cupMl + '"><span>мл</span></div></div>' +
+    '<div class="jv-field"><label>Өнөөдөр уусан</label>' +
+      '<div class="jv-num"><input id="w-now" type="number" min="0" max="40" step="1" value="' + (r.water || 0) + '"><span>аяга</span></div></div>',
+    function (sh) {
+      var goal = parseInt(sh.querySelector('#w-goal').value, 10);
+      var cup  = parseInt(sh.querySelector('#w-cup').value, 10);
+      var now  = parseInt(sh.querySelector('#w-now').value, 10);
+      if (goal > 0 && cup > 0) jvSaveCfg({ goalMl: goal, cupMl: cup });
+      var rr = jvLoad();
+      rr.water = Math.max(0, isNaN(now) ? rr.water : now);
+      jvSave(rr);
+    });
+}
+
+// ── Дасгалын самбар ───────────────────────────────────────────────
+function jvWorkoutSheet() {
+  var log = jvLog() || { type: jvTodayPlan(), mins: 45 };
+  var chips = JV_WORKOUTS.map(function (t) {
+    return '<button class="jv-chip' + (t === log.type ? ' on' : '') + '" data-t="' + t + '">' + t + '</button>';
+  }).join('');
+
+  jvSheet('Дасгал', 'Ямар дасгал хийснээ тэмдэглэ.',
+    '<div class="jv-field"><label>Төрөл</label><div class="jv-chips" id="w-types">' + chips + '</div></div>' +
+    '<div class="jv-field"><label>Хугацаа</label>' +
+      '<div class="jv-num"><input id="w-mins" type="number" min="5" max="300" step="5" value="' + (log.mins || 45) + '"><span>минут</span></div></div>' +
+    '<div class="jv-field"><button class="jv-chip" id="w-open-plan" style="width:100%">Долоо хоногийн төлөвлөгөө →</button></div>',
+    function (sh) {
+      var on = sh.querySelector('.jv-chip.on');
+      var mins = parseInt(sh.querySelector('#w-mins').value, 10) || 45;
+      jvSaveLog({ type: on ? on.dataset.t : jvTodayPlan(), mins: mins });
+      var rr = jvLoad();
+      rr.exercise = true;
+      jvSave(rr);
+    });
+
+  _sheet.querySelector('#w-types').addEventListener('click', function (e) {
+    var b = e.target.closest('.jv-chip'); if (!b) return;
+    _sheet.querySelectorAll('#w-types .jv-chip').forEach(function (x) { x.classList.remove('on'); });
+    b.classList.add('on');
+  });
+  _sheet.querySelector('#w-open-plan').addEventListener('click', function () {
+    jvCloseSheet(); setTimeout(jvPlanSheet, 260);
+  });
+}
+
+// ── Долоо хоногийн төлөвлөгөө ─────────────────────────────────────
+function jvPlanSheet() {
+  var names = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+  var p = jvPlan(), today = new Date().getDay();
+  var rows = names.map(function (n, i) {
+    var opts = JV_WORKOUTS.map(function (t) {
+      return '<option' + (p[i] === t ? ' selected' : '') + '>' + t + '</option>';
+    }).join('');
+    return '<div class="jv-plan-row' + (i === today ? ' today' : '') + '">' +
+           '<b>' + n + '</b><select data-d="' + i + '">' + opts + '</select></div>';
+  }).join('');
+
+  jvSheet('Долоо хоногийн төлөвлөгөө', 'Өдөр бүр ямар дасгал хийхээ товло. Нүүр хуудсанд өнөөдрийнх нь харагдана.',
+    '<div class="jv-plan">' + rows + '</div>',
+    function (sh) {
+      var np = {};
+      sh.querySelectorAll('.jv-plan-row select').forEach(function (sel) {
+        np[sel.dataset.d] = sel.value;
+      });
+      jvSavePlan(np);
+    });
 }
 
 // ── Толгой ────────────────────────────────────────────────────────
@@ -154,8 +308,8 @@ function renderStats() {
 // тодруулагдана — "яг одоо үүнийг хий" гэсэн ганц зөвлөмж.
 var ACTS = [
   { key: 'hanzi',    icon: 'hsk',     name: '20 шинэ үг цээжил', note: '10 минут', go: 'hsk' },
-  { key: 'water',    icon: 'water',   name: 'Ус уу' },
-  { key: 'exercise', icon: 'gym',     name: 'Дасгал хий',        note: '45 минут' },
+  { key: 'water',    icon: 'water',   name: 'Ус уу',      sheet: jvWaterSheet },
+  { key: 'exercise', icon: 'gym',     name: 'Дасгал хий', sheet: jvWorkoutSheet },
   { key: 'read',     icon: 'book',    name: 'Ном унш',           note: '20 хуудас' },
   { key: 'journal',  icon: 'pen',     name: 'Тэмдэглэл бич',     note: 'Өдрийн эцэст', go: 'life' },
 ];
@@ -183,7 +337,7 @@ function renderActs() {
   var todo = [], done = [];
 
   ACTS.forEach(function (a) {
-    var isDone = a.key === 'water' ? (r.water >= 8) : !!r[a.key];
+    var isDone = a.key === 'water' ? (r.water >= jvCups()) : !!r[a.key];
     (isDone ? done : todo).push({ a: a, done: isDone });
   });
 
@@ -201,9 +355,25 @@ function renderActs() {
   todo.concat(done).forEach(function (it, i) {
     var a = it.a, first = (i === 0 && !it.done);
     var note = a.note || '';
-    if (a.key === 'water') note = r.water + ' / 8 аяга';
+    if (a.key === 'water') {
+      var c = jvCfg();
+      // Хоёр тоог НЭГ нэгжээр харуулна — "0 мл / 2 л" гэж уншихад эвгүй
+      var drank = (r.water || 0) * c.cupMl;
+      var big   = c.goalMl >= 1000;
+      var fmt   = function (ml) {
+        return big ? (ml / 1000).toFixed(ml % 1000 === 0 ? 0 : 1) : String(ml);
+      };
+      note = fmt(drank) + ' / ' + fmt(c.goalMl) + (big ? ' л' : ' мл') +
+             ' · ' + (r.water || 0) + '/' + jvCups() + ' аяга';
+    }
+    if (a.key === 'exercise') {
+      var lg = jvLog();
+      note = it.done && lg ? lg.type + ' · ' + lg.mins + ' минут'
+                           : (jvTodayPlan() ? 'Өнөөдөр: ' + jvTodayPlan() : 'Төлөвлөгөө тохируулаагүй');
+    }
 
     var el = document.createElement(a.go && !it.done ? 'a' : 'div');
+    if (a.sheet) { el.dataset.sheet = a.key; el.style.cursor = 'pointer'; }
     el.className = 'jv-act' + (first ? ' jv-act--next' : '') + (it.done ? ' jv-act--done' : '');
     if (a.go && !it.done) el.href = window.jarvisShell.href(a.go);
 
@@ -229,10 +399,20 @@ function renderActs() {
 document.getElementById('a-list').addEventListener('click', function (e) {
   var w = e.target.closest('[data-water]');
   var d = e.target.closest('[data-done]');
-  if (!w && !d) return;
+  if (!w && !d) {
+    // Мөрийг өөрийг нь дарвал тохиргоо/тэмдэглэлийн самбар нээгдэнэ
+    var row = e.target.closest('[data-sheet]');
+    if (row) {
+      e.preventDefault();
+      if (row.dataset.sheet === 'water')    jvWaterSheet();
+      if (row.dataset.sheet === 'exercise') jvWorkoutSheet();
+    }
+    return;
+  }
   e.preventDefault();
+  if (d && d.getAttribute('data-done') === 'exercise') { jvWorkoutSheet(); return; }
   var r = jvLoad();
-  if (w) r.water = Math.min(8, (r.water || 0) + 1);
+  if (w) r.water = Math.min(jvCups(), (r.water || 0) + 1);
   if (d) r[d.getAttribute('data-done')] = true;
   jvSave(r);
   renderAll();
