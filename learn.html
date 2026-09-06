@@ -374,7 +374,13 @@ window.addEventListener('load', () => {
         else { showScreen('path'); renderPath(); }
       });
     } else {
-      showScreen('login');
+      // Нэвтрэхгүйгээр тоглох боломжтой — явц утсан дээрээ хадгалагдана.
+      // (Өмнө нь нэвтрэх хана гарч, шинэ хүн цааш орж чаддаггүй байв.)
+      currentUser = null;
+      state = loadLocal();
+      updateAvatar(null);
+      if (!state.onboarded) { showScreen('onboard'); }
+      else { showScreen('path'); renderPath(); }
     }
   });
 });
@@ -445,13 +451,31 @@ async function signInGoogle() {
   catch(e) { if (e.code !== 'auth/popup-closed-by-user') showToast('Алдаа: ' + e.message); }
 }
 function showUserMenu() {
-  if (!currentUser) return;
+  if (!currentUser) {
+    // Нэвтрээгүй — хүсвэл нэвтэрч, явцаа бүх төхөөрөмжид синк хийнэ
+    if (confirm('Нэвтэрвэл явц чинь утас, компьютер хоёрт синк болно.\n\nОдоо нэвтрэх үү?')) {
+      _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function () {});
+    }
+    return;
+  }
   if (confirm(currentUser.displayName + '\n\nГарах уу?')) {
-    _auth.signOut(); currentUser=null; state=defaultState(); saveLocal(); showScreen('login');
+    _auth.signOut();
+    currentUser = null;
+    state = loadLocal();
+    updateAvatar(null);
+    showScreen('path'); renderPath();
   }
 }
 function updateAvatar(user) {
   const el = document.getElementById('user-avatar');
+  if (!el) return;
+  if (!user) {
+    // Нэвтрээгүй — дарвал нэвтэрч, явцаа бүх төхөөрөмжид синк хийнэ
+    el.textContent = '☁';
+    el.title = 'Нэвтрэх — явцаа бүх төхөөрөмжид хадгална';
+    return;
+  }
+  el.title = user.displayName || '';
   if (user.photoURL) el.innerHTML = `<img src="${user.photoURL}">`;
   else el.textContent = (user.displayName||'U')[0].toUpperCase();
 }

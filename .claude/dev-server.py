@@ -3,6 +3,15 @@
 import http.server, socketserver, sys
 
 class NoCache(http.server.SimpleHTTPRequestHandler):
+    # Жинхэнэ вэб дээр /home → home.html руу очдог. Тестийн сервер ч
+    # ижилхэн ажиллаж байж бодит нөхцөлийг зөв дуурайна.
+    def translate_path(self, path):
+        import os
+        p = super().translate_path(path)
+        if not os.path.exists(p) and not p.endswith('.html') and os.path.exists(p + '.html'):
+            return p + '.html'
+        return p
+
     def end_headers(self):
         self.send_header('Cache-Control', 'no-store, must-revalidate')
         self.send_header('Pragma', 'no-cache')

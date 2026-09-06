@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>T.H.R.E.E. OS — Гарын авлага</title>
 <link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
   <script src="theme.js"></script>
   <style>
 :root {
@@ -228,7 +229,11 @@ kbd {
   .feature-grid { grid-template-columns:1fr; }
   .cmd-table td:first-child { font-size:11px; }
 }
+
+/* Шинэ 5 хаалганы цэс орсон тул хуучин BACK/HOME товч илүүц болов */
+#back-btn, #back-btn + button { display: none !important; }
 </style>
+<script src="jarvis-config.js"></script>
 </head>
 <body>
 
@@ -1244,5 +1249,6 @@ function goBack() {
   }
 })();
 </script>
+<script src="jarvis-shell.js" data-page="profile"></script>
 </body>
 </html>

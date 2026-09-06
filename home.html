@@ -68,6 +68,19 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 </main>
 
+<script>
+// ── АНХНЫ ТОХИРГОО ────────────────────────────────────────────────
+// Тохиргоогоо хийгээгүй хүнийг эхлээд тохиргооны урсгал руу явуулна.
+// (Өмнө нь тохиргоо хуучин самбарын дотор нуугдсан тул шинэ хүн
+//  нэр, зорилго, AI түлхүүргүй үлдэж, Jarvis чат ажиллахгүй байв.)
+(function () {
+  var done = false;
+  try { done = localStorage.getItem('jarvis_setup_complete') === '1'; } catch (e) {}
+  if (!done) {
+    location.replace(window.jarvisHref ? jarvisHref('index') : 'index.html');
+  }
+})();
+</script>
 <script src="jarvis-shell.js" data-page="home"></script>
 <script>
 'use strict';

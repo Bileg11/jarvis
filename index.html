@@ -3351,13 +3351,17 @@ window._skipFirstMission = function() {
 };
 
 window._launchOS = function() {
+  // Анхны тохиргоо дууссаны дараа ШИНЭ нүүр хуудас руу орно.
+  // (Өмнө нь хуучин самбар руу ордог байсан тул шинэ хэрэглэгч
+  //  тохиргоогоо хийчхээд танихгүй дэлгэц дээр гарч ирдэг байв.)
+  const go = () => { location.href = window.jarvisHref ? jarvisHref('home') : 'home.html'; };
   const el = document.getElementById('first-mission');
   if (el) {
     el.style.transition = 'opacity .5s ease';
     el.style.opacity = '0';
-    setTimeout(() => { el.remove(); runBootSequence(); }, 500);
+    setTimeout(() => { el.remove(); go(); }, 500);
   } else {
-    runBootSequence();
+    go();
   }
 };
 
