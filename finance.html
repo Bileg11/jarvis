@@ -166,7 +166,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
   <div class="header">
     <div class="header-left">
-      <a href="/" class="back">← JARVIS</a>
+      
       <div>
         <div class="page-title">💰 Санхүү <span class="live-dot" id="fin-live-dot" title="Холбогдож байна..."></span></div>
         <div class="page-sub">Орлого · Зарлага · Хуримтлал</div>
@@ -218,7 +218,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       🤖 A.C.E. САНХҮҮГИЙН ЗӨВЛӨГӨӨ
       <button class="btn-ai" onclick="getAiAdvice()">↻ Шинэчлэх</button>
     </div>
-    <div class="ai-advice-text" id="ai-advice-text">Санхүүгийн өгөгдлөө ачааллаж байна...</div>
+    <div class="ai-advice-text" id="ai-advice-text">Эхний гүйлгээгээ нэмээрэй — тэгвэл зарлагын бүтэц, сарын харьцуулалт, зөвлөгөө энд гарч ирнэ.</div>
   </div>
 
   <!-- Charts -->
@@ -765,6 +765,16 @@ function renderBarChart() {
 // ── AI Advice ─────────────────────────────────────────────────────
 async function getAiAdvice() {
   const el = document.getElementById('ai-advice-text');
+
+  // Гүйлгээ огт байхгүй бол AI дуудах шаардлагагүй — юу хийхийг заая.
+  // (Өмнө нь "ачааллаж байна..." гэж мөнхөд гацдаг байсан.)
+  if (!_txns.length) {
+    el.className = 'ai-advice-text';
+    el.textContent = 'Эхний гүйлгээгээ нэмээрэй — тэгвэл зарлагын бүтэц, ' +
+                     'сарын харьцуулалт, зөвлөгөө энд гарч ирнэ.';
+    return;
+  }
+
   el.className = 'ai-advice-text loading';
   el.textContent = '⚙ Шинжилж байна...';
 
