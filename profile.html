@@ -435,6 +435,9 @@
       <input id="lm-pass"  type="password" placeholder="Нууц үг" autocomplete="current-password">
       <button id="lm-btn" onclick="doLogin()">Нэвтрэх</button>
       <div id="lm-err" class="lm-err"></div>
+      <button onclick="skipLogin()" style="margin-top:10px;background:none;border:none;
+        color:var(--text-2);font-family:var(--font-ui);font-size:13px;cursor:pointer;
+        text-decoration:underline">Одоохондоо нэвтрэхгүй</button>
     </div>
   </div>
 
@@ -450,9 +453,25 @@
       setTimeout(() => t.classList.remove('show'), 2500);
     }
 
+    function skipLogin() {
+      document.getElementById('login-modal').style.display = 'none';
+      try { sessionStorage.setItem('jarvis_skip_login', '1'); } catch (e) {}
+    }
+
     function renderUser(user) {
       const modal = document.getElementById('login-modal');
-      if (!user) { modal.style.display = 'flex'; return; }
+      if (!user) {
+        // Дүр төрх, гарын авлага, хуучин самбар зэрэг нь нэвтрэлт шаарддаггүй.
+        // Тиймээс цонхыг хаах боломжтой — үүлэн синк л ажиллахгүй.
+        let skip = false;
+        try { skip = sessionStorage.getItem('jarvis_skip_login') === '1'; } catch (e) {}
+        modal.style.display = skip ? 'none' : 'flex';
+        const nm = document.getElementById('p-name');
+        if (nm) nm.textContent = 'Нэвтрээгүй';
+        const em = document.getElementById('p-email');
+        if (em) em.textContent = 'Үүлэн синк унтарсан — тохиргоо ажиллана';
+        return;
+      }
       modal.style.display = 'none';
 
       const letter = user.email ? user.email[0].toUpperCase() : '?';
