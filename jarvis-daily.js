@@ -227,3 +227,6 @@ function jvHasNote() {
   var log = jvLog0();
   return !!(log && log.note && log.note.trim());
 }
+
+// Өнөөдөр дасгал хийсэн эсэх — тэмдэглэлээс уншина
+function jvDidWorkout() { var l = jvLog(); return !!(l && l.type && l.type !== 'Амралт'); }

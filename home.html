@@ -93,18 +93,28 @@ function jvDay(offset) {
   return window.jarvisDay ? jarvisDay(d) : d.toISOString().slice(0,10);
 }
 
+// Оноо — дэлгэц дээр харагдаж буй мөрүүдтэй ЯГ ижил эх сурвалжаас.
+// (Өмнө нь дасгал, тэмдэглэлийг тусдаа тэмдэглэгээнээс уншдаг байсан
+//  тул "хийгдсэн" гэж харагдаад оноо нь нэмэгддэггүй байв.)
 function jvScore(r, dateStr) {
   if (!r) return 0;
+  var day = dateStr || jvToday();
+  var log = null;
+  try { log = JSON.parse(localStorage.getItem('jarvis_log_' + day) || 'null'); } catch (e) {}
+  var wk = null;
+  try { wk = JSON.parse(localStorage.getItem('jarvis_workout_' + day) || 'null'); } catch (e) {}
+
   var cups = (typeof jvCups === 'function') ? jvCups() : 8;
-  var s = Math.round((Math.min(r.water || 0, cups) / cups) * 25);
-  if (r.exercise) s += 20;
-  if (r.hanzi)    s += 20;
-  if (r.read)     s += 15;
-  if (r.journal)  s += 10;
-  try {
-    var log = JSON.parse(localStorage.getItem('jarvis_log_' + (dateStr || jvToday())) || 'null');
-    if (log && log.shower) s += 10;
-  } catch (e) {}
+  var drank = (log && log.water && typeof log.water.total_ml === 'number')
+    ? Math.round(log.water.total_ml / ((typeof jvCfg === 'function') ? jvCfg().cupMl : 250))
+    : (r.water || 0);
+
+  var s = Math.round((Math.min(drank, cups) / cups) * 25);
+  if (wk && wk.type && wk.type !== 'Амралт') s += 20; else if (r.exercise) s += 20;
+  if (r.hanzi) s += 20;
+  if (r.read)  s += 15;
+  if (log && log.note && log.note.trim()) s += 10; else if (r.journal) s += 10;
+  if (log && log.shower) s += 10;
   return Math.min(100, s);
 }
 
@@ -188,9 +198,10 @@ function renderActs() {
     // Тэмдэглэл — тусад нь "хийсэн" гэж дардаггүй, ЖИНХЭНЭ бичсэн
     // эсэхээс уншина. (Өмнө нь хоёр газар тэмдэглэх шаардлагатай байв.)
     var isDone;
-    if (a.key === 'water')        isDone = jvWaterMl() >= jvCfg().goalMl;
-    else if (a.key === 'journal') isDone = jvHasNote();
-    else                          isDone = !!r[a.key];
+    if (a.key === 'water')         isDone = jvWaterMl() >= jvCfg().goalMl;
+    else if (a.key === 'journal')  isDone = jvHasNote();
+    else if (a.key === 'exercise') isDone = !!jvLog();   // жинхэнэ тэмдэглэснээс
+    else                           isDone = !!r[a.key];
     (isDone ? done : todo).push({ a: a, done: isDone });
   });
 

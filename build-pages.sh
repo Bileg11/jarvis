@@ -8,6 +8,9 @@ mkdir -p _site
 # Үндсэн web файлууд
 cp design-system.css theme.js speak.js index.html index.css jarvis-config.js app.js gemini.js firebase-config.js themes.js intel.js hsk4-bank.js style.css sw.js manifest.json icon.svg _site/ 2>/dev/null || true
 
+# Шинэ бүрхүүл ба нүүр хуудас (энэ мөр дутсанаас вэб хувилбар цэсгүй болдог байв)
+cp home.html jarvis-shell.css jarvis-shell.js jarvis-daily.js _site/ 2>/dev/null || true
+
 # HTML хуудаснууд
 cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html finance.html hsk-signup.html learn.html login.html _site/ 2>/dev/null || true
 
@@ -20,8 +23,9 @@ cp icon-192.png icon-512.png apple-touch-icon.png _site/ 2>/dev/null || true
 # Assets
 cp -r assets _site/assets 2>/dev/null || true
 
-# SPA fallback
-cp index.html _site/404.html 2>/dev/null || true
+# Хуучин самбар /index дээр хэвээр (анхны тохиргоо мөн тэнд байдаг).
+# Сайтын үндэс дээр шинэ нүүр гарна — доорх _redirects үүнийг хийнэ.
+cp home.html _site/404.html 2>/dev/null || true
 
 # ── CACHE-BUST ───────────────────────────────────────────────────
 BUILD_ID=$(date +%s)
@@ -31,7 +35,7 @@ done
 
 # ── MINIFY JS ───────────────────────────────────────────────────
 echo "📦 Minifying JS..."
-for f in _site/jarvis-config.js _site/app.js _site/gemini.js _site/firebase-config.js _site/intel.js _site/themes.js _site/hsk4-bank.js; do
+for f in _site/jarvis-config.js _site/jarvis-shell.js _site/jarvis-daily.js _site/app.js _site/gemini.js _site/firebase-config.js _site/intel.js _site/themes.js _site/hsk4-bank.js; do
   [ -f "$f" ] && npx terser "$f" --compress --mangle --output "$f" 2>/dev/null && echo "  ✓ $(basename $f)" || true
 done
 
@@ -62,8 +66,9 @@ HEADERS
 
 # ── REDIRECTS ───────────────────────────────────────────────────
 cat > _site/_redirects <<'REDIRECTS'
-/hsk           /hsk-signup.html 302
+/              /home.html 200
 /hsk-app       /hsk-signup.html 302
+/start         /hsk-signup.html 302
 REDIRECTS
 
 echo ""
