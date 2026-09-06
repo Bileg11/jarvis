@@ -560,7 +560,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <button onclick="openAct('weakspot')"><b>Сул үгс</b><i>Алддаг үгсээ давтах</i></button>
       <button onclick="openAct('sentence')"><b>Өгүүлбэр зохиох</b><i>Мэддэг үгээрээ</i></button>
       <button onclick="openAct('mock')"><b>Дуурайлган шалгалт</b><i>40 асуулт · 60 минут</i></button>
-      <button onclick="openAct('cram')"><b>Cram</b><i>Эрчимжүүлсэн давталт</i></button>
+      <button onclick="openAct('cram')"><b>Эрчимжүүлсэн давталт</b><i>Эрчимжүүлсэн давталт</i></button>
     </div>
   </div>
 
@@ -667,7 +667,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <div class="empty">Ачааллаж байна...</div>
     </div>
     <div class="card" style="padding:12px 16px;margin-top:0">
-      <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">Cram явц</div>
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">Давталтын явц</div>
       <div class="prog-bar"><div class="prog-fill" id="cram-prog-fill" style="width:0%"></div></div>
       <div style="font-size:11px;color:var(--text-3);text-align:right;margin-top:4px" id="cram-prog-label">0 / 0</div>
     </div>
@@ -1084,7 +1084,7 @@ function updatePlan() {
 // (Өмнө нь 10 таб нэг эгнээнд шахагдаж, дэлгэцнээс халиад байсан.)
 const HK_TITLES = {
   session:'Өнөөдрийн үг', vault:'Үгийн сан', drill:'Давтах',
-  weakspot:'Сул үгс', cram:'Cram', test:'Шалгалт',
+  weakspot:'Сул үгс', cram:'Эрчимжүүлсэн давталт', test:'Шалгалт',
   mock:'Дуурайлган шалгалт', sentence:'Өгүүлбэр зохиох',
   conversation:'Ярилцах', progress:'Явц',
 };

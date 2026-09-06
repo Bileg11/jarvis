@@ -931,8 +931,8 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <button class="os-btn intel" id="intel-btn" onclick="scanIntel()">
         <span class="btn-dot"></span>INTEL
       </button>
-      <button class="os-btn" onclick="onClear()">CLR</button>
-      <button class="os-btn danger" onclick="window.signOut && signOut()">EXIT</button>
+      <button class="os-btn" onclick="onClear()">Цэвэрлэх</button>
+      <button class="os-btn danger" onclick="window.signOut && signOut()">Хаах</button>
     </div>
   </header>
 
@@ -1025,12 +1025,12 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <!-- CHAT PANEL -->
       <div class="chat-panel glass" id="chat-panel">
         <div class="panel-hdr-row">
-          <div class="panel-hdr">COMM CHANNEL // JARVIS AI</div>
+          <div class="panel-hdr">Jarvis-тай яриа</div>
           <div class="panel-btns">
             <button class="os-btn intel" id="intel-btn2" onclick="scanIntel()">
               <span class="btn-dot"></span>INTEL
             </button>
-            <button class="os-btn" onclick="onClear()">CLR</button>
+            <button class="os-btn" onclick="onClear()">Цэвэрлэх</button>
           </div>
         </div>
         <div class="spectrum-wrap" id="spectrum-wrap">
@@ -1039,7 +1039,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
         <div class="messages" id="messages"></div>
         <div class="input-area" id="input-bar">
           <div id="token-row" class="token-row" style="display:none">
-            <input id="token-input" type="password" placeholder="ENTER API KEY...">
+            <input id="token-input" type="password" placeholder="AI түлхүүрээ энд оруул…">
             <button class="os-btn" onclick="saveToken()">INIT</button>
           </div>
           <div class="input-wrap">
@@ -1058,8 +1058,8 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <!-- DRILL PANEL -->
       <div class="drill-panel glass" id="drill-panel">
         <div class="panel-hdr-row">
-          <div class="panel-hdr">TARGET ACQUISITION // DRILL ACTIVE</div>
-          <button class="os-btn danger" onclick="stopDrill()">⊠ ABORT</button>
+          <div class="panel-hdr">Дасгал явж байна</div>
+          <button class="os-btn danger" onclick="stopDrill()">⊠ Зогсоох</button>
         </div>
 
         <div class="drill-progress">
@@ -1752,7 +1752,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     msgsEl.innerHTML=`
       <div class="empty-state">
         <div class="empty-icon">J · A · R · V · I · S</div>
-        <div class="empty-title">AWAITING COMMAND</div>
+        <div class="empty-title">Юу асуухаа бичээрэй</div>
         <div class="empty-sub">Асуултаа доор бичээрэй<br>Хятад хэлний дасгал — Хятад хэсэгт</div>
         <div class="quick-chips">
           <div class="chip intel" onclick="scanIntel()">◉ INTEL SCAN</div>

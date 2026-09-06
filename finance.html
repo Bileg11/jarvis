@@ -80,9 +80,9 @@ body{background:var(--bg);color:var(--text-b);font-family:var(--sans);font-size:
 .form-row{display:grid;grid-template-columns:80px 1fr 1fr auto;gap:8px;margin-bottom:8px}
 .form-row2{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
 select,input{background:var(--surf2);border:1px solid var(--border);border-radius:6px;color:var(--text-b);font-size:13px;padding:8px 10px;outline:none;transition:border .15s;font-family:var(--sans);width:100%}
-select:focus,input:focus{border-color:var(--green)}
+select:focus,input:focus{border-color:var(--accent)}
 .btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;white-space:nowrap}
-.btn-green{background:var(--green);color:var(--bg)}
+.btn-green{background:var(--accent);color:var(--accent-ink)}
 .btn-green:hover{background:var(--green2)}
 .btn-red{background:rgba(196,112,96,.12);border:1px solid var(--red);color:var(--red)}
 .btn-red:hover{background:rgba(196,112,96,.22)}
@@ -110,7 +110,7 @@ select:focus,input:focus{border-color:var(--green)}
 /* Currency tabs */
 .cur-tabs{display:flex;gap:4px;margin-bottom:12px}
 .cur-tab{padding:5px 14px;border-radius:5px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text);transition:all .15s}
-.cur-tab.active{background:var(--surf2);border-color:var(--green);color:var(--green)}
+.cur-tab.active{background:var(--surf2);border-color:var(--accent);color:var(--accent-text)}
 
 /* Empty */
 .empty{text-align:center;padding:28px;color:var(--text);opacity:.35;font-size:13px}
@@ -132,10 +132,15 @@ canvas{max-height:210px}
 
 /* Period tabs */
 .period-tabs{display:flex;gap:6px;margin-bottom:16px;overflow-x:auto;scrollbar-width:none}
+/* Нарийн дэлгэцэд хажуу тийш халихын оронд доошоо эвхэгдэнэ */
+@media (max-width:560px){
+  .period-tabs{flex-wrap:wrap;overflow-x:visible}
+  .period-tab{flex:1 1 auto;min-width:calc(33% - 6px);text-align:center;padding:9px 8px}
+}
 .period-tabs::-webkit-scrollbar{display:none}
 .period-tab{padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surf);color:var(--text);white-space:nowrap;flex-shrink:0;transition:all .15s}
 .period-tab:hover{border-color:var(--border-h)}
-.period-tab.active{background:var(--green);border-color:var(--green);color:var(--bg)}
+.period-tab.active{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 
 /* Modal */
 .modal-bg{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px}
@@ -185,7 +190,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     <button class="period-tab" data-p="3m"  onclick="setPeriod('3m',this)">3 сар</button>
     <button class="period-tab" data-p="6m"  onclick="setPeriod('6m',this)">6 сар</button>
     <button class="period-tab" data-p="all" onclick="setPeriod('all',this)">Бүх</button>
-    <button class="period-tab" data-p="custom" onclick="openCustomRange(this)">📅 Custom</button>
+    <button class="period-tab" data-p="custom" onclick="openCustomRange(this)">📅 Хугацаа сонгох</button>
   </div>
 
   <!-- Stats -->
@@ -201,12 +206,12 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <div class="stat-sub" id="stat-expense-cur">CNY</div>
     </div>
     <div class="stat">
-      <div class="stat-num" id="stat-savings" style="color:var(--amber)">0</div>
+      <div class="stat-num" id="stat-savings">0</div>
       <div class="stat-label">Хуримтлал</div>
       <div class="stat-sub">MNT</div>
     </div>
     <div class="stat">
-      <div class="stat-num" id="stat-txns" style="color:var(--blue)">0</div>
+      <div class="stat-num" id="stat-txns">0</div>
       <div class="stat-label">Гүйлгээ</div>
       <div class="stat-sub" id="stat-month-days"></div>
     </div>
@@ -367,7 +372,7 @@ function _periodRange() {
 }
 function _periodLabel() {
   return { '7d':'7 хоног', '1m':'1 сар', '3m':'3 сар', '6m':'6 сар', 'all':'Бүх хугацаа',
-           'custom': _customRange ? `${_customRange.from} → ${_customRange.to}` : 'Custom' }[_period];
+           'custom': _customRange ? `${_customRange.from} → ${_customRange.to}` : 'Хугацаа сонгох' }[_period];
 }
 
 function setPeriod(p, el) {
