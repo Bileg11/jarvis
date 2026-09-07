@@ -1004,11 +1004,21 @@ async function init() {
   const fromFS = await _loadFromFirestore();
   if (!fromFS) {
     _loadFromCache();
-    // Хоосон бол auto-seed
-    if (_words.length === 0 && _hskUid) {
-      showToast('Үгийн санг ачаалж байна...');
-      await _autoSeedVocab();
-      await _loadFromFirestore();
+    // Хоосон бол үгийн санг АВТОМАТААР ачаална.
+    // Урьд нь зөвхөн нэвтэрсэн хүнд ажилладаг байсан тул шинэ
+    // хэрэглэгч бүхэлдээ хоосон апп хараад юу ч хийж чаддаггүй байв.
+    if (_words.length === 0) {
+      const seed = _seedTargetWords();
+      if (seed.length) {
+        _words = seed.map(w => ({
+          h: w.word, p: w.pinyin || '', m: w.definition || w.en || '',
+          level: w.hsk_level || 1, mastered: false, mastery: 0, added: today(),
+        }));
+        saveWords(_words);
+        showToast('✓ ' + _words.length + ' үг бэлэн боллоо');
+      }
+      // Нэвтэрсэн бол үүлэн рүү нь мөн хуулна
+      if (_hskUid) { await _autoSeedVocab(); await _loadFromFirestore(); }
     }
   } else if (_hskUid) {
     // Top-up: шинээр нэмэгдсэн түвшний (HSK4/5) дутуу үгсийг нөхөж seed хийнэ
@@ -1064,11 +1074,21 @@ function updateStats() {
   if (document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
 }
 
+// Өдрийн зорилт — бодитой хязгаартай.
+// Тооцоолол нь "шалгалт хүртэл БҮХ үгийг мэдэх" гэж үздэг тул
+// шинэ хүнд "өдөрт 99 үг" гэх мэт биелэшгүй тоо гаргадаг байв.
+const HK_MIN_DAY = 5, HK_MAX_DAY = 30;
+function hkPerDay(remaining) {
+  const days = Math.max(1, Math.ceil((EXAM_DATE - Date.now()) / 86400000));
+  const raw  = Math.ceil(remaining / days);
+  return Math.min(HK_MAX_DAY, Math.max(HK_MIN_DAY, raw));
+}
+
 function updatePlan() {
   const words = getWords();
   const days  = Math.max(1, Math.ceil((EXAM_DATE - Date.now()) / 86400000));
   const remaining = words.filter(w => !w.mastered).length;
-  const perDay    = Math.ceil(remaining / days);
+  const perDay    = hkPerDay(remaining);
   const session   = getSession();
   const doneToday = session.known;
 
@@ -1144,7 +1164,7 @@ function switchTab(name) {
 function renderMenu() {
   const words  = getWords();
   const due    = words.filter(w => !w.mastered).length;
-  const perDay = Math.max(1, Math.ceil(due / Math.max(1, Math.ceil((EXAM_DATE - Date.now())/86400000))));
+  const perDay = hkPerDay(due);
 
   const go = document.getElementById('hk-go-label');
   if (go) go.textContent = 'Өнөөдрийн ' + perDay + ' үг';

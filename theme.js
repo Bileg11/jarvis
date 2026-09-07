@@ -209,6 +209,35 @@
     if (acc) acc.classList.toggle('show', world === 'night' || world === 'calm');
   }
 
+  // Дээж нь ЗУРААС биш, аппын жижиг загвар — тухайн дүр төрхөөр
+  // яг ямар харагдахыг нэг харцаар ойлгоно.
+  function preview(w) {
+    var bg = w.swatch[0], surf = w.swatch[1], acc = w.swatch[2], txt = w.swatch[3];
+    return '<svg class="tp-prev" viewBox="0 0 120 74" preserveAspectRatio="none" ' +
+           'role="img" aria-label="' + w.name + ' дүр төрхийн жишээ">' +
+      '<rect width="120" height="74" fill="' + bg + '"/>' +
+      // дээд эгнээ
+      '<rect width="120" height="12" fill="' + surf + '"/>' +
+      '<rect x="6" y="5" width="14" height="3" rx="1.5" fill="' + acc + '"/>' +
+      '<rect x="26" y="5.5" width="10" height="2" rx="1" fill="' + txt + '" opacity=".35"/>' +
+      '<rect x="40" y="5.5" width="10" height="2" rx="1" fill="' + txt + '" opacity=".35"/>' +
+      // гурван тоо
+      '<rect x="6"  y="17" width="34" height="16" rx="3" fill="' + surf + '"/>' +
+      '<rect x="44" y="17" width="34" height="16" rx="3" fill="' + surf + '"/>' +
+      '<rect x="82" y="17" width="32" height="16" rx="3" fill="' + surf + '"/>' +
+      '<rect x="10" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+      '<rect x="48" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+      '<rect x="86" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+      // гол товч
+      '<rect x="6" y="38" width="108" height="13" rx="3" fill="' + acc + '"/>' +
+      // мөрүүд
+      '<rect x="6" y="55" width="108" height="7" rx="2" fill="' + surf + '"/>' +
+      '<rect x="6" y="65" width="108" height="7" rx="2" fill="' + surf + '"/>' +
+      '<rect x="10" y="57.5" width="26" height="2" rx="1" fill="' + txt + '" opacity=".5"/>' +
+      '<rect x="10" y="67.5" width="20" height="2" rx="1" fill="' + txt + '" opacity=".5"/>' +
+      '</svg>';
+  }
+
   function open() {
     ensureStyle();
     if (sheet) { close(); return; }
@@ -222,34 +251,6 @@
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-label', 'Дүр төрх сонгох');
 
-    // Дээж нь ЗУРААС биш, аппын жижиг загвар — тухайн дүр төрхөөр
-    // яг ямар харагдахыг нэг харцаар ойлгоно.
-    function preview(w) {
-      var bg = w.swatch[0], surf = w.swatch[1], acc = w.swatch[2], txt = w.swatch[3];
-      return '<svg class="tp-prev" viewBox="0 0 120 74" preserveAspectRatio="none" ' +
-             'role="img" aria-label="' + w.name + ' дүр төрхийн жишээ">' +
-        '<rect width="120" height="74" fill="' + bg + '"/>' +
-        // дээд эгнээ
-        '<rect width="120" height="12" fill="' + surf + '"/>' +
-        '<rect x="6" y="5" width="14" height="3" rx="1.5" fill="' + acc + '"/>' +
-        '<rect x="26" y="5.5" width="10" height="2" rx="1" fill="' + txt + '" opacity=".35"/>' +
-        '<rect x="40" y="5.5" width="10" height="2" rx="1" fill="' + txt + '" opacity=".35"/>' +
-        // гурван тоо
-        '<rect x="6"  y="17" width="34" height="16" rx="3" fill="' + surf + '"/>' +
-        '<rect x="44" y="17" width="34" height="16" rx="3" fill="' + surf + '"/>' +
-        '<rect x="82" y="17" width="32" height="16" rx="3" fill="' + surf + '"/>' +
-        '<rect x="10" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
-        '<rect x="48" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
-        '<rect x="86" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
-        // гол товч
-        '<rect x="6" y="38" width="108" height="13" rx="3" fill="' + acc + '"/>' +
-        // мөрүүд
-        '<rect x="6" y="55" width="108" height="7" rx="2" fill="' + surf + '"/>' +
-        '<rect x="6" y="65" width="108" height="7" rx="2" fill="' + surf + '"/>' +
-        '<rect x="10" y="57.5" width="26" height="2" rx="1" fill="' + txt + '" opacity=".5"/>' +
-        '<rect x="10" y="67.5" width="20" height="2" rx="1" fill="' + txt + '" opacity=".5"/>' +
-        '</svg>';
-    }
 
     var worldsHtml = WORLDS.map(function (w) {
       return '<button class="tp-w" data-w="' + w.id + '">' +
@@ -326,6 +327,8 @@
   window.jarvisTheme = {
     open: open, close: close, set: set,
     get: function () { return { world: world, accent: accent }; },
+    current: function () { return { world: world, accent: accent }; },
+    preview: preview,          // тохиргооны дэлгэц ижил жишээ зургийг ашиглана
     worlds: WORLDS, accents: ACCENTS,
   };
 })();

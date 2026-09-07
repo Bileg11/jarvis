@@ -38,8 +38,8 @@ function _isConfigured() {
 // эсвэл localStorage 'jarvis_system_instruction'-р дарагдана
 // ── SYSTEM PROMPT (slim ~380 token — was 1121) ───────────────────
 const JARVIS_SYSTEM_DEFAULT = `Чи бол A.C.E. — T.H.R.E.E. OS-ийн хувийн AI цөм.
-PERSONA: Чи A.C.E. — Билэгийн elite хувийн AI, жирийн chatbot биш. "Boss" гэж дуудна. Монголоор ҮРГЭЛЖ. Шууд, товч, шийдэмгий, бага зэрэг ирмэгтэй. "Мэдэхгүй" гэж хэлэхгүй — задлан бодож хамгийн ЗӨВ хариу өгнө. Гадаргуун, хэт болгоомжтой ChatGPT-маягийн ус биш — гүн, конкрет, байр суурьтай. Операцийг "Mission/Sync/Protocol" гэж нэрлэнэ.
-ЧАДВАР: HSK + LFS бизнес = гүн мэргэшил. Гэхдээ ямар ч сэдэв (код, амьдрал, стратеги, орчуулга) бүрэн чадварлаг — асуусныг нь л хариул, HSK рүү хүчээр чирэхгүй.
+PERSONA: Чи A.C.E. — хэрэглэгчийн хувийн AI, жирийн chatbot биш. Хэрэглэгчийг нэрээр нь дуудна (нэр мэдэгдэхгүй бол "нөхөр" гэх мэт энгийн хандлага). Монголоор ҮРГЭЛЖ. Шууд, товч, шийдэмгий, бага зэрэг ирмэгтэй. "Мэдэхгүй" гэж хэлэхгүй — задлан бодож хамгийн ЗӨВ хариу өгнө. Гадаргуун, хэт болгоомжтой ChatGPT-маягийн ус биш — гүн, конкрет, байр суурьтай. Операцийг "Mission/Sync/Protocol" гэж нэрлэнэ.
+ЧАДВАР: HSK — гүн мэргэшил. Гэхдээ ямар ч сэдэв (код, амьдрал, стратеги, орчуулга) бүрэн чадварлаг — асуусныг нь л хариул, HSK рүү хүчээр чирэхгүй.
 ХЭЛНИЙ ЧАНАР: Монгол хэлээр бичихдээ зөв бичгийн дүрмийг ЧАНД баримтал — үг үсэг, нөхцөл, цэг таслалын алдаа гаргахгүй. Кирилл үсгийг зөв хэрэглэ. Эргэлзвэл энгийн, зөв үг сонго. Англи нэр томьёог шаардлагатай үед л хэрэглэ.
 HSK: 1-6 мэдэгдэх. Үг тайлбарлахдаа пиньин + монгол + жишээ өгүүлбэр нэмнэ. Шалгалт: ${(window.JARVIS_EXAM_LEVEL||'HSK4')} — ${(window.JARVIS_EXAM_DATE_STR||'2026-10-01')} — байнга сануулна.
 
@@ -71,7 +71,7 @@ function _getSystemInstruction() {
 
   const callSign = localStorage.getItem('jarvis_callsign');
   let out = (callSign && callSign.trim())
-    ? base + `\n\n[CALL SIGN OVERRIDE]\nХэрэглэгч өөрийн callSign-г "${callSign.trim()}" гэж тохируулсан байна. Одооноос эхлэн "Boss" биш "${callSign.trim()}" гэж ҮРГЭЛЖ дуудна уу. Энэ дүрмийг ямар ч нөхцөлд зөрчихгүй.`
+    ? base + `\n\n[CALL SIGN OVERRIDE]\nХэрэглэгч өөрийн callSign-г "${callSign.trim()}" гэж тохируулсан байна. Хэрэглэгчийг ҮРГЭЛЖ "${callSign.trim()}" гэж дуудна уу. Энэ дүрмийг ямар ч нөхцөлд зөрчихгүй.`
     : base;
   // FIX: coach suffix + runtime context-ийг ЭНД нэгтгэнэ (window-г дахин томилохгүй → recursion үгүй)
   if (typeof _coachSystemSuffix === 'function') out += _coachSystemSuffix();
@@ -257,7 +257,7 @@ async function _sendChatCore(userText) {
   const msgCount = _checkRateLimit();
   if (msgCount >= FREE_DAILY_LIMIT) {
     const remaining = FREE_DAILY_LIMIT - msgCount;
-    return `⚡ Өнөөдрийн ${FREE_DAILY_LIMIT} хүсэлтийн лимит дуусав, Boss. Маргааш шинэчлэгдэнэ. (/upgrade гэж бичвэл Pro tier-ийн мэдээлэл харна)`;
+    return `⚡ Өнөөдрийн ${FREE_DAILY_LIMIT} хүсэлтийн лимит дуусав. Маргааш шинэчлэгдэнэ. (/upgrade гэж бичвэл Pro tier-ийн мэдээлэл харна)`;
   }
 
   // Sprint 38: app.js функц дуудахгүй — localStorage-аас шууд (гацахаас сэргийлнэ)
@@ -343,7 +343,7 @@ async function _sendChatCore(userText) {
     clearTimeout(timer);
     _chatHistory.pop();
     if (e.name === 'AbortError' || /TIMEOUT/.test(e.message || ''))
-      return '⏱ AI сервер хүрэхгүй байна (timeout). VPN node-оо солиод дахин оролдоно уу, Boss.';
+      return '⏱ AI сервер хүрэхгүй байна. Интернэтээ шалгаад дахин оролдоно уу.';
     return '❌ Холболтын алдаа. Интернэт/VPN шалгана уу.';
   }
 }
@@ -505,7 +505,7 @@ const COACH_PROFILES = {
   },
   3: {
     name: 'Strict Coach',
-    tone: 'Stark стилийн шиган коуч. Дэвшил муу, deadline тасарвал шууд хэлнэ. Sarcasm зөвшөөрнө. "Цаг алдлаа, Boss — одоо хийхгүй бол хэзээ хийх вэ?" гэж шахах боломжтой.',
+    tone: 'Stark стилийн шиган коуч. Дэвшил муу, deadline тасарвал шууд хэлнэ. Sarcasm зөвшөөрнө. "Цаг алдлаа — одоо хийхгүй бол хэзээ хийх вэ?" гэж шахах боломжтой.',
     notifHz: 4,
   },
   4: {
@@ -574,7 +574,7 @@ function _checkGogginsAlert() {
   const h   = new Date().getHours();
   // After 9pm: if exercise not done, trigger full alert
   if (h >= 21 && !r.exercise && !localStorage.getItem('jarvis_goggins_warned_' + jarvisDay())) {
-    _triggerGogginsAlert('Дасгал хийгдэлгүй шөнө болжээ, Boss. Goggins: "Stay Hard." Одоо хийхгүй бол хэзээ хийх вэ?');
+    _triggerGogginsAlert('Дасгал хийгдэлгүй шөнө болжээ. Goggins: "Stay Hard." Одоо хийхгүй бол хэзээ хийх вэ?');
   }
   // After 11pm: if hanzi not done
   if (h >= 23 && !r.hanzi && !localStorage.getItem('jarvis_goggins_hanzi_' + jarvisDay())) {

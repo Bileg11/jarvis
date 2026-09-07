@@ -27,6 +27,18 @@
    кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
 window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
 String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
+<style>
+/* Тохиргооны дүр төрх сонголт */
+.ob-worlds { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:14px 0 18px; }
+.ob-world { display:block; text-align:left; padding:8px; cursor:pointer;
+  background:var(--surface); border:2px solid var(--border); border-radius:10px;
+  color:var(--text); font-family:var(--font-ui); }
+.ob-world.on { border-color:var(--accent); }
+.ob-world b { display:block; font-size:13px; font-weight:600; margin-top:8px; }
+.ob-world i { display:block; font-style:normal; font-size:11px; color:var(--text-2); line-height:1.4; margin-top:2px; }
+.ob-world svg { width:100%; height:54px; border-radius:6px; display:block; }
+@media (max-width:420px) { .ob-worlds { grid-template-columns:1fr; } }
+</style>
 </head>
 <body>
 
@@ -99,99 +111,26 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     <!-- STEP 3 — THEME SELECTION -->
     <div class="onboarding-step" id="ob-step-3">
       <div class="bespoke-brand">T.H.R.E.E. LABS // DIGITAL PRIVÉ</div>
-      <p class="onboarding-step h2" style="font-family:var(--hud);font-size:16px;font-weight:400;color:var(--warn);letter-spacing:.05em;margin:0 0 8px;">Interface Theme</p>
-      <p class="luxury-subtext">Таны T.H.R.E.E. OS загварыг сонгоно уу.</p>
-      <div class="step-indicator">STEP 03 / 05 — AESTHETICS</div>
-      <div class="theme-selector-grid">
-        <div class="theme-card selected" id="tc-stark-cyan" onclick="selectTheme('stark-cyan')">
-          <div class="theme-mini-layout" style="background:var(--bg);border:1px solid rgba(var(--accent-rgb),0.13)">
-            <div class="tml-bar" style="background:linear-gradient(90deg,var(--surface),rgba(var(--accent-rgb),0.09))"></div>
-            <div class="tml-grid">
-              <div class="tml-col-l"><div class="tml-panel" style="background:rgba(var(--accent-rgb),0.07)"></div><div class="tml-panel" style="background:rgba(var(--accent-rgb),0.03)"></div></div>
-              <div class="tml-col-c"><div class="tml-panel" style="background:rgba(var(--accent-rgb),0.04);flex:2"></div><div class="tml-panel" style="background:rgba(var(--accent-rgb),0.02)"></div></div>
-              <div class="tml-col-r"><div class="tml-panel" style="background:rgba(var(--accent-rgb),0.06)"></div><div class="tml-panel" style="background:rgba(var(--accent-rgb),0.03)"></div></div>
-            </div>
-          </div>
-          <span>STARK CYAN</span>
-        </div>
-        <div class="theme-card" id="tc-amber" onclick="selectTheme('amber')">
-          <div class="theme-mini-layout" style="background:var(--bg);border:1px solid #ff8c0022">
-            <div class="tml-bar" style="background:linear-gradient(90deg,var(--surface),rgba(var(--warn-rgb),.09))"></div>
-            <div class="tml-grid">
-              <div class="tml-col-l"><div class="tml-panel" style="background:#ff8c0012"></div><div class="tml-panel" style="background:#ff8c0008"></div></div>
-              <div class="tml-col-c"><div class="tml-panel" style="background:#ff8c000a;flex:2"></div><div class="tml-panel" style="background:#ff8c0006"></div></div>
-              <div class="tml-col-r"><div class="tml-panel" style="background:#ff8c0010"></div><div class="tml-panel" style="background:#ff8c0007"></div></div>
-            </div>
-          </div>
-          <span>AMBER</span>
-        </div>
-        <div class="theme-card" id="tc-matrix" onclick="selectTheme('matrix')">
-          <div class="theme-mini-layout" style="background:var(--bg);border:1px solid rgba(var(--ok-rgb),0.13)">
-            <div class="tml-bar" style="background:linear-gradient(90deg,var(--surface),rgba(var(--ok-rgb),0.09))"></div>
-            <div class="tml-grid">
-              <div class="tml-col-l"><div class="tml-panel" style="background:rgba(var(--ok-rgb),0.07)"></div><div class="tml-panel" style="background:rgba(var(--ok-rgb),0.03)"></div></div>
-              <div class="tml-col-c"><div class="tml-panel" style="background:rgba(var(--ok-rgb),0.04);flex:2"></div><div class="tml-panel" style="background:rgba(var(--ok-rgb),0.02)"></div></div>
-              <div class="tml-col-r"><div class="tml-panel" style="background:rgba(var(--ok-rgb),0.06)"></div><div class="tml-panel" style="background:rgba(var(--ok-rgb),0.03)"></div></div>
-            </div>
-          </div>
-          <span>MATRIX</span>
-        </div>
-        <div class="theme-card" id="tc-red-alert" onclick="selectTheme('red-alert')">
-          <div class="theme-mini-layout" style="background:var(--bg);border:1px solid #ff2d5522">
-            <div class="tml-bar" style="background:linear-gradient(90deg,var(--surface),rgba(var(--danger-rgb),.09))"></div>
-            <div class="tml-grid">
-              <div class="tml-col-l"><div class="tml-panel" style="background:#ff2d5512"></div><div class="tml-panel" style="background:#ff2d5508"></div></div>
-              <div class="tml-col-c"><div class="tml-panel" style="background:#ff2d550a;flex:2"></div><div class="tml-panel" style="background:#ff2d5506"></div></div>
-              <div class="tml-col-r"><div class="tml-panel" style="background:#ff2d5510"></div><div class="tml-panel" style="background:#ff2d5507"></div></div>
-            </div>
-          </div>
-          <span>RED ALERT</span>
-        </div>
-        <div class="theme-card" id="tc-void" onclick="selectTheme('void')">
-          <div class="theme-mini-layout" style="background:var(--bg);border:1px solid #a855f722">
-            <div class="tml-bar" style="background:linear-gradient(90deg,var(--surface),rgba(var(--accent-rgb),.09))"></div>
-            <div class="tml-grid">
-              <div class="tml-col-l"><div class="tml-panel" style="background:#a855f712"></div><div class="tml-panel" style="background:#a855f708"></div></div>
-              <div class="tml-col-c"><div class="tml-panel" style="background:#a855f70a;flex:2"></div><div class="tml-panel" style="background:#a855f706"></div></div>
-              <div class="tml-col-r"><div class="tml-panel" style="background:#a855f710"></div><div class="tml-panel" style="background:#a855f707"></div></div>
-            </div>
-          </div>
-          <span>VOID</span>
-        </div>
-        <!-- Sprint 34: Marlaa Blossom theme -->
-        <div class="theme-card" id="tc-marlaa" onclick="selectTheme('marlaa')" style="border-color: var(--text)">
-          <div class="theme-mini-layout" style="background:#060810;border:1px solid #f9a8c522">
-            <div class="tml-bar" style="background:linear-gradient(90deg,var(--surface),rgba(var(--accent-rgb),.09))"></div>
-            <div class="tml-grid">
-              <div class="tml-col-l"><div class="tml-panel" style="background:#f9a8c512"></div><div class="tml-panel" style="background:#f9a8c508"></div></div>
-              <div class="tml-col-c"><div class="tml-panel" style="background:#f9a8c50a;flex:2"></div><div class="tml-panel" style="background:#f9a8c506"></div></div>
-              <div class="tml-col-r"><div class="tml-panel" style="background:#f9a8c510"></div><div class="tml-panel" style="background:#f9a8c507"></div></div>
-            </div>
-          </div>
-          <span style="color:var(--accent-text)">🌸 MARLAA</span>
-        </div>
-      </div>
-      <button class="luxury-btn" onclick="nextStep(3)">APPLY THEME →</button>
+      <p class="onboarding-step h2" style="font-family:var(--hud);font-size:16px;font-weight:400;color:var(--warn);letter-spacing:.05em;margin:0 0 8px;">Дүр төрх</p>
+      <p class="luxury-subtext">Аль нь чамд тохирохыг сонго. Хэзээ ч солино.</p>
+      <div class="step-indicator">STEP 03 / 05 — ДҮР ТӨРХ</div>
+      <!-- Аппын жинхэнэ дүр төрхүүд. Өмнө нь энд өөр 6 нэр
+           (STARK CYAN, AMBER...) байсан тул тохиргоо дуусмагц
+           хэрэглэгч огт өөр өнгө хараад эргэлздэг байв. -->
+      <div class="ob-worlds" id="ob-worlds"></div>
+      <button class="luxury-btn" onclick="nextStep(3)">ҮРГЭЛЖЛҮҮЛЭХ →</button>
     </div>
 
-    <!-- STEP 4 — GITHUB TOKEN -->
     <div class="onboarding-step" id="ob-step-4">
       <div class="bespoke-brand">T.H.R.E.E. LABS // DIGITAL PRIVÉ</div>
-      <p class="onboarding-step h2" style="font-family:var(--hud);font-size:16px;font-weight:400;color:var(--warn);letter-spacing:.05em;margin:0 0 8px;">AI Core Integration</p>
-      <p class="luxury-subtext">GitHub Models API токен — A.C.E. Core-ийн тархи.<br>Байхгүй бол алгасаж болно.</p>
+      <p class="onboarding-step h2" style="font-family:var(--hud);font-size:16px;font-weight:400;color:var(--warn);letter-spacing:.05em;margin:0 0 8px;">AI бэлэн</p>
+      <p class="luxury-subtext">Jarvis AI шууд ажиллана — юу ч тохируулах шаардлагагүй.<br>
+        Хятадаар ярилцах, зөвлөгөө авах бүгд бэлэн.</p>
       <div class="step-indicator">STEP 04 / 05 — AI CORE</div>
-      <div class="github-instructions">
-        <ol>
-          <li>github.com → Settings → Developer settings</li>
-          <li>Personal access tokens → Tokens (classic)</li>
-          <li>Generate new token → No scopes needed → Copy</li>
-        </ol>
-      </div>
-      <div class="input-group-luxury">
-        <label>GITHUB TOKEN (OPTIONAL)</label>
-        <input type="password" id="ob-token-input" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off" spellcheck="false">
-      </div>
-      <button class="luxury-btn" onclick="nextStep(4)">LINK AI CORE →</button>
+      <p class="luxury-subtext" style="opacity:.7;font-size:12px">
+        Хүсвэл өөрийн түлхүүрээ хожим "Би" хэсгээс холбож болно.
+      </p>
+      <button class="luxury-btn" onclick="nextStep(4)">ҮРГЭЛЖЛҮҮЛЭХ →</button>
     </div>
 
     <!-- STEP 5 — TELEGRAM SYNC -->
@@ -3035,6 +2974,8 @@ function nextStep(fromStep) {
     }
   }
 
+  if (fromStep === 2) setTimeout(_obRenderWorlds, 60);
+
   // Animate out current step
   const curEl = document.getElementById('ob-step-' + fromStep);
   const nxtEl = document.getElementById('ob-step-' + (fromStep + 1));
@@ -3052,32 +2993,28 @@ function nextStep(fromStep) {
 }
 
 // ── THEME SELECTION ──────────────────────────────────────────────
-function selectTheme(themeKey) {
-  _obData.theme = themeKey;
-  document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('selected'));
-  const card = document.getElementById('tc-' + themeKey);
-  if (card) card.classList.add('selected');
-  // Live preview on onboarding backdrop
-  const THEME_MAP = {
-    'stark-cyan': { accent:'var(--accent)', bg:'#000308' },
-    'amber':      { accent:'var(--warn)', bg:'var(--bg)' },
-    'matrix':     { accent:'var(--ok)', bg:'var(--bg)' },
-    'red-alert':  { accent:'var(--danger)', bg:'var(--bg)' },
-    'void':       { accent:'var(--accent)', bg:'var(--bg)' },
-  };
-  const t = THEME_MAP[themeKey];
-  if (t) {
-    const glow = document.querySelector('.luxury-backdrop-glow');
-    if (glow) {
-      const r = parseInt(t.accent.slice(1,3),16);
-      const g = parseInt(t.accent.slice(3,5),16);
-      const b = parseInt(t.accent.slice(5,7),16);
-      glow.style.background =
-        `radial-gradient(ellipse 60% 50% at 50% 50%, rgba(${r},${g},${b},.1) 0%, transparent 70%),` +
-        `radial-gradient(ellipse 40% 30% at 20% 80%, rgba(${r},${g},${b},.06) 0%, transparent 60%)`;
-    }
-  }
-  if (typeof applyTheme === 'function') applyTheme(themeKey);
+function selectTheme(worldId) {
+  _obData.theme = worldId;
+  try { localStorage.setItem('jarvis_world', worldId); } catch (e) {}
+  if (window.jarvisTheme) jarvisTheme.set(worldId, null);
+  document.querySelectorAll('.ob-world').forEach(function (c) {
+    c.classList.toggle('on', c.dataset.w === worldId);
+  });
+}
+
+// Дүр төрхийн сонголтыг theme.js-ийн жагсаалтаас өөрөө зурна —
+// хоёр газар тусад нь бичихгүй, үргэлж таарч байна.
+function _obRenderWorlds() {
+  var box = document.getElementById('ob-worlds');
+  if (!box || !window.jarvisTheme) return;
+  var cur = jarvisTheme.current ? jarvisTheme.current().world : 'calm';
+  box.innerHTML = jarvisTheme.pages ? '' : '';
+  box.innerHTML = (jarvisTheme.worlds || []).map(function (w) {
+    return '<button type="button" class="ob-world' + (w.id === cur ? ' on' : '') + '" data-w="' + w.id + '" ' +
+           'onclick="selectTheme(\'' + w.id + '\')">' +
+           jarvisTheme.preview(w) +
+           '<b>' + w.name + '</b><i>' + w.sub + '</i></button>';
+  }).join('');
 }
 
 // ── TELEGRAM LISTENER ────────────────────────────────────────────
