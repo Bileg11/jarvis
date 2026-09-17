@@ -50,7 +50,7 @@
       height: 100%; background: linear-gradient(90deg, var(--accent), #06b6d4);
       border-radius: 4px; transition: width 0.6s ease; width: 0%;
     }
-    .v22-lfs-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+    .v22-lfs-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 4px; }
     .v22-lfs-item {
       background: rgba(var(--text-rgb),0.04); border-radius: 10px; padding: 10px 8px; text-align: center;
     }
@@ -323,19 +323,23 @@
     <div class="v22-title">🏢 LFS Өнөөдөр</div>
     <div class="v22-lfs-grid">
       <div class="v22-lfs-item">
-        <div class="v22-lfs-num" id="v22-lfs-users">—</div>
-        <div class="v22-lfs-lbl">Хэрэглэгч</div>
+        <div class="v22-lfs-num" id="v22-lfs-leads">—</div>
+        <div class="v22-lfs-lbl">Шинэ захиалга</div>
       </div>
       <div class="v22-lfs-item">
-        <div class="v22-lfs-num" id="v22-lfs-leads">—</div>
-        <div class="v22-lfs-lbl">Захиалга</div>
+        <div class="v22-lfs-num" id="v22-lfs-chats">—</div>
+        <div class="v22-lfs-lbl">Чат / холбогдсон</div>
+      </div>
+      <div class="v22-lfs-item">
+        <div class="v22-lfs-num" id="v22-lfs-users">—</div>
+        <div class="v22-lfs-lbl">Хэрэглэгч</div>
       </div>
       <div class="v22-lfs-item">
         <div class="v22-lfs-num" id="v22-lfs-rev">—</div>
         <div class="v22-lfs-lbl">Орлого ₮</div>
       </div>
     </div>
-    <div style="font-size:10px;color:var(--text-2);margin-top:8px">
+    <div style="font-size:10px;color:var(--text-2);margin-top:8px" id="v22-lfs-synced">
       Өдрийн тайлангийн дараа шинэчлэгдэнэ (22:00)
     </div>
   </div>
@@ -654,12 +658,20 @@
           var d = snap.exists ? snap.data() : {};
           var uel = document.getElementById('v22-lfs-users');
           var lel = document.getElementById('v22-lfs-leads');
+          var cel = document.getElementById('v22-lfs-chats');
           var rel = document.getElementById('v22-lfs-rev');
+          var sel = document.getElementById('v22-lfs-synced');
           if (uel) uel.textContent = d.lfs_users_today   != null ? d.lfs_users_today   : '—';
           if (lel) lel.textContent = d.lfs_leads_today   != null ? d.lfs_leads_today   : '—';
+          if (cel) cel.textContent = d.lfs_chats_today   != null ? d.lfs_chats_today   : '—';
           if (rel) {
             var rev = d.lfs_revenue_today;
             rel.textContent = rev ? (rev >= 1000 ? Math.round(rev/1000) + 'K' : rev) : '—';
+          }
+          if (sel && d.lfs_synced_at) {
+            var t = new Date(d.lfs_synced_at);
+            var hh = ('0' + t.getHours()).slice(-2), mm = ('0' + t.getMinutes()).slice(-2);
+            sel.textContent = '✓ ' + hh + ':' + mm + '-д шинэчлэгдсэн';
           }
         });
 
