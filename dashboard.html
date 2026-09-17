@@ -344,6 +344,24 @@
     </div>
   </div>
 
+  <!-- Social дагагч өсөлт (өдрийн тайлангийн дараа sync) -->
+  <div class="v22-card">
+    <div class="v22-title">📱 Social дагагч</div>
+    <div class="v22-lfs-grid">
+      <div class="v22-lfs-item">
+        <div class="v22-lfs-num" id="v22-ig-fol">—</div>
+        <div class="v22-lfs-lbl">Instagram <span id="v22-ig-delta" style="font-weight:700"></span></div>
+      </div>
+      <div class="v22-lfs-item">
+        <div class="v22-lfs-num" id="v22-fb-fol">—</div>
+        <div class="v22-lfs-lbl">Facebook <span id="v22-fb-delta" style="font-weight:700"></span></div>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--text-2);margin-top:8px">
+      ▲ өссөн · ▼ буурсан (өмнөх өдрөөс)
+    </div>
+  </div>
+
   <!-- Routine Streak (last 7 days) -->
   <div class="v22-card" style="margin-bottom:80px">
     <div class="v22-title">🔥 Streak (сүүлийн 7 хоног)</div>
@@ -608,6 +626,16 @@
     (function () {
       const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
 
+      // Social дагагчийн тоо + өсөлт/уналт (▲ ногоон, ▼ улаан) харуулна
+      function setFollower(numId, deltaId, count, delta) {
+        var n = document.getElementById(numId), dd = document.getElementById(deltaId);
+        if (n) n.textContent = count != null ? count : '—';
+        if (!dd) return;
+        if (delta == null || delta === 0) { dd.textContent = ''; dd.style.color = ''; }
+        else if (delta > 0) { dd.textContent = '▲' + delta;              dd.style.color = 'var(--ok)'; }
+        else                { dd.textContent = '▼' + Math.abs(delta);    dd.style.color = 'var(--danger)'; }
+      }
+
       // ── Firebase auth 준비 후 listeners 시작 ──────────────────────
       _auth.onAuthStateChanged(function (user) {
         if (!user) return;
@@ -673,6 +701,8 @@
             var hh = ('0' + t.getHours()).slice(-2), mm = ('0' + t.getMinutes()).slice(-2);
             sel.textContent = '✓ ' + hh + ':' + mm + '-д шинэчлэгдсэн';
           }
+          setFollower('v22-ig-fol', 'v22-ig-delta', d.lfs_ig_followers, d.lfs_ig_delta);
+          setFollower('v22-fb-fol', 'v22-fb-delta', d.lfs_fb_followers, d.lfs_fb_delta);
         });
 
         // ── Routine Streak (last 7 days) ────────────────────────────
