@@ -380,6 +380,7 @@
   <!-- Tabs -->
   <div class="tabs-wrap"><div class="tabs">
     <button class="tab active" onclick="switchTab('vault')">📚 Үгийн сан</button>
+    <button class="tab" onclick="switchTab('grammar')">📖 Дүрэм</button>
     <button class="tab" onclick="switchTab('session')">🔥 Session</button>
     <button class="tab" onclick="switchTab('drill')">⚡ Drill</button>
     <button class="tab" onclick="switchTab('test')">🎯 Шалгалт</button>
@@ -436,6 +437,41 @@
   <div id="today-words-wrap" style="display:none;background:var(--accent-soft);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:14px">
     <div style="font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--accent-text);text-transform:uppercase;margin-bottom:8px">☀ Өглөөний 5 үг (JARVIS bot)</div>
     <div id="today-words-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+  </div>
+
+  <!-- ── TAB: GRAMMAR (Өнөөдөр үзсэн дүрэм) ── -->
+  <div class="tab-panel" id="panel-grammar">
+    <div class="card">
+      <div class="card-title">Өнөөдөр үзсэн дүрэм нэмэх</div>
+      <div class="add-form">
+        <div class="form-group">
+          <label class="form-label">Дүрэм / бүтэц</label>
+          <input class="form-input" id="g-title" placeholder="把 бүтэц" maxlength="60"
+            onkeydown="if(event.key==='Enter')document.getElementById('g-example').focus()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Жишээ өгүүлбэр (сонголт)</label>
+          <input class="form-input" id="g-example" placeholder="我把书放在桌子上" maxlength="120"
+            onkeydown="if(event.key==='Enter')document.getElementById('g-note').focus()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Тайлбар (монгол)</label>
+          <input class="form-input" id="g-note" placeholder="Объектыг онцолж, үйлдлийн үр дүнг заана" maxlength="140"
+            onkeydown="if(event.key==='Enter')addGrammar()">
+        </div>
+        <button class="btn-add" onclick="addGrammar()">+ Нэмэх</button>
+      </div>
+    </div>
+    <div class="card" style="padding-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="card-title" style="margin:0">Дүрмийн жагсаалт</div>
+        <span style="font-size:11px;color:var(--text-3);" id="grammar-count"></span>
+      </div>
+      <input class="search-input" placeholder="Хайх — дүрэм, жишээ, тайлбар..." oninput="renderGrammar(this.value)">
+      <div class="word-list" id="grammar-list">
+        <div class="empty">Дүрэм нэмэгдээгүй байна. Дээрх формоор нэм.</div>
+      </div>
+    </div>
   </div>
 
   <!-- ── TAB: SESSION (20-25 оновчтой үг) ── -->
@@ -819,6 +855,8 @@ async function init() {
   updateStats();
   updatePlan();
   renderVault();
+  await _loadGrammar();
+  renderGrammar();
 
   const src = _hskUid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
   console.log('[HSK] Эх сурвалж:', src);
@@ -856,12 +894,13 @@ function updatePlan() {
 
 // ── Tab switching ─────────────────────────────────────────────────
 function switchTab(name) {
-  const tabNames = ['vault','session','drill','test','sentence','weakspot','conversation','cram','mock'];
+  const tabNames = ['vault','grammar','session','drill','test','sentence','weakspot','conversation','cram','mock'];
   document.querySelectorAll('.tabs .tab').forEach((t,i) => {
     t.classList.toggle('active', tabNames[i] === name);
   });
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + name)?.classList.add('active');
+  if (name === 'grammar')      renderGrammar();
   if (name === 'session')      initSession();
   if (name === 'drill')        initDrill();
   if (name === 'test')         initTest();
@@ -928,6 +967,104 @@ function deleteWord(h) {
   renderVault();
   updateStats();
   updatePlan();
+}
+
+// ── Дүрмийн тэмдэглэл (Grammar log) ────────────────────────────────
+// Ханзны сантай ижил загвар: Firestore users/{uid}/grammar/{id} + localStorage
+// cache. Хэрэглэгч бүрээр хадгална → одоо Билэгт, дараа нь сурагчид ажиллана.
+const LS_GRAMMAR = 'jarvis_hsk_grammar_cache';
+let _grammar = [];
+
+function getGrammar() { return _grammar; }
+function saveGrammar(arr) { _grammar = arr; localStorage.setItem(LS_GRAMMAR, JSON.stringify(arr)); }
+
+async function _loadGrammar() {
+  if (_hskDb && _hskUid) {
+    try {
+      const snap = await _hskDb.collection(`users/${_hskUid}/grammar`).get();
+      if (!snap.empty) {
+        _grammar = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a,b) => (a.ts||0) - (b.ts||0));
+        localStorage.setItem(LS_GRAMMAR, JSON.stringify(_grammar));
+        return;
+      }
+    } catch {}
+  }
+  try {
+    const c = JSON.parse(localStorage.getItem(LS_GRAMMAR) || '[]');
+    if (c.length) _grammar = c;
+  } catch {}
+}
+
+function _saveGrammarToFirestore(g) {
+  if (!_hskDb || !_hskUid) return;
+  _hskDb.doc(`users/${_hskUid}/grammar/${g.id}`).set({
+    title: g.title, example: g.example || '', note: g.note || '',
+    added: g.added, ts: g.ts, source: 'hsk_page',
+  }, { merge: true }).catch(() => {});
+}
+
+function _escG(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function addGrammar() {
+  const title   = document.getElementById('g-title')?.value.trim();
+  const example = document.getElementById('g-example')?.value.trim();
+  const note    = document.getElementById('g-note')?.value.trim();
+  if (!title) { showToast('Дүрмээ заавал бич'); return; }
+  const g = { id: 'g' + Date.now(), title, example: example||'', note: note||'', added: today(), ts: Date.now() };
+  _grammar.push(g);
+  saveGrammar(_grammar);
+  _saveGrammarToFirestore(g);
+  ['g-title','g-example','g-note'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  document.getElementById('g-title')?.focus();
+  renderGrammar();
+  showToast('✓ Дүрэм нэмэгдлээ');
+}
+
+function deleteGrammar(id) {
+  if (!confirm('Энэ дүрмийг устгах уу?')) return;
+  saveGrammar(getGrammar().filter(g => g.id !== id));
+  if (_hskDb && _hskUid) _hskDb.doc(`users/${_hskUid}/grammar/${id}`).delete().catch(() => {});
+  renderGrammar();
+}
+
+function renderGrammar(query) {
+  const list = document.getElementById('grammar-list');
+  if (!list) return;
+  let items = getGrammar();
+  if (query) {
+    const q = query.toLowerCase();
+    items = items.filter(g =>
+      (g.title||'').toLowerCase().includes(q) ||
+      (g.example||'').toLowerCase().includes(q) ||
+      (g.note||'').toLowerCase().includes(q));
+  }
+  const cnt = document.getElementById('grammar-count');
+  if (cnt) cnt.textContent = getGrammar().length + ' дүрэм';
+  if (!items.length) {
+    list.innerHTML = '<div class="empty">' + (query ? 'Хайлтад тохирсонгүй' : 'Дүрэм нэмэгдээгүй байна. Дээрх формоор нэм.') + '</div>';
+    return;
+  }
+  const byDate = {};
+  items.forEach(g => { (byDate[g.added] = byDate[g.added] || []).push(g); });
+  const t = today();
+  list.innerHTML = Object.keys(byDate).sort((a,b) => b.localeCompare(a)).map(date => {
+    const isToday = date === t;
+    const rows = byDate[date].slice().reverse().map(g => `
+      <div class="word-item" style="display:block;padding:12px 14px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:${(g.example||g.note)?'6px':'0'}">${_escG(g.title)}
+          <button class="wi-del" style="float:right" onclick="deleteGrammar('${g.id}')">✕</button>
+        </div>
+        ${g.example ? `<div style="font-size:14px;color:var(--text-2);margin-bottom:${g.note?'4px':'0'}">📝 ${_escG(g.example)}</div>` : ''}
+        ${g.note ? `<div style="font-size:13px;color:var(--text-3)">${_escG(g.note)}</div>` : ''}
+      </div>`).join('');
+    return `<div style="margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px;color:${isToday?'var(--accent-text)':'var(--text-3)'}">${isToday ? '📌 Өнөөдөр' : date} · ${byDate[date].length}</div>
+      ${rows}
+    </div>`;
+  }).join('');
 }
 
 // ── SRS intervals (bot-тай тохирсон) ─────────────────────────────
