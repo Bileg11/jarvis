@@ -421,6 +421,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     <div class="profile-section">
       <button class="ps-action-btn" onclick="jarvisTheme.open()">🎨 Дүр төрх солих</button>
       <button class="ps-action-btn" onclick="location.href=(window.jarvisHref?jarvisHref('guide'):'guide.html')">📖 Гарын авлага</button>
+      <button class="ps-action-btn" onclick="replaySetup()">🔄 Анхны тохиргоог дахин үзэх</button>
       <button class="ps-action-btn" onclick="location.href=(window.jarvisHref?jarvisHref('index'):'index.html')">🖥 Хуучин самбар (терминал, widget)</button>
       <button class="ps-action-btn" onclick="clearChat()">🗑 Чат түүх цэвэрлэх</button>
       <button class="ps-action-btn danger" onclick="doSignOut()">🚪 Гарах</button>
@@ -456,6 +457,18 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       const t = document.getElementById('toast');
       t.textContent = msg; t.classList.add('show');
       setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    // Шинэ хэрэглэгч юу хардагийг дахин үзэх.
+    // ЗӨВХӨН тохиргооны тэмдэглэгээг арилгана — үг, явц, тэмдэглэл
+    // бүгд байрандаа үлдэнэ.
+    async function replaySetup() {
+      if (!confirm('Анхны тохиргоог эхнээс нь дахин үзэх үү?\n\n' +
+                   'Үгийн сан, явц, тэмдэглэл чинь БҮГД хэвээр үлдэнэ.\n' +
+                   'Зөвхөн нэр, зорилго, дүр төрхөө дахин сонгоно.')) return;
+      try { localStorage.removeItem('jarvis_setup_complete'); } catch (e) {}
+      try { await window.jarvisAPI?.setSetupFlag({ complete: false }); } catch (e) {}
+      location.href = window.jarvisHref ? jarvisHref('index') : 'index.html';
     }
 
     function skipLogin() {
