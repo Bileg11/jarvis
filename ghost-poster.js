@@ -8,7 +8,7 @@ const admin = require('firebase-admin');
 const {
   PEXELS_API_KEY,
   UNSPLASH_ACCESS_KEY,
-  TELEGRAM_BOT_TOKEN_JARVIS: TG_TOKEN,
+  TELEGRAM_BOT_TOKEN_LFS: TG_TOKEN,
   TELEGRAM_ID:               TG_CHAT,
   FIREBASE_SERVICE_ACCOUNT,
   USER_UID,
