@@ -236,6 +236,26 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
     </div>
 
+    <!-- ХУВИЙН МЭДЭЭЛЭЛ — өмнө нь тохиргооны урсгалд асуудаг байсан -->
+    <div class="sec-label" style="margin-top:20px">👤 Миний мэдээлэл</div>
+    <div class="profile-section">
+      <div class="ps-key-row" style="margin-bottom:10px">
+        <input id="me-name" class="ps-input" placeholder="Нэр — Jarvis чамайг ингэж дуудна">
+      </div>
+      <div class="ps-key-row" style="margin-bottom:10px">
+        <select id="me-goal" class="ps-input">
+          <option value="HSK1">Зорилго: HSK 1</option>
+          <option value="HSK2">Зорилго: HSK 2</option>
+          <option value="HSK3">Зорилго: HSK 3</option>
+          <option value="HSK4">Зорилго: HSK 4</option>
+          <option value="HSK5">Зорилго: HSK 5</option>
+          <option value="HSK6">Зорилго: HSK 6</option>
+        </select>
+      </div>
+      <button onclick="saveMe()" class="ps-btn">Хадгалах</button>
+      <div style="font-size:11px;color:var(--text-3);margin-top:8px">Дүр төрхөө доод талын "🎨 Дүр төрх солих"-оос сонгоно.</div>
+    </div>
+
     <!-- JARVIS SETTINGS (SaaS) ══════════════════════════════════ -->
     <div class="sec-label" style="margin-top:20px">🤖 JARVIS Тохиргоо</div>
     <div class="profile-section" id="jarvis-settings-section">
@@ -421,7 +441,6 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     <div class="profile-section">
       <button class="ps-action-btn" onclick="jarvisTheme.open()">🎨 Дүр төрх солих</button>
       <button class="ps-action-btn" onclick="location.href=(window.jarvisHref?jarvisHref('guide'):'guide.html')">📖 Гарын авлага</button>
-      <button class="ps-action-btn" onclick="replaySetup()">🔄 Анхны тохиргоог дахин үзэх</button>
       <button class="ps-action-btn" onclick="location.href=(window.jarvisHref?jarvisHref('index'):'index.html')">🖥 Хуучин самбар (терминал, widget)</button>
       <button class="ps-action-btn" onclick="clearChat()">🗑 Чат түүх цэвэрлэх</button>
       <button class="ps-action-btn danger" onclick="doSignOut()">🚪 Гарах</button>
@@ -470,6 +489,25 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       try { await window.jarvisAPI?.setSetupFlag({ complete: false }); } catch (e) {}
       location.href = window.jarvisHref ? jarvisHref('index') : 'index.html';
     }
+
+    function saveMe() {
+      const nm = document.getElementById('me-name').value.trim();
+      const gl = document.getElementById('me-goal').value;
+      try {
+        if (nm) { localStorage.setItem('jarvis_callsign', nm); localStorage.setItem('jarvis_name', nm); }
+        else { localStorage.removeItem('jarvis_callsign'); localStorage.removeItem('jarvis_name'); }
+        localStorage.setItem('jarvis_goal', gl);
+      } catch (e) {}
+      showToast('✓ Хадгалагдлаа');
+    }
+    (function loadMe() {
+      try {
+        const nm = localStorage.getItem('jarvis_callsign') || localStorage.getItem('jarvis_name') || '';
+        const gl = localStorage.getItem('jarvis_goal') || 'HSK4';
+        const n = document.getElementById('me-name'); if (n) n.value = nm;
+        const g = document.getElementById('me-goal'); if (g) g.value = /HSK[1-6]/.test(gl) ? gl.match(/HSK[1-6]/)[0] : 'HSK4';
+      } catch (e) {}
+    })();
 
     function skipLogin() {
       document.getElementById('login-modal').style.display = 'none';

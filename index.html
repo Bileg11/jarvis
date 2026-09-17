@@ -64,25 +64,12 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   <div class="onboarding-card-wrapper">
 
     <!-- STEP 1 — ACTIVATION KEY -->
-    <div class="onboarding-step active" id="ob-step-1">
-      <div class="bespoke-brand">T.H.R.E.E. LABS // DIGITAL PRIVÉ</div>
-      <p class="luxury-fade-text">System Activation</p>
-      <p class="luxury-subtext">Хувийн AI системийг идэвхжүүлэхийн тулд<br>танд олгосон нэвтрэх түлхүүрийг оруулна уу.</p>
-      <div class="step-indicator">STEP 01 / 05 — ACTIVATION</div>
-      <div class="input-group-luxury">
-        <label>ACTIVATION KEY</label>
-        <input type="password" id="ob-key-input" placeholder="THREE-ACE-XXXX" autocomplete="off" spellcheck="false">
-        <div class="luxury-input-error" id="ob-key-error"></div>
-      </div>
-      <button class="luxury-btn" onclick="nextStep(1)">VERIFY &amp; PROCEED →</button>
-    </div>
-
     <!-- STEP 2 — PROFILE CALIBRATION -->
-    <div class="onboarding-step" id="ob-step-2">
+    <div class="onboarding-step active" id="ob-step-2">
       <div class="bespoke-brand">T.H.R.E.E. LABS // DIGITAL PRIVÉ</div>
       <p class="onboarding-step h2" style="font-family:var(--hud);font-size:16px;font-weight:400;color:var(--warn);letter-spacing:.05em;margin:0 0 8px;">Profile Calibration</p>
       <p class="luxury-subtext">Таны хувийн мэдээлэл системийг тохируулна.<br>A.C.E. зөвхөн танд зориулж тохиргоо хийнэ.</p>
-      <div class="step-indicator">STEP 02 / 05 — IDENTITY</div>
+      <div class="step-indicator">STEP 01 / 04 — ХЭН БЭ</div>
       <div class="input-group-luxury">
         <label>FULL NAME</label>
         <input type="text" id="ob-name-input" placeholder="Taны нэр" autocomplete="name">
@@ -113,7 +100,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <div class="bespoke-brand">T.H.R.E.E. LABS // DIGITAL PRIVÉ</div>
       <p class="onboarding-step h2" style="font-family:var(--hud);font-size:16px;font-weight:400;color:var(--warn);letter-spacing:.05em;margin:0 0 8px;">Дүр төрх</p>
       <p class="luxury-subtext">Аль нь чамд тохирохыг сонго. Хэзээ ч солино.</p>
-      <div class="step-indicator">STEP 03 / 05 — ДҮР ТӨРХ</div>
+      <div class="step-indicator">STEP 02 / 04 — ДҮР ТӨРХ</div>
       <!-- Аппын жинхэнэ дүр төрхүүд. Өмнө нь энд өөр 6 нэр
            (STARK CYAN, AMBER...) байсан тул тохиргоо дуусмагц
            хэрэглэгч огт өөр өнгө хараад эргэлздэг байв. -->
@@ -126,7 +113,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <p class="onboarding-step h2" style="font-family:var(--hud);font-size:16px;font-weight:400;color:var(--warn);letter-spacing:.05em;margin:0 0 8px;">AI бэлэн</p>
       <p class="luxury-subtext">Jarvis AI шууд ажиллана — юу ч тохируулах шаардлагагүй.<br>
         Хятадаар ярилцах, зөвлөгөө авах бүгд бэлэн.</p>
-      <div class="step-indicator">STEP 04 / 05 — AI CORE</div>
+      <div class="step-indicator">STEP 03 / 04 — AI</div>
       <p class="luxury-subtext" style="opacity:.7;font-size:12px">
         Хүсвэл өөрийн түлхүүрээ хожим "Би" хэсгээс холбож болно.
       </p>
@@ -138,7 +125,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <div class="bespoke-brand">T.H.R.E.E. LABS // DIGITAL PRIVÉ</div>
       <p class="onboarding-step h2" style="font-family:var(--hud);font-size:16px;font-weight:400;color:var(--warn);letter-spacing:.05em;margin:0 0 6px;">Comms Link</p>
       <p class="luxury-subtext" style="margin-bottom:14px">Telegram-р Coach мэдэгдэл хүлээн авах.<br>Алгасаж болно — хожим Profile-аас тохируулна.</p>
-      <div class="step-indicator">STEP 05 / 05 — COMMS LINK</div>
+      <div class="step-indicator">STEP 04 / 04 — TELEGRAM</div>
 
       <div class="tg-steps">
         <!-- Step 1 -->
@@ -2051,16 +2038,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
       } catch {}
     }
 
+    // Тохиргооны урсгал устгагдсан — апп ямар ч асуулгагүй шууд нээгдэнэ.
+    // Нэр, зорилго, дүр төрхийг "Би" хэсгээс тохируулна.
     if (!isSetup) {
-      const bootAlarm = document.getElementById('boot-alarm');
-      if (bootAlarm) bootAlarm.style.display = 'none';
-      const obOverlay = document.getElementById('onboarding-overlay');
-      if (obOverlay) {
-        obOverlay.classList.remove('hidden');
-        obOverlay.style.display = 'flex';
-        window._onboardingActive = true;
-      }
+      try { localStorage.setItem('jarvis_setup_complete', '1'); } catch (e) {}
     }
+    const obOverlay = document.getElementById('onboarding-overlay');
+    if (obOverlay) obOverlay.remove();
+    window._onboardingActive = false;
   }
   _checkAndShowOnboarding();
 
@@ -2938,24 +2923,6 @@ function showOnboarding(user) {
 
 // ── STEP NAVIGATION ──────────────────────────────────────────────
 function nextStep(fromStep) {
-  if (fromStep === 1) {
-    // Validate activation key
-    const key = (document.getElementById('ob-key-input')?.value || '').trim();
-    const errEl = document.getElementById('ob-key-error');
-    if (key === MARLAA_KEY) { _activateMarlaaInstant(); return; }
-    if (key !== ACTIVATION_KEY) {
-      const inp = document.getElementById('ob-key-input');
-      if (inp) inp.classList.add('error');
-      if (errEl) errEl.textContent = '✗ Invalid key. Access denied.';
-      setTimeout(() => {
-        if (inp) inp.classList.remove('error');
-        if (errEl) errEl.textContent = '';
-      }, 2200);
-      return;
-    }
-    _obData.activationKey = key;
-  }
-
   if (fromStep === 2) {
     _obData.name      = document.getElementById('ob-name-input')?.value.trim()      || '';
     _obData.callSign  = document.getElementById('ob-callsign-input')?.value.trim()  || '';
