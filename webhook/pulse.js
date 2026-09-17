@@ -6,7 +6,8 @@
 // Горим:
 //   tick  (default) — Execution Engine + outbox + checkpoints (5 мин тутам)
 //   hsk             — HSK өдрийн сануулга (15:00 Шанхай)
-//   recap           — өдрийн тайлан (22:01 Шанхай)
+//   morning         — өглөөний brief (06:13 Шанхай)
+//   recap           — өдрийн тайлан (22:09 Шанхай)
 //
 // ENV: FIREBASE_SERVICE_ACCOUNT, TELEGRAM_BOT_TOKEN_JARVIS, TELEGRAM_ID, USER_UID
 
@@ -25,12 +26,14 @@ async function run(name, fn) {
     await run('engine',      () => engine.tickEngine());
     await run('outbox',      () => tg.processOutbox());
     await run('checkpoints', () => tg.sendCheckpoints());
+  } else if (mode === 'morning') {
+    await run('morningBrief', () => tg.sendBrief());
   } else if (mode === 'hsk') {
     await run('hskReminder', () => tg.sendHSKReminder());
   } else if (mode === 'recap') {
     await run('dailyRecap',  () => tg.sendDailyRecap());
   } else {
-    console.error('[Pulse] Буруу горим:', mode, '— tick | hsk | recap');
+    console.error('[Pulse] Буруу горим:', mode, '— tick | morning | hsk | recap');
     process.exit(1);
   }
   // firebase-admin холболт нээлттэй үлдэж hang хийхээс сэргийлнэ

@@ -1,18 +1,25 @@
 name: JARVIS Pulse
 
-# Railway server.js-ийн cron-уудын орлуулалт (Railway унтарсан):
-#   */5  — Execution Engine tick + outbox + checkpoints
-#   0 7  — 15:00 Шанхай: HSK өдрийн сануулга
-#   1 14 — 22:01 Шанхай: өдрийн тайлан (recap)
+# Railway server.js-ийн cron-уудын орлуулалт (Railway унтарсан).
+# ── ЦАГИЙН ТУХАЙ ЧУХАЛ ТЭМДЭГЛЭЛ ──────────────────────────────────
+# GitHub-ийн үнэгүй хуваарь цагийн ЭХЭНД (:00) их ачаалалтай тул
+# мессежийг 1-5 цаг хойшлуулдаг. Тийм учраас бүх ажлыг цагийн
+# эхнээс ЗӨӨСӨН (:07, :09, :20) — хойшлолт мэдэгдэхүйц багасна.
+# Цаг нь UTC. Шанхай = UTC+8.
+#   */5   — Execution Engine tick + outbox + checkpoints
+#   13 22 — 06:13 Шанхай: өглөөний brief (шинэ)
+#   7 7   — 15:07 Шанхай: HSK өдрийн сануулга
+#   9 14  — 22:09 Шанхай: өдрийн тайлан (recap)
 on:
   schedule:
     - cron: '*/5 * * * *'
-    - cron: '0 7 * * *'
-    - cron: '1 14 * * *'
+    - cron: '13 22 * * *'
+    - cron: '7 7 * * *'
+    - cron: '9 14 * * *'
   workflow_dispatch:
     inputs:
       mode:
-        description: 'tick | hsk | recap'
+        description: 'tick | morning | hsk | recap'
         default: 'tick'
 
 env:
@@ -34,8 +41,9 @@ jobs:
         id: mode
         run: |
           MODE=tick
-          [ "${{ github.event.schedule }}" = "0 7 * * *" ]  && MODE=hsk
-          [ "${{ github.event.schedule }}" = "1 14 * * *" ] && MODE=recap
+          [ "${{ github.event.schedule }}" = "13 22 * * *" ] && MODE=morning
+          [ "${{ github.event.schedule }}" = "7 7 * * *" ]   && MODE=hsk
+          [ "${{ github.event.schedule }}" = "9 14 * * *" ]  && MODE=recap
           [ -n "${{ github.event.inputs.mode }}" ] && MODE="${{ github.event.inputs.mode }}"
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
 
