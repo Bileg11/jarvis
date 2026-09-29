@@ -750,7 +750,6 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
           if (msgEl)    msgEl.textContent    = '"' + (alert.message || '').slice(0, 120) + '"';
           document.getElementById('jarvis-red-alert').classList.add('active');
         });
-      });
 
       // ── T.H.R.E.E. OS Today Panel ────────────────────────────────
       (function () {
@@ -841,17 +840,6 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
             if (sub) sub.textContent = '¥' + expCNY.toFixed(0) + ' зарцуулсан';
           });
       })();
-
-      // Resolve button handler
-      window.jarvisResolveAlert = function () {
-        document.getElementById('jarvis-red-alert').classList.remove('active');
-        var user = _auth.currentUser;
-        if (user) {
-          _db.doc('users/' + user.uid + '/alerts/current')
-            .set({ resolved: true }, { merge: true })
-            .catch(function () {});
-        }
-      };
 
       // ── Execution Engine Live Widget ──────────────────────────────
       (function () {
@@ -1001,6 +989,18 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
           if (hasLive) _startTicker(); else _stopTicker();
         });
       })();
+      });
+
+      // Resolve button handler
+      window.jarvisResolveAlert = function () {
+        document.getElementById('jarvis-red-alert').classList.remove('active');
+        var user = _auth.currentUser;
+        if (user) {
+          _db.doc('users/' + user.uid + '/alerts/current')
+            .set({ resolved: true }, { merge: true })
+            .catch(function () {});
+        }
+      };
     })();
   </script>
 
