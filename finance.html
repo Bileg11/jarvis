@@ -230,7 +230,10 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   <div class="charts-row">
     <div class="card">
       <div class="card-title">Зарлагын бүтэц (CNY)</div>
-      <div class="chart-wrap"><canvas id="chart-donut"></canvas></div>
+      <div class="chart-wrap">
+        <canvas id="chart-donut"></canvas>
+        <div class="empty" id="chart-donut-empty" style="display:none;height:200px;align-items:center;justify-content:center">Зарлага байхгүй</div>
+      </div>
     </div>
     <div class="card">
       <div class="card-title">Сарын орлого vs зарлага</div>
@@ -291,6 +294,14 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
         <div class="empty" style="padding:12px 0">Төсөв тохируулаагүй</div>
       </div>
       <button class="btn btn-ghost" onclick="editBudget()" style="width:100%;margin-top:10px;font-size:11px">⚙ Төсөв тохируулах</button>
+    </div>
+  </div>
+
+  <!-- Орлогын эх үүсвэр — аль нь тогтмол, аль нь тогтворгүй вэ -->
+  <div class="card">
+    <div class="card-title">💵 Орлогын эх үүсвэр</div>
+    <div id="income-consistency-list">
+      <div class="empty" style="padding:10px 0;font-size:11px">Орлогын гүйлгээ байхгүй байна</div>
     </div>
   </div>
 
@@ -373,6 +384,18 @@ function _periodRange() {
 function _periodLabel() {
   return { '7d':'7 хоног', '1m':'1 сар', '3m':'3 сар', '6m':'6 сар', 'all':'Бүх хугацаа',
            'custom': _customRange ? `${_customRange.from} → ${_customRange.to}` : 'Хугацаа сонгох' }[_period];
+}
+
+// Одоогийн хугацааны нэгэн адил урттай, түүний өмнөх хугацаа (аль ангилал
+// нэмэгдэж/буурч байгааг харьцуулахад хэрэглэнэ). 'all'/'custom'-д харьцуулах
+// цэгцтэй өмнөх хугацаа байхгүй тул null буцаана.
+function _prevPeriodRange() {
+  if (_period === 'all' || _period === 'custom') return null;
+  const days = { '7d':7, '1m':30, '3m':90, '6m':180 }[_period] || 30;
+  const { from } = _periodRange();
+  const prevTo   = new Date(new Date(from).getTime() - 86400000);
+  const prevFrom = new Date(prevTo.getTime() - (days - 1) * 86400000);
+  return { from: jarvisDay(prevFrom), to: jarvisDay(prevTo) };
 }
 
 function setPeriod(p, el) {
@@ -585,32 +608,105 @@ function render() {
 
   _dispCur = dispCur;  // chart функцууд ашиглана
 
+  // Өмнөх ижил уртын хугацаа — аль ангилал нэмэгдэж/буурч байгааг харуулна
+  const prevRange = _prevPeriodRange();
+  const prevTxns  = prevRange ? _txns.filter(t => t.date && t.date >= prevRange.from && t.date <= prevRange.to) : null;
+
   // Budget bars
-  renderBudget(expC, monthTxns, dispCur);
+  renderBudget(expC, monthTxns, dispCur, prevTxns);
 
   // Charts
   renderCharts(monthTxns);
+
+  // Орлогын тогтвортой байдал (бүх түүхэн дата дээр — 1 үеийн мэдээлэл хангалтгүй)
+  renderIncomeConsistency();
 
   // Transactions
   renderTxns(filtered);
 }
 
-function renderBudget(totalExp, monthTxns, dispCur='CNY') {
+function renderBudget(totalExp, monthTxns, dispCur='CNY', prevTxns=null) {
   const budget = JSON.parse(localStorage.getItem(LS_BUDGET) || '{}');
   const list = document.getElementById('budget-list');
   const cats = Object.keys(budget).filter(k => budget[k] > 0);
   if (!cats.length) { list.innerHTML = '<div class="empty" style="padding:10px 0;font-size:11px">Төсөв тохируулаагүй</div>'; return; }
+  const ICONS = {хоол:'🍜',тээвэр:'🚇',амьдрал:'🏠',хувцас:'👕',боловсрол:'📚',тоглоом:'🎮',бусад:'📦'};
   list.innerHTML = cats.map(cat => {
     const spent = monthTxns.filter(t=>t.type==='expense'&&t.category===cat&&t.currency===dispCur).reduce((s,t)=>s+t.amount,0);
     const pct   = Math.min(100, budget[cat] ? Math.round(spent/budget[cat]*100) : 0);
     const color = pct > 90 ? 'var(--red)' : pct > 70 ? 'var(--amber)' : 'var(--green)';
-    const ICONS = {хоол:'🍜',тээвэр:'🚇',амьдрал:'🏠',хувцас:'👕',боловсрол:'📚',тоглоом:'🎮',бусад:'📦'};
+
+    // Өмнөх ижил хугацаатай харьцуулсан ▲/▼ дельта
+    let deltaHtml = '';
+    if (prevTxns) {
+      const prevSpent = prevTxns.filter(t=>t.type==='expense'&&t.category===cat&&t.currency===dispCur).reduce((s,t)=>s+t.amount,0);
+      if (prevSpent > 0) {
+        const deltaPct = Math.round((spent - prevSpent) / prevSpent * 100);
+        if (deltaPct !== 0) {
+          const up = deltaPct > 0;
+          deltaHtml = `<span style="color:${up?'var(--red)':'var(--green)'};font-size:10px;margin-left:6px">${up?'▲':'▼'}${Math.abs(deltaPct)}%</span>`;
+        }
+      } else if (spent > 0) {
+        deltaHtml = `<span style="color:var(--red);font-size:10px;margin-left:6px">▲ шинэ</span>`;
+      }
+    }
+
     return `<div class="budget-item">
       <div class="budget-row">
         <span class="budget-cat">${ICONS[cat]||'▪'} ${cat}</span>
-        <span class="budget-amt" style="color:${color}">¥${fmt(spent,'')}/¥${fmt(budget[cat],'')} · ${pct}%</span>
+        <span class="budget-amt" style="color:${color}">¥${fmt(spent,'')}/¥${fmt(budget[cat],'')} · ${pct}%${deltaHtml}</span>
       </div>
       <div class="bar"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── Орлогын тогтвортой байдал ────────────────────────────────────
+// Сарын хугацаанд ангилал бүрийн орлогыг бүлэглэж, хэдэн сар давтагдсан,
+// дүн хэр тогтвортой байгаагаар нь "тогтмол" эсвэл "тогтворгүй" гэж тэмдэглэнэ.
+// Rendering (renderIncomeConsistency) болон AI зөвлөгөөний prompt (getAiAdvice)
+// хоёулаа энэ тооцооллыг ашиглана.
+function _computeIncomeConsistency() {
+  const incomeTxns = _txns.filter(t => t.type === 'income');
+  if (!incomeTxns.length) return [];
+
+  const byMonthCat = {}; // key: cat|currency → { months:Set, amounts:[] }
+  incomeTxns.forEach(t => {
+    if (!t.date) return;
+    const month = t.date.slice(0, 7);
+    const key   = (t.category || 'бусад') + '|' + t.currency;
+    const g = byMonthCat[key] || (byMonthCat[key] = { months: new Set(), amounts: [] });
+    g.months.add(month);
+    g.amounts.push(t.amount);
+  });
+
+  const totalMonths = new Set(incomeTxns.map(t => t.date.slice(0, 7))).size || 1;
+
+  return Object.entries(byMonthCat).map(([key, g]) => {
+    const [cat, cur] = key.split('|');
+    const avg = g.amounts.reduce((s,a)=>s+a,0) / g.amounts.length;
+    const variance = g.amounts.reduce((s,a)=>s+Math.pow(a-avg,2),0) / g.amounts.length;
+    const cv  = avg ? Math.sqrt(variance) / avg : 0; // хэлбэлзлийн коэффициент
+    const monthCoverage = g.months.size / totalMonths;
+    const steady = monthCoverage >= 0.7 && cv < 0.35 && g.months.size >= 2;
+    return { cat, cur, avg, monthsSeen: g.months.size, totalMonths, steady };
+  }).sort((a,b) => (a.steady === b.steady) ? b.avg - a.avg : (a.steady ? 1 : -1)); // тогтворгүйг эхэнд харуулна
+}
+
+function renderIncomeConsistency() {
+  const el = document.getElementById('income-consistency-list');
+  if (!el) return;
+  const rows = _computeIncomeConsistency();
+  if (!rows.length) { el.innerHTML = '<div class="empty" style="padding:10px 0;font-size:11px">Орлогын гүйлгээ байхгүй байна</div>'; return; }
+  const ICONS = {хоол:'🍜',тээвэр:'🚇',амьдрал:'🏠',хувцас:'👕',боловсрол:'📚',тоглоом:'🎮',LFS:'💼',хуримтлал:'💰',бусад:'📦'};
+  el.innerHTML = rows.map(r => {
+    const symb = r.cur === 'MNT' ? '₮' : r.cur === 'USD' ? '$' : '¥';
+    return `<div class="budget-item">
+      <div class="budget-row">
+        <span class="budget-cat">${ICONS[r.cat]||'▪'} ${r.cat}</span>
+        <span class="budget-amt" style="color:${r.steady?'var(--green)':'var(--amber)'}">${symb}${fmt(r.avg,'')} дундаж · ${r.monthsSeen}/${r.totalMonths} сар</span>
+      </div>
+      <div style="font-size:10px;color:${r.steady?'var(--green)':'var(--amber)'};margin-top:2px">${r.steady ? '👍 Тогтмол орлого' : '⚠ Тогтворгүй — сар бүр найдаж болохгүй'}</div>
     </div>`;
   }).join('');
 }
@@ -707,7 +803,8 @@ function renderCharts(monthTxns) {
 }
 
 function renderDonut(monthTxns) {
-  const ctx = document.getElementById('chart-donut');
+  const ctx   = document.getElementById('chart-donut');
+  const empty = document.getElementById('chart-donut-empty');
   if (!ctx) return;
   const cats = {};
   monthTxns.filter(t => t.type==='expense' && t.currency===_dispCur)
@@ -715,9 +812,16 @@ function renderDonut(monthTxns) {
   const labels = Object.keys(cats);
   const data   = Object.values(cats);
   if (!data.length) {
-    ctx.parentElement.innerHTML = '<div class="empty" style="height:200px;display:flex;align-items:center;justify-content:center">Зарлага байхгүй</div>';
+    // FIX: канвасыг устгахгүй — өмнө innerHTML-ээр бүхэлд нь сольж байсан тул
+    // дараа зарлага орж ирэхэд донут дахин хэзээ ч сэргэдэггүй байсан (canvas
+    // мөнхөд алга болно). Одоо зөвхөн харагдах/нуухыг toggle хийнэ.
+    if (_chartDonut) { _chartDonut.destroy(); _chartDonut = null; }
+    ctx.style.display = 'none';
+    if (empty) empty.style.display = 'flex';
     return;
   }
+  ctx.style.display = '';
+  if (empty) empty.style.display = 'none';
   if (_chartDonut) _chartDonut.destroy();
   _chartDonut = new Chart(ctx, {
     type: 'doughnut',
@@ -792,14 +896,42 @@ async function getAiAdvice() {
   mTxns.filter(t=>t.type==='expense'&&t.currency===_dispCur).forEach(t => { cats[t.category]=(cats[t.category]||0)+t.amount; });
   const catStr = Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([c,a])=>`${c}: ¥${a.toFixed(0)}`).join(', ');
 
+  // Өмнөх ижил уртын хугацаатай харьцуулж, аль ангилал өссөн/буурсныг олно
+  const prevRange = _prevPeriodRange();
+  let deltaStr = 'харьцуулах өмнөх хугацаа алга (Бүх/Custom үед)';
+  if (prevRange) {
+    const prevTxns = _txns.filter(t => t.date && t.date >= prevRange.from && t.date <= prevRange.to);
+    const prevCats = {};
+    prevTxns.filter(t=>t.type==='expense'&&t.currency===_dispCur).forEach(t => { prevCats[t.category]=(prevCats[t.category]||0)+t.amount; });
+    const deltas = Object.keys(cats).map(c => {
+      const prev = prevCats[c] || 0;
+      if (!prev) return `${c}: шинэ зарлага`;
+      const pct = Math.round((cats[c]-prev)/prev*100);
+      return pct === 0 ? null : `${c}: ${pct>0?'+':''}${pct}%`;
+    }).filter(Boolean);
+    deltaStr = deltas.length ? deltas.join(', ') : 'өөрчлөлт бага';
+  }
+
+  // Орлогын тогтвортой байдал
+  const incomeRows = _computeIncomeConsistency();
+  const incomeStr = incomeRows.length
+    ? incomeRows.map(r => `${r.cat} (${r.steady?'тогтмол':'тогтворгүй'}, ${r.monthsSeen}/${r.totalMonths} сар)`).join(', ')
+    : 'орлогын түүх байхгүй';
+
+  const goal = parseInt(localStorage.getItem(LS_SAVES) || '0');
+  const goalStr = goal ? `₮${goal.toLocaleString()} (одоо ${Math.min(100,Math.round(savMNT/goal*100))}%)` : 'тохируулаагүй';
+
   const prompt = `Санхүүгийн шинжилгээ хийгээд зөвлөгөө өг.
 Хэрэглэгч: Билэг, 18 настай, Шанхайд амьдардаг Монгол залуу.
 Хугацаа: ${_periodLabel()} (${from} → ${to})
 CNY орлого: ¥${incomeCNY} | CNY зарлага: ¥${expCNY} | Net: ${incomeCNY>=expCNY?'+':''}¥${(incomeCNY-expCNY).toFixed(0)}
 Зарлагын ангилал: ${catStr||'байхгүй'}
+Өмнөх ижил хугацаатай харьцуулсан өөрчлөлт: ${deltaStr}
+Орлогын эх үүсвэрүүд: ${incomeStr}
+Хуримтлалын зорилго: ${goalStr}
 MNT хуримтлал (нийт): ₮${savMNT.toLocaleString()}
 
-3-4 оноо бүхий практик, товч зөвлөгөө өг (монголоор). Тодорхой тоо ашигла. Аль ангилал хэт их, юу хэмнэх боломжтойг хэл.`;
+3-4 оноо бүхий практик, товч зөвлөгөө өг (монголоор). Тодорхой тоо ашигла. Аль ангилал нэмэгдэж байгааг онцол, аль зарлага зайлшгүй бус (хэмнэх боломжтой) байж болохыг тааж хэл, орлого тогтворгүй бол анхааруул, хуримтлалын зорилгодоо хүрэхийн тулд сар бүр хэдэн хэмнэх ёстойг тоогоор хэл.`;
 
   try {
     const proxy  = (localStorage.getItem('jarvis_proxy_url') || 'https://jarvis-chat-proxy.vercel.app').replace(/\/$/,'');
