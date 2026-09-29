@@ -305,6 +305,14 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     </div>
   </div>
 
+  <!-- Юу худалдаж авсан вэ — тайлбараас JARVIS автоматаар ялгаж бүлэглэнэ -->
+  <div class="card">
+    <div class="card-title">🔖 Юу худалдаж авсан вэ</div>
+    <div id="item-breakdown-list">
+      <div class="empty" style="padding:10px 0;font-size:11px">Тайлбартай гүйлгээ алга — тайлбар бичихэд JARVIS автоматаар ялгах болно</div>
+    </div>
+  </div>
+
   <!-- Transactions -->
   <div class="card">
     <div class="card-title">
@@ -547,6 +555,7 @@ function addTxn() {
   _txns.unshift(txn);
   saveTxnsLocal(_txns);
   saveTxnFs(txn);
+  _deriveItemTag(txn); // дэвсгэрт — Хадгалахыг удаашруулахгүй
 
   document.getElementById('inp-amount').value = '';
   document.getElementById('inp-note').value = '';
@@ -620,6 +629,9 @@ function render() {
 
   // Орлогын тогтвортой байдал (бүх түүхэн дата дээр — 1 үеийн мэдээлэл хангалтгүй)
   renderIncomeConsistency();
+
+  // Тайлбараас JARVIS ялгасан барааны задаргаа
+  renderItemBreakdown(monthTxns, dispCur);
 
   // Transactions
   renderTxns(filtered);
@@ -711,6 +723,64 @@ function renderIncomeConsistency() {
   }).join('');
 }
 
+// ── Тайлбараас автомат бараа ялгах (AI) ──────────────────────────
+// Хэрэглэгч "гоймон авсан" гэх мэт тайлбар бичихэд AI-аар нэг товч
+// барааны нэр гаргуулж txn.item-д хадгална. Хадгалалт шууд явагдана —
+// энэ нь дараа нь дэвсгэрт (background) орж ирнэ, Хадгалах товчийг
+// удаашруулахгүй.
+async function _deriveItemTag(txn) {
+  if (!txn.note || txn.type !== 'expense') return;
+  try {
+    const proxy  = (localStorage.getItem('jarvis_proxy_url') || 'https://jarvis-chat-proxy.vercel.app').replace(/\/$/,'');
+    const secret = localStorage.getItem('jarvis_proxy_secret') || '';
+    const headers = { 'Content-Type': 'application/json' };
+    if (secret) headers['x-jarvis-secret'] = secret;
+    const res = await Promise.race([
+      fetch(proxy + '/chat', {
+        method: 'POST', headers,
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'Тайлбараас худалдаж авсан ЖИНХЭНЭ БАРАА/ХООЛНЫ нэрийг 1-2 үгээр монголоор гарга (жишээ: "гоймон", "өндөг", "кофе"). Зөвхөн тэр үгийг гарга, өөр юу ч бүү нэм. Юу худалдаж авснаа тодорхойгүй бол ЗӨВХӨН "-" гэж бич.' },
+            { role: 'user', content: txn.note }
+          ],
+          max_tokens: 20, temperature: 0.2
+        })
+      }),
+      new Promise((_,r) => setTimeout(() => r(new Error('timeout')), 8000))
+    ]);
+    const data = await res.json();
+    const item = data.choices?.[0]?.message?.content?.trim().replace(/^["'.]|["'.]$/g,'');
+    if (!item || item === '-' || item.length > 30) return;
+
+    const t = _txns.find(x => x.id === txn.id);
+    if (!t) return; // хэрэглэгч устгачихсан байж болзошгүй
+    t.item = item;
+    saveTxnsLocal(_txns);
+    if (_fDb && _fUid) _fDb.collection(`users/${_fUid}/finance/txns/records`).doc(txn.id).set({ item }, { merge: true }).catch(() => {});
+    render(); // одоо харагдаж буй хугацаанд байвал задаргаанд шууд орж ирнэ
+  } catch {}
+}
+
+function renderItemBreakdown(monthTxns, dispCur='CNY') {
+  const el = document.getElementById('item-breakdown-list');
+  if (!el) return;
+  const items = {};
+  monthTxns.filter(t => t.type==='expense' && t.currency===dispCur && t.item).forEach(t => {
+    const g = items[t.item] || (items[t.item] = { sum: 0, count: 0 });
+    g.sum += t.amount; g.count++;
+  });
+  const rows = Object.entries(items).sort((a,b) => b[1].sum - a[1].sum);
+  if (!rows.length) { el.innerHTML = '<div class="empty" style="padding:10px 0;font-size:11px">Тайлбартай гүйлгээ алга — тайлбар бичихэд JARVIS автоматаар ялгах болно</div>'; return; }
+  const symb = dispCur === 'MNT' ? '₮' : dispCur === 'USD' ? '$' : '¥';
+  el.innerHTML = rows.map(([item, g]) => `<div class="budget-item">
+    <div class="budget-row">
+      <span class="budget-cat">🔖 ${item}</span>
+      <span class="budget-amt">${symb}${fmt(g.sum,'')} · ${g.count} удаа</span>
+    </div>
+  </div>`).join('');
+}
+
 function renderTxns(txns) {
   const list = document.getElementById('txn-list');
   if (!txns.length) { list.innerHTML = '<div class="empty">Гүйлгээ байхгүй.</div>'; return; }
@@ -724,7 +794,7 @@ function renderTxns(txns) {
       <div class="txn-icon">${icon}</div>
       <div class="txn-info">
         <div class="txn-cat">${t.category || t.type}</div>
-        <div class="txn-note">${t.note || ''} ${t.source === 'telegram' ? '· 📱 TG' : ''}</div>
+        <div class="txn-note">${t.note || ''} ${t.item ? '· 🔖 '+t.item : ''} ${t.source === 'telegram' ? '· 📱 TG' : ''}</div>
       </div>
       <div style="text-align:right">
         <div class="txn-amount" style="color:${color}">${sign}${symb}${fmt(t.amount,'')}</div>
