@@ -345,6 +345,52 @@
   .messages::-webkit-scrollbar { width: 2px; }
   .messages::-webkit-scrollbar-thumb { background: var(--surface-2); }
 
+  /* ── Memory update notice — толгойн доор ФИКС, X дарвал л хаагдана ── */
+  .mem-banner {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 14px;
+    background: rgba(var(--accent-rgb),.08);
+    border-bottom: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-2);
+    flex: 0 0 auto;
+  }
+  .mem-banner span { flex: 1; }
+  .mem-banner .mem-banner-view {
+    background: none; border: none; padding: 0;
+    color: var(--accent-text); font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .mem-banner .mem-banner-view:hover { opacity: .75; }
+  .mem-banner .mem-banner-close {
+    background: none; border: none; padding: 0 2px;
+    color: var(--text-2); font-size: 16px; line-height: 1; cursor: pointer;
+  }
+  .mem-banner .mem-banner-close:hover { color: var(--text); }
+
+  .mem-viewer-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0,0,0,.55);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mem-viewer-box {
+    width: min(520px, 92vw); max-height: 78vh; display: flex; flex-direction: column;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .mem-viewer-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+  }
+  .mem-viewer-hdr h3 { margin: 0; font-size: 13px; letter-spacing: .04em; color: var(--text); }
+  .mem-viewer-close {
+    background: none; border: none; color: var(--text-2); font-size: 20px; cursor: pointer; line-height: 1;
+  }
+  .mem-viewer-body { padding: 14px 18px; overflow-y: auto; font-size: 12.5px; line-height: 1.7; color: var(--text); }
+  .mem-viewer-body .mem-line { padding: 5px 0; border-bottom: 1px dashed var(--border); }
+  .mem-viewer-body .mem-line:last-child { border-bottom: none; }
+  .mem-viewer-empty { color: var(--text-2); font-size: 12px; }
+
   .msg-row { display: flex; gap: 8px; align-items: flex-start; }
   .msg-row.user { flex-direction: row-reverse; }
   .msg-av {
@@ -1036,6 +1082,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
         <div class="spectrum-wrap" id="spectrum-wrap">
           <canvas id="spec-canvas"></canvas>
         </div>
+        <div class="mem-banner" id="mem-banner" hidden></div>
         <div class="messages" id="messages"></div>
         <div class="input-area" id="input-bar">
           <div id="token-row" class="token-row" style="display:none">
@@ -1790,13 +1837,116 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     addMsg('user',text);
     const typing=addTyping();
     startSpectrum();
-    const reply=await sendChatMessage(text);
+    let reply=await sendChatMessage(text);
     typing.remove();stopSpectrum();
-    const msgRow=addMsg('bot',reply);
-    // Sprint 30: Detect FINALIZE_PLAN and render schedule card
-    _tryRenderScheduleCard(reply, msgRow);
+
+    // Chat → action: REMEMBER (текстийн хамт ирдэг тул салгаж авна)
+    const rem = _extractRemember(reply);
+    if (rem) { _applyRemember(rem); reply = rem.cleanText || '🧠 Санаж авлаа.'; }
+
+    // Chat → action: ADD_HSK_WORD / LOG_EXPENSE (ЗӨВХӨН JSON ирдэг)
+    const actionCard = _tryParseChatAction(reply);
+    if (actionCard) {
+      const msgRow = addMsg('bot', '…');
+      if (actionCard.action === 'ADD_HSK_WORD') await _applyAddHskWordChat(actionCard, msgRow);
+      else await _applyLogExpenseChat(actionCard, msgRow);
+    } else {
+      const msgRow=addMsg('bot',reply);
+      // Sprint 30: Detect FINALIZE_PLAN and render schedule card
+      _tryRenderScheduleCard(reply, msgRow);
+    }
     sendBtn.disabled=false;setAIState('idle');
     inputEl.focus();
+  }
+
+  // ── Chat → ACTION: REMEMBER / ADD_HSK_WORD / LOG_EXPENSE ─────────
+  // (index.html-тэй ижил логик — chat.html тусдаа баримт тул давхардуулав)
+  function _extractRemember(text) {
+    const t = text || '';
+    const fenceMatch = t.match(/```json\s*(\{[\s\S]*?"action"\s*:\s*"REMEMBER"[\s\S]*?\})\s*```/i);
+    const bareMatch  = !fenceMatch && t.match(/\{[^{}]*"action"\s*:\s*"REMEMBER"[^{}]*\}/);
+    const m = fenceMatch || bareMatch;
+    if (!m) return null;
+    try {
+      const j = JSON.parse(fenceMatch ? fenceMatch[1] : bareMatch[0]);
+      if (j.action !== 'REMEMBER' || !j.fact) return null;
+      return { fact: j.fact, message: j.message, cleanText: t.replace(m[0], '').trim() };
+    } catch { return null; }
+  }
+
+  async function _applyRemember(rem) {
+    const ok = window.DB?.appendCoreMemory ? await window.DB.appendCoreMemory(rem.fact) : false;
+    if (ok) _showMemoryBanner();
+  }
+
+  function _showMemoryBanner() {
+    const banner = document.getElementById('mem-banner');
+    if (!banner) return;
+    banner.innerHTML = `<span>🧠 Санах ой шинэчлэгдлээ</span><button type="button" class="mem-banner-view">Харах →</button><button type="button" class="mem-banner-close" aria-label="Хаах">&times;</button>`;
+    banner.querySelector('.mem-banner-view').addEventListener('click', _showMemoryViewer);
+    banner.querySelector('.mem-banner-close').addEventListener('click', () => { banner.hidden = true; });
+    banner.hidden = false;
+  }
+
+  function _showMemoryViewer() {
+    document.getElementById('mem-viewer-overlay')?.remove();
+    const content = (localStorage.getItem('jarvis_core_memory') || '').trim();
+    const lines = content ? content.split('\n').filter(l => l.trim()) : [];
+    const overlay = document.createElement('div');
+    overlay.id = 'mem-viewer-overlay';
+    overlay.className = 'mem-viewer-overlay';
+    overlay.innerHTML = `
+      <div class="mem-viewer-box">
+        <div class="mem-viewer-hdr">
+          <h3>🧠 JARVIS санах ой</h3>
+          <button type="button" class="mem-viewer-close">&times;</button>
+        </div>
+        <div class="mem-viewer-body">
+          ${lines.length
+            ? lines.map(l => `<div class="mem-line">${l.replace(/</g,'&lt;')}</div>`).join('')
+            : `<div class="mem-viewer-empty">Одоогоор юу ч санагдаагүй байна.</div>`}
+        </div>
+      </div>`;
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector('.mem-viewer-close').addEventListener('click', () => overlay.remove());
+    document.body.appendChild(overlay);
+  }
+
+  function _tryParseChatAction(text) {
+    const t = (text||'').trim();
+    const fenced = t.match(/```json\s*([\s\S]*?)```/i);
+    const raw = fenced ? fenced[1].trim() : t;
+    if (!raw.startsWith('{')) return null;
+    try {
+      const j = JSON.parse(raw);
+      return (j.action === 'ADD_HSK_WORD' || j.action === 'LOG_EXPENSE') ? j : null;
+    } catch { return null; }
+  }
+
+  async function _applyAddHskWordChat(card, msgRow) {
+    const hanzi = (card.hanzi || '').trim();
+    const bub = msgRow.querySelector('.msg-bubble');
+    if (!hanzi) { bub.textContent = '⚠ Ямар ханз нэмэхээ ойлгосонгүй, дахин тодорхой бичээрэй.'; return; }
+    const ok = window.DB?.addVocabWord ? await window.DB.addVocabWord({ h: hanzi, p: card.pinyin || '', m: card.meaning || '' }) : false;
+    bub.textContent = ok
+      ? (card.message || `✓ "${hanzi}" HSK үгийн санд нэмэгдлээ.`)
+      : `⚠ "${hanzi}" нэмэхэд алдаа гарлаа — нэвтэрсэн эсэхээ шалгаарай.`;
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  async function _applyLogExpenseChat(card, msgRow) {
+    const amount = parseFloat(card.amount);
+    const bub = msgRow.querySelector('.msg-bubble');
+    if (!amount || amount <= 0) { bub.textContent = '⚠ Дүнг ойлгосонгүй, дахин тодорхой бичээрэй (жишээ: "50 юань хоолонд зарлаа").'; return; }
+    const ok = window.DB?.addExpense ? await window.DB.addExpense({
+      type: card.type === 'income' ? 'income' : 'expense',
+      amount, currency: card.currency || 'CNY', category: card.category || 'бусад', note: card.note || '',
+    }) : false;
+    const typeLabel = card.type === 'income' ? 'орлого' : 'зарлага';
+    bub.textContent = ok
+      ? (card.message || `✓ ${amount} ${card.currency || 'CNY'} ${typeLabel} бүртгэгдлээ (${card.category || 'бусад'}).`)
+      : `⚠ ${typeLabel} бүртгэхэд алдаа гарлаа — нэвтэрсэн эсэхээ шалгаарай.`;
+    msgsEl.scrollTop = msgsEl.scrollHeight;
   }
 
   // ── SPRINT 30: FINALIZE_PLAN → Schedule Card ─────────────────
