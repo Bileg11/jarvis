@@ -1241,6 +1241,15 @@ function termTypeJarvis(text) {
   if (!out) return;
   if (_termTimer) { clearInterval(_termTimer); _termTimer = null; }
 
+  // ── REMEMBER: урт хугацааны санах ойд чимээгүй нэмээд, үлдсэн ярианы
+  // текстийг ХЭВИЙН харуулна (энэ action бусдаас ялгаатай нь ЗӨВХӨН JSON биш,
+  // текстийн хамт ирдэг тул энд салгаж авна) ──────────────────────────
+  const rem = _extractRemember(text);
+  if (rem) {
+    _applyRemember(rem);
+    text = rem.cleanText || '🧠 Санаж авлаа, Boss.';
+  }
+
   // ── PLAN: text + JSON mixed response ────────────────────────────
   const split = _splitTextAndPlan(text);
   if (split) {
@@ -3874,6 +3883,26 @@ function toggleDragMode(force) {
 // CHAT → ACTION: ADD_HSK_WORD / LOG_EXPENSE — чат үнэхээр дата бичдэг болно
 // (hsk.html/finance.html-тэй ижил Firestore schema, DB.addVocabWord/addExpense-ээр)
 // ══════════════════════════════════════════════════════════════════
+
+// REMEMBER бусад action-аас ялгаатай: AI үүнийг ЗӨВХӨН JSON биш, ярианы
+// текстийн хамт явуулдаг тул card engine-ээс ӨМНӨ салгаж авна.
+function _extractRemember(text) {
+  const t = text || '';
+  const fenceMatch = t.match(/```json\s*(\{[\s\S]*?"action"\s*:\s*"REMEMBER"[\s\S]*?\})\s*```/i);
+  const bareMatch  = !fenceMatch && t.match(/\{[^{}]*"action"\s*:\s*"REMEMBER"[^{}]*\}/);
+  const m = fenceMatch || bareMatch;
+  if (!m) return null;
+  try {
+    const j = JSON.parse(fenceMatch ? fenceMatch[1] : bareMatch[0]);
+    if (j.action !== 'REMEMBER' || !j.fact) return null;
+    return { fact: j.fact, message: j.message, cleanText: t.replace(m[0], '').trim() };
+  } catch { return null; }
+}
+
+async function _applyRemember(rem) {
+  const ok = window.DB?.appendCoreMemory ? await window.DB.appendCoreMemory(rem.fact) : false;
+  if (ok) addTermLine('sys', `🧠 Санамжинд нэмэгдлээ: "${rem.fact}"`);
+}
 
 async function _applyAddHskWord(card, out) {
   const hanzi = (card.hanzi || '').trim();

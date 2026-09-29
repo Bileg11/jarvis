@@ -825,4 +825,28 @@ window.DB = {
       return true;
     } catch (e) { console.warn('[Chat/addExpense]', e.code); return false; }
   },
+
+  // fact: нэг товч өгүүлбэр — урт хугацааны санах ойд (profile/knowledge_base)
+  // нэмнэ. gemini.js-ийн syncKnowledgeBase()-той ижил Firestore doc ашиглана,
+  // тэндээс chat system prompt руу дараагийн нэвтрэлт бүрт орж ирнэ.
+  async appendCoreMemory(fact) {
+    const uid = _uid(); if (!uid || !_db || !fact) return false;
+    const MAX_CHARS = 3000; // system prompt дүүргэхгүй байхын тулд хязгаарлана
+    try {
+      const ref      = _db.doc(`users/${uid}/profile/knowledge_base`);
+      const snap     = await ref.get();
+      const existing = snap.exists ? (snap.data().content || snap.data().text || '') : '';
+      const dateStr  = new Date().toISOString().slice(0, 10);
+      let updated = existing ? `${existing}\n- [${dateStr}] ${fact}` : `- [${dateStr}] ${fact}`;
+      // Хэтэрвэл хамгийн хуучин мөрүүдээс эхлэн хасна
+      if (updated.length > MAX_CHARS) {
+        const lines = updated.split('\n');
+        while (lines.join('\n').length > MAX_CHARS && lines.length > 1) lines.shift();
+        updated = lines.join('\n');
+      }
+      await ref.set({ content: updated, updatedAt: new Date().toISOString() }, { merge: true });
+      localStorage.setItem('jarvis_core_memory', updated); // яг тэр чатанд шууд нөлөөлнө
+      return true;
+    } catch (e) { console.warn('[Chat/appendCoreMemory]', e.code); return false; }
+  },
 };
