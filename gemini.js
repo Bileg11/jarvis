@@ -58,7 +58,19 @@ THEME: Өнгө солих хүсэлтэд ЗӨВХӨН (текст нэмэх�
 LAYOUT: Layout солих хүсэлтэд (1=DevFocus,2=HSKStudy,3=Full):
 \`\`\`json
 {"action":"LAYOUT_CHANGE","layoutId":2,"message":"..."}
-\`\`\``;
+\`\`\`
+
+HSK ҮГ НЭМЭХ: Хэрэглэгч чатаараа шинэ HSK үг нэмэхийг хүсвэл (жишээ: "үг нэм 你好 сайн уу", "vocab-д нэм: 谢谢 баярлалаа") хангалттай мэдээлэлтэй болмогц ЗӨВХӨН (текст нэмэхгүй):
+\`\`\`json
+{"action":"ADD_HSK_WORD","hanzi":"...","pinyin":"...","meaning":"...","message":"..."}
+\`\`\`
+Хэрэглэгч пиньин өгөөгүй бол чи өөрөө зөв пиньинг мэдэж бөглөнө. message талбарт богино баталгаажуулах өгүүлбэр бич.
+
+ЗАРЛАГА/ОРЛОГО БҮРТГЭХ: Хэрэглэгч мөнгөн гүйлгээ дурдвал (жишээ: "өнөөдөр хоолонд 50 юань зарлаа", "500 юань орлого орлоо") ЗӨВХӨН:
+\`\`\`json
+{"action":"LOG_EXPENSE","type":"expense","amount":50,"currency":"CNY","category":"хоол","note":"...","message":"..."}
+\`\`\`
+type: expense эсвэл income. currency өгөөгүй бол CNY гэж үз (Шанхайд амьдардаг тул). category-г агуулгаас нь өөрөө тааж бөглө (хоол, тээвэр, орон сууц, зугаа, LFS, бусад г.м).`;
 
 
 // FIX: chat-д нэг удаагийн runtime context (цаг/цаг агаар) нэмэх module хувьсагч
@@ -83,10 +95,12 @@ function _getSystemInstruction() {
 const JARVIS_SYSTEM = JARVIS_SYSTEM_DEFAULT;
 const ACE_SYSTEM    = JARVIS_SYSTEM_DEFAULT; // T.H.R.E.E. OS alias
 
+// ── HABIT LABELS (briefing + live-chat proactive nudge-д хамтдаа ашиглана) ──
+const HABIT_LABELS = { exercise:'дасгал', hanzi:'汉字', read:'унших', journal:'journal', water:'ус' };
+
 // ── BRIEFING (Автомат өдөрт 3 удаа, frontend-оос) ────────────────
 function _buildPrompt(d) {
-  const LABELS = { exercise:'дасгал', hanzi:'汉字', read:'унших', journal:'journal', water:'ус' };
-  const weakLabel = d.weakest ? (LABELS[d.weakest] || d.weakest) : 'мэдэгдэхгүй';
+  const weakLabel = d.weakest ? (HABIT_LABELS[d.weakest] || d.weakest) : 'мэдэгдэхгүй';
 
   return `Өгөгдөл [${d.weekday} ${d.hour}:00]:
 Score: ${d.score}/100
@@ -483,6 +497,21 @@ async function _buildContextPrefix() {
   // Deadlock
   const dl = _checkDeadlock();
   if (dl) parts.push(`⚠ DEADLOCK ALERT: Todo жагсаалт ${dl.hours}+ цаг өөрчлөгдөөгүй. Хэрэглэгч гацсан байж болзошгүй — "The Deadlock Breaker" горимоор туслах шаардлагатай.`);
+
+  // Proactive habit signal — өдрийн briefing-д л ашиглагддаг байсан
+  // 7 хоногийн статистикийг live чат руу мөн нэвтрүүлж, асуугаагүй ч
+  // тохиромжтой мөчид өөрөө холбож зөвлөгөө өгөх боломж олгоно.
+  if (typeof buildGeminiContext === 'function') {
+    try {
+      const bctx = buildGeminiContext();
+      if (bctx.weakest && bctx.weak_pct < 50) {
+        const label = HABIT_LABELS[bctx.weakest] || bctx.weakest;
+        parts.push(`📊 7 хоногийн дүн: хамгийн сул тал нь "${label}" (${bctx.weak_pct}%). Ярианд тохиромжтой бол санаачлагатайгаар дурдаж, дэмжиж болно — шаардлагагүй бол шахахгүй.`);
+      }
+      if (bctx.ex_streak >= 3) parts.push(`🔥 Дасгалын streak: ${bctx.ex_streak} өдөр тасраагүй.`);
+      if (bctx.hz_streak >= 3) parts.push(`🔥 HSK streak: ${bctx.hz_streak} өдөр тасраагүй.`);
+    } catch {}
+  }
 
   // Coach level annotation
   const cl = parseInt(localStorage.getItem('jarvis_coach_level') || '2');

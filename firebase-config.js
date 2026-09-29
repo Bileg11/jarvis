@@ -782,4 +782,47 @@ window.DB = {
     const uid = _uid(); if (!uid) return;
     _db.doc(`users/${uid}/hsk/sessions/${date}`).set(session, { merge: true }).catch(() => {});
   },
+
+  // ══════════════════════════════════════════════════════════════════
+  // CHAT → ACTION: JARVIS чатаас шууд өгөгдөл бичих (hsk.html/finance.html-тэй
+  // ижил Firestore schema ашиглана, тэнд дараа нээгэхэд шууд харагдана)
+  // ══════════════════════════════════════════════════════════════════
+
+  // word: { h: hanzi, p: pinyin, m: meaning } — hsk.html-ийн addWord()-той ижил schema
+  async addVocabWord(word) {
+    const uid = _uid(); if (!uid || !_db || !word?.h) return false;
+    try {
+      await _db.doc(`users/${uid}/vocabulary/${word.h}`).set({
+        word:          word.h,
+        pinyin:        word.p || '',
+        definition:    word.m || '',
+        hsk_level:     4,
+        mastery_level: 0,
+        added:         new Date().toISOString().slice(0, 10),
+        source:        'jarvis_chat',
+      }, { merge: true });
+      localStorage.removeItem('jarvis_hsk_vault_cache'); // hsk.html дараагийн ачаалалтдаа Firestore-оос шинэчилнэ
+      return true;
+    } catch (e) { console.warn('[Chat/addVocabWord]', e.code); return false; }
+  },
+
+  // txn: { type, amount, currency, category, note } — finance.html-ийн addTxn()-той ижил schema
+  async addExpense(txn) {
+    const uid = _uid(); if (!uid || !_db || !txn?.amount) return false;
+    const full = {
+      id:       Date.now().toString(),
+      type:     txn.type === 'income' ? 'income' : 'expense',
+      amount:   txn.amount,
+      currency: txn.currency || 'CNY',
+      category: txn.category || 'бусад',
+      note:     txn.note || '',
+      date:     new Date().toISOString().slice(0, 10),
+      ts:       new Date().toISOString(),
+      source:   'jarvis_chat',
+    };
+    try {
+      await _db.doc(`users/${uid}/finance/txns/records/${full.id}`).set(full);
+      return true;
+    } catch (e) { console.warn('[Chat/addExpense]', e.code); return false; }
+  },
 };

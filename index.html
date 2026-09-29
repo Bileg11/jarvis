@@ -1276,6 +1276,10 @@ function termTypeJarvis(text) {
       const msg = card.message || `Layout ${card.layoutId}: ${lname} идэвхжлээ, Boss.`;
       const el = addTermLine('jarvis','',true);
       if (el) { el.textContent=msg; el.style.opacity='0'; el.style.transition='opacity .25s'; requestAnimationFrame(()=>{el.style.opacity='1';}); }
+    } else if (card.action === 'ADD_HSK_WORD') {
+      _applyAddHskWord(card, out);
+    } else if (card.action === 'LOG_EXPENSE') {
+      _applyLogExpense(card, out);
     } else {
       _renderInteractiveCard(card, out);
     }
@@ -1327,6 +1331,24 @@ function _tryParseCard(text) {
     try {
       const j = JSON.parse(layoutMatch[0]);
       if (j.action === 'LAYOUT_CHANGE') return j;
+    } catch {}
+  }
+
+  // Chat → action: ADD_HSK_WORD — шинэ HSK үг шууд Firestore-д нэмнэ
+  const addWordMatch = raw.match(/\{[\s\S]*"action"\s*:\s*"ADD_HSK_WORD"[\s\S]*\}/);
+  if (addWordMatch) {
+    try {
+      const j = JSON.parse(addWordMatch[0]);
+      if (j.action === 'ADD_HSK_WORD') return j;
+    } catch {}
+  }
+
+  // Chat → action: LOG_EXPENSE — зарлага/орлого шууд Firestore-д бүртгэнэ
+  const logExpenseMatch = raw.match(/\{[\s\S]*"action"\s*:\s*"LOG_EXPENSE"[\s\S]*\}/);
+  if (logExpenseMatch) {
+    try {
+      const j = JSON.parse(logExpenseMatch[0]);
+      if (j.action === 'LOG_EXPENSE') return j;
     } catch {}
   }
 
@@ -3846,6 +3868,45 @@ function toggleDragMode(force) {
     document.getElementById('widget-canvas')?.classList.remove('active');
     addTermLine('sys', '>> DRAG MODE OFF: layout restored.');
   }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// CHAT → ACTION: ADD_HSK_WORD / LOG_EXPENSE — чат үнэхээр дата бичдэг болно
+// (hsk.html/finance.html-тэй ижил Firestore schema, DB.addVocabWord/addExpense-ээр)
+// ══════════════════════════════════════════════════════════════════
+
+async function _applyAddHskWord(card, out) {
+  const hanzi = (card.hanzi || '').trim();
+  const el = addTermLine('jarvis', '', true);
+  if (!hanzi) {
+    if (el) { el.textContent = '⚠ Ямар ханз нэмэхээ ойлгосонгүй, дахин тодорхой бичээрэй.'; el.style.opacity='1'; }
+    return;
+  }
+  const ok = window.DB?.addVocabWord ? await window.DB.addVocabWord({ h: hanzi, p: card.pinyin || '', m: card.meaning || '' }) : false;
+  const msg = ok
+    ? (card.message || `✓ "${hanzi}" HSK үгийн санд нэмэгдлээ.`)
+    : `⚠ "${hanzi}" нэмэхэд алдаа гарлаа — нэвтэрсэн эсэхээ шалгаарай.`;
+  if (el) { el.textContent = msg; el.style.opacity='0'; el.style.transition='opacity .25s'; requestAnimationFrame(()=>{el.style.opacity='1';}); }
+  if (out) out.scrollTop = out.scrollHeight;
+}
+
+async function _applyLogExpense(card, out) {
+  const amount = parseFloat(card.amount);
+  const el = addTermLine('jarvis', '', true);
+  if (!amount || amount <= 0) {
+    if (el) { el.textContent = '⚠ Дүнг ойлгосонгүй, дахин тодорхой бичээрэй (жишээ: "50 юань хоолонд зарлаа").'; el.style.opacity='1'; }
+    return;
+  }
+  const ok = window.DB?.addExpense ? await window.DB.addExpense({
+    type: card.type === 'income' ? 'income' : 'expense',
+    amount, currency: card.currency || 'CNY', category: card.category || 'бусад', note: card.note || '',
+  }) : false;
+  const typeLabel = card.type === 'income' ? 'орлого' : 'зарлага';
+  const msg = ok
+    ? (card.message || `✓ ${amount} ${card.currency || 'CNY'} ${typeLabel} бүртгэгдлээ (${card.category || 'бусад'}).`)
+    : `⚠ ${typeLabel} бүртгэхэд алдаа гарлаа — нэвтэрсэн эсэхээ шалгаарай.`;
+  if (el) { el.textContent = msg; el.style.opacity='0'; el.style.transition='opacity .25s'; requestAnimationFrame(()=>{el.style.opacity='1';}); }
+  if (out) out.scrollTop = out.scrollHeight;
 }
 
 // ══════════════════════════════════════════════════════════════════
