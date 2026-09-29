@@ -486,6 +486,49 @@ canvas#reactor { display:block; will-change:transform; transform:translateZ(0); 
 .term-line.warn  .term-text { color: #ffb347; }
 .term-line.ok    .term-text { color: var(--ok); }
 
+/* ── Memory update notice (Claude-style "Memory updated" chip) ────── */
+.mem-update-chip {
+  display: flex; align-items: center; gap: 8px;
+  align-self: flex-start;
+  margin-left: 38px;
+  padding: 6px 12px;
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-2);
+}
+.mem-update-chip .mem-update-view {
+  background: none; border: none; padding: 0; margin-left: 2px;
+  color: var(--accent-text); font-family: var(--mono); font-size: 11px;
+  font-weight: 600; cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.mem-update-chip .mem-update-view:hover { opacity: .75; }
+
+/* ── Memory viewer modal ────────────────────────────────────────── */
+.mem-viewer-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center;
+}
+.mem-viewer-box {
+  width: min(520px, 92vw); max-height: 78vh; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  font-family: var(--mono);
+}
+.mem-viewer-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+}
+.mem-viewer-hdr h3 { margin: 0; font-size: 13px; letter-spacing: .04em; color: var(--text); }
+.mem-viewer-close {
+  background: none; border: none; color: var(--text-2); font-size: 20px; cursor: pointer; line-height: 1;
+}
+.mem-viewer-body { padding: 14px 18px; overflow-y: auto; font-size: 12.5px; line-height: 1.7; color: var(--text); }
+.mem-viewer-body .mem-line { padding: 5px 0; border-bottom: 1px dashed var(--border); }
+.mem-viewer-body .mem-line:last-child { border-bottom: none; }
+.mem-viewer-empty { color: var(--text-2); font-size: 12px; }
+
 /* Terminal input row */
 .term-input-row {
   flex:0 0 auto;

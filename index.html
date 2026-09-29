@@ -3901,7 +3901,45 @@ function _extractRemember(text) {
 
 async function _applyRemember(rem) {
   const ok = window.DB?.appendCoreMemory ? await window.DB.appendCoreMemory(rem.fact) : false;
-  if (ok) addTermLine('sys', `🧠 Санамжинд нэмэгдлээ: "${rem.fact}"`);
+  if (ok) _renderMemoryUpdateChip();
+}
+
+// Claude-стилийн "Memory updated" мэдэгдэл — дарвал бүх санах ойг харуулна
+function _renderMemoryUpdateChip() {
+  const out = document.getElementById('term-output');
+  if (!out) return;
+  const chip = document.createElement('div');
+  chip.className = 'mem-update-chip';
+  chip.innerHTML = `<span>🧠 Санах ой шинэчлэгдлээ</span><button type="button" class="mem-update-view">Харах →</button>`;
+  chip.querySelector('.mem-update-view').addEventListener('click', _showMemoryViewer);
+  out.appendChild(chip);
+  out.scrollTop = out.scrollHeight;
+}
+
+// Бүх урт хугацааны санах ойг (profile/knowledge_base) харуулах modal
+function _showMemoryViewer() {
+  document.getElementById('mem-viewer-overlay')?.remove();
+  const content = (localStorage.getItem('jarvis_core_memory') || '').trim();
+  const lines = content ? content.split('\n').filter(l => l.trim()) : [];
+
+  const overlay = document.createElement('div');
+  overlay.id = 'mem-viewer-overlay';
+  overlay.className = 'mem-viewer-overlay';
+  overlay.innerHTML = `
+    <div class="mem-viewer-box">
+      <div class="mem-viewer-hdr">
+        <h3>🧠 JARVIS санах ой</h3>
+        <button type="button" class="mem-viewer-close">&times;</button>
+      </div>
+      <div class="mem-viewer-body">
+        ${lines.length
+          ? lines.map(l => `<div class="mem-line">${l.replace(/</g,'&lt;')}</div>`).join('')
+          : `<div class="mem-viewer-empty">Одоогоор юу ч санагдаагүй байна.</div>`}
+      </div>
+    </div>`;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  overlay.querySelector('.mem-viewer-close').addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
 }
 
 async function _applyAddHskWord(card, out) {
