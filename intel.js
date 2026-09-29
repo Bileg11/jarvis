@@ -41,7 +41,7 @@ async function triggerIntelWorkflow(token) {
 // ── FIRESTORE POLL (workflow дуустал хүлээнэ) ─────────────────────
 async function pollFirestoreForIntel(maxWait = 90000) {
   const start    = Date.now();
-  const today    = new Date().toISOString().split('T')[0];
+  const today    = jarvisDay();
   const interval = 4000;
 
   return new Promise(resolve => {
@@ -67,7 +67,7 @@ async function fetchLiveIntel(onProgress) {
   // 1. Firestore-д өнөөдрийн intel байвал шууд буцаана (cache)
   if (onProgress) onProgress('📂 Хадгалагдсан мэдээ шалгаж байна...');
   const cached = await loadIntelFromFirestore();
-  if (cached?.date === new Date().toISOString().split('T')[0] && cached?.message) {
+  if (cached?.date === jarvisDay() && cached?.message) {
     return cached.message + '\n\n_⏱ Кэш: ' + new Date(cached.timestamp).toLocaleTimeString('mn-MN', {hour:'2-digit',minute:'2-digit'}) + '_';
   }
 

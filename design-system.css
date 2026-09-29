@@ -165,6 +165,63 @@
 [data-world="night"][data-accent="void"]   { --accent-rgb:169,140,245; --accent:#A98CF5; --accent-text:#A98CF5; --accent-ink:#150A2E; --accent-soft:rgba(169,140,245,.13); }
 
 /* ══════════════════════════════════════════════════════════════════
+   Г · ТАЙВАН  ← ШИНЭ ҮНДСЭН
+   Цэвэрхэн, зөөлөн, цэнхэр. Гэрэлтэлт, чимэглэл, хуурамч телеметр
+   байхгүй. Хэн ч ороод юу хийхээ шууд ойлгоно.
+   ══════════════════════════════════════════════════════════════════ */
+[data-world="calm"] {
+  --accent-rgb: 90,160,255;
+  --text-rgb: 232,237,242;
+  --ok-rgb: 61,190,125;
+  --warn-rgb: 224,167,72;
+  --danger-rgb: 238,109,94;
+
+  --warn-soft:     rgba(224,167,72,.12);
+  --bg:            #111519;
+  --surface:       #191E24;
+  --surface-2:     #212730;
+  --border:        #29303A;
+  --border-strong: #3D4653;
+
+  --text:          #E8EDF2;
+  --text-2:        #A6B0BC;
+  --text-3:        #8B95A2;
+
+  --accent:        #5AA0FF;
+  --accent-text:   #7DB5FF;
+  --accent-ink:    #06121F;
+  --accent-soft:   rgba(90,160,255,.14);
+  --accent-shadow: transparent;
+  --track:         #262D36;
+
+  --ok:            #3DBE7D;
+  --ok-soft:       rgba(61,190,125,.13);
+  --warn:          #E0A748;
+  --danger:        #EE6D5E;
+  --danger-soft:   rgba(238,109,94,.13);
+
+  --r-sm: 8px;  --r-md: 12px;  --r-lg: 16px;  --r-pill: 999px;
+
+  --font-ui:    system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-hanzi: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-mono:  ui-monospace, 'SF Mono', 'DM Mono', 'Fira Mono', monospace;
+
+  --w-body: 400;  --w-med: 500;  --w-bold: 600;  --w-cta: 600;
+
+  --sh-1:   0 1px 2px rgba(0,0,0,.25);
+  --sh-2:   0 1px 3px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.28);
+  --sh-btn: none;
+  --btn-press: translateY(0);
+}
+
+/* Тайван дүр төрх доторх өнгө сонголт — цэнхэр нь үндсэн */
+[data-world="calm"][data-accent="cyan"]   { --accent-rgb:90,160,255;  --accent:#5AA0FF; --accent-text:#7DB5FF; --accent-ink:#06121F; --accent-soft:rgba(90,160,255,.14); }
+[data-world="calm"][data-accent="matrix"] { --accent-rgb:61,190,125;  --accent:#3DBE7D; --accent-text:#5FD199; --accent-ink:#04180E; --accent-soft:rgba(61,190,125,.14); }
+[data-world="calm"][data-accent="amber"]  { --accent-rgb:224,167,72;  --accent:#E0A748; --accent-text:#EFBC69; --accent-ink:#1F1503; --accent-soft:rgba(224,167,72,.14); }
+[data-world="calm"][data-accent="red"]    { --accent-rgb:238,109,94;  --accent:#EE6D5E; --accent-text:#F58E81; --accent-ink:#210A06; --accent-soft:rgba(238,109,94,.14); }
+[data-world="calm"][data-accent="void"]   { --accent-rgb:161,143,240; --accent:#A18FF0; --accent-text:#BBAEF6; --accent-ink:#120A2B; --accent-soft:rgba(161,143,240,.14); }
+
+/* ══════════════════════════════════════════════════════════════════
    В · ТОД
    Бүдүүн бөөрөнхий товч, зузаан үсэг, доогуур сүүдэр.
    Хамгийн хурдан ойлгогддог. Хүүхэд, ахмад хэн ч андуурахгүй.
@@ -323,6 +380,18 @@ body.ds {
 [data-world="night"][data-accent="matrix"] .ds-study { --accent:#1E7A44; --accent-text:#1E7A44; }
 [data-world="night"][data-accent="red"]    .ds-study { --accent:#A83A2B; }
 [data-world="night"][data-accent="void"]   .ds-study { --accent:#5B3FB8; }
+
+/* Г · Тайван — харанхуй апп дотор цайвар уншлагын гадаргуу */
+[data-world="calm"] .ds-study {
+  --bg:#FAFBFC; --surface:#FFFFFF; --surface-2:#F1F3F6;
+  --border:#E1E5EA; --border-strong:#C6CCD4;
+  --text:#131820; --text-2:#525A66; --text-3:#616A76;
+  --accent:#1F63BE; --accent-text:#1F63BE; --accent-rgb:31,99,190; --text-rgb:19,24,32; --track:#E4E8ED;
+}
+[data-world="calm"][data-accent="matrix"] .ds-study { --accent:#1E7A44; --accent-text:#1E7A44; }
+[data-world="calm"][data-accent="amber"]  .ds-study { --accent:#8A6212; --accent-text:#8A6212; }
+[data-world="calm"][data-accent="red"]    .ds-study { --accent:#A83A2B; --accent-text:#A83A2B; }
+[data-world="calm"][data-accent="void"]   .ds-study { --accent:#5B3FB8; --accent-text:#5B3FB8; }
 
 /* В · Тод — апп цагаан, гадаргуу мөн цагаан */
 [data-world="bright"] .ds-study {

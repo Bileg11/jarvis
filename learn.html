@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
 <script src="theme.js"></script>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -198,6 +199,10 @@ body{
 .cn-speakable:hover { opacity:.75; }
 .cn-speakable.speaking { transform:scale(1.06); }
 </style>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
 
@@ -369,7 +374,13 @@ window.addEventListener('load', () => {
         else { showScreen('path'); renderPath(); }
       });
     } else {
-      showScreen('login');
+      // Нэвтрэхгүйгээр тоглох боломжтой — явц утсан дээрээ хадгалагдана.
+      // (Өмнө нь нэвтрэх хана гарч, шинэ хүн цааш орж чаддаггүй байв.)
+      currentUser = null;
+      state = loadLocal();
+      updateAvatar(null);
+      if (!state.onboarded) { showScreen('onboard'); }
+      else { showScreen('path'); renderPath(); }
     }
   });
 });
@@ -440,13 +451,31 @@ async function signInGoogle() {
   catch(e) { if (e.code !== 'auth/popup-closed-by-user') showToast('Алдаа: ' + e.message); }
 }
 function showUserMenu() {
-  if (!currentUser) return;
+  if (!currentUser) {
+    // Нэвтрээгүй — хүсвэл нэвтэрч, явцаа бүх төхөөрөмжид синк хийнэ
+    if (confirm('Нэвтэрвэл явц чинь утас, компьютер хоёрт синк болно.\n\nОдоо нэвтрэх үү?')) {
+      _auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(function () {});
+    }
+    return;
+  }
   if (confirm(currentUser.displayName + '\n\nГарах уу?')) {
-    _auth.signOut(); currentUser=null; state=defaultState(); saveLocal(); showScreen('login');
+    _auth.signOut();
+    currentUser = null;
+    state = loadLocal();
+    updateAvatar(null);
+    showScreen('path'); renderPath();
   }
 }
 function updateAvatar(user) {
   const el = document.getElementById('user-avatar');
+  if (!el) return;
+  if (!user) {
+    // Нэвтрээгүй — дарвал нэвтэрч, явцаа бүх төхөөрөмжид синк хийнэ
+    el.textContent = '☁';
+    el.title = 'Нэвтрэх — явцаа бүх төхөөрөмжид хадгална';
+    return;
+  }
+  el.title = user.displayName || '';
   if (user.photoURL) el.innerHTML = `<img src="${user.photoURL}">`;
   else el.textContent = (user.displayName||'U')[0].toUpperCase();
 }
@@ -924,14 +953,6 @@ function showScreen(name) {
 <script src="speak.js"></script>
 
 <!-- ДООД ЦЭС — 5 хаалга -->
-<div class="ds-nav-space"></div>
-<nav class="ds-nav" aria-label="Үндсэн цэс">
-  <a id="dsn-learn" href="hsk"><span class="ni">学</span>Сурах</a>
-  <a id="dsn-prog"  href="dashboard"><span class="ni">📊</span>Явц</a>
-  <a id="dsn-ai"    href="chat"><span class="ni">✦</span>JARVIS</a>
-  <a id="dsn-day"   href="life"><span class="ni">日</span>Өдөр</a>
-  <a id="dsn-me"    href="profile"><span class="ni">我</span>Би</a>
-</nav>
 <script>
 (function(){
   var here = (location.pathname.split('/').pop()||'index').replace('.html','');
@@ -944,5 +965,6 @@ function showScreen(name) {
   });
 })();
 </script>
+<script src="jarvis-shell.js" data-page="hsk"></script>
 </body>
 </html>

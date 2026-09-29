@@ -8,6 +8,7 @@
   <title>Профайл — Jarvis</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
   <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -169,13 +170,17 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script src="jarvis-config.js"></script>
   <script src="firebase-config.js"></script>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
 
   <header class="header">
     <div>
       <div class="back-btn-wrap">
-        <a href="/" class="back-to-jarvis">← JARVIS</a>
+        
       </div>
       <h1>Профайл</h1>
       <div class="sub">Дансны мэдээлэл</div>
@@ -229,6 +234,26 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- ХУВИЙН МЭДЭЭЛЭЛ — өмнө нь тохиргооны урсгалд асуудаг байсан -->
+    <div class="sec-label" style="margin-top:20px">👤 Миний мэдээлэл</div>
+    <div class="profile-section">
+      <div class="ps-key-row" style="margin-bottom:10px">
+        <input id="me-name" class="ps-input" placeholder="Нэр — Jarvis чамайг ингэж дуудна">
+      </div>
+      <div class="ps-key-row" style="margin-bottom:10px">
+        <select id="me-goal" class="ps-input">
+          <option value="HSK1">Зорилго: HSK 1</option>
+          <option value="HSK2">Зорилго: HSK 2</option>
+          <option value="HSK3">Зорилго: HSK 3</option>
+          <option value="HSK4">Зорилго: HSK 4</option>
+          <option value="HSK5">Зорилго: HSK 5</option>
+          <option value="HSK6">Зорилго: HSK 6</option>
+        </select>
+      </div>
+      <button onclick="saveMe()" class="ps-btn">Хадгалах</button>
+      <div style="font-size:11px;color:var(--text-3);margin-top:8px">Дүр төрхөө доод талын "🎨 Дүр төрх солих"-оос сонгоно.</div>
     </div>
 
     <!-- JARVIS SETTINGS (SaaS) ══════════════════════════════════ -->
@@ -414,6 +439,9 @@
     <!-- ACTIONS -->
     <div class="sec-label" style="margin-top:20px">Үйлдэл</div>
     <div class="profile-section">
+      <button class="ps-action-btn" onclick="jarvisTheme.open()">🎨 Дүр төрх солих</button>
+      <button class="ps-action-btn" onclick="location.href=(window.jarvisHref?jarvisHref('guide'):'guide.html')">📖 Гарын авлага</button>
+      <button class="ps-action-btn" onclick="location.href=(window.jarvisHref?jarvisHref('index'):'index.html')">🖥 Хуучин самбар (терминал, widget)</button>
       <button class="ps-action-btn" onclick="clearChat()">🗑 Чат түүх цэвэрлэх</button>
       <button class="ps-action-btn danger" onclick="doSignOut()">🚪 Гарах</button>
     </div>
@@ -421,13 +449,6 @@
   </div>
 
   <!-- BOTTOM NAV -->
-  <nav class="bottom-nav">
-    <a class="nav-item"        href="index">    <span class="ni">🏠</span><span>Нүүр</span></a>
-    <a class="nav-item"        href="life">     <span class="ni">📋</span><span>Life OS</span></a>
-    <a class="nav-item"        href="dashboard"><span class="ni">📈</span><span>Статс</span></a>
-    <a class="nav-item"        href="chat">     <span class="ni">🤖</span><span>Chat</span></a>
-    <a class="nav-item active" href="profile">  <span class="ni">👤</span><span>Профайл</span></a>
-  </nav>
 
   <div id="toast"></div>
 
@@ -439,6 +460,9 @@
       <input id="lm-pass"  type="password" placeholder="Нууц үг" autocomplete="current-password">
       <button id="lm-btn" onclick="doLogin()">Нэвтрэх</button>
       <div id="lm-err" class="lm-err"></div>
+      <button onclick="skipLogin()" style="margin-top:10px;background:none;border:none;
+        color:var(--text-2);font-family:var(--font-ui);font-size:13px;cursor:pointer;
+        text-decoration:underline">Одоохондоо нэвтрэхгүй</button>
     </div>
   </div>
 
@@ -454,9 +478,56 @@
       setTimeout(() => t.classList.remove('show'), 2500);
     }
 
+    // Шинэ хэрэглэгч юу хардагийг дахин үзэх.
+    // ЗӨВХӨН тохиргооны тэмдэглэгээг арилгана — үг, явц, тэмдэглэл
+    // бүгд байрандаа үлдэнэ.
+    async function replaySetup() {
+      if (!confirm('Анхны тохиргоог эхнээс нь дахин үзэх үү?\n\n' +
+                   'Үгийн сан, явц, тэмдэглэл чинь БҮГД хэвээр үлдэнэ.\n' +
+                   'Зөвхөн нэр, зорилго, дүр төрхөө дахин сонгоно.')) return;
+      try { localStorage.removeItem('jarvis_setup_complete'); } catch (e) {}
+      try { await window.jarvisAPI?.setSetupFlag({ complete: false }); } catch (e) {}
+      location.href = window.jarvisHref ? jarvisHref('index') : 'index.html';
+    }
+
+    function saveMe() {
+      const nm = document.getElementById('me-name').value.trim();
+      const gl = document.getElementById('me-goal').value;
+      try {
+        if (nm) { localStorage.setItem('jarvis_callsign', nm); localStorage.setItem('jarvis_name', nm); }
+        else { localStorage.removeItem('jarvis_callsign'); localStorage.removeItem('jarvis_name'); }
+        localStorage.setItem('jarvis_goal', gl);
+      } catch (e) {}
+      showToast('✓ Хадгалагдлаа');
+    }
+    (function loadMe() {
+      try {
+        const nm = localStorage.getItem('jarvis_callsign') || localStorage.getItem('jarvis_name') || '';
+        const gl = localStorage.getItem('jarvis_goal') || 'HSK4';
+        const n = document.getElementById('me-name'); if (n) n.value = nm;
+        const g = document.getElementById('me-goal'); if (g) g.value = /HSK[1-6]/.test(gl) ? gl.match(/HSK[1-6]/)[0] : 'HSK4';
+      } catch (e) {}
+    })();
+
+    function skipLogin() {
+      document.getElementById('login-modal').style.display = 'none';
+      try { sessionStorage.setItem('jarvis_skip_login', '1'); } catch (e) {}
+    }
+
     function renderUser(user) {
       const modal = document.getElementById('login-modal');
-      if (!user) { modal.style.display = 'flex'; return; }
+      if (!user) {
+        // Дүр төрх, гарын авлага, хуучин самбар зэрэг нь нэвтрэлт шаарддаггүй.
+        // Тиймээс цонхыг хаах боломжтой — үүлэн синк л ажиллахгүй.
+        let skip = false;
+        try { skip = sessionStorage.getItem('jarvis_skip_login') === '1'; } catch (e) {}
+        modal.style.display = skip ? 'none' : 'flex';
+        const nm = document.getElementById('p-name');
+        if (nm) nm.textContent = 'Нэвтрээгүй';
+        const em = document.getElementById('p-email');
+        if (em) em.textContent = 'Үүлэн синк унтарсан — тохиргоо ажиллана';
+        return;
+      }
       modal.style.display = 'none';
 
       const letter = user.email ? user.email[0].toUpperCase() : '?';
@@ -764,5 +835,6 @@
   </script>
 
 
+<script src="jarvis-shell.js" data-page="profile"></script>
 </body>
 </html>

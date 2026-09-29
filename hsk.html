@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
 <script src="theme.js"></script>
 <script src="jarvis-config.js"></script>
 <script src="speak.js"></script>
@@ -302,35 +303,188 @@
 .cn-speakable { cursor:pointer; transition:opacity .15s, transform .15s; }
 .cn-speakable:hover { opacity:.75; }
 .cn-speakable.speaking { transform:scale(1.06); }
+
+/* ══ ХЯТАД ХЭСГИЙН ШИНЭ ЭЛЕМЕНТҮҮД ═══════════════════════════════ */
+/* Таван хэсэг — дээд эгнээ */
+.hk-groups {
+  display:grid; grid-template-columns:repeat(5,1fr); gap:var(--sp-1);
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:var(--sp-1); margin-bottom:var(--sp-3);
+}
+.hk-group {
+  min-height:40px; border:none; border-radius:var(--r-md); background:none;
+  color:var(--text-2); font-family:var(--font-ui); font-size:var(--fs-sm);
+  font-weight:var(--w-med); cursor:pointer; padding:0 4px;
+  transition:background var(--t-fast), color var(--t-fast);
+}
+.hk-group:hover { color:var(--text); }
+.hk-group.on { background:var(--accent); color:var(--accent-ink); font-weight:var(--w-bold); }
+
+/* Хэсэг доторх сонголтууд */
+.hk-subs { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-bottom:var(--sp-5); }
+.hk-subs:empty { display:none; }
+.hk-sub {
+  min-height:36px; padding:0 var(--sp-4);
+  border:1px solid var(--border); border-radius:var(--r-pill);
+  background:var(--surface); color:var(--text-2);
+  font-family:var(--font-ui); font-size:var(--fs-sm); cursor:pointer;
+  transition:border-color var(--t-fast), color var(--t-fast);
+}
+.hk-sub:hover { border-color:var(--border-strong); color:var(--text); }
+.hk-sub.on { border-color:var(--accent); color:var(--accent-text); background:var(--accent-soft); font-weight:var(--w-med); }
+
+/* Явц — стрик */
+.hk-streak { display:flex; align-items:center; gap:var(--sp-5); }
+.hk-streak-num { font-size:52px; font-weight:var(--w-bold); line-height:1; color:var(--accent-text); font-variant-numeric:tabular-nums; }
+.hk-streak-t { font-size:var(--fs-lg); font-weight:var(--w-med); }
+.hk-streak-s { font-size:var(--fs-sm); color:var(--text-2); margin-top:2px; }
+
+/* Явц — харьцуулалт */
+.hk-cmp { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-3); margin-bottom:14px; }
+@media (max-width:460px) { .hk-cmp { grid-template-columns:1fr; } }
+.hk-cmp-c { padding:var(--sp-4); }
+.hk-cmp-l { font-size:var(--fs-xs); color:var(--text-2); margin-bottom:var(--sp-2); }
+.hk-cmp-n { font-size:var(--fs-2xl); font-weight:var(--w-bold); line-height:1; font-variant-numeric:tabular-nums; }
+.hk-cmp-n span { font-size:var(--fs-sm); color:var(--text-3); font-weight:var(--w-body); }
+.hk-cmp-d { font-size:var(--fs-sm); margin-top:var(--sp-2); color:var(--text-2); }
+.hk-cmp-d.up   { color:var(--ok); }
+.hk-cmp-d.down { color:var(--danger); }
+
+/* Явц — картын толгой: нарийн дэлгэцэд доошоо эвхэгдэнэ */
+.hk-cap { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); margin-bottom:14px; flex-wrap:wrap; }
+.hk-cap > span { font-size:var(--fs-sm); color:var(--text-3); }
+@media (max-width:520px) { .hk-cap { flex-direction:column; gap:var(--sp-1); } }
+
+/* Явц — 30 хоногийн багана */
+.hk-month { display:flex; align-items:flex-end; gap:2px; height:90px; }
+.hk-month > i {
+  flex:1; min-width:0; background:var(--accent-soft); border-radius:2px 2px 0 0;
+  display:block; transition:height var(--t-med);
+}
+.hk-month > i.has { background:var(--accent); }
+.hk-month-x { display:flex; justify-content:space-between; font-size:var(--fs-xs); color:var(--text-3); margin-top:var(--sp-2); }
+
+/* Явц — өмнөх өдрүүд */
+.hk-days { display:flex; flex-direction:column; gap:1px; }
+.hk-day {
+  display:flex; align-items:center; gap:var(--sp-4);
+  padding:var(--sp-3) 0; border-bottom:1px solid var(--border);
+}
+.hk-day:last-child { border-bottom:none; }
+.hk-day-d { flex:0 0 96px; font-size:var(--fs-sm); color:var(--text-2); }
+.hk-day-b { flex:1; height:8px; background:var(--track); border-radius:var(--r-pill); overflow:hidden; }
+.hk-day-b > i { display:block; height:100%; background:var(--accent); border-radius:var(--r-pill); }
+.hk-day-n { flex:0 0 56px; text-align:right; font-size:var(--fs-sm); font-variant-numeric:tabular-nums; }
+.hk-day-n.zero { color:var(--text-3); }
+
+/* ══ ХЯТАД — ЦЭС (юу хийхээ сонгох дэлгэц) ═══════════════════════ */
+/* Өнөөдрийн зорилт — нэг карт дээр тоо, зурвас, тайлбар */
+.hk-goal {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:var(--sp-5); margin-bottom:var(--sp-5);
+}
+.hk-goal-top { display:flex; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-3); margin-bottom:var(--sp-3); font-size:var(--fs-sm); color:var(--text-2); }
+.hk-goal-n { font-size:var(--fs-lg); color:var(--text-3); font-variant-numeric:tabular-nums; }
+.hk-goal-n b { font-size:var(--fs-2xl); font-weight:var(--w-bold); color:var(--text); }
+.hk-goal-sub { font-size:var(--fs-sm); color:var(--text-2); margin-top:var(--sp-3); }
+
+/* Гол үйлдэл — дэлгэц дээрх хамгийн том, хамгийн тод зүйл */
+.hk-go {
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-4);
+  width:100%; min-height:68px; padding:0 var(--sp-6); margin-bottom:var(--sp-4);
+  border:none; border-radius:var(--r-lg);
+  background:var(--accent); color:var(--accent-ink);
+  font-family:var(--font-ui); font-size:var(--fs-lg); font-weight:var(--w-cta);
+  cursor:pointer; text-align:left;
+}
+.hk-go:hover { filter:brightness(1.06); }
+.hk-go-a { font-size:var(--fs-xl); }
+
+/* Дөрвөн хөзөр — 2×2 */
+.hk-tiles { display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-3); }
+@media (min-width:760px) { .hk-tiles { grid-template-columns:repeat(4,1fr); } }
+.hk-tile {
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
+  min-height:104px; padding:var(--sp-4);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  color:var(--text); font-family:var(--font-ui); cursor:pointer; text-align:left;
+  transition:border-color var(--t-fast);
+}
+.hk-tile:hover { border-color:var(--accent); }
+.hk-tile-i { font-family:var(--font-hanzi); font-size:22px; color:var(--accent-text); line-height:1.2; margin-bottom:var(--sp-2); }
+.hk-tile-n { font-size:var(--fs-md); font-weight:var(--w-med); }
+.hk-tile-s { font-size:var(--fs-sm); color:var(--text-2); }
+
+/* Явц — стриктэй мөр */
+.hk-prog {
+  display:flex; align-items:center; gap:var(--sp-4);
+  width:100%; margin-top:var(--sp-3); padding:var(--sp-4) var(--sp-5);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  color:var(--text); font-family:var(--font-ui); cursor:pointer; text-align:left;
+  transition:border-color var(--t-fast);
+}
+.hk-prog:hover { border-color:var(--accent); }
+.hk-prog-n { font-size:var(--fs-2xl); font-weight:var(--w-bold); color:var(--accent-text);
+  line-height:1; font-variant-numeric:tabular-nums; flex:0 0 auto; }
+.hk-prog-b { flex:1; min-width:0; }
+.hk-prog-b b { display:block; font-size:var(--fs-md); font-weight:var(--w-med); }
+.hk-prog-b i { display:block; font-style:normal; font-size:var(--fs-sm); color:var(--text-2); }
+.hk-prog-a { color:var(--text-3); font-size:var(--fs-lg); }
+
+/* Бусад — намуухан жагсаалт */
+.hk-more { display:flex; flex-direction:column; gap:1px;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); overflow:hidden; }
+.hk-more button {
+  display:flex; align-items:baseline; gap:var(--sp-4);
+  width:100%; min-height:52px; padding:var(--sp-3) var(--sp-5);
+  background:none; border:none; border-bottom:1px solid var(--border);
+  color:var(--text); font-family:var(--font-ui); cursor:pointer; text-align:left;
+}
+.hk-more button:last-child { border-bottom:none; }
+.hk-more button:hover { background:var(--surface-2); }
+.hk-more b { font-size:var(--fs-md); font-weight:var(--w-med); flex:0 0 auto; }
+.hk-more i { font-style:normal; font-size:var(--fs-sm); color:var(--text-2); margin-left:auto; text-align:right; }
+
+/* Буцах мөр */
+#hk-back { display:flex; align-items:center; gap:var(--sp-4); margin-bottom:var(--sp-4); }
+#hk-back button {
+  min-height:40px; padding:0 var(--sp-4);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md);
+  color:var(--text); font-family:var(--font-ui); font-size:var(--fs-sm); cursor:pointer;
+}
+#hk-back button:hover { border-color:var(--border-strong); }
+#hk-back span { font-size:var(--fs-md); font-weight:var(--w-med); }
 </style>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
 <div class="page">
 
-  <!-- Header -->
-  <div class="header">
-    <div class="header-left">
-      <a href="/" class="header-back" id="hdr-back" style="display:none">← JARVIS</a>
+  <!-- Толгой -->
+  <header class="jv-head">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4)">
       <div>
-        <div class="header-title" id="hdr-title">HSK — Үгийн сан</div>
-        <div class="header-sub" id="hdr-sub">Уншиж байна...</div>
+        <div class="jv-date" id="hdr-sub">Уншиж байна...</div>
+        <h1 class="jv-title" id="hdr-title">Хятад хэл</h1>
+      </div>
+      <div style="text-align:right;flex:0 0 auto">
+        <div class="jv-stat-num" id="exam-days-num">—</div>
+        <div class="jv-stat-label" style="min-height:0">хоног үлдлээ</div>
       </div>
     </div>
-    <div style="display:flex;align-items:center;gap:var(--sp-3)">
-      <button class="theme-btn" onclick="jarvisTheme.open()" title="Дүр төрх солих" aria-label="Дүр төрх солих">◐</button>
-      <div class="exam-badge">
-        <div class="exam-days" id="exam-days-num" style="color:var(--danger)">—</div>
-        <div class="exam-label">өдөр үлдлээ</div>
-      </div>
-    </div>
-  </div>
+  </header>
 
   <!-- Free upgrade banner (HSK users only) -->
   <div id="hsk-free-banner" style="display:none;align-items:center;justify-content:space-between;
     background:var(--accent-soft);border:1px solid var(--border-strong);
     border-radius:var(--r-lg);padding:12px 16px;margin-bottom:12px;gap:12px">
     <div>
-      <div style="font-size:13px;font-weight:600;color:var(--text)">🆓 Үнэгүй — HSK 1 (150 үг)</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text)">Үнэгүй — HSK 1 (150 үг)</div>
       <div style="font-size:11px;color:var(--text-2);margin-top:2px">
         Premium-д HSK 1-3 (553 үг) + AI + дэвшлийн тайлан
       </div>
@@ -338,64 +492,89 @@
     <a href="mailto:bileg@lfs.mn?subject=Ханз Premium" style="white-space:nowrap;
       padding:8px 14px;background:var(--accent-soft);border:1px solid var(--accent-text);
       border-radius:8px;color:var(--accent-text);font-size:12px;font-weight:600;text-decoration:none">
-      ⭐ Upgrade
+      Upgrade
     </a>
   </div>
 
-  <!-- Daily plan banner -->
-  <div class="plan-banner">
-    <div>
-      <div class="plan-text">Өдрийн зорилт — шалгалт хүртэл</div>
-      <div style="font-size:11px;color:var(--text-3);margin-top:3px" id="plan-sub">Тооцоолж байна...</div>
+  <!-- Өнөөдрийн зорилт — нэг л карт, давхардалгүй -->
+  <div class="hk-goal">
+    <div class="hk-goal-top">
+      <span>Өнөөдрийн зорилт</span>
+      <span class="hk-goal-n"><b id="stat-today">0</b> / <span id="plan-target">—</span></span>
     </div>
-    <div class="plan-target" id="plan-target">—</div>
+    <div class="ds-track"><i id="hk-goal-bar" style="width:0%"></i></div>
+    <div class="hk-goal-sub" id="plan-sub">Тооцоолж байна...</div>
   </div>
 
-  <!-- Stats -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-num" id="stat-total">0</div>
-      <div class="stat-label">Нийт үг</div>
+  <!-- updateStats() эдгээрийг бичдэг — цэсэнд өөр газар харагдана -->
+  <span id="stat-mastered" hidden>0</span><span id="stat-total" hidden>0</span>
+  <span id="stat-total-unit" hidden></span><span id="stat-streak" hidden>0</span>
+
+  <!-- ══ ЦЭС — юу хийхээ энд сонгоно ══════════════════════════ -->
+  <div id="hk-menu">
+
+    <!-- Гол үйлдэл -->
+    <button class="hk-go" onclick="openAct('session')">
+      <span class="hk-go-t" id="hk-go-label">Өнөөдрийн үг</span>
+      <span class="hk-go-a">→</span>
+    </button>
+
+    <!-- Дөрвөн хөзөр -->
+    <div class="hk-tiles">
+      <button class="hk-tile" onclick="openAct('drill')">
+        <span class="hk-tile-i">复</span>
+        <span class="hk-tile-n">Давтах</span>
+        <span class="hk-tile-s" id="tile-drill">үг хүлээж байна</span>
+      </button>
+      <button class="hk-tile" onclick="openAct('test')">
+        <span class="hk-tile-i">试</span>
+        <span class="hk-tile-n">Шалгалт</span>
+        <span class="hk-tile-s">Богино тест</span>
+      </button>
+      <button class="hk-tile" onclick="openAct('conversation')">
+        <span class="hk-tile-i">说</span>
+        <span class="hk-tile-n">Ярилцах</span>
+        <span class="hk-tile-s">AI-тай</span>
+      </button>
+      <button class="hk-tile" onclick="location.href=(window.jarvisHref?jarvisHref('learn'):'learn')">
+        <span class="hk-tile-i">汉</span>
+        <span class="hk-tile-n">Ханз бичих</span>
+        <span class="hk-tile-s">Тоглоомоор</span>
+      </button>
     </div>
-    <div class="stat-card">
-      <div class="stat-num" id="stat-mastered" style="color:var(--accent-text)">0</div>
-      <div class="stat-label">Мэддэг</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num" id="stat-today" style="color:var(--warn)">0</div>
-      <div class="stat-label">Өнөөдөр drill</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num" id="stat-streak" style="color:var(--accent-text)">0</div>
-      <div class="stat-label">🔥 Streak</div>
+
+    <!-- Явц -->
+    <button class="hk-prog" onclick="openAct('progress')">
+      <span class="hk-prog-n" id="hk-prog-streak">0</span>
+      <span class="hk-prog-b">
+        <b>хоног тасралтгүй</b>
+        <i>Явцаа бүтнээр харах</i>
+      </span>
+      <span class="hk-prog-a">→</span>
+    </button>
+
+    <!-- Бусад -->
+    <div class="jv-sec" style="margin-top:var(--sp-6)"><h2>Бусад</h2></div>
+    <div class="hk-more">
+      <button onclick="openAct('vault')"><b>Үгийн сан</b><i id="more-vault">— үг</i></button>
+      <button onclick="openAct('grammar')"><b>Дүрэм</b><i>Өнөөдөр үзсэн дүрэм</i></button>
+      <button onclick="openAct('weakspot')"><b>Сул үгс</b><i>Алддаг үгсээ давтах</i></button>
+      <button onclick="openAct('sentence')"><b>Өгүүлбэр зохиох</b><i>Мэддэг үгээрээ</i></button>
+      <button onclick="openAct('mock')"><b>Дуурайлган шалгалт</b><i>40 асуулт · 60 минут</i></button>
+      <button onclick="openAct('cram')"><b>Эрчимжүүлсэн давталт</b><i>Эрчимжүүлсэн давталт</i></button>
     </div>
   </div>
 
-  <!-- Daily chart -->
-  <div class="card" style="margin-bottom:16px;padding:14px 18px">
-    <div class="card-title" style="margin-bottom:10px">📈 Сүүлийн 7 хоног</div>
-    <div id="daily-chart"></div>
+  <!-- Үйлдэл нээгдэхэд гарч ирэх буцах мөр -->
+  <div id="hk-back" style="display:none">
+    <button onclick="backToMenu()">← Буцах</button>
+    <span id="hk-back-title"></span>
   </div>
-
-  <!-- Tabs -->
-  <div class="tabs-wrap"><div class="tabs">
-    <button class="tab active" onclick="switchTab('vault')">📚 Үгийн сан</button>
-    <button class="tab" onclick="switchTab('grammar')">📖 Дүрэм</button>
-    <button class="tab" onclick="switchTab('session')">🔥 Session</button>
-    <button class="tab" onclick="switchTab('drill')">⚡ Drill</button>
-    <button class="tab" onclick="switchTab('test')">🎯 Шалгалт</button>
-    <button class="tab" onclick="switchTab('sentence')">✍ Өгүүлбэр</button>
-    <button class="tab" onclick="switchTab('weakspot')">🎯 Сул үгс</button>
-    <button class="tab" onclick="switchTab('conversation')">💬 Яриа</button>
-    <button class="tab" onclick="switchTab('cram')">🔥 Cram</button>
-    <button class="tab" onclick="switchTab('mock')">📝 Mock</button>
-    <button class="tab" id="tab-game" onclick="location.href=(window.jarvisHref?window.jarvisHref('learn'):'learn')">🎮 Ханз тоглоом</button>
-  </div></div>
 
   <!-- ── TAB: VAULT ── -->
   <!-- СУРАХ ГАДАРГУУ: Шөнийн самбарт энэ хэсэг цайвар цаас болно -->
   <div class="study-area ds-study">
-  <div class="tab-panel active" id="panel-vault">
+  <div class="tab-panel" id="panel-vault">
     <div id="seed-banner" style="display:none;background:var(--warn-soft);border:1px solid var(--warn);border-radius:8px;padding:12px 16px;margin-bottom:14px;align-items:center;justify-content:space-between;gap:12px">
       <span style="font-size:12px;color:var(--warn)">⚠ Үгийн сан хоосон байна — HSK үгийн сан бүтнээр татах уу?</span>
       <button onclick="seedFromBrowser()" style="background:var(--warn);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">📥 Татах</button>
@@ -524,7 +703,7 @@
       <div class="empty">Ачааллаж байна...</div>
     </div>
     <div class="card" style="padding:12px 16px;margin-top:0">
-      <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">Cram явц</div>
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:6px">Давталтын явц</div>
       <div class="prog-bar"><div class="prog-fill" id="cram-prog-fill" style="width:0%"></div></div>
       <div style="font-size:11px;color:var(--text-3);text-align:right;margin-top:4px" id="cram-prog-label">0 / 0</div>
     </div>
@@ -569,19 +748,52 @@
       </div>
     </div>
   </div>
-  </div><!-- /study-area -->
 
-  <div class="ds-nav-space"></div>
+  </div><!-- /study-area -->
+  <!-- ── ХЭСЭГ: ЯВЦ ── -->
+  <div class="tab-panel" id="panel-progress">
+    <div class="card" style="margin-bottom:14px">
+      <div class="hk-streak">
+        <div class="hk-streak-num" id="pg-streak">0</div>
+        <div>
+          <div class="hk-streak-t">хоног тасралтгүй</div>
+          <div class="hk-streak-s" id="pg-streak-sub">Өнөөдөр давтвал үргэлжилнэ</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hk-cmp">
+      <div class="card hk-cmp-c">
+        <div class="hk-cmp-l">Өнөөдөр vs өчигдөр</div>
+        <div class="hk-cmp-n" id="pg-day">0 <span>үг</span></div>
+        <div class="hk-cmp-d" id="pg-day-d">—</div>
+      </div>
+      <div class="card hk-cmp-c">
+        <div class="hk-cmp-l">Энэ 7 хоног vs өмнөх</div>
+        <div class="hk-cmp-n" id="pg-week">0 <span>үг</span></div>
+        <div class="hk-cmp-d" id="pg-week-d">—</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div class="hk-cap">
+        <div class="card-title" style="margin:0">Сүүлийн 30 хоног</div>
+        <span id="pg-month-sum"></span>
+      </div>
+      <div class="hk-month" id="pg-month"></div>
+      <div class="hk-month-x"><span id="pg-month-a"></span><span id="pg-month-b">Өнөөдөр</span></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px">Өмнөх өдрүүд</div>
+      <div class="hk-days" id="pg-days"></div>
+    </div>
+  </div>
+
+
 </div>
 
 <!-- ДООД ЦЭС — 5 хаалга. Эрхий хуруунд хүрэх зайд. -->
-<nav class="ds-nav" aria-label="Үндсэн цэс">
-  <a href="#" class="on" aria-current="page"><span class="ni">学</span>Сурах</a>
-  <a id="nav-progress" href="dashboard"><span class="ni">📊</span>Явц</a>
-  <a id="nav-jarvis"   href="chat"><span class="ni">✦</span>JARVIS</a>
-  <a id="nav-day"      href="life"><span class="ni">日</span>Өдөр</a>
-  <a id="nav-me"       href="profile"><span class="ni">我</span>Би</a>
-</nav>
 
 <div id="toast"></div>
 
@@ -687,7 +899,12 @@ async function _updateMasteryInFirestore(wordH, mastery) {
     last_reviewed:  new Date().toISOString(),
   }, { merge: true }).catch(() => {});
 }
-function today() { return new Date().toISOString().slice(0,10); }
+function _localDay(d) {
+  return d.getFullYear() + '-' +
+         String(d.getMonth()+1).padStart(2,'0') + '-' +
+         String(d.getDate()).padStart(2,'0');
+}
+function today() { return _localDay(new Date()); }
 
 // ── Session (today's drill stats) ─────────────────────────────────
 function getSession() {
@@ -702,7 +919,7 @@ function getStreak() {
 function bumpStreak() {
   const s = getStreak();
   const t = today();
-  const yesterday = new Date(Date.now()-86400000).toISOString().slice(0,10);
+  const yesterday = _localDay(new Date(Date.now()-86400000));
   if (s.last === t) return;
   s.count = (s.last === yesterday) ? s.count + 1 : 1;
   s.last  = t;
@@ -713,7 +930,7 @@ function bumpStreak() {
 function _renderExamDays() {
   const days  = Math.max(0, Math.ceil((EXAM_DATE - Date.now()) / 86400000));
   const el    = document.getElementById('exam-days-num');
-  if (el) { el.textContent = days; el.style.color = days < 14 ? 'var(--danger)' : days < 30 ? 'var(--warn)' : 'var(--accent-text)'; }
+  if (el) { el.textContent = days; el.style.color = days < 14 ? 'var(--danger)' : 'var(--accent-text)'; }
 }
 
 // ── HSK user profile ─────────────────────────────────────────────
@@ -744,13 +961,13 @@ function _applyHSKUI() {
   if (_hskProduct === 'three') {
     if (back) back.style.display = '';
   }
-  if (title) title.textContent = `HSK ${_hskTarget} — Үгийн сан`;
+  if (title) title.textContent = 'Хятад хэл';
   if (sub) {
     const name = _hskName || '';
     if (_hskProduct === 'hsk') {
       sub.textContent = (_hskPremium ? '⭐ Premium' : '🆓 Үнэгүй') + (name ? ' · ' + name : '');
     } else {
-      sub.textContent = 'Шалгалт ' + window.JARVIS_EXAM_DATE_STR + ' · ' + (name || 'Билэг');
+      sub.textContent = 'HSK ' + _hskTarget + ' · шалгалт ' + window.JARVIS_EXAM_DATE_STR;
     }
   }
   // Free users: show upgrade banner
@@ -823,11 +1040,21 @@ async function init() {
   const fromFS = await _loadFromFirestore();
   if (!fromFS) {
     _loadFromCache();
-    // Хоосон бол auto-seed
-    if (_words.length === 0 && _hskUid) {
-      showToast('Үгийн санг ачаалж байна...');
-      await _autoSeedVocab();
-      await _loadFromFirestore();
+    // Хоосон бол үгийн санг АВТОМАТААР ачаална.
+    // Урьд нь зөвхөн нэвтэрсэн хүнд ажилладаг байсан тул шинэ
+    // хэрэглэгч бүхэлдээ хоосон апп хараад юу ч хийж чаддаггүй байв.
+    if (_words.length === 0) {
+      const seed = _seedTargetWords();
+      if (seed.length) {
+        _words = seed.map(w => ({
+          h: w.word, p: w.pinyin || '', m: w.definition || w.en || '',
+          level: w.hsk_level || 1, mastered: false, mastery: 0, added: today(),
+        }));
+        saveWords(_words);
+        showToast('✓ ' + _words.length + ' үг бэлэн боллоо');
+      }
+      // Нэвтэрсэн бол үүлэн рүү нь мөн хуулна
+      if (_hskUid) { await _autoSeedVocab(); await _loadFromFirestore(); }
     }
   } else if (_hskUid) {
     // Top-up: шинээр нэмэгдсэн түвшний (HSK4/5) дутуу үгсийг нөхөж seed хийнэ
@@ -858,6 +1085,8 @@ async function init() {
   await _loadGrammar();
   renderGrammar();
 
+  backToMenu();   // ачаалахад цэс гарна
+
   const src = _hskUid && _words.length ? `Firestore — ${_words.length} үг` : `localStorage — ${_words.length} үг`;
   console.log('[HSK] Эх сурвалж:', src);
   loadTodayWords();
@@ -873,17 +1102,31 @@ function updateStats() {
   const streak  = getStreak();
   document.getElementById('stat-total').textContent    = words.length;
   document.getElementById('stat-mastered').textContent = words.filter(w=>w.mastered).length;
-  document.getElementById('stat-today').textContent    = session.drilled.length;
+  document.getElementById('stat-today').textContent    = session.known || 0;
   document.getElementById('stat-streak').textContent   = streak.count;
   document.getElementById('vault-count').textContent   = words.length + ' үг';
+  const tu = document.getElementById('stat-total-unit');
+  if (tu) tu.textContent = '/ ' + words.length;
   renderDailyChart();
+  renderMenu();
+  if (document.getElementById('panel-progress')?.classList.contains('active')) renderProgress();
+}
+
+// Өдрийн зорилт — бодитой хязгаартай.
+// Тооцоолол нь "шалгалт хүртэл БҮХ үгийг мэдэх" гэж үздэг тул
+// шинэ хүнд "өдөрт 99 үг" гэх мэт биелэшгүй тоо гаргадаг байв.
+const HK_MIN_DAY = 5, HK_MAX_DAY = 30;
+function hkPerDay(remaining) {
+  const days = Math.max(1, Math.ceil((EXAM_DATE - Date.now()) / 86400000));
+  const raw  = Math.ceil(remaining / days);
+  return Math.min(HK_MAX_DAY, Math.max(HK_MIN_DAY, raw));
 }
 
 function updatePlan() {
   const words = getWords();
   const days  = Math.max(1, Math.ceil((EXAM_DATE - Date.now()) / 86400000));
   const remaining = words.filter(w => !w.mastered).length;
-  const perDay    = Math.ceil(remaining / days);
+  const perDay    = hkPerDay(remaining);
   const session   = getSession();
   const doneToday = session.known;
 
@@ -893,13 +1136,58 @@ function updatePlan() {
 }
 
 // ── Tab switching ─────────────────────────────────────────────────
-function switchTab(name) {
-  const tabNames = ['vault','grammar','session','drill','test','sentence','weakspot','conversation','cram','mock'];
-  document.querySelectorAll('.tabs .tab').forEach((t,i) => {
-    t.classList.toggle('active', tabNames[i] === name);
-  });
+// ── Цэс ба үйлдэл ─────────────────────────────────────────────────
+// Хуудас нээгдэхэд ЦЭС гарна: нэг том товч, дөрвөн хөзөр, бусад.
+// Ямар нэгийг дарахад тэр үйлдэл нээгдэж, дээр нь "← Буцах" гарна.
+// (Өмнө нь 10 таб нэг эгнээнд шахагдаж, дэлгэцнээс халиад байсан.)
+const HK_TITLES = {
+  session:'Өнөөдрийн үг', vault:'Үгийн сан', grammar:'Дүрэм', drill:'Давтах',
+  weakspot:'Сул үгс', cram:'Эрчимжүүлсэн давталт', test:'Шалгалт',
+  mock:'Дуурайлган шалгалт', sentence:'Өгүүлбэр зохиох',
+  conversation:'Ярилцах', progress:'Явц',
+};
+
+function _hkFocus(on) {
+  // Дасгал хийж байхад дэлгэц цэвэр байх ёстой:
+  // хөвдөг Jarvis товч "Мэднэ" товчийг халхалдаг тул нуугдана.
+  const ace  = document.querySelector('.jv-ace');
+  const goal = document.querySelector('.hk-goal');
+  if (ace)  ace.style.display  = on ? 'none' : '';
+  if (goal) goal.style.display = on ? 'none' : '';
+}
+
+function backToMenu() {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById('panel-' + name)?.classList.add('active');
+  document.querySelector('.study-area').style.display = 'none';
+  document.getElementById('hk-back').style.display = 'none';
+  document.getElementById('hk-menu').style.display = '';
+  _hkFocus(false);
+  renderMenu();
+  window.scrollTo(0, 0);
+}
+
+function openAct(name) {
+  document.getElementById('hk-menu').style.display = 'none';
+  const back = document.getElementById('hk-back');
+  back.style.display = 'flex';
+  document.getElementById('hk-back-title').textContent = HK_TITLES[name] || '';
+  _hkFocus(true);
+  switchTab(name);
+  window.scrollTo(0, 0);
+}
+
+// Хуучин нэрсийг хадгална — өөр газраас дуудагдсан хэвээр байж болзошгүй
+function switchGroup(g, sub) { openAct(sub || 'session'); }
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('panel-' + name);
+  panel?.classList.add('active');
+
+  // Цайвар "сурах гадаргуу" — зөвхөн доторх хэсэг идэвхтэй үед харагдана
+  const study = document.querySelector('.study-area');
+  if (study) study.style.display = study.contains(panel) ? '' : 'none';
+
   if (name === 'grammar')      renderGrammar();
   if (name === 'session')      initSession();
   if (name === 'drill')        initDrill();
@@ -908,7 +1196,106 @@ function switchTab(name) {
   if (name === 'weakspot')     initWeakspot();
   if (name === 'conversation') initConversation();
   if (name === 'cram')         initCram();
-  if (name === 'mock')         { /* start button triggers initMock */ }
+  if (name === 'progress')     renderProgress();
+}
+
+// Цэсний тоонуудыг шинэчлэх
+function renderMenu() {
+  const words  = getWords();
+  const due    = words.filter(w => !w.mastered).length;
+  const perDay = hkPerDay(due);
+
+  const go = document.getElementById('hk-go-label');
+  if (go) go.textContent = 'Өнөөдрийн ' + perDay + ' үг';
+
+  const td = document.getElementById('tile-drill');
+  if (td) td.textContent = due + ' үг хүлээж байна';
+
+  const mv = document.getElementById('more-vault');
+  if (mv) mv.textContent = words.length + ' үг';
+
+  const ps = document.getElementById('hk-prog-streak');
+  if (ps) ps.textContent = getStreak().count;
+
+  const bar = document.getElementById('hk-goal-bar');
+  if (bar) {
+    const done = getSession().known || 0;
+    bar.style.width = Math.min(100, Math.round(done / perDay * 100)) + '%';
+  }
+}
+
+// ── ЯВЦ — өмнөх өдрүүд, харьцуулалт ───────────────────────────────
+function hkDayKey(back) {
+  const d = new Date();
+  d.setDate(d.getDate() - back);
+  return d.getFullYear() + '-' +
+         String(d.getMonth()+1).padStart(2,'0') + '-' +
+         String(d.getDate()).padStart(2,'0');
+}
+function hkKnown(back) {
+  try {
+    const s = JSON.parse(localStorage.getItem(LS_SESSION + hkDayKey(back)) || 'null');
+    return s ? (s.known || 0) : 0;
+  } catch (e) { return 0; }
+}
+function hkSum(from, to) {   // from..to хоногийн нийлбэр (0 = өнөөдөр)
+  let t = 0;
+  for (let i = from; i <= to; i++) t += hkKnown(i);
+  return t;
+}
+function hkDiff(el, now, before, unit) {
+  const d = now - before;
+  if (d > 0)      { el.className = 'hk-cmp-d up';   el.textContent = '↑ ' + d + ' үгээр илүү' + unit; }
+  else if (d < 0) { el.className = 'hk-cmp-d down'; el.textContent = '↓ ' + (-d) + ' үгээр дутуу' + unit; }
+  else            { el.className = 'hk-cmp-d';      el.textContent = 'Ижилхэн' + unit; }
+}
+
+function renderProgress() {
+  const streak = getStreak();
+  document.getElementById('pg-streak').textContent = streak.count;
+  document.getElementById('pg-streak-sub').textContent =
+    hkKnown(0) > 0 ? 'Өнөөдөр давталт хийгдсэн — үргэлжилж байна'
+                   : 'Өнөөдөр давтвал үргэлжилнэ';
+
+  // Өнөөдөр vs өчигдөр
+  const today = hkKnown(0), yest = hkKnown(1);
+  document.getElementById('pg-day').innerHTML = today + ' <span>үг</span>';
+  hkDiff(document.getElementById('pg-day-d'), today, yest, ' (өчигдөр ' + yest + ')');
+
+  // Энэ 7 хоног vs өмнөх 7 хоног
+  const w1 = hkSum(0, 6), w2 = hkSum(7, 13);
+  document.getElementById('pg-week').innerHTML = w1 + ' <span>үг</span>';
+  hkDiff(document.getElementById('pg-week-d'), w1, w2, ' (өмнөх ' + w2 + ')');
+
+  // Сүүлийн 30 хоног
+  const vals = [];
+  for (let i = 29; i >= 0; i--) vals.push(hkKnown(i));
+  const max = Math.max(...vals, 1);
+  document.getElementById('pg-month').innerHTML = vals.map(function (v, i) {
+    const d = new Date(); d.setDate(d.getDate() - (29 - i));
+    return '<i class="' + (v > 0 ? 'has' : '') + '" style="height:' + Math.max(Math.round(v/max*100), 4) + '%" ' +
+           'title="' + (d.getMonth()+1) + '/' + d.getDate() + ' — ' + v + ' үг"></i>';
+  }).join('');
+  const d30 = new Date(); d30.setDate(d30.getDate() - 29);
+  document.getElementById('pg-month-a').textContent = (d30.getMonth()+1) + '/' + d30.getDate();
+  const tot = vals.reduce(function (a,b){ return a+b; }, 0);
+  const active = vals.filter(function (v){ return v > 0; }).length;
+  document.getElementById('pg-month-sum').textContent =
+    'Нийт ' + tot + ' үг · ' + active + ' өдөр идэвхтэй';
+
+  // Өмнөх 14 өдрийн жагсаалт
+  const names = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
+  let rows = '';
+  for (let i = 0; i < 14; i++) {
+    const v = hkKnown(i);
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const label = i === 0 ? 'Өнөөдөр' : i === 1 ? 'Өчигдөр'
+                : (d.getMonth()+1) + '/' + d.getDate() + ' ' + names[d.getDay()].slice(0,2);
+    rows += '<div class="hk-day"><div class="hk-day-d">' + label + '</div>' +
+            '<div class="hk-day-b"><i style="width:' + Math.round(v/max*100) + '%"></i></div>' +
+            '<div class="hk-day-n' + (v ? '' : ' zero') + '">' + v + ' үг</div></div>';
+  }
+  document.getElementById('pg-days').innerHTML = rows;
 }
 
 // ── Add word ──────────────────────────────────────────────────────
@@ -1531,7 +1918,7 @@ function renderDailyChart() {
   const days = [];
   for (let i = 6; i >= 0; i--) {
     const d   = new Date(Date.now() - i * 86400000);
-    const key = d.toISOString().slice(0,10);
+    const key = _localDay(d);
     const s   = JSON.parse(localStorage.getItem(LS_SESSION + key) || '{"known":0}');
     days.push({ label: i===0 ? 'Өнөөдөр' : (d.getMonth()+1)+'/'+d.getDate(), known: s.known||0 });
   }
@@ -1963,5 +2350,6 @@ async function sendConvMsg() {
 // ── Boot ──────────────────────────────────────────────────────────
 init();
 </script>
+<script src="jarvis-shell.js" data-page="hsk"></script>
 </body>
 </html>

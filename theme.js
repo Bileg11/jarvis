@@ -16,6 +16,8 @@
   if (window.jarvisTheme) return;
 
   var WORLDS = [
+    { id: 'calm',   name: 'Тайван',          cn: '静',  sub: 'Цэвэрхэн, зөөлөн — санал болгож байна',
+      swatch: ['#111519', '#191E24', '#5AA0FF', '#E8EDF2'] },
     { id: 'paper',  name: 'Цаас',            cn: '纸',  sub: 'Тайван, уншихад хамгийн хялбар',
       swatch: ['#F7F7F4', '#FFFFFF', '#2E6B57', '#1A1C19'] },
     { id: 'night',  name: 'Шөнийн самбар',   cn: '夜',  sub: 'JARVIS — сурах дэлгэц цайвар',
@@ -32,7 +34,7 @@
     { id: 'void',   name: 'Ягаан',  color: '#A98CF5' },
   ];
 
-  var DEFAULT_WORLD  = 'night';
+  var DEFAULT_WORLD  = 'calm';
   var DEFAULT_ACCENT = 'cyan';
   var K_WORLD = 'jarvis_world', K_ACCENT = 'jarvis_accent';
 
@@ -67,6 +69,19 @@
   }
   migrate();
 
+  // ── ШИЛЖИЛТ (2026-09): "Шөнийн самбар" → "Тайван" ──────────────
+  // Шинэ цэвэрхэн дүр төрх үндсэн болсон. Хэрэглэгч хүсвэл
+  // Дүр төрх цэснээс хуучин руугаа буцаж болно.
+  try {
+    if (!localStorage.getItem('jarvis_world_calm_v1')) {
+      localStorage.setItem('jarvis_world_calm_v1', '1');
+      if ((localStorage.getItem(K_WORLD) || 'night') === 'night') {
+        localStorage.setItem(K_WORLD, 'calm');
+        localStorage.setItem(K_ACCENT, 'cyan');
+      }
+    }
+  } catch (e) {}
+
   var world  = read(K_WORLD,  DEFAULT_WORLD,  worldIds);
   var accent = read(K_ACCENT, DEFAULT_ACCENT, accentIds);
 
@@ -90,7 +105,7 @@
     if (world === 'bright') loadBrightFont();
     if (document.body) document.body.classList.add('ds');
     // Хөтчийн өөрийн UI-г (нэвтрэх талбар, гүйлгэх зурвас) тааруулна
-    r.style.colorScheme = (world === 'night') ? 'dark' : 'light';
+    r.style.colorScheme = (world === 'night' || world === 'calm') ? 'dark' : 'light';
 
     // Дүр төрх солиход хөтөч зарим өнгийг хуучнаар нь үлдээдэг тул
     // бүх хуудсыг нэг кадрын дотор дахин тооцоолуулна (нүдэнд харагдахгүй).
@@ -161,9 +176,7 @@
       '  font-family:inherit;color:var(--text);transition:border-color .15s}',
       '.tp-w:hover{border-color:var(--border-strong)}',
       '.tp-w.on{border-color:var(--accent)}',
-      '.tp-prev{height:74px;border-radius:var(--r-sm);overflow:hidden;position:relative;font-size:0;white-space:nowrap}',
-      '.tp-prev span{display:inline-block;width:25%;height:100%;vertical-align:top}',
-      '.tp-prev b{position:absolute;left:8px;bottom:6px;font-family:var(--font-hanzi);font-size:26px;font-weight:500;line-height:1}',
+      '.tp-prev{display:block;width:100%;height:74px;border-radius:var(--r-sm);overflow:hidden;border:1px solid var(--border)}',
       '.tp-n{font-size:var(--fs-md);font-weight:var(--w-bold);display:flex;align-items:center;gap:6px}',
       '.tp-n i{font-style:normal;color:var(--accent);font-size:var(--fs-sm)}',
       '.tp-d{font-size:var(--fs-xs);color:var(--text-2);line-height:1.45}',
@@ -193,7 +206,36 @@
       el.setAttribute('aria-pressed', el.dataset.a === accent ? 'true' : 'false');
     });
     var acc = sheet.querySelector('.tp-acc');
-    if (acc) acc.classList.toggle('show', world === 'night');
+    if (acc) acc.classList.toggle('show', world === 'night' || world === 'calm');
+  }
+
+  // Дээж нь ЗУРААС биш, аппын жижиг загвар — тухайн дүр төрхөөр
+  // яг ямар харагдахыг нэг харцаар ойлгоно.
+  function preview(w) {
+    var bg = w.swatch[0], surf = w.swatch[1], acc = w.swatch[2], txt = w.swatch[3];
+    return '<svg class="tp-prev" viewBox="0 0 120 74" preserveAspectRatio="none" ' +
+           'role="img" aria-label="' + w.name + ' дүр төрхийн жишээ">' +
+      '<rect width="120" height="74" fill="' + bg + '"/>' +
+      // дээд эгнээ
+      '<rect width="120" height="12" fill="' + surf + '"/>' +
+      '<rect x="6" y="5" width="14" height="3" rx="1.5" fill="' + acc + '"/>' +
+      '<rect x="26" y="5.5" width="10" height="2" rx="1" fill="' + txt + '" opacity=".35"/>' +
+      '<rect x="40" y="5.5" width="10" height="2" rx="1" fill="' + txt + '" opacity=".35"/>' +
+      // гурван тоо
+      '<rect x="6"  y="17" width="34" height="16" rx="3" fill="' + surf + '"/>' +
+      '<rect x="44" y="17" width="34" height="16" rx="3" fill="' + surf + '"/>' +
+      '<rect x="82" y="17" width="32" height="16" rx="3" fill="' + surf + '"/>' +
+      '<rect x="10" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+      '<rect x="48" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+      '<rect x="86" y="23" width="12" height="5" rx="1" fill="' + txt + '" opacity=".75"/>' +
+      // гол товч
+      '<rect x="6" y="38" width="108" height="13" rx="3" fill="' + acc + '"/>' +
+      // мөрүүд
+      '<rect x="6" y="55" width="108" height="7" rx="2" fill="' + surf + '"/>' +
+      '<rect x="6" y="65" width="108" height="7" rx="2" fill="' + surf + '"/>' +
+      '<rect x="10" y="57.5" width="26" height="2" rx="1" fill="' + txt + '" opacity=".5"/>' +
+      '<rect x="10" y="67.5" width="20" height="2" rx="1" fill="' + txt + '" opacity=".5"/>' +
+      '</svg>';
   }
 
   function open() {
@@ -209,11 +251,10 @@
     sheet.setAttribute('role', 'dialog');
     sheet.setAttribute('aria-label', 'Дүр төрх сонгох');
 
+
     var worldsHtml = WORLDS.map(function (w) {
-      var bars = w.swatch.map(function (c) { return '<span style="background:' + c + '"></span>'; }).join('');
       return '<button class="tp-w" data-w="' + w.id + '">' +
-             '<div class="tp-prev">' + bars +
-               '<b style="color:' + w.swatch[3] + '">' + w.cn + '</b></div>' +
+             preview(w) +
              '<div class="tp-n">' + w.name + (w.id === DEFAULT_WORLD ? ' <i>үндсэн</i>' : '') + '</div>' +
              '<div class="tp-d">' + w.sub + '</div></button>';
     }).join('');
@@ -286,6 +327,8 @@
   window.jarvisTheme = {
     open: open, close: close, set: set,
     get: function () { return { world: world, accent: accent }; },
+    current: function () { return { world: world, accent: accent }; },
+    preview: preview,          // тохиргооны дэлгэц ижил жишээ зургийг ашиглана
     worlds: WORLDS, accents: ACCENTS,
   };
 })();

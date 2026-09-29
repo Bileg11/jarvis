@@ -17,7 +17,8 @@ const SETUP_FLAG_PATH = path.join(os.homedir(), 'Library', 'Preferences', 'three
 // ── PAGE NAVIGATION (iframe alternative — asar-safe) ─────────────
 ipcMain.handle('load-page', (_, page) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  const allowed = ['index.html','chat.html','profile.html','tracker.html','guide.html'];
+  const allowed = ['home.html','index.html','chat.html','profile.html','tracker.html',
+                   'guide.html','hsk.html','learn.html','life.html','finance.html','dashboard.html'];
   if (!allowed.includes(page)) return;
   mainWindow.loadFile(page);
 });
@@ -329,7 +330,7 @@ function createWindow() {
   // Одоо cache цэвэрлэж ДУУССАНЫ дараа л хуудсаа ачаална.
   mainWindow.webContents.session.clearCache()
     .catch(() => {})
-    .then(() => mainWindow.loadFile('index.html'));
+    .then(() => mainWindow.loadFile('home.html'));
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();

@@ -9,6 +9,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
   <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -112,10 +113,12 @@
       font-size: 18px;
       flex-shrink: 0;
     }
-    .icon-lfs      { background: rgba(var(--warn-rgb),0.15);  border: 1px solid rgba(var(--warn-rgb),0.3); }
-    .icon-study    { background: rgba(var(--accent-rgb),0.12);  border: 1px solid rgba(var(--accent-rgb),0.3); }
-    .icon-business { background: rgba(var(--ok-rgb),0.12);  border: 1px solid rgba(var(--ok-rgb),0.3); }
-    .icon-fitness  { background: rgba(var(--danger-rgb),0.12); border: 1px solid rgba(var(--danger-rgb),0.3); }
+    /* Бүх хэсэг НЭГ өнгөтэй — өмнө нь алт, цэнхэр, ногоон, улаан
+       дөрвөн өнгө зэрэг байсан нь нэг апп мэт мэдрэгдүүлэхгүй байв. */
+    .icon-lfs      { background: rgba(var(--accent-rgb),0.12); border: 1px solid rgba(var(--accent-rgb),0.3); }
+    .icon-study  { background: rgba(var(--accent-rgb),0.12); border: 1px solid rgba(var(--accent-rgb),0.3); }
+    .icon-business  { background: rgba(var(--accent-rgb),0.12); border: 1px solid rgba(var(--accent-rgb),0.3); }
+    .icon-fitness  { background: rgba(var(--accent-rgb),0.12); border: 1px solid rgba(var(--accent-rgb),0.3); }
 
     .sec-meta { flex: 1; min-width: 0; }
     .sec-name { font-size: 15px; font-weight: 700; }
@@ -128,10 +131,10 @@
       border-radius: 20px;
       white-space: nowrap;
     }
-    .badge-gold   { background: rgba(var(--warn-rgb),0.15); color: var(--text); }
-    .badge-blue   { background: rgba(var(--accent-rgb),0.15); color: var(--text); }
-    .badge-green  { background: rgba(var(--ok-rgb),0.15); color: var(--text); }
-    .badge-red    { background: rgba(var(--danger-rgb),0.15); color: var(--text); }
+    .badge-gold { background: rgba(var(--accent-rgb),0.14); color: var(--text); }
+    .badge-blue { background: rgba(var(--accent-rgb),0.14); color: var(--text); }
+    .badge-green { background: rgba(var(--accent-rgb),0.14); color: var(--text); }
+    .badge-red { background: rgba(var(--accent-rgb),0.14); color: var(--text); }
 
     .sec-chevron {
       color: var(--text-3);
@@ -195,7 +198,7 @@
       outline: none;
       transition: border-color 0.2s;
     }
-    .fi:focus { border-color:var(--warn); }
+    .fi:focus { border-color:var(--accent); }
     .fi::placeholder { color: var(--text-3); }
     select.fi { appearance: none; -webkit-appearance: none; }
     select.fi option { background: #1a1a2e; }
@@ -292,7 +295,7 @@
       padding: 10px;
       text-align: center;
     }
-    .lfs-stat-val { font-size: 20px; font-weight: 800; color: var(--warn); }
+    .lfs-stat-val { font-size: 20px; font-weight: 800; color: var(--accent-text); }
     .lfs-stat-lbl { font-size: 10px; color: var(--text-3); margin-top: 2px; }
 
     /* ── NOTES SECTIONS (study, business, fitness) ────────────────── */
@@ -370,16 +373,53 @@
     .prog-bar { flex: 1; height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
     .prog-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
     .prog-val { font-size: 12px; color: var(--text-2); width: 36px; text-align: right; flex-shrink: 0; }
-  </style>
+  
+/* ══ АМЬДРАЛ — гол хоёр зам ══════════════════════════════════════ */
+.lf-go {
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-4);
+  min-height:68px; padding:0 var(--sp-5); margin-bottom:var(--sp-3);
+  border-radius:var(--r-lg); background:var(--accent); color:var(--accent-ink);
+  text-decoration:none; font-family:var(--font-ui);
+}
+.lf-go b { display:block; font-size:var(--fs-lg); font-weight:var(--w-cta); }
+.lf-go i { display:block; font-style:normal; font-size:var(--fs-sm); opacity:.75; margin-top:2px; }
+.lf-go-a { font-size:var(--fs-xl); flex:0 0 auto; }
+.lf-stats {
+  display:flex; align-items:center; gap:var(--sp-3);
+  min-height:56px; padding:var(--sp-3) var(--sp-5); margin-bottom:var(--sp-5);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  color:var(--text); text-decoration:none; font-family:var(--font-ui);
+}
+.lf-stats:hover { border-color:var(--accent); }
+.lf-stats b { font-size:var(--fs-md); font-weight:var(--w-med); flex:0 0 auto; }
+.lf-stats i { font-style:normal; font-size:var(--fs-sm); color:var(--text-2); margin-left:auto; text-align:right; }
+.lf-stats .lf-go-a { color:var(--text-3); margin-left:var(--sp-3); }
+@media (max-width:520px) { .lf-stats i { display:none; } }
+
+/* Дасгалын өнөөдрийн байдал — Нүүр хуудастай нэг дата */
+.fit-today { display:flex; align-items:center; gap:var(--sp-4); margin-bottom:var(--sp-4); }
+.fit-today > div { flex:1; min-width:0; }
+.fit-today-t { font-size:var(--fs-md); font-weight:var(--w-med); }
+.fit-today-s { font-size:var(--fs-sm); color:var(--text-2); margin-top:2px; }
+.fit-log-btn {
+  flex:0 0 auto; min-height:40px; padding:0 var(--sp-4);
+  border:1px solid var(--border-strong); border-radius:var(--r-md);
+  background:var(--surface-2); color:var(--text);
+  font-family:var(--font-ui); font-size:var(--fs-sm); font-weight:var(--w-med); cursor:pointer;
+}
+.fit-log-btn:hover { border-color:var(--accent); color:var(--accent-text); }
+</style>
+<script src="jarvis-config.js"></script>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
 
-  <header class="header">
-    <div>
-      <h1>Life OS</h1>
-      <div class="sub" id="life-date-txt"></div>
-    </div>
-    <div class="avatar">📋</div>
+  <header class="jv-head" style="max-width:900px;margin:0 auto;padding:var(--sp-5) var(--sp-4) 0">
+    <div class="jv-date" id="life-date-txt"></div>
+    <h1 class="jv-title">Амьдрал</h1>
   </header>
 
   <div class="page-wrap">
@@ -394,11 +434,25 @@
       <button onclick="changeDay(1)">›</button>
     </div>
 
+    <!-- ══ ЦЭС — гол хоёр зам ═══════════════════════════════════ -->
+    <a class="lf-go" href="tracker">
+      <span>
+        <b>Өнөөдрийн тэмдэглэл</b>
+        <i id="lf-go-sub">Нойр · усанд орсон · хичээл · тэмдэглэл</i>
+      </span>
+      <span class="lf-go-a">→</span>
+    </a>
+    <a class="lf-stats" href="dashboard">
+      <b>Статистик</b>
+      <i>Захиалга · санхүү · уншилт · дасгал</i>
+      <span class="lf-go-a">→</span>
+    </a>
+
     <!-- JARVIS OVERVIEW -->
     <div class="overview-card">
       <div class="overview-header">
         <div class="ov-dot"></div>
-        <span class="ov-title">JARVIS Overview</span>
+        <span class="ov-title">Өнөөдрийн товч</span>
         <button class="ov-refresh" id="ov-refresh" onclick="refreshOverview()" title="Шинэчлэх">↻</button>
       </div>
       <div class="ov-text" id="ov-text">Уншиж байна...</div>
@@ -529,16 +583,18 @@
         <span class="sec-chevron">▾</span>
       </div>
       <div class="section-body">
-        <div class="fitness-log-row">
-          <div class="fitness-chip" id="chip-chest"    onclick="toggleChip('chest')"   >💪 Цээж</div>
-          <div class="fitness-chip" id="chip-back"     onclick="toggleChip('back')"    >🏃 Нуруу</div>
-          <div class="fitness-chip" id="chip-legs"     onclick="toggleChip('legs')"    >🦵 Хөл</div>
-          <div class="fitness-chip" id="chip-cardio"   onclick="toggleChip('cardio')"  >❤️ Кардио</div>
-          <div class="fitness-chip" id="chip-rest"     onclick="toggleChip('rest')"    >😴 Амрах</div>
+        <!-- Дасгал НЭГ л газар бүртгэгдэнэ — Нүүр хуудастай ижил дата.
+             (Өмнө нь энд тусдаа хадгалагдаж, тоо нь зөрдөг байсан.) -->
+        <div class="fit-today">
+          <div>
+            <div class="fit-today-t" id="fit-today-type">Тэмдэглэгдээгүй</div>
+            <div class="fit-today-s" id="fit-today-sub">Өнөөдрийн төлөвлөгөө: —</div>
+          </div>
+          <button class="fit-log-btn" onclick="jvWorkoutSheet()">Тэмдэглэх</button>
         </div>
         <div class="prog-row">
           <span class="prog-label">Энэ сар</span>
-          <div class="prog-bar"><div class="prog-fill" id="fit-prog" style="background:var(--danger);width:0%"></div></div>
+          <div class="prog-bar"><div class="prog-fill" id="fit-prog" style="width:0%"></div></div>
           <span class="prog-val" id="fit-prog-val">0/30</span>
         </div>
         <textarea class="notes-ta" id="fitness-notes" style="min-height:80px"
@@ -548,7 +604,7 @@
 • Protein: 120g идсэн..."></textarea>
         <div class="notes-footer">
           <span class="notes-ts" id="fitness-ts"></span>
-          <button class="notes-save-btn" onclick="saveNotes('fitness')" style="background:var(--danger)">Хадгалах</button>
+          <button class="notes-save-btn" onclick="saveNotes('fitness')" >Хадгалах</button>
         </div>
       </div>
     </div>
@@ -556,17 +612,9 @@
   </div><!-- /page-wrap -->
 
   <!-- BOTTOM NAV -->
-  <nav class="bottom-nav">
-    <a class="nav-item"        href="index">    <span class="ni">🏠</span><span>Нүүр</span></a>
-    <a class="nav-item active" href="life">     <span class="ni">📋</span><span>Life OS</span></a>
-    <a class="nav-item"        href="dashboard"><span class="ni">📈</span><span>Статс</span></a>
-    <a class="nav-item"        href="chat">     <span class="ni">🤖</span><span>Chat</span></a>
-    <a class="nav-item"        href="profile">  <span class="ni">👤</span><span>Профайл</span></a>
-  </nav>
 
   <div id="toast"></div>
 
-  <script src="jarvis-config.js"></script>
   <script src="app.js"></script>
   <script src="gemini.js"></script>
   <script src="firebase-config.js"></script>
@@ -578,7 +626,7 @@
   let _viewDate = new Date();
 
   function dateKey(d) {
-    return d.toISOString().split('T')[0];
+    return jarvisDay(d);
   }
 
   function renderDateNav() {
@@ -774,43 +822,41 @@
   const FIT_KEY = d => `jarvis_life_fit_${d}`;
 
   function loadDayFitnessChips() {
-    const vd   = dateKey(_viewDate);
-    const chips = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
-    ['chest','back','legs','cardio','rest'].forEach(c => {
-      document.getElementById('chip-' + c).classList.toggle('active', chips.includes(c));
-    });
-    updateFitnessBadge(chips);
+    updateFitnessBadge();
     updateFitnessProgress();
   }
 
-  function toggleChip(name) {
-    const vd    = dateKey(_viewDate);
-    const chips = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
-    const idx   = chips.indexOf(name);
-    if (idx >= 0) chips.splice(idx, 1); else chips.push(name);
-    localStorage.setItem(FIT_KEY(vd), JSON.stringify(chips));
-    document.getElementById('chip-' + name).classList.toggle('active', chips.includes(name));
-    updateFitnessBadge(chips);
-    updateFitnessProgress();
-    buildOverview();
+
+  // Дасгалын мэдээллийг Нүүр хуудастай НЭГ эх сурвалжаас уншина
+  function updateFitnessBadge() {
+    var log  = (typeof jvLog === 'function') ? jvLog() : null;
+    var plan = (typeof jvTodayPlan === 'function') ? jvTodayPlan() : '';
+    var txt  = log ? log.type + ' · ' + log.mins + ' минут' : 'Тэмдэглэгдээгүй';
+
+    var t = document.getElementById('fit-today-type');
+    var sub = document.getElementById('fit-today-sub');
+    if (t)   t.textContent = txt;
+    if (sub) sub.textContent = 'Өнөөдрийн төлөвлөгөө: ' + (plan || '—');
+
+    var badge = document.getElementById('fitness-badge');
+    var hint  = document.getElementById('fitness-hint');
+    if (badge) badge.textContent = log ? log.type : '—';
+    if (hint)  hint.textContent  = txt;
   }
 
-  function updateFitnessBadge(chips) {
-    const labels = { chest:'Цээж', back:'Нуруу', legs:'Хөл', cardio:'Кардио', rest:'Амрах' };
-    const active = chips.map(c => labels[c]).join(', ');
-    document.getElementById('fitness-badge').textContent  = active || '—';
-    document.getElementById('fitness-hint').textContent   = active || 'Дасгал тэмдэглэгдээгүй';
-  }
 
   function updateFitnessProgress() {
     // Энэ сарын дасгал хийсэн өдрүүд (rest биш)
     const yr = _viewDate.getFullYear(), mo = _viewDate.getMonth() + 1;
-    const prefix = `jarvis_life_fit_${yr}-${String(mo).padStart(2,'0')}`;
+    // Нүүр хуудастай ижил түлхүүрээс тоолно
+    const prefix = `jarvis_workout_${yr}-${String(mo).padStart(2,'0')}`;
     let count = 0;
     for (let k in localStorage) {
       if (!k.startsWith(prefix)) continue;
-      const chips = JSON.parse(localStorage.getItem(k) || '[]');
-      if (chips.length && !chips.every(c => c === 'rest')) count++;
+      try {
+        const lg = JSON.parse(localStorage.getItem(k) || 'null');
+        if (lg && lg.type && lg.type !== 'Амралт') count++;
+      } catch (e) {}
     }
     const goal = 30;
     const pct  = Math.min(count / goal * 100, 100);
@@ -833,13 +879,12 @@
   function buildOverview() {
     const vd     = dateKey(_viewDate);
     const orders = loadOrders().filter(o => o.date === vd);
-    const fitC   = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
+    const fitLog = (typeof jvLog === 'function') ? jvLog(vd) : null;
     const studyN = localStorage.getItem(NOTES_KEY('study', vd)) || '';
     const bizN   = localStorage.getItem(NOTES_KEY('business', vd)) || '';
     const fitN   = localStorage.getItem(NOTES_KEY('fitness', vd)) || '';
 
-    const LABELS_FIT = { chest:'Цээж', back:'Нуруу', legs:'Хөл', cardio:'Кардио', rest:'Амрах' };
-    const fitStr = fitC.map(c => LABELS_FIT[c]).join(', ') || '—';
+    const fitStr = (fitLog ? fitLog.type : '') || '—';
 
     const STATUS_MN = { pending:'хүлээгдэж байна', confirmed:'баталгаажсан', done:'дууссан', cancelled:'цуцлагдсан' };
     const orderSummary = orders.length
@@ -869,14 +914,13 @@
 
     const vd     = dateKey(_viewDate);
     const orders = loadOrders().filter(o => o.date === vd);
-    const fitC   = JSON.parse(localStorage.getItem(FIT_KEY(vd)) || '[]');
-    const LABELS_FIT = { chest:'Цээж', back:'Нуруу', legs:'Хөл', cardio:'Кардио', rest:'Амрах' };
+    const fitLog = (typeof jvLog === 'function') ? jvLog(vd) : null;
     const studyN = localStorage.getItem(NOTES_KEY('study', vd)) || '';
     const bizN   = localStorage.getItem(NOTES_KEY('business', vd)) || '';
 
     const prompt = `Өнөөдрийн Life OS нэгтгэл:
 LFS захиалга: ${orders.length > 0 ? orders.map(o=>`${o.name}(${o.status})`).join(', ') : 'байхгүй'}
-Fitness: ${fitC.map(c=>LABELS_FIT[c]).join(', ') || 'тэмдэглэгдээгүй'}
+Fitness: ${(fitLog ? fitLog.type : '') || 'тэмдэглэгдээгүй'}
 Хичээл: ${studyN.split('\n').filter(Boolean).length} мөр тэмдэглэл
 Бизнес: ${bizN.split('\n').filter(Boolean).length} мөр тэмдэглэл
 
@@ -921,5 +965,7 @@ Fitness: ${fitC.map(c=>LABELS_FIT[c]).join(', ') || 'тэмдэглэгдээг�
   </script>
 
 
+<script src="jarvis-daily.js"></script>
+<script src="jarvis-shell.js" data-page="life"></script>
 </body>
 </html>

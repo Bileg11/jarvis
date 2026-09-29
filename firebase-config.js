@@ -428,7 +428,7 @@ window.DB = {
   async syncDown() {
     const uid = _uid();
     if (!uid) return;
-    const today = new Date().toISOString().split('T')[0];
+    const today = jarvisDay();
 
     // ── CACHE-FIRST: Firestore SDK local cache ашиглана ──────────
     // source:'cache' → network хүсэлт гаргахгүй, offline-д ч ажиллана

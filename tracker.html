@@ -8,6 +8,7 @@
   <title>Tracker — Jarvis</title>
   <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
   <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -201,16 +202,20 @@
     }
     .save-hint.show { color: var(--green); }
   </style>
+<script src="jarvis-config.js"></script>
+<script>/* Өдрийн зааг — ОРОН НУТГИЙН цагаар. Хуудсанд шууд бичсэн нь
+   кэшнээс болж тодорхойлогдоогүй үлдэхээс сэргийлнэ. */
+window.jarvisDay=function(d){d=d||new Date();return d.getFullYear()+'-'+
+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};</script>
 </head>
 <body>
 
-  <div class="header">
-    <div>
-      <h1>Life Tracker</h1>
-      <div class="sub" id="date-txt"></div>
-    </div>
-    <div class="avatar">Б</div>
-  </div>
+  <header class="jv-head" style="max-width:900px;margin:0 auto;padding:var(--sp-5) var(--sp-4) 0">
+    <div class="jv-date" id="date-txt"></div>
+    <h1 class="jv-title">Өдрийн тэмдэглэл</h1>
+    <a href="life" style="display:inline-block;margin-top:var(--sp-3);font-size:var(--fs-sm);
+       color:var(--text-2);text-decoration:none">← Амьдрал</a>
+  </header>
 
   <!-- WATER -->
   <div class="t-card">
@@ -313,20 +318,13 @@
   <div class="save-hint" id="save-hint">✓ Хадгалагдлаа</div>
 
   <!-- NAV -->
-  <nav class="bottom-nav">
-    <a class="nav-item"        href="index">   <span class="ni">🏠</span><span>Нүүр</span></a>
-    <a class="nav-item active" href="tracker">  <span class="ni">📊</span><span>Tracker</span></a>
-    <a class="nav-item"        href="dashboard"><span class="ni">📈</span><span>Статс</span></a>
-    <a class="nav-item"        href="index">   <span class="ni" style="font-family:serif">汉</span><span>汉字</span></a>
-    <a class="nav-item"        href="index">   <span class="ni">⚙️</span><span>Тохиргоо</span></a>
-  </nav>
 
   <div id="sync-bar" class="sync-bar" style="display:none"></div>
   <div id="toast"></div>
 
   <script>
     // ── utils ──────────────────────────────
-    function getToday() { return new Date().toISOString().split('T')[0]; }
+    function getToday() { return jarvisDay(); }
     function getNow() {
       const n = new Date();
       return String(n.getHours()).padStart(2,'0') + ':' + String(n.getMinutes()).padStart(2,'0');
@@ -562,9 +560,9 @@
       if (log.note) document.getElementById('daily-note').value = log.note;
     })();
   </script>
-  <script src="jarvis-config.js"></script>
   <script src="firebase-config.js"></script>
 
 
+<script src="jarvis-shell.js" data-page="life"></script>
 </body>
 </html>
