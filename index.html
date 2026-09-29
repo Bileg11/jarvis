@@ -448,6 +448,7 @@
         COMM CHANNEL // A.C.E. AI
         <span class="hdr-tag" id="term-msg-count">0 ENTRIES</span>
       </div>
+      <div class="mem-banner" id="mem-banner" hidden></div>
       <div class="term-output" id="term-output"></div>
       <div class="term-input-row">
         <div class="term-prefix" id="term-prefix-label">Boss@THREE_OS:~$</div>
@@ -3901,19 +3902,18 @@ function _extractRemember(text) {
 
 async function _applyRemember(rem) {
   const ok = window.DB?.appendCoreMemory ? await window.DB.appendCoreMemory(rem.fact) : false;
-  if (ok) _renderMemoryUpdateChip();
+  if (ok) _showMemoryBanner();
 }
 
-// Claude-стилийн "Memory updated" мэдэгдэл — дарвал бүх санах ойг харуулна
-function _renderMemoryUpdateChip() {
-  const out = document.getElementById('term-output');
-  if (!out) return;
-  const chip = document.createElement('div');
-  chip.className = 'mem-update-chip';
-  chip.innerHTML = `<span>🧠 Санах ой шинэчлэгдлээ</span><button type="button" class="mem-update-view">Харах →</button>`;
-  chip.querySelector('.mem-update-view').addEventListener('click', _showMemoryViewer);
-  out.appendChild(chip);
-  out.scrollTop = out.scrollHeight;
+// Claude-стилийн "Memory updated" мэдэгдэл — панелийн толгойн доор ФИКС
+// байрлана (чат гүйлгэхэд алга болохгүй), зөвхөн X дарвал хаагдана.
+function _showMemoryBanner() {
+  const banner = document.getElementById('mem-banner');
+  if (!banner) return;
+  banner.innerHTML = `<span>🧠 Санах ой шинэчлэгдлээ</span><button type="button" class="mem-banner-view">Харах →</button><button type="button" class="mem-banner-close" aria-label="Хаах">&times;</button>`;
+  banner.querySelector('.mem-banner-view').addEventListener('click', _showMemoryViewer);
+  banner.querySelector('.mem-banner-close').addEventListener('click', () => { banner.hidden = true; });
+  banner.hidden = false;
 }
 
 // Бүх урт хугацааны санах ойг (profile/knowledge_base) харуулах modal
