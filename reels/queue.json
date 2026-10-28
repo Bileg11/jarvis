@@ -1,5 +1,6 @@
 {
-  "_readme": "Өдөр бүр 19:30 (Шанхай/УБ цаг) тухайн өдрийн reel-ийг Instagram болон FB Page руу постлоно. first_comment нь постын доор эхний коммент болж бичигдэнэ (pin-ийг гараар). Алгасах бол skip:true болго. Шинэ reel нэмэх бол mp4-өө reels/ хавтсанд хийгээд энд мөр нэм.",
+  "_readme": "mode \"telegram\": өдөр бүр 18:45-д тухайн өдрийн reel-ийн видео, caption, эхний комментыг Telegram руу явуулна, Boss IG дээр trend дуутай гараар постлоно (FB руу IG-ийн Share to Facebook-оор). mode \"auto\": IG + FB руу bot шууд постлоно. Алгасах бол skip:true. Шинэ reel: mp4-өө reels/ хавтсанд хийгээд энд мөр нэм.",
+  "mode": "telegram",
   "items": [
     {
       "date": "2026-10-29",

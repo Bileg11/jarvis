@@ -1,12 +1,10 @@
 name: LFS Reel Poster
 
-# reels/queue.json дахь өнөөдрийн reel-ийг 19:30 (Шанхай/УБ) цагт Instagram болон FB Page руу постлоно.
-# GitHub-ын cron хэдэн цагаар хоцордог тул Claude-ын scheduled task 19:30-д workflow_dispatch-аар дууддаг.
-# Cron нь зөвхөн нөөц. Давхар пост хийхгүй (script IG дээр шалгана).
+# reels/queue.json дахь өнөөдрийн reel-ийг Telegram руу багц болгон явуулна (mode: telegram),
+# эсвэл IG + FB руу шууд постлоно (mode: auto).
+# Claude-ын scheduled task өдөр бүр 18:45-д workflow_dispatch-аар дууддаг.
+# GitHub cron хэдэн цагаар хоцордог бөгөөд давхар илгээх эрсдэлтэй тул cron ашиглахгүй.
 on:
-  schedule:
-    - cron: '30 11 * * *'   # 19:30 Shanghai
-    - cron: '30 13 * * *'   # 21:30 Shanghai (нөөц)
   workflow_dispatch:
     inputs:
       dry_run:
