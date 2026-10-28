@@ -1,6 +1,10 @@
 // ── LFS REEL POSTER ───────────────────────────────────────────────
 // reels/queue.json-оос өнөөдрийн reel-ийг Instagram болон Facebook Page руу постлоно.
 // Caption-ийг ЯГ queue.json дээр бичсэнээр нь тавина (AI-аар өөрчлөхгүй).
+// queue.json-ийн "mode":
+//   "telegram" (default) → постлохгүй. Видео, caption, эхний коммент, заавраа Telegram руу явуулна,
+//                          Boss IG app-аар trend дуутай постлоно (FB руу IG-ийн Share to Facebook-оор).
+//   "auto"               → IG + FB Page руу шууд постлоно.
 // "first_comment" байвал пост бүрийн доор эхний коммент болгож бичнэ (pin-ийг гараар хийнэ,
 // Meta API-д pin хийх функц байхгүй).
 // Давхар пост хийхгүй: платформ бүр дээр өнөөдөр ижил caption-тай пост байвал алгасна.
@@ -71,9 +75,41 @@ async function tgVideo(filePath, caption) {
 }
 
 // ── QUEUE ─────────────────────────────────────────────────────────
+function readQueueFile() {
+  return JSON.parse(fs.readFileSync(path.join(REELS_DIR, 'queue.json'), 'utf8'));
+}
 function loadQueue() {
-  const q = JSON.parse(fs.readFileSync(path.join(REELS_DIR, 'queue.json'), 'utf8'));
-  return (q.items || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  return (readQueueFile().items || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+}
+const MODE = (() => {
+  try {
+    return readQueueFile().mode === 'auto' ? 'auto' : 'telegram';
+  } catch {
+    return 'telegram';
+  }
+})();
+
+// ── TELEGRAM HANDOFF: Boss өөрөө IG дээр постлох багц ─────────────
+async function sendKit(item, next) {
+  const filePath = path.join(REELS_DIR, item.file);
+  if (!fs.existsSync(filePath)) throw new Error(`Файл олдсонгүй: reels/${item.file}`);
+  await tgText(
+    [
+      `🎬 Өнөөдрийн reel · ${item.date}`,
+      '19:30 орчим IG дээр постлоорой:',
+      '1. Доорх видеог хадгал',
+      '2. IG → + → Reel → видеогоо сонго',
+      '3. 🎵 Trend дуу сонго, "Original audio"-г 20-30% болгож SFX-ийг үлдээ',
+      '4. Дараагийн мессежийн caption-ийг хуулж тавь',
+      '5. "Share to Facebook" асаалттай эсэхийг шалга → Share',
+      '6. Постлосны дараа сүүлийн мессежийн комментыг бичээд PIN хий',
+      '7. Эхний 30 минутад коммент бүрт хариул',
+    ].join('\n'),
+  );
+  await tgVideo(filePath, `${item.date} · ${item.file}`);
+  await tgText(item.caption);
+  if (item.first_comment) await tgText(item.first_comment);
+  await tgText(next ? `Дараагийнх: ${next.date} · ${next.file}` : '⚠️ Queue дууслаа. Шинэ reel нэмэх хэрэгтэй.');
 }
 
 // ── META ──────────────────────────────────────────────────────────
@@ -224,14 +260,23 @@ async function postFB(item, date, filePath) {
 
 // ── MAIN ──────────────────────────────────────────────────────────
 async function main() {
-  const missing = ['TELEGRAM_BOT_TOKEN_JARVIS', 'TELEGRAM_ID', 'INSTAGRAM_BUSINESS_ID', 'ACCESS_TOKEN_META'].filter((k) => !process.env[k]);
+  const need = MODE === 'auto' || DRY ? ['TELEGRAM_BOT_TOKEN_JARVIS', 'TELEGRAM_ID', 'INSTAGRAM_BUSINESS_ID', 'ACCESS_TOKEN_META'] : ['TELEGRAM_BOT_TOKEN_JARVIS', 'TELEGRAM_ID'];
+  const missing = need.filter((k) => !process.env[k]);
   if (missing.length) throw new Error(`Secret дутуу: ${missing.join(', ')}`);
 
   const date = FORCE_DATE || today();
   const queue = loadQueue();
   const item = queue.find((x) => x.date === date && !x.skip);
   const next = queue.find((x) => x.date > date && !x.skip);
-  console.log(`[Reel] ${date} ${localHour()}h | item: ${item ? item.file : '-'} | next: ${next ? next.date : '-'} | dry: ${DRY}`);
+  console.log(`[Reel] ${date} ${localHour()}h | item: ${item ? item.file : '-'} | next: ${next ? next.date : '-'} | mode: ${MODE} | dry: ${DRY}`);
+
+  if (DRY && MODE === 'telegram') {
+    const show = item || next;
+    await tgText(`REEL · шалгалт · mode: telegram (bot постлохгүй, багц явуулна)\nQueue: ${queue.filter((x) => !x.skip).length} reel\nДараагийнх: ${show ? show.date : '-'}`);
+    if (show) await sendKit(show, queue.find((x) => x.date > show.date && !x.skip));
+    console.log('[Reel] Dry run OK');
+    return;
+  }
 
   if (DRY) {
     const me = await graph('GET', IG_ID, {fields: 'username'});
@@ -267,6 +312,12 @@ async function main() {
 
   if (!item) {
     console.log('[Reel] Өнөөдөр reel байхгүй.');
+    return;
+  }
+
+  if (MODE === 'telegram') {
+    await sendKit(item, next);
+    console.log('[Reel] Kit sent to Telegram.');
     return;
   }
   if (!FORCE_DATE && localHour() < POST_FROM_HOUR) {
