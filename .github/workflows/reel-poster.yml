@@ -1,6 +1,6 @@
 name: LFS Reel Poster
 
-# reels/queue.json дахь өнөөдрийн reel-ийг 19:30 (Шанхай/УБ) цагт Instagram руу постлоно.
+# reels/queue.json дахь өнөөдрийн reel-ийг 19:30 (Шанхай/УБ) цагт Instagram болон FB Page руу постлоно.
 # GitHub-ын cron хэдэн цагаар хоцордог тул Claude-ын scheduled task 19:30-д workflow_dispatch-аар дууддаг.
 # Cron нь зөвхөн нөөц. Давхар пост хийхгүй (script IG дээр шалгана).
 on:
@@ -39,6 +39,7 @@ jobs:
           TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
           TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
           INSTAGRAM_BUSINESS_ID:     ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+          FACEBOOK_PAGE_ID:          ${{ secrets.FACEBOOK_PAGE_ID }}
           ACCESS_TOKEN_META:         ${{ secrets.ACCESS_TOKEN_META }}
           DRY:  ${{ inputs.dry_run && '--dry-run' || '' }}
           DATE: ${{ inputs.date && format('--date={0}', inputs.date) || '' }}
