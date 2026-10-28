@@ -1,0 +1,45 @@
+name: LFS Reel Poster
+
+# reels/queue.json дахь өнөөдрийн reel-ийг 19:30 (Шанхай/УБ) цагт Instagram руу постлоно.
+# GitHub-ын cron хэдэн цагаар хоцордог тул Claude-ын scheduled task 19:30-д workflow_dispatch-аар дууддаг.
+# Cron нь зөвхөн нөөц. Давхар пост хийхгүй (script IG дээр шалгана).
+on:
+  schedule:
+    - cron: '30 11 * * *'   # 19:30 Shanghai
+    - cron: '30 13 * * *'   # 21:30 Shanghai (нөөц)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Зөвхөн шалгах (постлохгүй)'
+        type: boolean
+        default: false
+      date:
+        description: 'Тухайн өдрийнхийг постлох (YYYY-MM-DD), хоосон бол өнөөдөр'
+        required: false
+        default: ''
+
+concurrency:
+  group: reel-poster
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Post reel
+        env:
+          TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+          INSTAGRAM_BUSINESS_ID:     ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+          ACCESS_TOKEN_META:         ${{ secrets.ACCESS_TOKEN_META }}
+          DRY:  ${{ inputs.dry_run && '--dry-run' || '' }}
+          DATE: ${{ inputs.date && format('--date={0}', inputs.date) || '' }}
+        run: node scripts/reel-poster.js $DRY $DATE
