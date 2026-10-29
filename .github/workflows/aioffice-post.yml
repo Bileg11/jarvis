@@ -24,7 +24,7 @@ jobs:
       - name: Schedule pending posts
         env:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN_AI_OFFICE }}
-          FB_PAGE_ID: ${{ vars.FB_PAGE_ID }}
+          FB_PAGE_ID: ${{ vars.FB_PAGE_ID || '111968641346366' }}
           FB_API_VERSION: ${{ vars.FB_API_VERSION }}
         run: python aioffice/post.py
       - name: Save results back to the queue
