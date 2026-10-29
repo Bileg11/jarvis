@@ -1,0 +1,37 @@
+name: AI Оффис - schedule Facebook posts
+
+on:
+  push:
+    branches: [main]
+    paths: ["aioffice/queue/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: aioffice-post
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  schedule:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Schedule pending posts
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN_AI_OFFICE }}
+          FB_PAGE_ID: ${{ vars.FB_PAGE_ID }}
+          FB_API_VERSION: ${{ vars.FB_API_VERSION }}
+        run: python aioffice/post.py
+      - name: Save results back to the queue
+        if: always()
+        run: |
+          git config user.name "aioffice-bot"
+          git config user.email "aioffice-bot@users.noreply.github.com"
+          git add aioffice/queue/*.json
+          git diff --cached --quiet || git commit -m "aioffice: record scheduling results [skip ci]"
+          git push
