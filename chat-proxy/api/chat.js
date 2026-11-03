@@ -98,6 +98,25 @@ module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-jarvis-secret');
 
   if (req.method === 'OPTIONS') return res.status(204).end();
+
+  // GET → оношлогоо: энэ түлхүүр ямар моделиудад хүрч байгааг харуулна
+  if (req.method === 'GET') {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key) return res.status(503).json({ error: 'GEMINI_API_KEY байхгүй' });
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+      const d = await r.json();
+      if (!r.ok) return res.status(r.status).json({ error: d?.error?.message || 'models list' });
+      const list = (d.models || [])
+        .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+        .map(m => ({
+          name: String(m.name).replace(/^models\//, ''),
+          in: m.inputTokenLimit, out: m.outputTokenLimit,
+        }));
+      return res.json({ count: list.length, chosen: MODEL_CACHE, models: list });
+    } catch (e) { return res.status(502).json({ error: e.message }); }
+  }
+
   if (req.method !== 'POST')   return res.status(405).json({ error: 'POST only' });
 
   // Secret header auth (сонголт)
