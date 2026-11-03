@@ -11,14 +11,12 @@
 const fs   = require('fs');
 const path = require('path');
 
-const KEY    = process.env.GEMINI_API_KEY;
-const MODEL  = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-const URL    = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`;
-const DIR   = path.join(__dirname, '..', '..', 'data', 'hsk3');
-const BATCH = 40;
-const LEVELS = (process.env.LEVELS || '5,4,3,2,1').split(',').map(Number);
+const { askJSON, hasKey } = require('../ai');
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const DIR    = path.join(__dirname, '..', '..', 'data', 'hsk3');
+const BATCH  = 40;
+const LEVELS = (process.env.LEVELS || '5,4,3,2,1').split(',').map(Number);
+const sleep  = ms => new Promise(r => setTimeout(r, ms));
 
 const SYSTEM = `Чи бол 15 жил хятад хэл заасан, монгол хэлээр тайлбарладаг багш.
 Хятад үг бүрийг МОНГОЛООР богино, ойлгомжтой тайлбарла.
@@ -28,36 +26,13 @@ const SYSTEM = `Чи бол 15 жил хятад хэл заасан, монго
 - Үйл үг бол "-х" төгсгөлтэй (жишээ: тайвшруулах).
 - Үндсэн, хамгийн түгээмэл утгыг нь өг. Хоёр гол утгатай бол таслалаар тусгаарла.
 - Хятад ханз, пиньин, англи үг бүү оруул.
-- Монголчуудын өдөр тутам хэрэглэдэг энгийн үг сонго (хуучирсан, ном-номын үг биш).
+- Монголчуудын өдөр тутам хэрэглэдэг энгийн үг сонго.
 
 ЖИШЭЭ:
 安慰 ānwèi (V) to comfort → тайвшруулах
 显然 xiǎnrán (Adj) obvious → илэрхий, тодорхой
 不得不 bùdébù (Adv) have no choice but → заавал, аргагүй
 把握 bǎwò (V/N) to grasp; certainty → атгах, итгэлтэй байдал`;
-
-async function gemini(prompt, tries = 4) {
-  for (let i = 0; i < tries; i++) {
-    try {
-      const r = await fetch(URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM }] },
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 2048, responseMimeType: 'application/json' },
-        }),
-      });
-      if (r.status === 429 || r.status >= 500) { await sleep(8000 * (i + 1)); continue; }
-      if (!r.ok) { console.warn('  Gemini', r.status, (await r.text()).slice(0, 160)); await sleep(3000); continue; }
-      const d = await r.json();
-      const t = d.candidates?.[0]?.content?.parts?.map(p => p.text).filter(Boolean).join('') || '';
-      if (t) return t;
-    } catch (e) { console.warn('  алдаа:', e.message); }
-    await sleep(4000 * (i + 1));
-  }
-  return null;
-}
 
 const BAD = /[一-鿿]|[a-zA-Z]{3,}/;   // ханз эсвэл англи үг үлдсэн эсэх
 
@@ -84,13 +59,9 @@ async function doLevel(lv) {
       `ЗӨВХӨН JSON буцаа, ийм хэлбэрээр: {"mn":["тайлбар1","тайлбар2",...]} — ` +
       `массивт яг ${idxs.length} элемент, өгсөн дарааллаар.\n\n${lines}`;
 
-    const raw = await gemini(prompt);
-    let arr = null;
-    try {
-      const parsed = JSON.parse(raw);
-      arr = Array.isArray(parsed) ? parsed
-          : (Object.values(parsed).find(v => Array.isArray(v)) || null);
-    } catch {}
+    const parsed = await askJSON({ system: SYSTEM, prompt, max_tokens: 2048, temperature: 0.2 });
+    const arr = Array.isArray(parsed) ? parsed
+              : (parsed && Object.values(parsed).find(v => Array.isArray(v))) || null;
     if (!Array.isArray(arr) || arr.length !== idxs.length) {
       console.warn(`  ✗ ${s}-${s + idxs.length}: хариу тохирсонгүй (${Array.isArray(arr) ? arr.length : 'JSON биш'})`);
       await sleep(2000);
@@ -105,7 +76,7 @@ async function doLevel(lv) {
     });
     fs.writeFileSync(outPath, JSON.stringify(out, null, 0));
     console.log(`  ✓ ${s + idxs.length}/${todo.length} (${ok}/${idxs.length} хүлээн авав)`);
-    await sleep(4500);   // үнэгүй багцын хурдны хязгаарт тохируулав
+    await sleep(2500);   // үнэгүй багцын хурдны хязгаарт тохируулав
   }
 
   const done = out.filter(Boolean).length;
@@ -113,9 +84,8 @@ async function doLevel(lv) {
 }
 
 (async () => {
-  if (!KEY) {
-    console.log('GEMINI_API_KEY байхгүй — алгаслаа. Түлхүүр нэмэгдмэгц дахин ажиллуулахад ' +
-                'үлдсэн хэсгээс нь үргэлжилнэ.');
+  if (!hasKey()) {
+    console.log('GEMINI_API_KEY байхгүй — алгаслаа.');
     return;   // алдаа биш
   }
   for (const lv of LEVELS) await doLevel(lv);

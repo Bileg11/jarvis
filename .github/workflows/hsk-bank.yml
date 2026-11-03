@@ -1,0 +1,54 @@
+name: HSK5 даалгаврын сан баяжуулах
+
+# Өдөр бүр шинэ сонсгол/унших/бичих/ярианы даалгавар нэмнэ.
+# 6 цагийн хичээлд материал дутахгүй байхын тулд өдөр бүр ажиллана.
+on:
+  schedule:
+    - cron: '20 20 * * *'   # 04:20 Улаанбаатар — өглөөний brief-ээс өмнө бэлэн
+  workflow_dispatch:
+    inputs:
+      count:
+        description: 'Төрөл тус бүрээс хэд (хоосон = өдрийн хэвийн хэмжээ)'
+        required: false
+      kinds:
+        description: 'listen,read,write,speak'
+        default: 'listen,read,write,speak'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hsk-bank
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Даалгавар үүсгэх
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          COUNT: ${{ github.event.inputs.count }}
+          KINDS: ${{ github.event.inputs.kinds || 'listen,read,write,speak' }}
+        run: node scripts/gen/bank.js
+
+      - name: Хадгалах
+        run: |
+          git config user.name  "jarvis-bot"
+          git config user.email "jarvis-bot@users.noreply.github.com"
+          git add data/hsk3/bank.json
+          if git diff --cached --quiet; then
+            echo "Шинэ даалгавар нэмэгдсэнгүй"
+          else
+            N=$(node -e "const b=require('./data/hsk3/bank.json');
+              console.log('听'+b.listen.length+' 读'+b.read.length+' 写'+b.write.length+' 说'+b.speak.length)")
+            git commit -m "data: HSK5 даалгаврын сан — ${N} [skip ci]"
+            git pull --rebase origin main || true
+            git push origin HEAD:main
+          fi
