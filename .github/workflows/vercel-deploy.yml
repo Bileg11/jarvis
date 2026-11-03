@@ -43,11 +43,11 @@ jobs:
 
           deploy () {
             local DIR="$1" PRJ="$2" NAME="$3"
-            if [ -z "$PRJ" ]; then echo "⚠ $NAME: project id secret байхгүй, алгаслаа"; return; fi
+            if [ -z "$PRJ" ]; then echo "⚠ $NAME: project id байхгүй, алгаслаа"; return; fi
             echo "── $NAME ($DIR) ──"
-            mkdir -p "$DIR/.vercel"
-            printf '{"orgId":"%s","projectId":"%s"}' "$VERCEL_ORG_ID" "$PRJ" > "$DIR/.vercel/project.json"
-            ( cd "$DIR" && npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" )
+            # Vercel CLI нь ORG_ID, PROJECT_ID ХОЁУЛАНГ нь env-ээс шаарддаг
+            ( cd "$DIR" && VERCEL_PROJECT_ID="$PRJ" VERCEL_ORG_ID="$VERCEL_ORG_ID" \
+                npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" )
           }
 
           case "$TARGET" in
