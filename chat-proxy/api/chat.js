@@ -21,6 +21,10 @@
 const SKIP_MODEL = /embedding|aqa|image|tts|transcribe|live|lyria|banana|veo|imagen|deep-research|customtools|omni/;
 const FALLBACK = { pro: ['gemini-pro-latest', 'gemini-2.5-pro'], flash: ['gemini-flash-latest', 'gemini-2.5-flash'] };
 let MODEL_CACHE = null;   // бүх боломжит моделийн түүхий жагсаалт
+// Квот дууссан моделийг нэг удаа тэмдэглээд, тухайн ажиллалтын туршид
+// дахин оролдохгүй — эс бөгөөс дуудлага бүр 20+ секунд дэмий хүлээнэ.
+const EXHAUSTED = new Set();
+
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 function rankModel(name, tier) {
@@ -86,6 +90,7 @@ async function tryGemini(body) {
   // Модель бүрийг 2 удаа оролдоно; 503/429 (сервер завгүй) бол дараагийн модель рүү
   let last = 'тодорхойгүй';
   for (const model of models) {
+    if (EXHAUSTED.has(model)) continue;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
@@ -98,7 +103,9 @@ async function tryGemini(body) {
           last = `${model}: хоосон (${d.promptFeedback?.blockReason || d.candidates?.[0]?.finishReason || '?'})`;
           break;   // блоклогдсон бол дахин оролдох утгагүй
         }
-        last = `${model} → ${r.status}: ${(d?.error?.message || '').slice(0, 120)}`;
+        const msg = d?.error?.message || '';
+        last = `${model} → ${r.status}: ${msg.slice(0, 120)}`;
+        if (r.status === 429 && /quota/i.test(msg)) { EXHAUSTED.add(model); break; }
         if (r.status === 503 || r.status === 429) { await sleep(900); continue; }
         break;     // бусад алдаанд дараагийн модель рүү
       } catch (e) { last = `${model}: ${e.message}`; await sleep(500); }

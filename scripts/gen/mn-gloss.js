@@ -59,7 +59,7 @@ async function doLevel(lv) {
       `ЗӨВХӨН JSON буцаа, ийм хэлбэрээр: {"mn":["тайлбар1","тайлбар2",...]} — ` +
       `массивт яг ${idxs.length} элемент, өгсөн дарааллаар.\n\n${lines}`;
 
-    const parsed = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 2048, temperature: 0.2 });
+    const parsed = await askJSON({ system: SYSTEM, prompt, max_tokens: 2048, temperature: 0.2 })  // flash: 2000+ дуудлага, pro-гийн квот хүрэхгүй;
     const arr = Array.isArray(parsed) ? parsed
               : (parsed && Object.values(parsed).find(v => Array.isArray(v))) || null;
     if (!Array.isArray(arr) || arr.length !== idxs.length) {

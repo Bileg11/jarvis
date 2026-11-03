@@ -44,6 +44,11 @@ const FALLBACK = { pro: ['gemini-pro-latest', 'gemini-2.5-pro'], flash: ['gemini
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let ALL = null, warned = false;
 
+// Квот дууссан моделийг нэг удаа тэмдэглээд, тухайн ажиллалтын туршид
+// дахин оролдохгүй — эс бөгөөс дуудлага бүр 20+ секунд дэмий хүлээнэ.
+const EXHAUSTED = new Set();
+
+
 function noKey() {
   if (!warned) {
     warned = true;
@@ -107,6 +112,7 @@ async function ask(opt = {}) {
   const tries = opt.tries ?? 3;
   let last = '';
   for (const model of list) {
+    if (EXHAUSTED.has(model)) continue;
     for (let i = 0; i < tries; i++) {
       try {
         const r = await fetch(
@@ -120,7 +126,13 @@ async function ask(opt = {}) {
           last = `${model}: хоосон (${d.promptFeedback?.blockReason || d.candidates?.[0]?.finishReason || '?'})`;
           break;
         }
-        last = `${model} → ${r.status}: ${(d?.error?.message || '').slice(0, 100)}`;
+        const msg = d?.error?.message || '';
+        last = `${model} → ${r.status}: ${msg.slice(0, 100)}`;
+        if (r.status === 429 && /quota/i.test(msg)) {
+          EXHAUSTED.add(model);                       // өдрийн квот — хүлээгээд нэмэргүй
+          console.warn(`[AI] ${model}: квот дууслаа, дараагийн модель руу`);
+          break;
+        }
         if (r.status === 503 || r.status === 429) { await sleep(4000 * (i + 1)); continue; }
         break;
       } catch (e) { last = `${model}: ${e.message}`; await sleep(2500 * (i + 1)); }
