@@ -89,15 +89,20 @@ async function tryGemini(body) {
   // · flash — бодолтыг унтрааж, бүх төсвийг хариуд нь өгнө
   // · pro   — бодолт нь чанарын гол давуу тал тул үлдээж, төсвийг нь өргөжүүлнэ
   const want = Math.max(256, body?.max_tokens ?? 800);
-  const gen = {
-    temperature: body?.temperature ?? 0.8,
-    maxOutputTokens: tier === 'pro' ? Math.max(4096, want * 4) : want,
+  // Бодолтыг МОДЕЛЬ тус бүрээр шийднэ — pro хүсэлт flash рүү унахад
+  // бодолт асаалттай үлдэж хариу хоосон ирдэг байв.
+  const payloadFor = (model) => {
+    const isFlash = /flash/.test(model);
+    const gen = {
+      temperature: body?.temperature ?? 0.8,
+      maxOutputTokens: isFlash ? want : Math.max(4096, want * 4),
+    };
+    if (isFlash) gen.thinkingConfig = { thinkingBudget: 0 };
+    return JSON.stringify({
+      systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
+      contents, generationConfig: gen,
+    });
   };
-  if (tier !== 'pro') gen.thinkingConfig = { thinkingBudget: 0 };
-  const payload = JSON.stringify({
-    systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
-    contents, generationConfig: gen,
-  });
 
   // Модель бүрийг 2 удаа оролдоно; 503/429 (сервер завгүй) бол дараагийн модель рүү
   // Vercel функц тасрахаас өмнө заавал хариу буцаахын тулд цагийн төсөвтэй
@@ -111,7 +116,7 @@ async function tryGemini(body) {
       if (Date.now() > DEADLINE) break;
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadFor(model) });
         const d = await r.json();
         if (r.ok) {
           const parts = d.candidates?.[0]?.content?.parts || [];

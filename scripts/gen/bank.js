@@ -82,6 +82,21 @@ function outRatio(text) {
   return hs.filter(c => !cs.has(c)).length / hs.length;
 }
 
+
+/** Сонголтоос «A 」«B.」«（C）» мэтийн давхар үсгийн угтварыг арилгана.
+ *  Модель заримдаа үсгийг нь текст дотор нь оруулчихдаг → «AA 固然» болдог. */
+function cleanOpt(o) {
+  return String(o == null ? '' : o)
+    .replace(/^\s*[（(]?\s*[A-Da-d]\s*[)）.、,:：]?\s*(?=[\u4e00-\u9fff])/, '')
+    .trim();
+}
+/** Зөвхөн хүлээгдэж буй талбаруудыг үлдээнэ — модель нэмэлт хог оруулдаг. */
+function onlyKeys(obj, keys) {
+  const out = {};
+  for (const k of keys) if (obj[k] !== undefined) out[k] = obj[k];
+  return out;
+}
+
 const SYSTEM = `Чи бол HSK шалгалтын даалгавар зохиогч. 15 жил хятад хэл заасан,
 HSK 3.0-ийн 五级 (цөөн 3500 орчим үгийн сан) стандартыг цээжээр мэднэ.
 
@@ -130,9 +145,10 @@ JSON:
 Яриа нь нэг тодорхой санааг хөгжүүлнэ (үзэгдэл → шалтгаан → дүгнэлт).`;
 
   const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 1100, temperature: 0.95 });
+  if (d && Array.isArray(d.opt)) d.opt = d.opt.map(cleanOpt);
   const bad = validListen(d);
   if (bad) { REASONS.push('听:' + bad); return null; }
-  return d;
+  return onlyKeys(d, ['part', 'audio', 'q', 'opt', 'a', 'exp']);
 }
 
 function validListen(d) {
@@ -161,6 +177,7 @@ JSON:
 {"type":"cloze","text":"...______...","q":"选出最合适的词",
  "opt":["A","B","C","D"],"a":2,"exp":"монголоор: яагаад энэ, бусад нь яагаад болохгүй"}`;
   const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
+  if (d && Array.isArray(d.opt)) d.opt = d.opt.map(cleanOpt);
   const bad =
     !d ? 'JSON биш' :
     (d.type !== 'cloze') ? 'төрөл буруу' :
@@ -171,7 +188,7 @@ JSON:
     (new Set(d.opt.map(String)).size !== 4) ? 'сонголт давхардсан' :
     (outRatio(d.text + d.opt.join('')) > LIM_READ) ? 'түвшин хэтэрсэн' : null;
   if (bad) { REASONS.push('填空:' + bad); return null; }
-  return d;
+  return onlyKeys(d, ['type', 'text', 'q', 'opt', 'a', 'exp']);
 }
 
 async function genOrder(topic) {
@@ -201,7 +218,7 @@ parts нь ХОЛИЛДСОН байдлаар, a нь parts доторх инд
     (d.parts.some(p => hanzi(p).length < 6)) ? 'өгүүлбэр богино' :
     (outRatio(d.parts.join('')) > LIM_READ) ? 'түвшин хэтэрсэн' : null;
   if (bad) { REASONS.push('排序:' + bad); return null; }
-  return d;
+  return onlyKeys(d, ['type', 'parts', 'a', 'exp']);
 }
 
 async function genPassage(topic) {
@@ -222,6 +239,7 @@ JSON:
        {"q":"...","opt":["A","B","C","D"],"a":3,"exp":"монголоор"},
        {"q":"...","opt":["A","B","C","D"],"a":0,"exp":"монголоор"}]}`;
   const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 2600, temperature: 0.9 });
+  if (d && Array.isArray(d.qs)) d.qs.forEach(q => { if (Array.isArray(q.opt)) q.opt = q.opt.map(cleanOpt); });
   let bad =
     !d ? 'JSON биш' :
     (d.type !== 'passage') ? 'төрөл буруу' :
@@ -237,7 +255,7 @@ JSON:
   }
   if (!bad && outRatio(d.text) > LIM_READ) bad = 'түвшин хэтэрсэн';
   if (bad) { REASONS.push('长文:' + bad); return null; }
-  return d;
+  return { type: 'passage', text: d.text, qs: d.qs.map(q => onlyKeys(q, ['q', 'opt', 'a', 'exp'])) };
 }
 
 /* ── 写作 / 口语 ──────────────────────────────────────────────── */
@@ -256,8 +274,10 @@ JSON: {"type":"pic","min":100,"pics":["1. ...","2. ...","3. ...","4. ..."]}`
 JSON: {"type":"topic","min":200,"prompt":"...（中文题目，含「请写一篇不少于200字的作文」）"}`;
   const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 900, temperature: 1.0 });
   if (!d) return null;
-  if (d.type === 'pic')   return (Array.isArray(d.pics) && d.pics.length === 4) ? { ...d, min: 100 } : null;
-  if (d.type === 'topic') return (hanzi(d.prompt).length >= 15) ? { ...d, min: 200 } : null;
+  if (d.type === 'pic')   return (Array.isArray(d.pics) && d.pics.length === 4)
+    ? { type: 'pic', min: 100, pics: d.pics.map(String) } : null;
+  if (d.type === 'topic') return (hanzi(d.prompt).length >= 15)
+    ? { type: 'topic', min: 200, prompt: String(d.prompt) } : null;
   return null;
 }
 
@@ -276,9 +296,10 @@ JSON: {"type":"qa","q":"...（中文问题，2分钟）"}`
 JSON: {"type":"pic","desc":"Зураг: ...","q":"请描述这张图片，并..."}`;
   const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 700, temperature: 1.0 });
   if (!d) return null;
-  if (d.type === 'retell') return hanzi(d.text).length >= 60 ? d : null;
-  if (d.type === 'qa')     return hanzi(d.q).length >= 8 ? d : null;
-  if (d.type === 'pic')    return (d.desc && d.q) ? d : null;
+  // Модель заримдаа ярианы даалгаврыг сонголттой тест болгочихдог — хогийг нь хаяна
+  if (d.type === 'retell') return hanzi(d.text || '').length >= 60 ? onlyKeys(d, ['type', 'text']) : null;
+  if (d.type === 'qa')     return hanzi(d.q || '').length >= 8   ? onlyKeys(d, ['type', 'q'])    : null;
+  if (d.type === 'pic')    return (d.desc && d.q) ? onlyKeys(d, ['type', 'desc', 'q']) : null;
   return null;
 }
 

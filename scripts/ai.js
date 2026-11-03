@@ -109,18 +109,24 @@ async function ask(opt = {}) {
   // pro-д үлдээгээд төсвийг нь өргөжүүлнэ.
   const tier = opt.tier === 'pro' ? 'pro' : 'flash';
   const want = Math.max(256, opt.max_tokens ?? 800);
-  const gen = {
-    temperature: opt.temperature ?? 0.7,
-    maxOutputTokens: tier === 'pro' ? Math.max(4096, want * 4) : want,
-    ...(opt.json ? { responseMimeType: 'application/json' } : {}),
-  };
-  if (tier !== 'pro') gen.thinkingConfig = { thinkingBudget: 0 };
 
-  const payload = JSON.stringify({
-    contents,
-    systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
-    generationConfig: gen,
-  });
+  // Бодолтын тохиргоог ТИЕР-ээр биш, МОДЕЛЬ тус бүрээр шийднэ.
+  // (pro хүсэлт flash рүү унахад бодолт асаалттай үлдэж, гаралтын төсөв
+  //  дуусаад хариу хоосон ирдэг алдаа гарч байсан.)
+  const payloadFor = (model) => {
+    const isFlash = /flash/.test(model);
+    const gen = {
+      temperature: opt.temperature ?? 0.7,
+      maxOutputTokens: isFlash ? want : Math.max(4096, want * 4),
+      ...(opt.json ? { responseMimeType: 'application/json' } : {}),
+    };
+    if (isFlash) gen.thinkingConfig = { thinkingBudget: 0 };
+    return JSON.stringify({
+      contents,
+      systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
+      generationConfig: gen,
+    });
+  };
 
   const list  = await models(key, tier);
   const tries = opt.tries ?? 3;
@@ -131,7 +137,7 @@ async function ask(opt = {}) {
       try {
         const r = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`,
-          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payloadFor(model) });
         const d = await r.json();
         if (r.ok) {
           const parts = d.candidates?.[0]?.content?.parts || [];
