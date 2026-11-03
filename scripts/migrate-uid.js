@@ -12,9 +12,22 @@
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 
-const FROM  = process.env.FROM_UID;
-const TO    = process.env.TO_UID;
+let FROM  = process.env.FROM_UID;
+let TO    = process.env.TO_UID;
 const APPLY = process.argv.includes('--apply');
+
+/** Бүтэн uid эсвэл эхний хэдэн тэмдэгтээр нь олно — бүтэн дугаарыг
+ *  хаана ч бичих шаардлагагүй болгохын тулд. */
+async function resolve(db, key, label) {
+  if (!key) throw new Error(label + ' шаардлагатай');
+  const docs = await db.collection('users').listDocuments();
+  const ids  = docs.map(d => d.id);
+  if (ids.includes(key)) return key;
+  const hits = ids.filter(id => id.startsWith(key));
+  if (hits.length === 1) return hits[0];
+  if (hits.length === 0) throw new Error(`${label}: "${key}"-аар эхэлсэн эрх олдсонгүй`);
+  throw new Error(`${label}: "${key}"-аар эхэлсэн ${hits.length} эрх байна — илүү урт бич`);
+}
 
 initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
 const db = getFirestore();
@@ -45,7 +58,9 @@ async function copyCollection(path, depth = 0) {
 }
 
 (async () => {
-  if (!FROM || !TO) throw new Error('FROM_UID / TO_UID шаардлагатай');
+  FROM = await resolve(db, FROM, 'FROM_UID');
+  TO   = await resolve(db, TO,   'TO_UID');
+  if (FROM === TO) throw new Error('Ижил эрх — хуулах зүйл алга');
   console.log(`${APPLY ? 'ХУУЛЖ БАЙНА' : 'ЗӨВХӨН ХАРУУЛЖ БАЙНА (--apply өгөөгүй)'}`);
   console.log(`${FROM.slice(0,6)}… → ${TO.slice(0,6)}…\n`);
 
