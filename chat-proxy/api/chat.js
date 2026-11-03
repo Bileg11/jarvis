@@ -13,28 +13,67 @@
 // 2026-07-30-нд БҮРМӨСӨН хаагдсан — DNS нь ч байхгүй. Тиймээс Gemini цорын
 // ганц нийлүүлэгч болов. GEMINI_API_KEY байхгүй бол ойлгомжтой алдаа буцаана.
 
-async function tryGemini(body) {
-  if (!process.env.GEMINI_API_KEY) return null;
+// Боломжтой моделийг нэг удаа тодорхойлж кэшлэнэ.
+// (Загварын нэрс үе үе өөрчлөгддөг тул хатуу бичихгүй.)
+const PREFER = [
+  'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash',
+  'gemini-2.5-flash-lite', 'gemini-pro-latest', 'gemini-1.5-flash',
+];
+let MODEL_CACHE = null;
+
+async function pickModel(key) {
+  if (MODEL_CACHE) return MODEL_CACHE;
+  if (process.env.GEMINI_MODEL) return (MODEL_CACHE = process.env.GEMINI_MODEL);
   try {
-    const msgs = body?.messages || [];
-    const sys  = msgs.filter(m => m.role === 'system').map(m => m.content).join('\n');
-    const contents = msgs.filter(m => m.role !== 'system')
-      .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content || '' }] }));
-    while (contents.length && contents[0].role === 'model') contents.shift();
-    const gUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
-    const gRes = await fetch(gUrl, {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+    const d = await r.json();
+    if (!r.ok) return (MODEL_CACHE = { error: d?.error?.message || `models list ${r.status}` });
+    const usable = (d.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => String(m.name).replace(/^models\//, ''));
+    const hit = PREFER.find(p => usable.includes(p)) || usable.find(m => /flash/.test(m)) || usable[0];
+    return (MODEL_CACHE = hit || { error: 'Боломжтой модель олдсонгүй' });
+  } catch (e) { return { error: e.message }; }
+}
+
+// Амжилттай бол OpenAI хэлбэрийн хариу, бүтэлгүйтвэл {error} буцаана.
+async function tryGemini(body) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return { error: 'GEMINI_API_KEY байхгүй' };
+
+  const model = await pickModel(key);
+  if (model && model.error) return { error: 'Модель сонгох: ' + model.error };
+
+  const msgs = body?.messages || [];
+  const sys  = msgs.filter(m => m.role === 'system').map(m => m.content).join('\n');
+  const contents = msgs.filter(m => m.role !== 'system')
+    .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: String(m.content || '') }] }));
+  while (contents.length && contents[0].role === 'model') contents.shift();
+  if (!contents.length) return { error: 'Мессеж хоосон' };
+
+  try {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+    const r = await fetch(url, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
         contents,
-        generationConfig: { temperature: body?.temperature ?? 0.8, maxOutputTokens: body?.max_tokens ?? 800 },
+        generationConfig: {
+          temperature: body?.temperature ?? 0.8,
+          maxOutputTokens: body?.max_tokens ?? 800,
+        },
       }),
     });
-    const gData = await gRes.json();
-    const text  = gData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!text) return null;
-    return { choices: [{ message: { role: 'assistant', content: text } }], _via: 'gemini' };
-  } catch { return null; }
+    const d = await r.json();
+    if (!r.ok) return { error: `Gemini ${r.status}: ${d?.error?.message || ''}`.slice(0, 300) };
+    const parts = d.candidates?.[0]?.content?.parts || [];
+    const text = parts.filter(p => p && !p.thought && p.text).map(p => p.text).join('').trim();
+    if (!text) {
+      const why = d.promptFeedback?.blockReason || d.candidates?.[0]?.finishReason || 'хоосон хариу';
+      return { error: `Gemini хариу хоосон (${why})` };
+    }
+    return { choices: [{ message: { role: 'assistant', content: text } }], _model: model };
+  } catch (e) { return { error: 'Gemini: ' + e.message }; }
 }
 
 module.exports = async (req, res) => {
@@ -76,8 +115,8 @@ module.exports = async (req, res) => {
 
   try {
     const g = await tryGemini(body);
-    if (g) return res.json(g);
-    return res.status(502).json({ error: 'AI хариу өгсөнгүй', detail: 'Gemini хүсэлт амжилтгүй — түлхүүр эсвэл хязгаарыг шалга.' });
+    if (g && !g.error) return res.json(g);
+    return res.status(502).json({ error: 'AI хариу өгсөнгүй', detail: g?.error || 'тодорхойгүй' });
   } catch (e) {
     res.status(502).json({ error: e.message });
   }
