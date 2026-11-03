@@ -10,6 +10,9 @@ on:
       date:
         description: 'Огноо (YYYY-MM-DD), хоосон бол өнөөдөр'
         required: false
+      debug:
+        description: 'Эрхийн оношлогоо ажиллуулах уу? (yes)'
+        required: false
 
 permissions:
   contents: write
@@ -32,6 +35,13 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           USER_UID:                 ${{ secrets.USER_UID }}
         run: node scripts/daily-report.js ${{ github.event.inputs.date }}
+
+      - name: Оношлогоо (хүсвэл)
+        if: ${{ github.event.inputs.debug == 'yes' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                 ${{ secrets.USER_UID }}
+        run: node scripts/debug-uid.js
 
       - name: Хадгалах
         run: |
