@@ -49,6 +49,7 @@ const FALLBACK = { pro: ['gemini-pro-latest', 'gemini-2.5-pro'], flash: ['gemini
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 let ALL = null, warned = false;
+let lastError = '';   // хамгийн сүүлийн бүтэлгүйтлийн шалтгаан — дуудсан тал оношлоход ашиглана
 
 // Квот дууссан моделийг нэг удаа тэмдэглээд, тухайн ажиллалтын туршид
 // дахин оролдохгүй — эс бөгөөс дуудлага бүр 20+ секунд дэмий хүлээнэ.
@@ -158,6 +159,7 @@ async function ask(opt = {}) {
       } catch (e) { last = `${model}: ${e.message}`; await sleep(2500 * (i + 1)); }
     }
   }
+  lastError = last;
   console.warn('[AI]', last);
   return null;
 }
@@ -166,10 +168,17 @@ async function ask(opt = {}) {
 async function askJSON(opt = {}) {
   const raw = await ask({ ...opt, json: true });
   if (!raw) return null;
+  lastError = '';
   try { return JSON.parse(raw); } catch {}
   const m = raw.match(/[[{][\s\S]*[\]}]/);
   if (m) { try { return JSON.parse(m[0]); } catch {} }
   return null;
 }
 
-module.exports = { ask, askJSON, hasKey: () => !!process.env.GEMINI_API_KEY };
+module.exports = {
+  ask, askJSON,
+  hasKey:    () => !!process.env.GEMINI_API_KEY,
+  lastError: () => lastError,
+  /** Квотын хязгаарт тулсан эсэх — багцын ажил үүнийг хараад хурдаа сааруулна */
+  rateLimited: () => /429|quota|rate/i.test(lastError),
+};

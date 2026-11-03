@@ -18,7 +18,7 @@
 
 const fs   = require('fs');
 const path = require('path');
-const { askJSON, hasKey } = require('../ai');
+const { askJSON, hasKey, lastError, rateLimited } = require('../ai');
 
 const DIR  = path.join(__dirname, '..', '..', 'data', 'hsk3');
 const BANK = path.join(DIR, 'bank.json');
@@ -144,10 +144,10 @@ JSON:
 
 Яриа нь нэг тодорхой санааг хөгжүүлнэ (үзэгдэл → шалтгаан → дүгнэлт).`;
 
-  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 1100, temperature: 0.95 });
+  const d = await askJSON({ tier: 'pro', tries: 1, system: SYSTEM, prompt, max_tokens: 1100, temperature: 0.95 });
   if (d && Array.isArray(d.opt)) d.opt = d.opt.map(cleanOpt);
   const bad = validListen(d);
-  if (bad) { REASONS.push('听:' + bad); return null; }
+  if (bad) { REASONS.push('听:' + (bad === 'JSON биш' ? (rateLimited() ? 'квот/хязгаар' : 'хариу ирсэнгүй') : bad)); return null; }
   return onlyKeys(d, ['part', 'audio', 'q', 'opt', 'a', 'exp']);
 }
 
@@ -176,7 +176,7 @@ HSK5 阅读 第一部分 (篇章填空) маягийн даалгавар зох
 JSON:
 {"type":"cloze","text":"...______...","q":"选出最合适的词",
  "opt":["A","B","C","D"],"a":2,"exp":"монголоор: яагаад энэ, бусад нь яагаад болохгүй"}`;
-  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
+  const d = await askJSON({ tier: 'pro', tries: 1, system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
   if (d && Array.isArray(d.opt)) d.opt = d.opt.map(cleanOpt);
   const bad =
     !d ? 'JSON биш' :
@@ -187,7 +187,7 @@ JSON:
     (hanzi(d.text).length < 40) ? 'эх богино' :
     (new Set(d.opt.map(String)).size !== 4) ? 'сонголт давхардсан' :
     (outRatio(d.text + d.opt.join('')) > LIM_READ) ? 'түвшин хэтэрсэн' : null;
-  if (bad) { REASONS.push('填空:' + bad); return null; }
+  if (bad) { REASONS.push('填空:' + (bad === 'JSON биш' ? (rateLimited() ? 'квот/хязгаар' : 'хариу ирсэнгүй') : bad)); return null; }
   return onlyKeys(d, ['type', 'text', 'q', 'opt', 'a', 'exp']);
 }
 
@@ -208,7 +208,7 @@ JSON:
  "exp":"монголоор: ямар шинжээр энэ дараалал гарч байгаа"}
 
 parts нь ХОЛИЛДСОН байдлаар, a нь parts доторх индексүүд зөв дарааллаар.`;
-  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
+  const d = await askJSON({ tier: 'pro', tries: 1, system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
   const bad =
     !d ? 'JSON биш' :
     (d.type !== 'order') ? 'төрөл буруу' :
@@ -217,7 +217,7 @@ parts нь ХОЛИЛДСОН байдлаар, a нь parts доторх инд
     ([...d.a].sort().join() !== '0,1,2,3') ? 'дараалал буруу (0-3 биш)' :
     (d.parts.some(p => hanzi(p).length < 6)) ? 'өгүүлбэр богино' :
     (outRatio(d.parts.join('')) > LIM_READ) ? 'түвшин хэтэрсэн' : null;
-  if (bad) { REASONS.push('排序:' + bad); return null; }
+  if (bad) { REASONS.push('排序:' + (bad === 'JSON биш' ? (rateLimited() ? 'квот/хязгаар' : 'хариу ирсэнгүй') : bad)); return null; }
   return onlyKeys(d, ['type', 'parts', 'a', 'exp']);
 }
 
@@ -238,7 +238,7 @@ JSON:
  "qs":[{"q":"...","opt":["A","B","C","D"],"a":1,"exp":"монголоор"},
        {"q":"...","opt":["A","B","C","D"],"a":3,"exp":"монголоор"},
        {"q":"...","opt":["A","B","C","D"],"a":0,"exp":"монголоор"}]}`;
-  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 2600, temperature: 0.9 });
+  const d = await askJSON({ tier: 'pro', tries: 1, system: SYSTEM, prompt, max_tokens: 2600, temperature: 0.9 });
   if (d && Array.isArray(d.qs)) d.qs.forEach(q => { if (Array.isArray(q.opt)) q.opt = q.opt.map(cleanOpt); });
   let bad =
     !d ? 'JSON биш' :
@@ -254,7 +254,7 @@ JSON:
     if (new Set(q.opt.map(String)).size !== 4) { bad = 'сонголт давхардсан'; break; }
   }
   if (!bad && outRatio(d.text) > LIM_READ) bad = 'түвшин хэтэрсэн';
-  if (bad) { REASONS.push('长文:' + bad); return null; }
+  if (bad) { REASONS.push('长文:' + (bad === 'JSON биш' ? (rateLimited() ? 'квот/хязгаар' : 'хариу ирсэнгүй') : bad)); return null; }
   return { type: 'passage', text: d.text, qs: d.qs.map(q => onlyKeys(q, ['q', 'opt', 'a', 'exp'])) };
 }
 
@@ -272,7 +272,7 @@ JSON: {"type":"pic","min":100,"pics":["1. ...","2. ...","3. ...","4. ..."]}`
 Хятадаар бич. Чиглэл: ${topic}
 
 JSON: {"type":"topic","min":200,"prompt":"...（中文题目，含「请写一篇不少于200字的作文」）"}`;
-  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 900, temperature: 1.0 });
+  const d = await askJSON({ tier: 'pro', tries: 1, system: SYSTEM, prompt, max_tokens: 900, temperature: 1.0 });
   if (!d) return null;
   if (d.type === 'pic')   return (Array.isArray(d.pics) && d.pics.length === 4)
     ? { type: 'pic', min: 100, pics: d.pics.map(String) } : null;
@@ -294,7 +294,7 @@ JSON: {"type":"qa","q":"...（中文问题，2分钟）"}`
       : `HSKK 五级 看图说话 маягийн даалгавар: зургийг МОНГОЛООР нарийн дүрсэл
 (хүн, үйлдэл, орчин, цаг үе), дараа нь хятадаар нэг чиглүүлэх асуулт. Сэдэв: ${topic}
 JSON: {"type":"pic","desc":"Зураг: ...","q":"请描述这张图片，并..."}`;
-  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 700, temperature: 1.0 });
+  const d = await askJSON({ tier: 'pro', tries: 1, system: SYSTEM, prompt, max_tokens: 700, temperature: 1.0 });
   if (!d) return null;
   // Модель заримдаа ярианы даалгаврыг сонголттой тест болгочихдог — хогийг нь хаяна
   if (d.type === 'retell') return hanzi(d.text || '').length >= 60 ? onlyKeys(d, ['type', 'text']) : null;
@@ -347,14 +347,32 @@ function keyOf(kind, it) {
   const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   let added = 0, rejected = 0, dup = 0;
 
+  // Үнэгүй багц минутад ~15 хүсэлт зөвшөөрдөг. Хэт хурдан дуудвал бүх
+  // хүсэлт 429 болж, нэг ч даалгавар нэмэгдэхгүй. Тиймээс удаан, тэвчээртэй.
+  let streak = 0;                 // дараалсан бүтэлгүйтэл
+  let gap = 5000;                 // даалгавар хоорондын завсар
+
   for (const [kind, fn] of jobs) {
     const topic = nextTopic();
     let it = null;
-    for (let attempt = 0; attempt < 2 && !it; attempt++) it = await fn(topic);
-    if (!it) { rejected++; process.stdout.write('·'); await sleep(1200); continue; }
+    for (let attempt = 0; attempt < 2 && !it; attempt++) {
+      it = await fn(topic);
+      if (!it && rateLimited()) break;      // квот — дахин оролдох утгагүй
+    }
+    if (!it) {
+      rejected++; streak++;
+      process.stdout.write(rateLimited() ? '!' : '·');
+      if (rateLimited()) {
+        gap = Math.min(30000, gap * 1.6);   // хурдаа сааруулна
+        await sleep(gap);
+      } else { await sleep(2000); }
+      if (streak >= 8) { console.log('\n8 удаа дараалан бүтсэнгүй — зогсоов.'); break; }
+      continue;
+    }
+    streak = 0;
 
     const k = keyOf(kind, it);
-    if (!k || seen.has(k)) { dup++; process.stdout.write('='); await sleep(1200); continue; }
+    if (!k || seen.has(k)) { dup++; process.stdout.write('='); await sleep(2000); continue; }
     seen.add(k);
 
     it.id = `g${stamp}-${String(bank[kind].length + 1).padStart(3, '0')}`;
@@ -363,7 +381,7 @@ function keyOf(kind, it) {
     bank[kind].push(it);
     added++; process.stdout.write('+');
     fs.writeFileSync(BANK, JSON.stringify(bank, null, 1));
-    await sleep(1500);
+    await sleep(gap);
   }
 
   console.log(`\n\nНэмсэн ${added} · хасагдсан ${rejected} (чанар) · давхардсан ${dup}`);
