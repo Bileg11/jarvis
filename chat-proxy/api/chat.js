@@ -78,13 +78,19 @@ async function tryGemini(body) {
   while (contents.length && contents[0].role === 'model') contents.shift();
   if (!contents.length) return { error: 'Мессеж хоосон' };
 
+  // ШИНЭ МОДЕЛИУД «БОДДОГ»: дотоод бодолт нь гаралтын төсвийг идээд
+  // харагдах текст үлдэхгүй болдог (finishReason = MAX_TOKENS).
+  // · flash — бодолтыг унтрааж, бүх төсвийг хариуд нь өгнө
+  // · pro   — бодолт нь чанарын гол давуу тал тул үлдээж, төсвийг нь өргөжүүлнэ
+  const want = Math.max(256, body?.max_tokens ?? 800);
+  const gen = {
+    temperature: body?.temperature ?? 0.8,
+    maxOutputTokens: tier === 'pro' ? Math.max(4096, want * 4) : want,
+  };
+  if (tier !== 'pro') gen.thinkingConfig = { thinkingBudget: 0 };
   const payload = JSON.stringify({
     systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
-    contents,
-    generationConfig: {
-      temperature: body?.temperature ?? 0.8,
-      maxOutputTokens: body?.max_tokens ?? 800,
-    },
+    contents, generationConfig: gen,
   });
 
   // Модель бүрийг 2 удаа оролдоно; 503/429 (сервер завгүй) бол дараагийн модель рүү
@@ -109,7 +115,8 @@ async function tryGemini(body) {
         }
         const msg = d?.error?.message || '';
         last = `${model} → ${r.status}: ${msg.slice(0, 120)}`;
-        if (r.status === 429 && /quota/i.test(msg)) { EXHAUSTED.add(model); break; }
+        // 404 = энэ түлхүүрт боломжгүй модель, 429+quota = квот дууссан
+        if (r.status === 404 || (r.status === 429 && /quota/i.test(msg))) { EXHAUSTED.add(model); break; }
         if (r.status === 503 || r.status === 429) { await sleep(900); continue; }
         break;     // бусад алдаанд дараагийн модель рүү
       } catch (e) { last = `${model}: ${e.message}`; await sleep(500); }

@@ -98,17 +98,25 @@ async function ask(opt = {}) {
   while (contents.length && contents[0].role === 'model') contents.shift();
   if (!contents.length) return null;
 
+  // Шинэ моделиуд дотроо «боддог» тул гаралтын төсөв хүрэхгүй бол
+  // харагдах текст үлдэхгүй (MAX_TOKENS). flash-д бодолтыг унтраана,
+  // pro-д үлдээгээд төсвийг нь өргөжүүлнэ.
+  const tier = opt.tier === 'pro' ? 'pro' : 'flash';
+  const want = Math.max(256, opt.max_tokens ?? 800);
+  const gen = {
+    temperature: opt.temperature ?? 0.7,
+    maxOutputTokens: tier === 'pro' ? Math.max(4096, want * 4) : want,
+    ...(opt.json ? { responseMimeType: 'application/json' } : {}),
+  };
+  if (tier !== 'pro') gen.thinkingConfig = { thinkingBudget: 0 };
+
   const payload = JSON.stringify({
     contents,
     systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
-    generationConfig: {
-      temperature: opt.temperature ?? 0.7,
-      maxOutputTokens: opt.max_tokens ?? 800,
-      ...(opt.json ? { responseMimeType: 'application/json' } : {}),
-    },
+    generationConfig: gen,
   });
 
-  const list  = await models(key, opt.tier === 'pro' ? 'pro' : 'flash');
+  const list  = await models(key, tier);
   const tries = opt.tries ?? 3;
   let last = '';
   for (const model of list) {
@@ -128,9 +136,9 @@ async function ask(opt = {}) {
         }
         const msg = d?.error?.message || '';
         last = `${model} → ${r.status}: ${msg.slice(0, 100)}`;
-        if (r.status === 429 && /quota/i.test(msg)) {
-          EXHAUSTED.add(model);                       // өдрийн квот — хүлээгээд нэмэргүй
-          console.warn(`[AI] ${model}: квот дууслаа, дараагийн модель руу`);
+        if (r.status === 404 || (r.status === 429 && /quota/i.test(msg))) {
+          EXHAUSTED.add(model);   // боломжгүй эсвэл квот дууссан — хүлээгээд нэмэргүй
+          console.warn(`[AI] ${model}: ${r.status === 404 ? 'боломжгүй' : 'квот дууслаа'}, дараагийнх руу`);
           break;
         }
         if (r.status === 503 || r.status === 429) { await sleep(4000 * (i + 1)); continue; }
