@@ -32,13 +32,14 @@ function toast(msg, ms = 2200) {
 const Store = {
   get(k, d)  { try { const v = localStorage.getItem(LS + k); return v ? JSON.parse(v) : d; } catch { return d; } },
   set(k, v)  { try { localStorage.setItem(LS + k, JSON.stringify(v)); } catch {} this._sync(k, v); },
-  _db: null, _uid: null, _t: {},
+  _db: null, _uid: null, _t: {}, cloudState: 'шалгаж байна',
   async initCloud() {
     try {
-      if (!window.firebase?.apps?.length) return;
+      if (!window.firebase?.apps?.length) { this.cloudState = 'firebase алга'; return; }
       const auth = firebase.auth();
       await new Promise(r => auth.onAuthStateChanged(u => { this._uid = u?.uid || null; r(); }));
-      if (!this._uid) return;
+      if (!this._uid) { this.cloudState = 'нэвтрээгүй'; return; }
+      this.cloudState = 'холбогдсон';
       this._db = firebase.firestore();
       // Үүлэн дэх хувилбар шинэ бол татаж авна
       const snap = await this._db.doc(`users/${this._uid}/hsk5/state`).get();
@@ -51,7 +52,7 @@ const Store = {
           return true;   // дахин зурах шаардлагатай
         }
       }
-    } catch (e) { console.warn('[HSK5] үүл:', e.message); }
+    } catch (e) { this.cloudState = 'алдаа: ' + e.message; console.warn('[HSK5] үүл:', e.message); }
     return false;
   },
   _sync(k, v) {
@@ -478,6 +479,23 @@ async function refreshHome() {
   $('m-read').textContent   = `${nRead} асуулт · 3 төрөл`;
   $('m-write').textContent  = `${(b.write || []).length} сэдэв`;
   $('m-speak').textContent  = `${(b.speak || []).length} даалгавар`;
+
+  // Үүлэнд хадгалагдаж байгаа эсэх — хамгийн чухал анхааруулга.
+  // Хадгалагдахгүй бол дүн зөвхөн энэ хөтөчид үлдэж, өөр төхөөрөмжөөс
+  // харагдахгүй, шөнийн хяналтад ч хүрэхгүй.
+  const cloudBox = $('cloud-box');
+  if (cloudBox) {
+    cloudBox.innerHTML = (Store.cloudState === 'холбогдсон') ? '' : `
+      <div class="warn-box">
+        <b>Явц чинь үүлэнд хадгалагдахгүй байна</b> (${esc(Store.cloudState)}).<br>
+        Ингэвэл: өөр хөтөч/утаснаас харагдахгүй, шөнийн дүгнэлт хоосон гарна,
+        хөтчийн дата цэвэрлэхэд бүгд устана.
+        <div style="margin-top:10px">
+          <button class="big pri" onclick="location.href=(window.jarvisHref?jarvisHref('login'):'login')">
+            Нэвтрэх</button>
+        </div>
+      </div>`;
+  }
 
   // Claude-ийн өдрийн дүгнэлт — Firestore-оос
   try {
