@@ -20,19 +20,26 @@ const PREFER = [
   'gemini-2.5-flash-lite', 'gemini-pro-latest', 'gemini-1.5-flash',
 ];
 let MODEL_CACHE = null;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function pickModel(key) {
+// Боломжтой моделиудыг эрэмбэлсэн ЖАГСААЛТААР буцаана — 503 гарвал дараагийнх руу шилжинэ
+async function pickModels(key) {
   if (MODEL_CACHE) return MODEL_CACHE;
-  if (process.env.GEMINI_MODEL) return (MODEL_CACHE = process.env.GEMINI_MODEL);
+  if (process.env.GEMINI_MODEL) return (MODEL_CACHE = [process.env.GEMINI_MODEL]);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
     const d = await r.json();
-    if (!r.ok) return (MODEL_CACHE = { error: d?.error?.message || `models list ${r.status}` });
+    if (!r.ok) return { error: d?.error?.message || `models list ${r.status}` };
     const usable = (d.models || [])
       .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
-      .map(m => String(m.name).replace(/^models\//, ''));
-    const hit = PREFER.find(p => usable.includes(p)) || usable.find(m => /flash/.test(m)) || usable[0];
-    return (MODEL_CACHE = hit || { error: 'Боломжтой модель олдсонгүй' });
+      .map(m => String(m.name).replace(/^models\//, ''))
+      .filter(m => !/embedding|aqa|image|vision-only|tts|live/.test(m));
+    const ordered = [
+      ...PREFER.filter(p => usable.includes(p)),
+      ...usable.filter(m => /flash/.test(m) && !PREFER.includes(m)),
+    ];
+    if (!ordered.length) return { error: 'Боломжтой модель олдсонгүй' };
+    return (MODEL_CACHE = ordered.slice(0, 4));
   } catch (e) { return { error: e.message }; }
 }
 
@@ -41,8 +48,8 @@ async function tryGemini(body) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { error: 'GEMINI_API_KEY байхгүй' };
 
-  const model = await pickModel(key);
-  if (model && model.error) return { error: 'Модель сонгох: ' + model.error };
+  const models = await pickModels(key);
+  if (models.error) return { error: 'Модель сонгох: ' + models.error };
 
   const msgs = body?.messages || [];
   const sys  = msgs.filter(m => m.role === 'system').map(m => m.content).join('\n');
@@ -51,29 +58,37 @@ async function tryGemini(body) {
   while (contents.length && contents[0].role === 'model') contents.shift();
   if (!contents.length) return { error: 'Мессеж хоосон' };
 
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-    const r = await fetch(url, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
-        contents,
-        generationConfig: {
-          temperature: body?.temperature ?? 0.8,
-          maxOutputTokens: body?.max_tokens ?? 800,
-        },
-      }),
-    });
-    const d = await r.json();
-    if (!r.ok) return { error: `Gemini ${r.status}: ${d?.error?.message || ''}`.slice(0, 300) };
-    const parts = d.candidates?.[0]?.content?.parts || [];
-    const text = parts.filter(p => p && !p.thought && p.text).map(p => p.text).join('').trim();
-    if (!text) {
-      const why = d.promptFeedback?.blockReason || d.candidates?.[0]?.finishReason || 'хоосон хариу';
-      return { error: `Gemini хариу хоосон (${why})` };
+  const payload = JSON.stringify({
+    systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
+    contents,
+    generationConfig: {
+      temperature: body?.temperature ?? 0.8,
+      maxOutputTokens: body?.max_tokens ?? 800,
+    },
+  });
+
+  // Модель бүрийг 2 удаа оролдоно; 503/429 (сервер завгүй) бол дараагийн модель рүү
+  let last = 'тодорхойгүй';
+  for (const model of models) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+        const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
+        const d = await r.json();
+        if (r.ok) {
+          const parts = d.candidates?.[0]?.content?.parts || [];
+          const text = parts.filter(p => p && !p.thought && p.text).map(p => p.text).join('').trim();
+          if (text) return { choices: [{ message: { role: 'assistant', content: text } }], _model: model };
+          last = `${model}: хоосон (${d.promptFeedback?.blockReason || d.candidates?.[0]?.finishReason || '?'})`;
+          break;   // блоклогдсон бол дахин оролдох утгагүй
+        }
+        last = `${model} → ${r.status}: ${(d?.error?.message || '').slice(0, 120)}`;
+        if (r.status === 503 || r.status === 429) { await sleep(900); continue; }
+        break;     // бусад алдаанд дараагийн модель рүү
+      } catch (e) { last = `${model}: ${e.message}`; await sleep(500); }
     }
-    return { choices: [{ message: { role: 'assistant', content: text } }], _model: model };
-  } catch (e) { return { error: 'Gemini: ' + e.message }; }
+  }
+  return { error: last };
 }
 
 module.exports = async (req, res) => {
