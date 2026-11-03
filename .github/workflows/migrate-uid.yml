@@ -1,0 +1,31 @@
+name: Эрх нэгтгэх
+
+# Хуучин uid-ийн датаг шинэ uid рүү хуулна. Анхдагчаар ЗӨВХӨН ХАРУУЛНА.
+on:
+  workflow_dispatch:
+    inputs:
+      from_uid:
+        description: 'Хаанаас (хуучин uid)'
+        required: true
+      to_uid:
+        description: 'Хаашаа (шинэ uid)'
+        required: true
+      apply:
+        description: 'Жинхэнэ хуулах уу? (yes = хуулна, хоосон = зөвхөн харуулна)'
+        required: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix scripts
+      - name: Нүүлгэх
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          FROM_UID: ${{ github.event.inputs.from_uid }}
+          TO_UID:   ${{ github.event.inputs.to_uid }}
+        run: node scripts/migrate-uid.js ${{ github.event.inputs.apply == 'yes' && '--apply' || '' }}
