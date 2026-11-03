@@ -294,22 +294,16 @@ const Scores = {
     if (!s.diagDone) return;
     const arr = [['听力', s.listen], ['阅读', s.read], ['写作', s.write]].sort((a, b) => a[1] - b[1]);
     const d = daysLeft(), need = TARGET - tot;
-    // Эхлээд ТЭНЦЭХ (180), дараа нь зорилт (240). Босгоос доогуур байхад
-    // 240-ийн тоог нүүлгэх нь утгагүй — эхний даваа нь 180.
-    const toPass = PASS - tot;
-    if (toPass > 0) {
+    // Зорилт = 240. Билэгийн шийдвэр, дахин хэлэлцэхгүй.
+    if (need > 0) {
       adv.innerHTML =
-        `<b>Эхний даваа: ${PASS} оноо (тэнцэх).</b> Одоо ${tot} — дутуу <b>${toPass}</b>, ` +
-        `${d} хоног үлдлээ, өдөрт дунджаар <b>${(toPass / Math.max(1, d)).toFixed(1)} оноо</b>.<br>` +
-        `Хамгийн сул тал: <b>${arr[0][0]}</b> (${Math.round(arr[0][1])}/100) — өнөөдөр энэ дээр хамгийн их цаг зарцуул.<br>` +
-        `<span class="muted">${TARGET} бол дараагийн даваа. Эхлээд босгыг дав.</span>`;
-    } else if (need > 0) {
-      adv.innerHTML =
-        `<b>Босго давсан (${tot}/300).</b> Одоо ${TARGET} руу — дутуу <b>${need}</b>, ` +
-        `өдөрт <b>${(need / Math.max(1, d)).toFixed(1)} оноо</b>. ` +
-        `Хамгийн сул тал: <b>${arr[0][0]}</b> (${Math.round(arr[0][1])}/100).`;
+        `Зорилт <b>${TARGET}</b> — одоо ${tot}, дутуу <b>${need}</b>, ${d} хоног үлдлээ. ` +
+        `Өдөрт дунджаар <b>${(need / Math.max(1, d)).toFixed(1)} оноо</b>.<br>` +
+        `Хамгийн сул тал: <b>${arr[0][0]}</b> (${Math.round(arr[0][1])}/100) — ` +
+        `өнөөдөр энэ дээр хамгийн их цаг зарцуул.` +
+        (tot < PASS ? `<br><span class="muted">Босго ${PASS} — замын дундах тэмдэг.</span>` : '');
     } else {
-      adv.innerHTML = `Зорилтод хүрсэн. Одоо тогтвортой байлгах — өдөр бүр нэг mock, алдсанаа засах.`;
+      adv.innerHTML = `Зорилтод хүрсэн (${tot}/300). Тогтвортой байлга — өдөр бүр нэг mock, алдсанаа засах.`;
     }
   },
 };
@@ -497,7 +491,10 @@ async function refreshHome() {
   $('cd-days').textContent = daysLeft();
   const s = Scores.get();
   const vm = Vocab.mastered();
-  $('home-sub').textContent = `${EXAM.toISOString().slice(0, 10)} 14:00 · зорилт ${TARGET}/300 · HSKK 16:20`;
+  const sync = Store.cloudState === 'холбогдсон' ? ' · ☁️ хадгалагдаж байна'
+             : Store.cloudState === 'шалгаж байна' ? '' : ' · ⚠️ үүлэнд хадгалагдахгүй';
+  $('home-sub').textContent =
+    `${EXAM.toISOString().slice(0, 10)} 14:00 · зорилт ${TARGET}/300 · HSKK 16:20${sync}`;
   $('m-vocab').textContent = `${vm.known}/${vm.total} эзэмшсэн`;
   const g = await Data.grammar_();
   $('m-grammar').textContent = `${g.filter(x => x[0] >= 4).length} дүрэм (L4–5)`;
@@ -515,7 +512,9 @@ async function refreshHome() {
   // харагдахгүй, шөнийн хяналтад ч хүрэхгүй.
   const cloudBox = $('cloud-box');
   if (cloudBox) {
-    cloudBox.innerHTML = (Store.cloudState === 'холбогдсон') ? '' : `
+    // «шалгаж байна» үед анхааруулга гаргахгүй — хуурамч дохио болдог
+    const settled = Store.cloudState !== 'шалгаж байна';
+    cloudBox.innerHTML = (!settled || Store.cloudState === 'холбогдсон') ? '' : `
       <div class="warn-box">
         <b>Явц чинь үүлэнд хадгалагдахгүй байна</b> (${esc(Store.cloudState)}).<br>
         Ингэвэл: өөр хөтөч/утаснаас харагдахгүй, шөнийн дүгнэлт хоосон гарна,
