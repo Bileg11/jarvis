@@ -930,7 +930,7 @@ Fitness: ${(fitLog ? fitLog.type : '') || 'тэмдэглэгдээгүй'}
     el.textContent = '...';
 
     try {
-      const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+      const res = await fetch('https://jarvis-chat-proxy.vercel.app/chat', {
         method: 'POST',
         headers: {
           'Content-Type':  'application/json',

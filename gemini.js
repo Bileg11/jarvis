@@ -2,7 +2,7 @@
 // Proxy mode  (санал болгосон):  Cloudflare Worker — key байхгүй
 // Direct mode (нөөц):  GitHub Models — localStorage key
 
-const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
+const CHAT_URL   = 'https://jarvis-chat-proxy.vercel.app/chat';
 const CHAT_MODEL = 'gpt-4o';   // gpt-4o-mini Монголд сул байсан → gpt-4o илүү зөв (GitHub)
 // Default chat proxy — Vercel (Railway-аас шилжүүлсэн: free + найдвартай).
 // chat-proxy/ фолдероос deploy хийгдсэн тусдаа Vercel project (LFS-тэй холихгүй).

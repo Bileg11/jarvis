@@ -9,7 +9,7 @@
  */
 
 const ALLOWED_ORIGIN = 'https://lfsshanghai.com';
-const CHAT_URL       = 'https://models.inference.ai.azure.com/chat/completions';
+const CHAT_URL       = 'https://jarvis-chat-proxy.vercel.app/chat';
 const TAVILY_URL     = 'https://api.tavily.com/search';
 
 // ── CORS helpers ──────────────────────────────────────────────────

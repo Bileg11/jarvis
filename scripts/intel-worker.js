@@ -9,10 +9,9 @@ const { getFirestore }        = require('firebase-admin/firestore');
 const fetch = (...a) => import('node-fetch').then(({ default: f }) => f(...a));
 
 const TAVILY_URL = 'https://api.tavily.com/search';
-const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
+const { ask } = require('./ai');   // GitHub Models хаагдсан → Gemini
 
 const TAVILY_KEY    = process.env.TAVILY_KEY;
-const GITHUB_TOKEN  = process.env.GITHUB_TOKEN;
 const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
 
 // Firebase
@@ -57,23 +56,13 @@ async function tavilySearch(query) {
 // ── DIGEST — урт брифингээс 3 мөр гаргана ─────────────────────────
 // Өглөөний brief-д бүтэн текст хэтэрхий урт тул тусад нь хураангуйлна
 async function makeDigest(fullMessage) {
-  if (!GITHUB_TOKEN || !fullMessage) return null;
+  if (!fullMessage) return null;
   try {
-    const res = await fetch(CHAT_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GITHUB_TOKEN}` },
-      body: JSON.stringify({
-        model:    'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: 'Чи мэдээг хураангуйлагч. Монголоор, зөвхөн хүссэн форматаар хариул.' },
-          { role: 'user',   content: `Доорх брифингээс ХАМГИЙН чухал 3 мэдээг сонгож, мөр бүрийг "• " -ээр эхлүүлж, мөр тутам 12 үгнээс хэтрэхгүй бич. Өөр юу ч бүү нэм.\n\n${fullMessage}` }
-        ],
-        max_tokens: 160, temperature: 0.3
-      })
+    const text = await ask({
+      system: 'Чи мэдээг хураангуйлагч. Монголоор, зөвхөн хүссэн форматаар хариул.',
+      prompt: `Доорх брифингээс ХАМГИЙН чухал 3 мэдээг сонгож, мөр бүрийг "• " -ээр эхлүүлж, мөр тутам 12 үгнээс хэтрэхгүй бич. Өөр юу ч бүү нэм.\n\n${fullMessage}`,
+      max_tokens: 160, temperature: 0.3,
     });
-    if (!res.ok) { console.warn('[Intel] Digest', res.status); return null; }
-    const d = await res.json();
-    const text = d.choices?.[0]?.message?.content?.trim();
     if (!text) return null;
     // Зөвхөн bullet мөрүүдийг авна, дээд тал нь 3
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.startsWith('•')).slice(0, 3);
@@ -132,24 +121,13 @@ async function main() {
 Товч, конкрет байлга.`;
 
   // gpt-4o-mini
-  const chatRes = await fetch(CHAT_URL, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GITHUB_TOKEN}` },
-    body: JSON.stringify({
-      model:       'gpt-4o-mini',
-      messages:    [
-        { role: 'system', content: 'Та JARVIS — Билэгийн хувийн AI туслах. Монголоор хариулна уу.' },
-        { role: 'user',   content: prompt }
-      ],
-      max_tokens: 1200, temperature: 0.6
-    })
+  const message = await ask({
+    system: 'Та JARVIS — Билэгийн хувийн AI туслах. Монголоор хариулна уу.',
+    prompt, max_tokens: 1200, temperature: 0.6,
   });
+  if (!message) throw new Error('AI хариу өгсөнгүй — GEMINI_API_KEY шалга');
 
-  if (!chatRes.ok) throw new Error(`GPT ${chatRes.status}`);
-  const chatData = await chatRes.json();
-  const message  = chatData.choices?.[0]?.message?.content?.trim() || '...';
-
-  console.log('[Intel] GPT ✓');
+  console.log('[Intel] AI ✓');
 
   // ── DIGEST — өглөөний Telegram brief-д тавих 3 мөр ──────────────
   // Урт брифингийг хурдан уншихад зориулж тусад нь хураангуйлна

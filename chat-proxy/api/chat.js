@@ -5,12 +5,13 @@
 // Cron/Telegram бот энд БАЙХГҮЙ — зөвхөн chat relay (Vercel function богино настай).
 //
 // ENV (Vercel → Project → Settings → Environment Variables):
-//   SYSTEM_USE_TOKEN  — GitHub PAT (gpt-4o models.inference.ai.azure.com)  [ЗААВАЛ]
-//   GEMINI_API_KEY    — Gemini fallback (GitHub хоосон бол)                [сонголт]
+//   GEMINI_API_KEY    — Google AI Studio-гийн ҮНЭГҮЙ түлхүүр               [ЗААВАЛ]
 //   CHAT_SECRET       — x-jarvis-secret header шалгалт                     [сонголт]
 //   CORS_ORIGIN       — default '*'                                        [сонголт]
-
-const CHAT_URL = 'https://models.inference.ai.azure.com/chat/completions';
+//
+// ТЭМДЭГЛЭЛ (2026-11): GitHub Models (models.inference.ai.azure.com) үйлчилгээ
+// 2026-07-30-нд БҮРМӨСӨН хаагдсан — DNS нь ч байхгүй. Тиймээс Gemini цорын
+// ганц нийлүүлэгч болов. GEMINI_API_KEY байхгүй бол ойлгомжтой алдаа буцаана.
 
 async function tryGemini(body) {
   if (!process.env.GEMINI_API_KEY) return null;
@@ -51,9 +52,6 @@ module.exports = async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const GH_TOKEN = process.env.SYSTEM_USE_TOKEN || process.env.META_BOT_TOKEN;
-  if (!GH_TOKEN) return res.status(500).json({ error: 'SYSTEM_USE_TOKEN тохируулаагүй' });
-
   // Vercel req.body аль хэдийн parse хийсэн байх ёстой; эс бөгөөс гараар уншина
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
@@ -68,29 +66,19 @@ module.exports = async (req, res) => {
   if (totalChars > 40000)         return res.status(413).json({ error: 'Агуулга хэт урт (>40k тэмдэгт)' });
   body.max_tokens = typeof body.max_tokens === 'number' ? Math.min(body.max_tokens, 1500) : 800;
 
-  try {
-    let data = null, status = 200;
-    // 1) GitHub Models (Azure)
-    try {
-      const upstream = await fetch(CHAT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH_TOKEN}` },
-        body: JSON.stringify(body),
-      });
-      data   = await upstream.json();
-      status = upstream.status;
-    } catch { data = null; }
+  if (!process.env.GEMINI_API_KEY) {
+    return res.status(503).json({
+      error: 'AI түлхүүр тохируулаагүй',
+      detail: 'GEMINI_API_KEY байхгүй. Google AI Studio-гоос ҮНЭГҮЙ түлхүүр авч ' +
+              'GitHub secret-д GEMINI_API_KEY нэрээр нэмээд "Sync Secrets to Vercel" ажлыг ажиллуул.',
+    });
+  }
 
-    // 2) GitHub хоосон/алдаатай бол → Gemini fallback
-    const ghContent = data?.choices?.[0]?.message?.content?.trim();
-    if (!ghContent) {
-      const g = await tryGemini(body);
-      if (g) return res.json(g);
-    }
-    return res.status(status).json(data || { error: 'no response' });
-  } catch (e) {
+  try {
     const g = await tryGemini(body);
     if (g) return res.json(g);
+    return res.status(502).json({ error: 'AI хариу өгсөнгүй', detail: 'Gemini хүсэлт амжилтгүй — түлхүүр эсвэл хязгаарыг шалга.' });
+  } catch (e) {
     res.status(502).json({ error: e.message });
   }
 };

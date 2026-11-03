@@ -1333,7 +1333,7 @@ async function handleDrillAnswer(msg, ctx, session) {
         `Is the user's answer correct or close enough (accept Mongolian OR English answers)? Be lenient with synonyms and paraphrasing.\n` +
         `Reply JSON only: {"correct": true/false, "feedback": "one sentence in Mongolian"}`;
 
-      const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+      const resp = await fetch('https://jarvis-chat-proxy.vercel.app/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
@@ -2035,7 +2035,7 @@ async function handleText(msg, ctx = {}) {
         `Монгол тайлбар ХЭРЭГГҮЙ — зөвхөн хятад текст + асуулт.\n` +
         `Хариулт: текстийн дараа тусдаа блокод ||ХАРИУЛТ: 1-?, 2-?, 3-?|| гэж нуу.`;
 
-      const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+      const resp = await fetch('https://jarvis-chat-proxy.vercel.app/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({
@@ -2833,7 +2833,7 @@ async function handleText(msg, ctx = {}) {
         ...hist.slice(-6).map(m => ({ role: m.role, content: (m.content || '').slice(0, 600) })),
         { role: 'user', content: raw.slice(0, 800) },
       ];
-      const resp = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+      const resp = await fetch('https://jarvis-chat-proxy.vercel.app/chat', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 600, temperature: 0.8 }),

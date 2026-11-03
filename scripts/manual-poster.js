@@ -70,7 +70,7 @@ HASHTAGS:
 Зөвхөн CAPTION: болон HASHTAGS: хэсгүүдийг буцаана.`;
 
   try {
-    const res = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+    const res = await fetch('https://jarvis-chat-proxy.vercel.app/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GITHUB_TOKEN}` },
       body: JSON.stringify({

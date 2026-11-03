@@ -14,72 +14,14 @@ const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 initializeApp({ credential: cert(sa) });
 const db = getFirestore();
 
-// ── AI: Gemini primary → GitHub fallback ─────────────────────────
-const GEMINI_URL   = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
-const GEMINI_KEY   = process.env.GEMINI_API_KEY;
-const GITHUB_URL   = 'https://models.inference.ai.azure.com/chat/completions';
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-
-const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 19 настай Монгол залуу, Монголд амьдардаг (2026-06-д Шанхайгаас эргэж ирсэн, хэлний бэлтгэл дууссан). Зорилго: тогтмол фитнесс, LFS Shanghai бизнес, HSK4 шалгалт. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
+// ── AI — Gemini (GitHub Models 2026-07-30-нд хаагдсан) ───────────
+const { ask } = require('./ai');
 
 async function callAI(prompt) {
-  // Gemini primary
-  if (GEMINI_KEY) {
-    try {
-      console.log('[Jarvis] Gemini 2.0 Flash руу хүсэлт...');
-      const res = await fetch(`${GEMINI_URL}?key=${GEMINI_KEY}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: SYSTEM }] },
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 250, temperature: 0.85 }
-        })
-      });
-      if (res.ok) {
-        const d = await res.json();
-        const text = d.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-        if (text) { console.log('[Jarvis] Gemini OK'); return text; }
-      } else {
-        console.warn(`[Jarvis] Gemini ${res.status} — GitHub fallback`);
-      }
-    } catch (e) { console.warn('[Jarvis] Gemini error:', e.message); }
-  }
-
-  // GitHub Models fallback
-  if (!GITHUB_TOKEN) { console.warn('[Jarvis] AI байхгүй'); return null; }
-  console.log('[Jarvis] GitHub Models fallback...');
-  try {
-    const res = await fetch(GITHUB_URL, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GITHUB_TOKEN}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: prompt }],
-        max_tokens: 200, temperature: 0.85
-      })
-    });
-
-    if (res.status === 429) {
-      console.warn('[Jarvis] GitHub rate limit');
-      return null;
-    }
-    if (!res.ok) {
-      const err = await res.text();
-      console.warn(`[Jarvis] GitHub → ${res.status}: ${err.slice(0,120)}`);
-      return null;
-    }
-
-    const json = await res.json();
-    const text = json.choices?.[0]?.message?.content?.trim();
-    if (text) {
-      console.log('[Jarvis] gpt-4o-mini ✓');
-      return text;
-    }
-  } catch (e) {
-    console.warn('[Jarvis] fetch алдаа:', e.message);
-  }
-  return null;
+  const text = await ask({ system: SYSTEM, prompt, max_tokens: 250, temperature: 0.85 });
+  if (text) console.log('[Jarvis] Gemini ✓');
+  else      console.log('[Jarvis] AI байхгүй — fallback');
+  return text;
 }
 
 // ── FALLBACK MESSAGE ──────────────────────────────────────────────
