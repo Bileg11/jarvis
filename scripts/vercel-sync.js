@@ -67,6 +67,7 @@ async function api(method, path, body) {
     process.exit(1);
   }
   console.log(`✓ Төсөл: ${proj.data?.name}`);
+  console.log(`  ORG_ID=${proj.data?.accountId || ''}`);   // Vercel CLI-д хэрэгтэй
 
   // 3. Байгаа env-үүд
   const envRes = await api('GET', `/v10/projects/${PROJECT}/env?decrypt=false`);

@@ -1,0 +1,57 @@
+name: Vercel руу deploy хийх
+
+# chat-proxy болон webhook нь GitHub push дээр АВТОМАТААР deploy болдоггүй
+# (Git integration холбогдоогүй) тул энэ ажил гараар/дуудаж deploy хийнэ.
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Аль нь? chat-proxy | webhook | both'
+        default: 'both'
+  push:
+    branches: [main]
+    paths:
+      - 'chat-proxy/**'
+      - 'webhook/**'
+
+concurrency:
+  group: vercel-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Deploy
+        env:
+          VERCEL_TOKEN:  ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          PRJ_CHAT:      ${{ secrets.VERCEL_PROJECT_ID_CHAT_PROXY }}
+          PRJ_HOOK:      ${{ secrets.VERCEL_PROJECT_ID_WEBHOOK }}
+          TARGET:        ${{ github.event.inputs.target || 'both' }}
+        run: |
+          set -e
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ]; then
+            echo "VERCEL_TOKEN эсвэл VERCEL_ORG_ID байхгүй — алгаслаа."; exit 0
+          fi
+
+          deploy () {
+            local DIR="$1" PRJ="$2" NAME="$3"
+            if [ -z "$PRJ" ]; then echo "⚠ $NAME: project id secret байхгүй, алгаслаа"; return; fi
+            echo "── $NAME ($DIR) ──"
+            mkdir -p "$DIR/.vercel"
+            printf '{"orgId":"%s","projectId":"%s"}' "$VERCEL_ORG_ID" "$PRJ" > "$DIR/.vercel/project.json"
+            ( cd "$DIR" && npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" )
+          }
+
+          case "$TARGET" in
+            chat-proxy) deploy chat-proxy "$PRJ_CHAT" "chat-proxy" ;;
+            webhook)    deploy webhook    "$PRJ_HOOK" "webhook" ;;
+            *)          deploy chat-proxy "$PRJ_CHAT" "chat-proxy"
+                        deploy webhook    "$PRJ_HOOK" "webhook" ;;
+          esac
