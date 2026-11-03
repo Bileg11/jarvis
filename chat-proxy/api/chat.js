@@ -97,6 +97,7 @@ async function tryGemini(body) {
   // Vercel функц тасрахаас өмнө заавал хариу буцаахын тулд цагийн төсөвтэй
   const DEADLINE = Date.now() + 45000;
   let last = 'тодорхойгүй';
+  const trail = [];   // модель бүрийн үр дүн — оношлоход
   for (const model of models) {
     if (EXHAUSTED.has(model)) continue;
     if (Date.now() > DEADLINE) { last = 'цаг дууслаа: ' + last; break; }
@@ -111,10 +112,12 @@ async function tryGemini(body) {
           const text = parts.filter(p => p && !p.thought && p.text).map(p => p.text).join('').trim();
           if (text) return { choices: [{ message: { role: 'assistant', content: text } }], _model: model };
           last = `${model}: хоосон (${d.promptFeedback?.blockReason || d.candidates?.[0]?.finishReason || '?'})`;
+          trail.push(last);
           break;   // блоклогдсон бол дахин оролдох утгагүй
         }
         const msg = d?.error?.message || '';
         last = `${model} → ${r.status}: ${msg.slice(0, 120)}`;
+        trail.push(last);
         // 404 = энэ түлхүүрт боломжгүй модель, 429+quota = квот дууссан
         if (r.status === 404 || (r.status === 429 && /quota/i.test(msg))) { EXHAUSTED.add(model); break; }
         if (r.status === 503 || r.status === 429) { await sleep(900); continue; }
@@ -122,7 +125,7 @@ async function tryGemini(body) {
       } catch (e) { last = `${model}: ${e.message}`; await sleep(500); }
     }
   }
-  return { error: last };
+  return { error: last, trail };
 }
 
 module.exports = async (req, res) => {
@@ -189,7 +192,7 @@ module.exports = async (req, res) => {
   try {
     const g = await tryGemini(body);
     if (g && !g.error) return res.json(g);
-    return res.status(502).json({ error: 'AI хариу өгсөнгүй', detail: g?.error || 'тодорхойгүй' });
+    return res.status(502).json({ error: 'AI хариу өгсөнгүй', detail: g?.error || 'тодорхойгүй', trail: g?.trail });
   } catch (e) {
     res.status(502).json({ error: e.message });
   }
