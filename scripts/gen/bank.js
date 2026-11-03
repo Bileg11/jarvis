@@ -53,9 +53,11 @@ const TOPICS = [
   '介绍中国古代科技（中医、农业、科技成就、古代科学家）',
 ];
 
+const LIM_LISTEN = 0.12, LIM_READ = 0.20;
 const pick = a => a[Math.floor(Math.random() * a.length)];
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const REASONS = [];   // яагаад хасагдсаныг бүртгэж, эцэст нь тайлагнана
 const hanzi = s => (String(s).match(/[一-鿿]/g) || []);
 
 // ── HSK L1-5 ханзны багц — түвшин хэтэрсэн материалыг барина ─────
@@ -68,7 +70,10 @@ function charset() {
   } catch { CHARSET = new Set(); }
   return CHARSET;
 }
-/** Жагсаалтаас гадуурх ханзны хувь. 12%-иас дээш бол түвшин хэтэрсэн гэж үзнэ. */
+/** Жагсаалтаас гадуурх ханзны хувь.
+ *  Босгыг гараар бичсэн сайн материал дээр хэмжиж тохируулсан:
+ *  听力 0-4%, 阅读 0-13% байсан тул сонсголд 12%, уншихад 20% гэж авав.
+ *  Үүнээс дээш бол 六级 рүү гулссан гэж үзнэ. */
 function outRatio(text) {
   const cs = charset();
   if (!cs.size) return 0;
@@ -125,20 +130,23 @@ JSON:
 Яриа нь нэг тодорхой санааг хөгжүүлнэ (үзэгдэл → шалтгаан → дүгнэлт).`;
 
   const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 1100, temperature: 0.95 });
-  return validListen(d) ? d : null;
+  const bad = validListen(d);
+  if (bad) { REASONS.push('听:' + bad); return null; }
+  return d;
 }
 
 function validListen(d) {
-  if (!d || !Array.isArray(d.opt) || d.opt.length !== 3) return false;
-  if (typeof d.a !== 'number' || d.a < 0 || d.a > 2) return false;
-  if (!d.q || !d.exp) return false;
-  const audio = d.audio;
-  if (!Array.isArray(audio) || !audio.length) return false;
-  const text = audio.map(x => Array.isArray(x) ? x[1] : x).join('');
-  if (hanzi(text).length < 30) return false;
-  if (new Set(d.opt.map(String)).size !== 3) return false;
-  if (outRatio(text + d.q + d.opt.join('')) > 0.12) return false;
-  return true;
+  if (!d) return 'JSON биш';
+  if (!Array.isArray(d.opt) || d.opt.length !== 3) return 'сонголт 3 биш';
+  if (typeof d.a !== 'number' || d.a < 0 || d.a > 2) return 'хариултын индекс буруу';
+  if (!d.q || !d.exp) return 'асуулт/тайлбар дутуу';
+  if (!Array.isArray(d.audio) || !d.audio.length) return 'бичлэг байхгүй';
+  const text = d.audio.map(x => Array.isArray(x) ? x[1] : x).join('');
+  if (hanzi(text).length < 30) return 'бичлэг хэт богино';
+  if (new Set(d.opt.map(String)).size !== 3) return 'сонголт давхардсан';
+  const r = outRatio(text + d.q + d.opt.join(''));
+  if (r > LIM_LISTEN) return `түвшин хэтэрсэн (${Math.round(r * 100)}%)`;
+  return null;
 }
 
 /* ── 阅读 ─────────────────────────────────────────────────────── */
@@ -153,12 +161,16 @@ JSON:
 {"type":"cloze","text":"...______...","q":"选出最合适的词",
  "opt":["A","B","C","D"],"a":2,"exp":"монголоор: яагаад энэ, бусад нь яагаад болохгүй"}`;
   const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
-  if (!d || d.type !== 'cloze' || !Array.isArray(d.opt) || d.opt.length !== 4) return null;
-  if (typeof d.a !== 'number' || d.a < 0 || d.a > 3) return null;
-  if (!String(d.text || '').includes('___')) return null;
-  if (hanzi(d.text).length < 40) return null;
-  if (new Set(d.opt.map(String)).size !== 4) return null;
-  if (outRatio(d.text + d.opt.join('')) > 0.12) return null;
+  const bad =
+    !d ? 'JSON биш' :
+    (d.type !== 'cloze') ? 'төрөл буруу' :
+    (!Array.isArray(d.opt) || d.opt.length !== 4) ? 'сонголт 4 биш' :
+    (typeof d.a !== 'number' || d.a < 0 || d.a > 3) ? 'индекс буруу' :
+    (!String(d.text || '').includes('___')) ? 'хоосон зай алга' :
+    (hanzi(d.text).length < 40) ? 'эх богино' :
+    (new Set(d.opt.map(String)).size !== 4) ? 'сонголт давхардсан' :
+    (outRatio(d.text + d.opt.join('')) > LIM_READ) ? 'түвшин хэтэрсэн' : null;
+  if (bad) { REASONS.push('填空:' + bad); return null; }
   return d;
 }
 
@@ -180,11 +192,15 @@ JSON:
 
 parts нь ХОЛИЛДСОН байдлаар, a нь parts доторх индексүүд зөв дарааллаар.`;
   const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
-  if (!d || d.type !== 'order' || !Array.isArray(d.parts) || d.parts.length !== 4) return null;
-  if (!Array.isArray(d.a) || d.a.length !== 4) return null;
-  if ([...d.a].sort().join() !== '0,1,2,3') return null;
-  if (d.parts.some(p => hanzi(p).length < 6)) return null;
-  if (outRatio(d.parts.join('')) > 0.12) return null;
+  const bad =
+    !d ? 'JSON биш' :
+    (d.type !== 'order') ? 'төрөл буруу' :
+    (!Array.isArray(d.parts) || d.parts.length !== 4) ? 'хэсэг 4 биш' :
+    (!Array.isArray(d.a) || d.a.length !== 4) ? 'дараалал дутуу' :
+    ([...d.a].sort().join() !== '0,1,2,3') ? 'дараалал буруу (0-3 биш)' :
+    (d.parts.some(p => hanzi(p).length < 6)) ? 'өгүүлбэр богино' :
+    (outRatio(d.parts.join('')) > LIM_READ) ? 'түвшин хэтэрсэн' : null;
+  if (bad) { REASONS.push('排序:' + bad); return null; }
   return d;
 }
 
@@ -205,16 +221,22 @@ JSON:
  "qs":[{"q":"...","opt":["A","B","C","D"],"a":1,"exp":"монголоор"},
        {"q":"...","opt":["A","B","C","D"],"a":3,"exp":"монголоор"},
        {"q":"...","opt":["A","B","C","D"],"a":0,"exp":"монголоор"}]}`;
-  const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 2200, temperature: 0.9 });
-  if (!d || d.type !== 'passage' || !Array.isArray(d.qs) || d.qs.length < 2) return null;
-  const n = hanzi(d.text).length;
-  if (n < 200 || n > 700) return null;
-  for (const q of d.qs) {
-    if (!q.q || !Array.isArray(q.opt) || q.opt.length !== 4) return null;
-    if (typeof q.a !== 'number' || q.a < 0 || q.a > 3) return null;
-    if (new Set(q.opt.map(String)).size !== 4) return null;
+  const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 2600, temperature: 0.9 });
+  let bad =
+    !d ? 'JSON биш' :
+    (d.type !== 'passage') ? 'төрөл буруу' :
+    (!Array.isArray(d.qs) || d.qs.length < 2) ? 'асуулт 2-оос цөөн' : null;
+  if (!bad) {
+    const n = hanzi(d.text).length;
+    if (n < 180 || n > 800) bad = `эхийн урт ${n}`;
   }
-  if (outRatio(d.text) > 0.12) return null;
+  if (!bad) for (const q of d.qs) {
+    if (!q.q || !Array.isArray(q.opt) || q.opt.length !== 4) { bad = 'асуултын сонголт 4 биш'; break; }
+    if (typeof q.a !== 'number' || q.a < 0 || q.a > 3) { bad = 'индекс буруу'; break; }
+    if (new Set(q.opt.map(String)).size !== 4) { bad = 'сонголт давхардсан'; break; }
+  }
+  if (!bad && outRatio(d.text) > LIM_READ) bad = 'түвшин хэтэрсэн';
+  if (bad) { REASONS.push('长文:' + bad); return null; }
   return d;
 }
 
@@ -324,6 +346,12 @@ function keyOf(kind, it) {
   }
 
   console.log(`\n\nНэмсэн ${added} · хасагдсан ${rejected} (чанар) · давхардсан ${dup}`);
+  if (REASONS.length) {
+    const tally = {};
+    REASONS.forEach(r => { tally[r] = (tally[r] || 0) + 1; });
+    console.log('Хасагдсан шалтгаан:');
+    Object.entries(tally).sort((a, b) => b[1] - a[1]).forEach(([r, n]) => console.log(`  ${n}× ${r}`));
+  }
   console.log(`Шинэ сан: 听 ${bank.listen.length} · 读 ${bank.read.length} · ` +
               `写 ${bank.write.length} · 说 ${bank.speak.length}`);
 })().catch(e => { console.error('Алдаа:', e.message); process.exit(1); });
