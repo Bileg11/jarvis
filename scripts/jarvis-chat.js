@@ -20,7 +20,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 
 // ── HELPERS ───────────────────────────────────────────────────────
-const today = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+const today = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
 
 async function tgSend(text) {
   await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
@@ -50,7 +50,7 @@ async function getToday() {
 
 async function getStreak(key) {
   let s = 0;
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   for (let i = 0; i < 30; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() - i);
@@ -63,7 +63,7 @@ async function getStreak(key) {
 }
 
 async function getWeekStats() {
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   let posts = 0, comments = 0, score7 = 0, days = 0;
   for (let i = 0; i < 7; i++) {
     const d = new Date(now); d.setDate(d.getDate() - i);
@@ -175,7 +175,7 @@ async function handle(text) {
     const qSnap = await db.doc(`users/${USER_UID}/marketing/weeklyQueue`).get();
     if (!qSnap.exists) return '📅 Долоо хоногийн план байхгүй. /plan командаар үүсгэнэ.';
     const q    = qSnap.data();
-    const now  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+    const now  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
     let msg = '📅 *Долоо хоногийн Post План*\n\n';
     for (let i = 0; i < 7; i++) {
       const d = new Date(now); d.setDate(d.getDate() + i);

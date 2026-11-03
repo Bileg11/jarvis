@@ -244,7 +244,7 @@ function buildMorningMsg(uid, routine, coachLevel) {
 // Cron: "0 0 * * *" = every day at 00:00 UTC = 08:00 Shanghai
 // ══════════════════════════════════════════════════════════════════
 exports.morningBriefing = onSchedule(
-  { schedule: '0 0 * * *', timeZone: 'Asia/Shanghai', region: 'asia-east1' },
+  { schedule: '0 0 * * *', timeZone: 'Asia/Ulaanbaatar', region: 'asia-east1' },
   async () => {
     console.log('[morningBriefing] Running daily briefing...');
     try {
@@ -285,7 +285,7 @@ exports.morningBriefing = onSchedule(
 // Strict + Goggins mode only — workout + HSK reminder
 // ══════════════════════════════════════════════════════════════════
 exports.eveningCheck = onSchedule(
-  { schedule: '0 13 * * *', timeZone: 'Asia/Shanghai', region: 'asia-east1' },
+  { schedule: '0 13 * * *', timeZone: 'Asia/Ulaanbaatar', region: 'asia-east1' },
   async () => {
     console.log('[eveningCheck] Running evening check...');
     try {

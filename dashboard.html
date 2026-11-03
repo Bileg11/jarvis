@@ -621,7 +621,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   <script src="firebase-config.js"></script>
   <script>
     (function () {
-      const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+      const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
 
       // Social дагагчийн тоо + өсөлт/уналт (▲ ногоон, ▼ улаан) харуулна
       function setFollower(numId, deltaId, count, delta) {
@@ -709,7 +709,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
         var pending = 7;
         for (var i = 0; i < 7; i++) {
           (function (daysAgo) {
-            var d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+            var d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
             d.setDate(d.getDate() - daysAgo);
             var ds = d.toLocaleDateString('sv');
             db.doc('users/' + uid + '/routines/' + ds).get().then(function (snap) {
@@ -753,7 +753,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
       // ── T.H.R.E.E. OS Today Panel ────────────────────────────────
       (function () {
-        var now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+        var now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
         var dateEl = document.getElementById('os-date');
         var days = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
         var months = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар','7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
@@ -826,18 +826,18 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
           .where('date', '<=', month + '-31')
           .onSnapshot(function (snap) {
             var txns   = snap.docs.map(function (d) { return d.data(); });
-            var expCNY = txns.filter(function (t) { return t.type === 'expense' && t.currency === 'CNY'; })
+            var expCNY = txns.filter(function (t) { return t.type === 'expense' && t.currency === 'MNT'; })
                              .reduce(function (s,t) { return s + t.amount; }, 0);
-            var incCNY = txns.filter(function (t) { return t.type === 'income'  && t.currency === 'CNY'; })
+            var incCNY = txns.filter(function (t) { return t.type === 'income'  && t.currency === 'MNT'; })
                              .reduce(function (s,t) { return s + t.amount; }, 0);
             var net    = incCNY - expCNY;
             var val    = document.getElementById('os-fin-val');
             var sub    = document.getElementById('os-fin-sub');
             if (val) {
-              val.textContent = (net >= 0 ? '+' : '') + '¥' + net.toFixed(0);
+              val.textContent = (net >= 0 ? '+' : '') + '₮' + net.toLocaleString();
               val.style.color = net >= 0 ? 'rgba(var(--ok-rgb),0.85)' : 'rgba(var(--danger-rgb),0.85)';
             }
-            if (sub) sub.textContent = '¥' + expCNY.toFixed(0) + ' зарцуулсан';
+            if (sub) sub.textContent = '₮' + expCNY.toLocaleString() + ' зарцуулсан';
           });
       })();
 
@@ -848,7 +848,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
         var _prevDone  = new Set();
 
         function _todaySH() {
-          return new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+          return new Date().toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
         }
         function _fmtTime(iso) {
           var d = new Date(iso);

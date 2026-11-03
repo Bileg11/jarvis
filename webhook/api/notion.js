@@ -17,7 +17,7 @@ async function notionSave(title, body = '', emoji = '📝') {
   if (!token || !pageId) return null;
 
   // Аль өдөр гэдгийг тэмдэглэнэ
-  const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
 
   // Нэмэх блокуудыг бэлдэнэ
   const blocks = [

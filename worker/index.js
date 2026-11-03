@@ -101,9 +101,9 @@ export default {
       ));
 
       // Raw context үүсгэх
-      const ts = new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai',
+      const ts = new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar',
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      let raw = `Search results [${ts} Shanghai]:\n\n`;
+      let raw = `Search results [${ts} Ulaanbaatar]:\n\n`;
 
       searches.forEach((r, i) => {
         raw += `--- ${LABELS[i]} ---\n`;

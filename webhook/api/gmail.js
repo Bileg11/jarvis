@@ -6,10 +6,12 @@
 const fetch = require('node-fetch');
 
 function isConfigured() {
+  // && нь || -аас өмнө бодогддог тул хаалт ЗАЙЛШГҮЙ:
+  // хаалтгүй бол зөвхөн refresh token байхад "тохируулсан" гэж андуурна
   return !!(
     process.env.GOOGLE_CLIENT_ID &&
     process.env.GOOGLE_CLIENT_SECRET &&
-    process.env.GOOGLE_REFRESH_TOKEN_GMAIL || process.env.GOOGLE_REFRESH_TOKEN
+    (process.env.GOOGLE_REFRESH_TOKEN_GMAIL || process.env.GOOGLE_REFRESH_TOKEN)
   );
 }
 

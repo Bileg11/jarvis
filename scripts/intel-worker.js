@@ -13,7 +13,7 @@ const CHAT_URL   = 'https://models.inference.ai.azure.com/chat/completions';
 
 const TAVILY_KEY    = process.env.TAVILY_KEY;
 const GITHUB_TOKEN  = process.env.GITHUB_TOKEN;
-const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
 
 // Firebase
 const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -31,8 +31,8 @@ const QUERIES = [
     query: 'Elon Musk Donald Trump X Twitter post statement announcement today'
   },
   {
-    label: '🌍 Дэлхий & Монгол',
-    query: 'Mongolia world breaking news major events today 2026'
+    label: '🌍 Монгол & Дэлхий',
+    query: 'Монгол улс мэдээ Улаанбаатар өнөөдөр Mongolia news today 2026 world major events'
   }
 ];
 
@@ -54,15 +54,45 @@ async function tavilySearch(query) {
   }
 }
 
+// ── DIGEST — урт брифингээс 3 мөр гаргана ─────────────────────────
+// Өглөөний brief-д бүтэн текст хэтэрхий урт тул тусад нь хураангуйлна
+async function makeDigest(fullMessage) {
+  if (!GITHUB_TOKEN || !fullMessage) return null;
+  try {
+    const res = await fetch(CHAT_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GITHUB_TOKEN}` },
+      body: JSON.stringify({
+        model:    'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'Чи мэдээг хураангуйлагч. Монголоор, зөвхөн хүссэн форматаар хариул.' },
+          { role: 'user',   content: `Доорх брифингээс ХАМГИЙН чухал 3 мэдээг сонгож, мөр бүрийг "• " -ээр эхлүүлж, мөр тутам 12 үгнээс хэтрэхгүй бич. Өөр юу ч бүү нэм.\n\n${fullMessage}` }
+        ],
+        max_tokens: 160, temperature: 0.3
+      })
+    });
+    if (!res.ok) { console.warn('[Intel] Digest', res.status); return null; }
+    const d = await res.json();
+    const text = d.choices?.[0]?.message?.content?.trim();
+    if (!text) return null;
+    // Зөвхөн bullet мөрүүдийг авна, дээд тал нь 3
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.startsWith('•')).slice(0, 3);
+    return lines.length ? lines.join('\n') : null;
+  } catch (e) {
+    console.warn('[Intel] Digest error:', e.message);
+    return null;
+  }
+}
+
 async function main() {
   const uid = process.env.USER_UID;
   if (!uid) throw new Error('USER_UID байхгүй');
 
   const ts = now.toLocaleString('en-US', {
     month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai'
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ulaanbaatar'
   });
-  console.log(`[Intel] ${ts} Shanghai — эхлэв`);
+  console.log(`[Intel] ${ts} Улаанбаатар — эхлэв`);
 
   if (!TAVILY_KEY) throw new Error('TAVILY_KEY secret байхгүй');
 
@@ -72,7 +102,7 @@ async function main() {
   console.log(`[Intel] Tavily: ${ok}/3 амжилтай`);
 
   // Raw context
-  let raw = `Хайлтын үр дүн [${ts} Shanghai]:\n\n`;
+  let raw = `Хайлтын үр дүн [${ts} Улаанбаатар]:\n\n`;
   results.forEach((r, i) => {
     raw += `--- ${QUERIES[i].label} ---\n`;
     if (!r) { raw += '(Хайлт амжилтгүй)\n\n'; return; }
@@ -121,17 +151,28 @@ async function main() {
 
   console.log('[Intel] GPT ✓');
 
+  // ── DIGEST — өглөөний Telegram brief-д тавих 3 мөр ──────────────
+  // Урт брифингийг хурдан уншихад зориулж тусад нь хураангуйлна
+  const digest = await makeDigest(message);
+  if (digest) console.log('[Intel] Digest ✓');
+
   // Firestore-д хадгална — daily history + latest
-  const date = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  // `now` аль хэдийн УБ-ын цаг тул дахин шилжүүлбэл орой үед огноо нэг хоногоор
+  // хэтэрдэг — шинэ Date-ээс нэг л удаа хөрвүүлнэ.
+  const date = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
   const payload = {
     message,
+    digest: digest || null,
     timestamp: new Date().toISOString(),
     date,
     sources: ok,
   };
+  // ЗАМЫН ДҮРЭМ: Firestore-ийн document зам ТЭГШ тоотой хэсэгтэй байх ёстой.
+  // Хуучин `intel/daily/${date}` (5 хэсэг) нь collection зам байсан тул
+  // .doc() шууд exception хаяж, intel job бүхэлдээ унадаг байв.
   await Promise.all([
-    db.doc(`users/${uid}/intel/daily/${date}`).set(payload),   // history
-    db.doc(`users/${uid}/intel/latest`).set(payload),          // backward compat
+    db.doc(`users/${uid}/intel/${date}`).set(payload),          // өдрийн түүх
+    db.doc(`users/${uid}/intel/latest`).set(payload),           // backward compat
   ]);
 
   console.log('[Intel] Firestore ✓');

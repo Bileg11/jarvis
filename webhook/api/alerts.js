@@ -19,7 +19,7 @@ async function tg(text) {
 }
 
 function todaySH() {
-  return new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  return new Date().toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
 }
 
 // ── Оройн routine сануулга (20:00) ────────────────────────────────

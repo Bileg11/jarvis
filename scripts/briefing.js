@@ -3,7 +3,7 @@ const { getFirestore }        = require('firebase-admin/firestore');
 const fetch = (...a) => import('node-fetch').then(({ default: f }) => f(...a));
 
 // ── TIMEZONE: Shanghai (UTC+8) ────────────────────────────────────
-const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
 const hour  = now.getHours();
 const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 const DAYS  = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
@@ -20,7 +20,7 @@ const GEMINI_KEY   = process.env.GEMINI_API_KEY;
 const GITHUB_URL   = 'https://models.inference.ai.azure.com/chat/completions';
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
-const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 18 настай Монгол залуу, Шанхайд амьдардаг. Зорилго: тогтмол фитнесс, LFS Shanghai бизнес, HSK4 шалгалт. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
+const SYSTEM = `Чи бол JARVIS — Билэгийн хувийн AI туслах. Билэг: 19 настай Монгол залуу, Монголд амьдардаг (2026-06-д Шанхайгаас эргэж ирсэн, хэлний бэлтгэл дууссан). Зорилго: тогтмол фитнесс, LFS Shanghai бизнес, HSK4 шалгалт. Монголоор 2-3 өгүүлбэр. Тодорхой тоо. Шулуун, урам зориг өгөхүйц. Нэг конкрет үйлдэл санал болго.`;
 
 async function callAI(prompt) {
   // Gemini primary

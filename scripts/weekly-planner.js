@@ -103,7 +103,7 @@ function parsePost(raw, index) {
 
 // ── MAIN ──────────────────────────────────────────────────────────
 async function main() {
-  const now  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   console.log(`[Planner] Weekly plan starting... ${now.toISOString()}`);
 
   // 14 slot үүсгэнэ (7 өдөр × 2)

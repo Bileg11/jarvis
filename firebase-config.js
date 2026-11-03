@@ -705,9 +705,9 @@ window.DB = {
       // Streak logic
       const streakSnap = await streakRef.get().catch(() => null);
       const streakData = streakSnap?.exists ? streakSnap.data() : { current: 0, best: 0, total_days: 0, last_date: '' };
-      // GAP-10: UTC → Asia/Shanghai timezone
+      // GAP-10: UTC → Asia/Ulaanbaatar timezone
       const yesterday  = new Date(Date.now() - 86400000)
-        .toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+        .toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
       const isStreak   = streakData.last_date === yesterday && scoreData.pct >= 50;
       const isBroken   = streakData.last_date && streakData.last_date !== yesterday && streakData.last_date !== date;
 

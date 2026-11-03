@@ -33,7 +33,7 @@ function isConfigured() {
 // ── Natural language → structured event ───────────────────────────
 // Rule-based parser — Кирилл, Латин транслитерац, Англи бүгдийг дэмжинэ
 function parseEvent(text) {
-  const now      = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now      = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   const todayStr = now.toLocaleDateString('sv');
   const tomorrow = new Date(now.getTime() + 86400000).toLocaleDateString('sv');
 
@@ -115,8 +115,8 @@ async function createEvent(title, startISO, endISO, description = '') {
       body: JSON.stringify({
         summary:     title,
         description,
-        start: { dateTime: startISO, timeZone: 'Asia/Shanghai' },
-        end:   { dateTime: endISO,   timeZone: 'Asia/Shanghai' },
+        start: { dateTime: startISO, timeZone: 'Asia/Ulaanbaatar' },
+        end:   { dateTime: endISO,   timeZone: 'Asia/Ulaanbaatar' },
       }),
     }
   );
@@ -130,7 +130,7 @@ async function createEvent(title, startISO, endISO, description = '') {
 async function listTodayEvents() {
   const token = await getAccessToken();
 
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   // Шанхайн өдрийн эхлэл/төгсгөл UTC-д хөрвүүлэх
   const startOfDay = new Date(Date.UTC(
     now.getFullYear(), now.getMonth(), now.getDate(),
@@ -160,7 +160,7 @@ async function listTodayEvents() {
 async function listUpcomingEvents(days = 7) {
   const token = await getAccessToken();
 
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   const startOfDay = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), -8, 0, 0));
   const endDay     = new Date(startOfDay.getTime() + days * 86400000);
 
@@ -201,7 +201,7 @@ function formatEventTime(event) {
   if (event.start.date) return 'Бүх өдөр';
   const dt = new Date(event.start.dateTime);
   return dt.toLocaleTimeString('mn-MN', {
-    timeZone: 'Asia/Shanghai',
+    timeZone: 'Asia/Ulaanbaatar',
     hour: '2-digit', minute: '2-digit', hour12: false,
   });
 }

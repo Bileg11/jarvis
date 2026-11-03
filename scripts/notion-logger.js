@@ -35,7 +35,7 @@ function rt(text, bold = false, color = 'default') {
 }
 
 async function run() {
-  const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   const today = now.toLocaleDateString('sv');
   const DAYS  = ['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба'];
   const dayName = DAYS[now.getDay()];

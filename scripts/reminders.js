@@ -27,7 +27,7 @@ async function tgSend(text) {
 }
 
 async function run() {
-  const now  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now  = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   const hour = now.getHours();
   const today = now.toLocaleDateString('sv');
 
@@ -39,7 +39,7 @@ async function run() {
   const routine = routineSnap.exists ? routineSnap.data() : {};
   const water   = logSnap.exists ? (logSnap.data().water?.total_ml || 0) : 0;
 
-  console.log(`[Reminders] ${hour}:00 Шанхай`);
+  console.log(`[Reminders] ${hour}:00 Улаанбаатар`);
 
   // ── 12:00 — Ус сануулга ──────────────────────────────────────
   if (hour === 12 && water < 800) {

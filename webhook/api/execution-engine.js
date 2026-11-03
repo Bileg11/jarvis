@@ -32,7 +32,7 @@ const fetch = require('node-fetch');
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 
 // ── Config ────────────────────────────────────────────────────────
-const TZ            = 'Asia/Shanghai';
+const TZ            = 'Asia/Ulaanbaatar';
 const NIGHT_START   = 23;       // 23:00 — Deep Sleep эхэлнэ
 const NIGHT_END     = 6.75;     // 06:45 — өдрийн хил / daily reset
 const PENALTY_FLOOR = -40;      // өдрийн дээд торгууль

@@ -2,7 +2,9 @@ name: Jarvis Intel Hub
 
 on:
   schedule:
-    - cron: '0 23 * * *'   # 07:00 Shanghai — өглөөний брифинг
+    # 05:40 Улаанбаатар — 06:13-ын өглөөний brief-ээс ӨМНӨ дуусах ёстой,
+    # ингэснээр мэдээний digest нь brief-д орж чадна.
+    - cron: '40 21 * * *'
   workflow_dispatch:         # Апп-аас гараар дуудах боломж
 
 env:

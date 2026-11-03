@@ -62,7 +62,7 @@ function getBilegSystem() {
     `"Билэг" эсвэл "Boss" гэж дуудна.\n\n` +
 
     `## 2. USER PROFILE\n` +
-    `• 18 настай Монгол залуу, Шанхайд ганцаараа амьдардаг.\n` +
+    `• 19 настай Монгол залуу, Монголд амьдардаг. 2026 оны 6 сард Шанхайгаас эргэж ирсэн, Хятад хэлний бэлтгэл дууссан.\n` +
     `• Бизнес: LFS Shanghai (Монгол аялагчдад VIP туслалцаа).\n` +
     `• Tech stack: React, Firebase, Node.js, Vercel, GitHub Actions.\n` +
     `• Зорилго: AI-г тултал ашиглах · LFS-г бодит бизнес болгох · ${EXAM_LEVEL}-ийг ${EXAM_DATE_ISO.slice(0,10)} гэхэд авах.\n\n` +
@@ -72,7 +72,7 @@ function getBilegSystem() {
     `• ЗӨВ > АЮУЛГҮЙ: Хамгийн практик, шилдэг шийдлийг өг. Улс төржсөн, бөөрөнхий хариулт хориотой.\n` +
     `• ШҮҮМЖЛЭЛТЭЙ: Буруу логик, код, шийдвэр — зусардахгүй, шууд засаж хэл.\n` +
     `• PROACTIVE: Асуултаас нэг алхам түрүүлж сэтгэ. Аюул, цоорхой, эрсдэлийг урьдчилж сануул.\n` +
-    `• TONE: 18 настай залуутай ярьж байгаа — найзынх шиг casual ч Stark-level precision.\n\n` +
+    `• TONE: 19 настай залуутай ярьж байгаа — найзынх шиг casual ч Stark-level precision.\n\n` +
 
     `## 4. HSK URGENCY 🎯\n` +
     `${EXAM_LEVEL} шалгалт: ${EXAM_DATE_ISO.slice(0,10)}. ${urgency}\n` +
@@ -98,7 +98,7 @@ const BILEG_SYSTEM = getBilegSystem(); // backward compat
 
 async function compileLiveContext(uid) {
   const today = todaySH();
-  const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   try {
     const [routineSnap, hskSnap, tasksRaw, challengeSnap, profileSnap, logSnap, routineCfgSnap] = await Promise.all([
@@ -139,9 +139,9 @@ async function compileLiveContext(uid) {
       const finSnap = await dbPersonal.collection(`users/${uid}/finance/txns/records`)
         .where('date', '>=', month + '-01').where('date', '<=', month + '-31').get();
       const txns   = finSnap.docs.map(d => d.data());
-      const expCNY = txns.filter(t => t.type === 'expense' && t.currency === 'CNY').reduce((s,t) => s + t.amount, 0);
-      const incCNY = txns.filter(t => t.type === 'income'  && t.currency === 'CNY').reduce((s,t) => s + t.amount, 0);
-      if (txns.length) financeLine = `Санхүү (${month}): орлого ¥${incCNY.toFixed(0)}, зарлага ¥${expCNY.toFixed(0)}, үлдэгдэл ${incCNY-expCNY >= 0 ? '+' : ''}¥${(incCNY-expCNY).toFixed(0)}`;
+      const expM = txns.filter(t => t.type === 'expense' && t.currency === 'MNT').reduce((s,t) => s + t.amount, 0);
+      const incM = txns.filter(t => t.type === 'income'  && t.currency === 'MNT').reduce((s,t) => s + t.amount, 0);
+      if (txns.length) financeLine = `Санхүү (${month}): орлого ₮${incM.toLocaleString()}, зарлага ₮${expM.toLocaleString()}, үлдэгдэл ${incM-expM >= 0 ? '+' : ''}₮${(incM-expM).toLocaleString()}`;
     } catch {}
 
     const lines = [
@@ -170,7 +170,7 @@ async function compileLiveContext(uid) {
 
 async function getFullContext(uid) {
   const today   = todaySH();
-  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   try {
     // Cache hit: 1 Firestore read (7-ын оронд)
@@ -179,7 +179,7 @@ async function getFullContext(uid) {
       // Header-д шинэ цаг inject хийнэ (body-г дахин compile хийхгүй)
       const body = (snap.data().body || '').replace(
         /(## LIVE OS CONTEXT \[[\d-]+)(])/,
-        `$1 ${timeStr} Shanghai$2`
+        `$1 ${timeStr} Улаанбаатар$2`
       );
       return body;
     }
@@ -373,6 +373,12 @@ const tgSend   = (text, extra = {}) =>
 const tgAnswer = (id, text = '') =>
   tgCall('answerCallbackQuery', { callback_query_id: id, text });
 
+// ── MARKDOWN ХАМГААЛАЛТ ───────────────────────────────────────────
+// Telegram legacy Markdown-д * _ ` [ тэмдэгт тэнцвэргүй байвал
+// БҮХЭЛ мессеж илгээгдэхгүй. Имэйлийн subject, мэдээний гарчиг зэрэг
+// гаднаас ирсэн текстийг үргэлж дамжуулна.
+const mdSafe = (t = '') => String(t).replace(/[*_`\[\]]/g, '');
+
 // ── ИДЭВХТЭЙ CHALLENGE — reusable (Challenge #1, #2, #3 ...) ───────
 // challenge/current → { id, number, name, end }. Бүх challenge зам
 // `challenge/${CHID}/...` ашиглана. /newchallenge-ээр шинэ challenge эхэлнэ.
@@ -507,7 +513,7 @@ async function doneTask(index, uid = UID) {
 }
 
 // ── ROUTINE HELPERS ───────────────────────────────────────────────
-const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+const todaySH = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
 
 async function getScore(uid = UID) {
   const d = todaySH();
@@ -524,7 +530,7 @@ async function getScore(uid = UID) {
 
 async function getStreak(key, uid = UID) {
   // GAP-06: getAll() — 30 sequential read → 1 batched RPC call
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   const refs = [];
   for (let i = 0; i < 30; i++) {
     const d = new Date(now); d.setDate(d.getDate() - i);
@@ -591,7 +597,7 @@ async function notionSaveScript(title, content) {
   const pageId = process.env.NOTION_DB_ID; // JARVIS хуудасны доор sub-page үүснэ
   if (!token || !pageId) return null;
 
-  const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
 
   // Content-г 1900 тэмдэгтийн блок болгон хуваах (Notion 2000 хязгаар)
   const chunkSize = 1900;
@@ -656,11 +662,11 @@ async function notionSaveScript(title, content) {
 
 // ── WEEKLY REPORT — multi-user ─────────────────────────────────────
 async function sendWeeklyReport() {
-  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
   const days    = [];
   for (let i = 1; i <= 7; i++) {
     const d = new Date(now.getTime() - i * 86400000);
-    days.push(d.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' }));
+    days.push(d.toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' }));
   }
 
   const tgUsers = await _getTelegramUsers().catch(() => []);
@@ -712,10 +718,10 @@ async function sendBrief() {
 }
 
 async function _sendBriefForUser(uid, chatId) {
-  const now       = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  const todaySHx  = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const now       = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
+  const todaySHx  = todaySH();   // давхар хөрвүүлэлтгүй — орой үед ч зөв огноо
   const yesterday = new Date(Date.now() - 86400000)
-    .toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+    .toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
 
   const features   = await getFeatures(uid);
   const routineCfg = await getRoutineConfig(uid);
@@ -724,7 +730,7 @@ async function _sendBriefForUser(uid, chatId) {
   const calEventsPromise = (isMain && calOk())   ? listTodayEvents().catch(() => [])  : Promise.resolve([]);
   const gmailPromise     = (isMain && gmailOk()) ? getUnreadEmails(3).catch(() => []) : Promise.resolve([]);
 
-  const [profileSnap, tasksRaw, routineSnap, logSnap, calEvents, gmailEmails] = await Promise.all([
+  const [profileSnap, tasksRaw, routineSnap, logSnap, calEvents, gmailEmails, intelSnap] = await Promise.all([
     dbPersonal.doc(`users/${uid}/bileg/profile`).get().catch(() => null),
     dbPersonal.collection(`users/${uid}/tasks`).where('done', '==', false).get()
       .catch(() => ({ docs: [] })),
@@ -732,7 +738,13 @@ async function _sendBriefForUser(uid, chatId) {
     dbPersonal.doc(`users/${uid}/logs/${yesterday}`).get().catch(() => null),
     calEventsPromise,
     gmailPromise,
+    dbPersonal.doc(`users/${uid}/intel/${todaySHx}`).get().catch(() => null),
   ]);
+
+  // ── МЭДЭЭ — intel worker (05:40) бэлдсэн 3 мөрийн digest ────────
+  // Зөвхөн ӨНӨӨДРИЙН мэдээг хэрэглэнэ, хуучныг харуулахгүй
+  const intel       = intelSnap?.exists ? intelSnap.data() : null;
+  const newsDigest  = (intel?.date === todaySHx && intel?.digest) ? intel.digest : '';
 
   // Нэр
   const cfgSnap  = await dbPersonal.doc(`users/${uid}/config/profile`).get().catch(() => null);
@@ -778,7 +790,8 @@ async function _sendBriefForUser(uid, chatId) {
 
   const dayNames = ['Ням', 'Даваа', 'Мягмар', 'Лхагва', 'Пүрэв', 'Баасан', 'Бямба'];
   let msg = `🌅 Өглөөний мэнд, *${userName}*.\n`;
-  msg += `${dayNames[now.getDay()]}, ${todaySHx} | Шанхай 07:30\n\n`;
+  const clock = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  msg += `${dayNames[now.getDay()]}, ${todaySHx} | Улаанбаатар ${clock}\n\n`;
   msg += `Routine: `;
   msg += done.length ? done.map(r => r.label).join(' · ') : 'хийгдэхгүй';
   msg += water ? ` | Ус: ${water}мл` : '';
@@ -786,20 +799,29 @@ async function _sendBriefForUser(uid, chatId) {
 
   if (tasks.length) {
     msg += `\n📋 Хийх (${tasks.length}):\n`;
-    tasks.forEach((t, i) => { msg += `${i + 1}. ${t}\n`; });
+    tasks.forEach((t, i) => { msg += `${i + 1}. ${mdSafe(t)}\n`; });
   }
-  if (profile.goal) msg += `\n🎯 ${profile.goal}\n`;
+  if (profile.goal) msg += `\n🎯 ${mdSafe(profile.goal)}\n`;
 
   if (calEvents?.length) {
     msg += `\n📅 Өнөөдрийн хуваарь:\n`;
-    calEvents.forEach(e => { msg += `• ${formatEventTime(e)} — ${e.summary}\n`; });
+    calEvents.forEach(e => { msg += `• ${formatEventTime(e)} — ${mdSafe(e.summary)}\n`; });
   }
   if (gmailEmails?.length) {
     msg += `\n📧 Уншаагүй имэйл (${gmailEmails.length}):\n`;
-    gmailEmails.forEach(e => { msg += `• ${e.from.slice(0, 20)} — ${e.subject.slice(0, 40)}\n`; });
+    gmailEmails.forEach(e => { msg += `• ${mdSafe(e.from).slice(0, 20)} — ${mdSafe(e.subject).slice(0, 40)}\n`; });
   }
 
-  msg += `\n💡 J.A.R.V.I.S:\n${advice}\n`;
+  // Google холбогдоогүй бол нэг мөрөөр шалтгааныг хэлнэ (зөвхөн эзэнд)
+  if (isMain && !(calOk() && gmailOk())) {
+    msg += `\n📭 Календар/Имэйл холбогдоогүй — Jarvis-д "Google холбоё" гэж хэл\n`;
+  }
+
+  if (newsDigest) {
+    msg += `\n📰 Өнөөдрийн мэдээ:\n${mdSafe(newsDigest)}\n`;
+  }
+
+  msg += `\n💡 J.A.R.V.I.S:\n${mdSafe(advice)}\n`;
 
   // HSK Blitz — зөвхөн features.hsk = true
   if (features.hsk) {
@@ -2166,7 +2188,7 @@ async function handleText(msg, ctx = {}) {
 
     if (cmd === 'санхүү' || cmd === 'finance') {
       // Monthly summary from Firestore
-      const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+      const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
       const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
       let txns = [];
       try {
@@ -2179,18 +2201,19 @@ async function handleText(msg, ctx = {}) {
       const incMNT     = txns.filter(t=>t.type==='income'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
       const expMNT     = txns.filter(t=>t.type==='expense'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
       const savMNT     = txns.filter(t=>t.type==='savings'&&t.currency==='MNT').reduce((s,t)=>s+t.amount,0);
-      const net        = incomeCNY - expCNY;
-      // Category breakdown
+      const net        = incMNT - expMNT;
+      // Category breakdown — төгрөгөөр
       const cats = {};
-      txns.filter(t=>t.type==='expense'&&t.currency==='CNY').forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
+      txns.filter(t=>t.type==='expense'&&t.currency==='MNT').forEach(t => { cats[t.category] = (cats[t.category]||0) + t.amount; });
       const catLines = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5)
-        .map(([c,a]) => `  • ${c}: ¥${a.toFixed(0)}`).join('\n');
+        .map(([c,a]) => `  • ${c}: ₮${a.toLocaleString()}`).join('\n');
       await tgSend(`💰 *${month} САНХҮҮГИЙН ТАЙЛАН*\n\n` +
-        `*CNY*\n` +
-        `  📈 Орлого: ¥${incomeCNY.toFixed(0)}\n` +
-        `  📉 Зарлага: ¥${expCNY.toFixed(0)}\n` +
-        `  ${net>=0?'✅':'⚠️'} Үлдэгдэл: ${net>=0?'+':''}¥${net.toFixed(0)}\n\n` +
-        (expMNT||incMNT||savMNT ? `*MNT*\n  ⬆ Хуримтлал: ₮${savMNT.toLocaleString()}\n\n` : '') +
+        `*MNT*\n` +
+        `  📈 Орлого: ₮${incMNT.toLocaleString()}\n` +
+        `  📉 Зарлага: ₮${expMNT.toLocaleString()}\n` +
+        `  ${net>=0?'✅':'⚠️'} Үлдэгдэл: ${net>=0?'+':''}₮${net.toLocaleString()}\n` +
+        (savMNT ? `  ⬆ Хуримтлал: ₮${savMNT.toLocaleString()}\n` : '') + `\n` +
+        (expCNY||incomeCNY ? `*CNY (хуучин)*\n  📈 ¥${incomeCNY.toFixed(0)}  📉 ¥${expCNY.toFixed(0)}\n\n` : '') +
         (catLines ? `*Зарлагын ангилал:*\n${catLines}\n\n` : '') +
         `_Нийт ${txns.length} гүйлгээ · /finance дэлгэрэнгүй_`);
       return;
@@ -2198,13 +2221,13 @@ async function handleText(msg, ctx = {}) {
 
     // Parse: /зарлага 50 CNY хоол coffee
     const parts  = raw.trim().split(/\s+/).slice(1);
-    let amount   = 0, currency = 'CNY', category = 'бусад', note = '';
+    let amount   = 0, currency = 'MNT', category = 'бусад', note = '';
 
     // Amount (support 50, 50CNY, 50¥, 50₮, 50000MNT)
     const amtMatch = parts[0]?.match(/^([\d.]+)(CNY|MNT|USD|¥|₮|\$)?$/i);
     if (amtMatch) {
       amount = parseFloat(amtMatch[1]);
-      if (amtMatch[2]) currency = {CNY:'CNY','¥':'CNY',MNT:'MNT','₮':'MNT',USD:'USD','$':'USD'}[amtMatch[2].toUpperCase()] || 'CNY';
+      if (amtMatch[2]) currency = {CNY:'CNY','¥':'CNY',MNT:'MNT','₮':'MNT',USD:'USD','$':'USD'}[amtMatch[2].toUpperCase()] || 'MNT';
       parts.shift();
     }
     // Explicit currency word
@@ -2216,7 +2239,7 @@ async function handleText(msg, ctx = {}) {
     note = parts.join(' ');
 
     if (!amount) {
-      const ex = cmd==='зарлага'||cmd==='expense' ? '/зарлага 50 хоол coffee' : cmd==='орлого'||cmd==='income' ? '/орлого 2000 LFS' : '/хуримтлал 100000 хадгаламжийн данс';
+      const ex = cmd==='зарлага'||cmd==='expense' ? '/зарлага 15000 хоол кофе' : cmd==='орлого'||cmd==='income' ? '/орлого 500000 LFS' : '/хуримтлал 100000 хадгаламжийн данс';
       await tgSend(`Хэлбэр: \`${ex}\``); return;
     }
 
@@ -2228,7 +2251,7 @@ async function handleText(msg, ctx = {}) {
     const txn = {
       id:       Date.now().toString(),
       type, amount, currency, category, note,
-      date:     new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Shanghai'})).toISOString().slice(0,10),
+      date:     new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Ulaanbaatar'})).toISOString().slice(0,10),
       ts:       new Date().toISOString(),
       source:   'telegram',
     };
@@ -2645,7 +2668,7 @@ async function handleText(msg, ctx = {}) {
       return;
     }
     const tomorrow = new Date(Date.now() + 86400000)
-      .toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+      .toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
     const plan = taskIds.map(id => {
       const label = KNOWN_TASKS[id.toLowerCase()] || ('📌 ' + id);
       return { id: id.toLowerCase(), label: label.slice(2), icon: label[0], done: false };
@@ -2720,7 +2743,7 @@ async function handleText(msg, ctx = {}) {
   // ── /os — T.H.R.E.E. OS unified today view ───────────────────────
   if (text === '/os' || text === '/status') {
     const today = todaySH();
-    const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+    const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
     const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
     const [routineSnap, hskSnap, tasksRaw, challengeSnap, profileSnap] = await Promise.all([
@@ -2764,12 +2787,12 @@ async function handleText(msg, ctx = {}) {
       const finSnap = await dbPersonal.collection(`users/${uid}/finance/txns/records`)
         .where('date', '>=', month + '-01').where('date', '<=', month + '-31').get();
       const txns   = finSnap.docs.map(d => d.data());
-      const expCNY = txns.filter(t => t.type === 'expense' && t.currency === 'CNY').reduce((s,t) => s+t.amount, 0);
-      const incCNY = txns.filter(t => t.type === 'income'  && t.currency === 'CNY').reduce((s,t) => s+t.amount, 0);
-      const net    = incCNY - expCNY;
+      const expM = txns.filter(t => t.type === 'expense' && t.currency === 'MNT').reduce((s,t) => s+t.amount, 0);
+      const incM = txns.filter(t => t.type === 'income'  && t.currency === 'MNT').reduce((s,t) => s+t.amount, 0);
+      const net  = incM - expM;
       if (txns.length) {
         financeBlock = `\n\n💰 *Санхүү (${month}):*\n` +
-          `📈 ¥${incCNY.toFixed(0)}  📉 ¥${expCNY.toFixed(0)}  ${net >= 0 ? '✅' : '⚠️'} ${net >= 0 ? '+' : ''}¥${net.toFixed(0)}`;
+          `📈 ₮${incM.toLocaleString()}  📉 ₮${expM.toLocaleString()}  ${net >= 0 ? '✅' : '⚠️'} ${net >= 0 ? '+' : ''}₮${net.toLocaleString()}`;
       }
     } catch {}
 
@@ -2890,8 +2913,8 @@ async function _updateChallengeScore(uid, role, pct, done, total) {
     const streakRef  = dbPersonal.doc(`challenge/${CHID}/streaks/${uid}`);
     const streakSnap = await streakRef.get();
     const st = streakSnap.exists ? streakSnap.data() : { current: 0, best: 0, total_days: 0, last_date: '' };
-    // GAP-10: Asia/Shanghai timezone (telegram.js-д аль хэдийнэ зөв байсан)
-    const yesterday  = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+    // GAP-10: Asia/Ulaanbaatar timezone (telegram.js-д аль хэдийнэ зөв байсан)
+    const yesterday  = new Date(Date.now() - 86400000).toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
     const newCurrent = pct >= 50 ? (st.last_date === yesterday ? (st.current||0)+1 : 1) : 0;
     await streakRef.set({
       current: newCurrent, best: Math.max(newCurrent, st.best||0),
@@ -2903,8 +2926,8 @@ async function _updateChallengeScore(uid, role, pct, done, total) {
 
 // ── SPRINT 34: Checkpoint мессеж явуулах (server.js cron дуудна) ─
 async function sendCheckpoints() {
-  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  const today   = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const now     = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
+  const today   = now.toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
   const nowMin  = now.getHours() * 60 + now.getMinutes();
 
   try {
@@ -2949,8 +2972,8 @@ async function sendCheckpoints() {
 
 // 22:00 daily recap (server.js cron дуудна)
 async function sendDailyRecap() {
-  const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
-  const today = now.toLocaleDateString('sv', { timeZone: 'Asia/Shanghai' });
+  const now   = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ulaanbaatar' }));
+  const today = now.toLocaleDateString('sv', { timeZone: 'Asia/Ulaanbaatar' });
   const recapRows = [];   // ← хуваалцсан group scoreboard-д хэрэглэнэ
   try {
     // Proof-Cam: өнөөдрийн баталгаажсан зургийг хүн тус бүрээр тоолох

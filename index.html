@@ -85,7 +85,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
         </div>
         <div class="input-group-luxury">
           <label>ХОТ</label>
-          <input type="text" id="ob-city-input" placeholder="Shanghai">
+          <input type="text" id="ob-city-input" placeholder="Улаанбаатар">
         </div>
         <div class="input-group-luxury">
           <label>ЗОРИЛГО</label>
@@ -3878,11 +3878,11 @@ async function _applyLogExpense(card, out) {
   }
   const ok = window.DB?.addExpense ? await window.DB.addExpense({
     type: card.type === 'income' ? 'income' : 'expense',
-    amount, currency: card.currency || 'CNY', category: card.category || 'бусад', note: card.note || '',
+    amount, currency: card.currency || 'MNT', category: card.category || 'бусад', note: card.note || '',
   }) : false;
   const typeLabel = card.type === 'income' ? 'орлого' : 'зарлага';
   const msg = ok
-    ? (card.message || `✓ ${amount} ${card.currency || 'CNY'} ${typeLabel} бүртгэгдлээ (${card.category || 'бусад'}).`)
+    ? (card.message || `✓ ${amount} ${card.currency || 'MNT'} ${typeLabel} бүртгэгдлээ (${card.category || 'бусад'}).`)
     : `⚠ ${typeLabel} бүртгэхэд алдаа гарлаа — нэвтэрсэн эсэхээ шалгаарай.`;
   if (el) { el.textContent = msg; el.style.opacity='0'; el.style.transition='opacity .25s'; requestAnimationFrame(()=>{el.style.opacity='1';}); }
   if (out) out.scrollTop = out.scrollHeight;
@@ -4164,7 +4164,7 @@ const MODULE_REGISTRY = [
   { id:'calendar',    label:'Mini Calendar',    icon:'📅', cat:'time',       defaultOn:false, widgetId:null },
   { id:'github',      label:'GitHub Activity',  icon:'🐙', cat:'dev',        defaultOn:false, widgetId:null },
   { id:'quote',       label:'Daily Quote',      icon:'💬', cat:'motivation', defaultOn:false, widgetId:null },
-  { id:'weather',     label:'Shanghai Weather', icon:'🌤', cat:'intel',      defaultOn:false, widgetId:null },
+  { id:'weather',     label:'Ulaanbaatar Weather', icon:'🌤', cat:'intel',      defaultOn:false, widgetId:null },
   { id:'lfs',         label:'LFS Stats',        icon:'✈', cat:'dev',        defaultOn:false, widgetId:null },
   { id:'countdown',   label:'HSK Countdown',    icon:'⏳', cat:'study',      defaultOn:false, widgetId:null },
   { id:'habit',       label:'Habit Streaks',    icon:'🔥', cat:'health',     defaultOn:false, widgetId:null },
@@ -4279,7 +4279,7 @@ function _populateVirtualModule(mod, bodyId) {
     worldclock: `<div style="display:flex;flex-direction:column;gap:4px" id="worldclock-body"></div>`,
     calendar:   `<div style="font-size:10px;text-align:center;padding:4px" id="vcal-body"></div>`,
     quote:      `<div style="font-size:11px;font-style:italic;color:var(--text-b);line-height:1.5;padding:2px 0" id="vmod-quote-text">—</div>`,
-    weather:    `<div style="font-size:11px;color:var(--text-b)" id="vmod-weather">🌤 Shanghai: —°C | 正在加载...</div>`,
+    weather:    `<div style="font-size:11px;color:var(--text-b)" id="vmod-weather">🌤 Улаанбаатар: —°C | 正在加载...</div>`,
     countdown:  `<div style="text-align:center;font-family:var(--hud)"><div style="font-size:20px;color: var(--text)" id="vmod-countdown">—</div><div style="font-size:9px;color:var(--text);margin-top:2px">DAYS TO HSK 4</div></div>`,
     habit:      `<div style="font-size:10px" id="vmod-habit">⟳ Loading streaks...</div>`,
     music:      `<div style="font-size:10px;color:var(--text-b)">🎵 <span id="vmod-music">Not playing</span></div>`,
@@ -7464,7 +7464,7 @@ function _fvStartClock() {
   const tick = () => {
     const el = document.getElementById('fv-clock');
     if (el) el.textContent = new Date().toLocaleTimeString('en-GB', {
-      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai'
+      hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ulaanbaatar'
     });
   };
   tick();
@@ -7746,9 +7746,9 @@ function _fvRenderCard(type) {
   if (type === 'clock') {
     const upd = () => {
       const now = new Date();
-      const t = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Asia/Shanghai' });
-      const d = now.toLocaleDateString('mn', { weekday:'long', month:'long', day:'numeric', timeZone:'Asia/Shanghai' });
-      body.innerHTML = `<div class="fv-clock-big">${t}</div><div class="fv-clock-date">🇨🇳 Shanghai · ${d}</div>`;
+      const t = now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit', timeZone:'Asia/Ulaanbaatar' });
+      const d = now.toLocaleDateString('mn', { weekday:'long', month:'long', day:'numeric', timeZone:'Asia/Ulaanbaatar' });
+      body.innerHTML = `<div class="fv-clock-big">${t}</div><div class="fv-clock-date">🇲🇳 Улаанбаатар · ${d}</div>`;
     };
     upd();
     if (_fvCardClockTimer) clearInterval(_fvCardClockTimer);

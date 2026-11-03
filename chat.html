@@ -961,7 +961,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     <div class="bar-brand">
       <div>
         <div class="bar-title">JARVIS OS</div>
-        <div class="bar-sub">HSK Command Center · Shanghai</div>
+        <div class="bar-sub">HSK Command Center · Улаанбаатар</div>
       </div>
     </div>
 
@@ -1940,11 +1940,11 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     if (!amount || amount <= 0) { bub.textContent = '⚠ Дүнг ойлгосонгүй, дахин тодорхой бичээрэй (жишээ: "50 юань хоолонд зарлаа").'; return; }
     const ok = window.DB?.addExpense ? await window.DB.addExpense({
       type: card.type === 'income' ? 'income' : 'expense',
-      amount, currency: card.currency || 'CNY', category: card.category || 'бусад', note: card.note || '',
+      amount, currency: card.currency || 'MNT', category: card.category || 'бусад', note: card.note || '',
     }) : false;
     const typeLabel = card.type === 'income' ? 'орлого' : 'зарлага';
     bub.textContent = ok
-      ? (card.message || `✓ ${amount} ${card.currency || 'CNY'} ${typeLabel} бүртгэгдлээ (${card.category || 'бусад'}).`)
+      ? (card.message || `✓ ${amount} ${card.currency || 'MNT'} ${typeLabel} бүртгэгдлээ (${card.category || 'бусад'}).`)
       : `⚠ ${typeLabel} бүртгэхэд алдаа гарлаа — нэвтэрсэн эсэхээ шалгаарай.`;
     msgsEl.scrollTop = msgsEl.scrollHeight;
   }
@@ -2032,7 +2032,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       text:   plan.label || 'T.H.R.E.E. OS Mission Day',
       dates:  `${startDT}/${endDT}`,
       details,
-      location: 'Shanghai',
+      location: 'Улаанбаатар',
     });
     const url = `https://calendar.google.com/calendar/render?${params.toString()}`;
     // Open via Electron shell or fallback to window.open
@@ -2169,7 +2169,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
     // Clock
     const now=new Date();
-    const t=now.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Asia/Shanghai'});
+    const t=now.toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:'Asia/Ulaanbaatar'});
     const bc=document.getElementById('bar-clock');if(bc)bc.textContent=t;
   }
 
@@ -2179,7 +2179,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
   const LIVE_NOTIFS=[
     {t:'WARN',msg:'Daily target: review 20 words'},
     {t:'HSK', msg:'Spaced repetition interval due: 14 words'},
-    {t:'SYS', msg:'Shanghai timezone: synchronized'},
+    {t:'SYS', msg:'Ulaanbaatar timezone: synchronized'},
     {t:'NET', msg:'Proxy relay: secure tunnel active'},
     {t:'AI',  msg:'Memory context: loaded 128 turns'},
     {t:'LFS', msg:'LFS Shanghai: ops dashboard active'},
