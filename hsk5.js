@@ -497,6 +497,22 @@ async function refreshHome() {
     }
   } catch {}
 
+  // Сонсголын дуу 2026-11-04-нд зассан. Түүнээс өмнө хийсэн оношийн
+  // 听力 оноо нь таамаглалаар гарсан тул найдвартай биш.
+  const AUDIO_FIX = '2026-11-04';
+  if (s.diagDone && (s.diagAt || '') < AUDIO_FIX) {
+    $('diag-cta').innerHTML = `
+      <div class="warn-box">
+        <b>Оношоо дахин хийх хэрэгтэй.</b> Чиний онош хийх үед сонсголын дуу
+        гарахгүй байсан — 听力 ${Math.round(s.listen ?? 0)}/100 гэдэг тоо
+        таамаглалаар гарсан, бодит түвшин биш. Одоо дуу ажиллаж байна.
+        <div style="margin-top:10px">
+          <button class="big pri" onclick="Diag.retake()">Оношоо дахин хийх (15 мин)</button>
+        </div>
+      </div>`;
+    return;
+  }
+
   $('diag-cta').innerHTML = s.diagDone ? '' : `
     <div class="warn-box">
       <b>Эхлээд онош тест хий.</b> 15 минут. Үүнгүйгээр систем чиний бодит түвшнийг
@@ -542,7 +558,14 @@ const Diag = {
     this.step = 0; this.qOk = 0; this.qIdx = 0;
     this.renderVocab();
   },
-  retake() { this._retake = true; this.open(); },
+  retake() {
+    // Нүүрнээс дуудагдвал дэлгэц солигдоогүй байж болзошгүй
+    this._retake = true;
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+    $('v-diag')?.classList.add('on');
+    window.scrollTo(0, 0);
+    this.open();
+  },
 
   renderVocab() {
     const i = this.step, w = this.vocabItems[i];
