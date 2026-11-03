@@ -37,10 +37,13 @@ function rankModel(name, tier) {
     ? (isPro ? 3 : (isFlash && !isLite ? 2 : 1))
     : ((isFlash && !isLite) ? 3 : (isLite ? 2 : 1));
   const stable = /preview|exp/.test(name) ? 0 : 1;
-  // «-latest» нэрс нь хамгийн шинэ модель рүү зааж, квот нь хурдан дуусдаг.
-  // Тодорхой хувилбартайг нь түрүүлж оролдвол ажиллах магадлал өндөр.
-  const alias = /latest/.test(name) ? -5 : 0;
-  return fit * 1000 + ver * 10 + stable + alias;
+  // Эрэмбийн дараалал: ажлын төрөлд тохирох → тодорхой хувилбартай →
+  // шинэ хувилбар → тогтвортой.
+  // «-latest» нэрс нь хамгийн шинэ модель рүү зааж, квот нь түрүүлж дүүрдэг
+  // (туршилтаар: flash-latest 429 байхад 3.6-flash ажиллаж байв), тиймээс
+  // тодорхой хувилбартайг нь ҮРГЭЛЖ түрүүлж оролдоно.
+  const explicit = m ? 50000 : 0;
+  return fit * 100000 + explicit + ver * 10 + stable;
 }
 
 async function allModels(key) {
