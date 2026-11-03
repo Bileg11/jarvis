@@ -30,7 +30,10 @@ function rankModel(name, tier) {
     ? (isPro ? 3 : (isFlash && !isLite ? 2 : 1))
     : ((isFlash && !isLite) ? 3 : (isLite ? 2 : 1));
   const stable = /preview|exp/.test(name) ? 0 : 1;
-  return fit * 1000 + ver * 10 + stable;
+  // «-latest» нэрс нь хамгийн шинэ модель рүү зааж, квот нь хурдан дуусдаг.
+  // Тодорхой хувилбартайг нь түрүүлж оролдвол ажиллах магадлал өндөр.
+  const alias = /latest/.test(name) ? -5 : 0;
+  return fit * 1000 + ver * 10 + stable + alias;
 }
 
 function chooseModels(all, tier, n = 4) {
@@ -73,7 +76,7 @@ async function allModels(key) {
 async function models(key, tier) {
   if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
   const all = await allModels(key);
-  const list = all.length ? chooseModels(all, tier) : [];
+  const list = all.length ? chooseModels(all, tier, 6) : [];
   const out = list.length ? list : FALLBACK[tier] || FALLBACK.flash;
   if (!models._logged) { models._logged = {}; }
   if (!models._logged[tier]) { models._logged[tier] = 1; console.log(`[AI] ${tier}: ${out.join(' → ')}`); }

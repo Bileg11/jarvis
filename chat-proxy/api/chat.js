@@ -37,7 +37,10 @@ function rankModel(name, tier) {
     ? (isPro ? 3 : (isFlash && !isLite ? 2 : 1))
     : ((isFlash && !isLite) ? 3 : (isLite ? 2 : 1));
   const stable = /preview|exp/.test(name) ? 0 : 1;
-  return fit * 1000 + ver * 10 + stable;
+  // «-latest» нэрс нь хамгийн шинэ модель рүү зааж, квот нь хурдан дуусдаг.
+  // Тодорхой хувилбартайг нь түрүүлж оролдвол ажиллах магадлал өндөр.
+  const alias = /latest/.test(name) ? -5 : 0;
+  return fit * 1000 + ver * 10 + stable + alias;
 }
 
 async function allModels(key) {
@@ -58,7 +61,7 @@ async function pickModels(key, tier) {
   const all = await allModels(key);
   if (all.error) return all;
   const list = all.map(name => ({ name, r: rankModel(name, tier) }))
-    .filter(x => x.r !== null).sort((a, b) => b.r - a.r).slice(0, 4).map(x => x.name);
+    .filter(x => x.r !== null).sort((a, b) => b.r - a.r).slice(0, 6).map(x => x.name);
   return list.length ? list : (FALLBACK[tier] || FALLBACK.flash);
 }
 
