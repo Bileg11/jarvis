@@ -12,7 +12,11 @@ cp design-system.css theme.js speak.js index.html index.css jarvis-config.js app
 cp home.html jarvis-shell.css jarvis-shell.js jarvis-daily.js _site/ 2>/dev/null || true
 
 # HTML хуудаснууд
-cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html finance.html hsk-signup.html learn.html login.html _site/ 2>/dev/null || true
+cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html hsk5.html finance.html hsk-signup.html learn.html login.html _site/ 2>/dev/null || true
+
+# HSK5 систем — хөдөлгүүр + HSK 3.0 дата
+cp hsk5.js _site/ 2>/dev/null || true
+mkdir -p _site/data/hsk3 && cp data/hsk3/*.json _site/data/hsk3/ 2>/dev/null || true
 
 # Ханз app
 cp hsk-vocab.js hsk-vocab-45.js _site/ 2>/dev/null || true

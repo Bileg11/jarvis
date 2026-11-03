@@ -11,9 +11,11 @@
 const fs   = require('fs');
 const path = require('path');
 
-const KEY   = process.env.GEMINI_API_KEY;
-const MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-const URL   = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`;
+const KEY    = process.env.GEMINI_API_KEY;
+const GH     = process.env.SYSTEM_USE_TOKEN;          // GitHub Models — Gemini байхгүй үед
+const MODEL  = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const URL    = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${KEY}`;
+const GH_URL = 'https://models.inference.ai.azure.com/chat/completions';
 const DIR   = path.join(__dirname, '..', '..', 'data', 'hsk3');
 const BATCH = 40;
 const LEVELS = (process.env.LEVELS || '5,4,3,2,1').split(',').map(Number);
@@ -36,7 +38,32 @@ const SYSTEM = `Чи бол 15 жил хятад хэл заасан, монго
 不得不 bùdébù (Adv) have no choice but → заавал, аргагүй
 把握 bǎwò (V/N) to grasp; certainty → атгах, итгэлтэй байдал`;
 
+// GitHub Models (gpt-4o-mini) — Gemini түлхүүр байхгүй үеийн нөөц зам
+async function githubModels(prompt, tries = 3) {
+  for (let i = 0; i < tries; i++) {
+    try {
+      const r = await fetch(GH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GH}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: prompt }],
+          temperature: 0.2, max_tokens: 2048, response_format: { type: 'json_object' },
+        }),
+      });
+      if (r.status === 429 || r.status >= 500) { await sleep(10000 * (i + 1)); continue; }
+      if (!r.ok) { console.warn('  GH', r.status, (await r.text()).slice(0, 160)); await sleep(3000); continue; }
+      const d = await r.json();
+      const t = d.choices?.[0]?.message?.content?.trim();
+      if (t) return t;
+    } catch (e) { console.warn('  GH алдаа:', e.message); }
+    await sleep(4000 * (i + 1));
+  }
+  return null;
+}
+
 async function gemini(prompt, tries = 4) {
+  if (!KEY) return githubModels(prompt);
   for (let i = 0; i < tries; i++) {
     try {
       const r = await fetch(URL, {
@@ -81,11 +108,16 @@ async function doLevel(lv) {
 
     const prompt =
       `Доорх ${idxs.length} хятад үгийн монгол тайлбарыг өг.\n` +
-      `ЗӨВХӨН JSON массив буцаа: ["тайлбар1","тайлбар2",...] — яг ${idxs.length} элемент, дарааллаар нь.\n\n${lines}`;
+      `ЗӨВХӨН JSON буцаа, ийм хэлбэрээр: {"mn":["тайлбар1","тайлбар2",...]} — ` +
+      `массивт яг ${idxs.length} элемент, өгсөн дарааллаар.\n\n${lines}`;
 
     const raw = await gemini(prompt);
     let arr = null;
-    try { arr = JSON.parse(raw); } catch {}
+    try {
+      const parsed = JSON.parse(raw);
+      arr = Array.isArray(parsed) ? parsed
+          : (Object.values(parsed).find(v => Array.isArray(v)) || null);
+    } catch {}
     if (!Array.isArray(arr) || arr.length !== idxs.length) {
       console.warn(`  ✗ ${s}-${s + idxs.length}: хариу тохирсонгүй (${Array.isArray(arr) ? arr.length : 'JSON биш'})`);
       await sleep(2000);
@@ -108,7 +140,11 @@ async function doLevel(lv) {
 }
 
 (async () => {
-  if (!KEY) throw new Error('GEMINI_API_KEY байхгүй');
+  if (!KEY && !GH) {
+    console.log('GEMINI_API_KEY ч, SYSTEM_USE_TOKEN ч байхгүй — алгаслаа.');
+    return;   // алдаа биш: түлхүүр нэмэгдмэгц дахин ажиллана
+  }
+  console.log(KEY ? 'Эх сурвалж: Gemini' : 'Эх сурвалж: GitHub Models (gpt-4o-mini)');
   for (const lv of LEVELS) await doLevel(lv);
   console.log('\nДууслаа.');
 })().catch(e => { console.error('Алдаа:', e.message); process.exit(1); });

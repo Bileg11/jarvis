@@ -228,6 +228,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     <button class="os-nav-btn"        id="nav-intel"   onclick="navTo('intel')">⬡ INTEL</button>
     <button class="os-nav-btn"        id="nav-track"   onclick="navTo('track')">◎ TRACK</button>
     <button class="os-nav-btn"        id="nav-profile" onclick="navTo('profile')">◈ PROFILE</button>
+    <button class="os-nav-btn" onclick="window.location.href=jarvisHref('hsk5')" title="HSK5 шалгалтын систем — 12.13" style="border-color:rgba(126,184,126,.55);color:var(--ok);font-weight:600">🎯 HSK5</button>
     <button class="os-nav-btn" onclick="window.location.href=jarvisHref('hsk')" title="HSK — сурах, дасгал, шалгалт" style="border-color:rgba(126,184,126,.3);color:var(--ok)">📚 HSK</button>
     <button class="os-nav-btn" onclick="window.location.href=jarvisHref('finance')" title="Санхүүгийн тооцоолол" style="border-color:rgba(196,160,100,.3);color:var(--warn)">💰 FIN</button>
     <button class="os-nav-btn os-nav-guide" id="nav-guide" onclick="navTo('guide')" title="Хэрэглэгчийн гарын авлага">? GUIDE</button>
@@ -251,6 +252,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     <button class="mm-item" onclick="mmGo(()=>navTo('intel'))"><span>⬡</span>INTEL</button>
     <button class="mm-item" onclick="mmGo(()=>navTo('track'))"><span>◎</span>TRACK</button>
     <button class="mm-item" onclick="mmGo(()=>navTo('profile'))"><span>◈</span>PROFILE</button>
+    <button class="mm-item" style="color:var(--ok)" onclick="mmGo(()=>location.href=jarvisHref('hsk5'))"><span>🎯</span>HSK5</button>
     <button class="mm-item" style="color:var(--ok)" onclick="mmGo(()=>location.href=jarvisHref('hsk'))"><span>📚</span>HSK</button>
     <button class="mm-item" style="color:var(--warn)" onclick="mmGo(()=>location.href=jarvisHref('finance'))"><span>💰</span>FIN</button>
     <button class="mm-item" onclick="mmGo(()=>navTo('guide'))"><span>?</span>GUIDE</button>

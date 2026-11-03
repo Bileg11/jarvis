@@ -32,7 +32,8 @@ jobs:
 
       - name: Монгол тайлбар үүсгэх
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY:   ${{ secrets.GEMINI_API_KEY }}
+          SYSTEM_USE_TOKEN: ${{ secrets.SYSTEM_USE_TOKEN }}
           LEVELS: ${{ github.event.inputs.levels || '5,4,3,2,1' }}
         run: node scripts/gen/mn-gloss.js
 

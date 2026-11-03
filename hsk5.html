@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>HSK5 — Шалгалтын систем</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
+<script src="theme.js"></script>
+<script src="jarvis-config.js"></script>
+<script src="speak.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+  /* ⚠ Шинэ өнгө энд БҮҮ нэм — design-system.css-ийн хувьсагчдыг ашигла. */
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:var(--font-ui);
+         font-size:var(--fs-md); min-height:100vh; -webkit-text-size-adjust:100%; }
+  .page { max-width:720px; margin:0 auto; padding:var(--sp-5) var(--sp-4) 0; }
+  .cn { font-family:var(--font-hanzi); }
+
+  /* ── Pomodoro мөр — хуудсанд наалдаж байнга харагдана ───────── */
+  #pomo {
+    position:sticky; top:0; z-index:40; margin:0 calc(-1*var(--sp-4)) var(--sp-4);
+    padding:10px var(--sp-4); background:var(--surface);
+    border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:var(--sp-3);
+  }
+  #pomo.run   { border-bottom-color:var(--accent); }
+  #pomo.brk   { background:var(--accent-soft); }
+  #pomo-time  { font-family:var(--font-mono); font-size:var(--fs-xl); font-weight:var(--w-bold);
+                min-width:68px; letter-spacing:-.5px; }
+  #pomo-task  { flex:1; min-width:0; font-size:var(--fs-sm); color:var(--text-2);
+                overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #pomo-count { font-size:var(--fs-xs); color:var(--text-3); font-family:var(--font-mono); }
+  .pbtn { border:1px solid var(--border); background:var(--surface); color:var(--text);
+          border-radius:var(--r-md); padding:7px 12px; font-size:var(--fs-sm);
+          cursor:pointer; font-family:inherit; white-space:nowrap; }
+  .pbtn:hover  { border-color:var(--border-strong); }
+  .pbtn.on     { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+
+  /* ── Толгой ──────────────────────────────────────────────── */
+  .hdr { display:flex; justify-content:space-between; align-items:flex-start;
+         gap:var(--sp-4); margin-bottom:var(--sp-5); }
+  .hdr h1 { font-size:var(--fs-xl); font-weight:var(--w-bold); line-height:1.2; }
+  .hdr .sub { font-size:var(--fs-sm); color:var(--text-2); margin-top:2px; }
+  .cd { text-align:right; flex:0 0 auto; }
+  .cd b { display:block; font-size:var(--fs-3xl); font-weight:var(--w-bold); line-height:1; }
+  .cd span { font-size:var(--fs-xs); color:var(--text-2); }
+
+  /* ── Оноо: таамаглал ─────────────────────────────────────── */
+  .score { background:var(--surface); border:1px solid var(--border);
+           border-radius:var(--r-lg); padding:var(--sp-4); margin-bottom:var(--sp-4); }
+  .score-top { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:var(--sp-3); }
+  .score-num { font-size:var(--fs-3xl); font-weight:var(--w-bold); line-height:1; font-family:var(--font-mono); }
+  .score-of  { font-size:var(--fs-sm); color:var(--text-3); }
+  .score-tag { font-size:var(--fs-xs); padding:3px 9px; border-radius:var(--r-pill);
+               border:1px solid var(--border); color:var(--text-2); }
+  .score-tag.good { color:var(--ok);     border-color:var(--ok);     background:var(--ok-soft); }
+  .score-tag.warn { color:var(--warn);   border-color:var(--warn);   background:var(--warn-soft); }
+  .score-tag.bad  { color:var(--danger); border-color:var(--danger); background:var(--danger-soft); }
+
+  .skills { display:grid; gap:10px; }
+  .skill  { display:grid; grid-template-columns:62px 1fr 76px; align-items:center; gap:var(--sp-3); }
+  .skill-n { font-size:var(--fs-sm); color:var(--text-2); }
+  .skill-v { font-family:var(--font-mono); font-size:var(--fs-sm); text-align:right; color:var(--text-2); }
+  .bar  { height:7px; border-radius:var(--r-pill); background:var(--track); overflow:hidden; position:relative; }
+  .bar > i { display:block; height:100%; background:var(--accent); border-radius:var(--r-pill);
+             transition:width var(--t-med); }
+  .bar > u { position:absolute; top:-3px; bottom:-3px; width:2px; background:var(--text-3); opacity:.55; }
+
+  /* ── Хэсгийн гарчиг ─────────────────────────────────────── */
+  .sec { display:flex; align-items:baseline; justify-content:space-between;
+         margin:var(--sp-6) 0 var(--sp-3); }
+  .sec h2 { font-size:var(--fs-md); font-weight:var(--w-bold); }
+  .sec span { font-size:var(--fs-sm); color:var(--text-3); }
+
+  /* ── Өнөөдрийн төлөвлөгөө ───────────────────────────────── */
+  .plan { display:grid; gap:8px; }
+  .blk  { display:grid; grid-template-columns:30px 1fr auto; align-items:center; gap:var(--sp-3);
+          background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md);
+          padding:11px var(--sp-3); cursor:pointer; text-align:left;
+          font-family:inherit; font-size:var(--fs-md); color:var(--text); width:100%; }
+  .blk:hover { border-color:var(--border-strong); }
+  .blk.done  { opacity:.5; }
+  .blk.now   { border-color:var(--accent); background:var(--accent-soft); }
+  .blk-i   { font-family:var(--font-hanzi); font-size:17px; color:var(--accent-text); text-align:center; }
+  .blk-t   { min-width:0; }
+  .blk-t b { display:block; font-weight:var(--w-med); font-size:var(--fs-sm); }
+  .blk-t s { display:block; font-size:var(--fs-xs); color:var(--text-3); text-decoration:none; margin-top:1px; }
+  .blk-m   { font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-3); }
+
+  /* ── Модулийн хавтан ────────────────────────────────────── */
+  .mods { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .mod  { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md);
+          padding:var(--sp-3); cursor:pointer; text-align:left; font-family:inherit;
+          color:var(--text); display:flex; flex-direction:column; gap:3px; min-height:62px; }
+  .mod:hover { border-color:var(--border-strong); }
+  .mod b { font-size:var(--fs-sm); font-weight:var(--w-med); }
+  .mod s { font-size:var(--fs-xs); color:var(--text-3); text-decoration:none; }
+
+  /* ── Дэлгэц (модуль нээгдэх) ────────────────────────────── */
+  .view { display:none; }
+  .view.on { display:block; }
+  .vhead { display:flex; align-items:center; gap:var(--sp-3); margin-bottom:var(--sp-4); }
+  .vhead h2 { font-size:var(--fs-lg); font-weight:var(--w-bold); flex:1; }
+
+  /* ── Судлах карт ────────────────────────────────────────── */
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+          padding:var(--sp-6) var(--sp-4); text-align:center; min-height:270px;
+          display:flex; flex-direction:column; align-items:center; justify-content:center;
+          gap:var(--sp-3); cursor:pointer; }
+  .card .hz { font-family:var(--font-hanzi); font-size:var(--fs-hanzi-lg); line-height:1.1; }
+  .card .py { font-family:var(--font-mono); font-size:var(--fs-xl); color:var(--accent-text); }
+  .card .mn { font-size:var(--fs-lg); color:var(--text-2); }
+  .card .en { font-size:var(--fs-sm); color:var(--text-3); max-width:30em; }
+  .card .hint { font-size:var(--fs-xs); color:var(--text-3); }
+  .card .pos  { font-size:var(--fs-xs); color:var(--text-3); border:1px solid var(--border);
+                border-radius:var(--r-pill); padding:2px 8px; }
+
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:var(--sp-3); }
+  .row3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:var(--sp-3); }
+  .big  { padding:15px; font-size:var(--fs-md); border-radius:var(--r-md); cursor:pointer;
+          font-family:inherit; border:1px solid var(--border); background:var(--surface); color:var(--text); }
+  .big:hover { border-color:var(--border-strong); }
+  .big.ok   { border-color:var(--ok);     color:var(--ok);     background:var(--ok-soft); }
+  .big.no   { border-color:var(--danger); color:var(--danger); background:var(--danger-soft); }
+  .big.pri  { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+
+  /* ── Сонголттой асуулт ──────────────────────────────────── */
+  .q      { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+            padding:var(--sp-4); margin-bottom:var(--sp-3); }
+  .q-txt  { font-family:var(--font-hanzi); font-size:var(--fs-lg); line-height:var(--lh-cn);
+            margin-bottom:var(--sp-3); }
+  .q-pas  { font-family:var(--font-hanzi); font-size:var(--fs-md); line-height:var(--lh-cn);
+            color:var(--text); background:var(--surface-2); border-radius:var(--r-md);
+            padding:var(--sp-3); margin-bottom:var(--sp-3); white-space:pre-wrap; }
+  .opt    { display:block; width:100%; text-align:left; padding:12px var(--sp-3); margin-bottom:7px;
+            border:1px solid var(--border); border-radius:var(--r-md); background:var(--surface);
+            color:var(--text); font-family:var(--font-hanzi); font-size:var(--fs-md);
+            cursor:pointer; line-height:1.5; }
+  .opt:hover  { border-color:var(--border-strong); }
+  .opt.sel    { border-color:var(--accent); background:var(--accent-soft); }
+  .opt.right  { border-color:var(--ok);     background:var(--ok-soft);     color:var(--ok); }
+  .opt.wrong  { border-color:var(--danger); background:var(--danger-soft); color:var(--danger); }
+  .opt b  { font-family:var(--font-mono); margin-right:9px; color:var(--text-3); }
+  .exp    { font-size:var(--fs-sm); color:var(--text-2); line-height:var(--lh-body);
+            border-left:2px solid var(--accent); padding-left:var(--sp-3); margin-top:var(--sp-3); }
+
+  textarea.ds-input { min-height:190px; resize:vertical; font-family:var(--font-hanzi);
+                      font-size:var(--fs-md); line-height:var(--lh-cn); width:100%; }
+  .count { font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--text-3);
+           text-align:right; margin-top:4px; }
+  .count.ok { color:var(--ok); }
+
+  .note { font-size:var(--fs-sm); color:var(--text-2); line-height:var(--lh-body);
+          background:var(--surface-2); border-radius:var(--r-md); padding:var(--sp-3);
+          margin-bottom:var(--sp-3); }
+  .warn-box { border:1px solid var(--warn); background:var(--warn-soft); color:var(--text);
+              border-radius:var(--r-md); padding:var(--sp-3); font-size:var(--fs-sm);
+              line-height:var(--lh-body); margin-bottom:var(--sp-3); }
+
+  .tabs { display:flex; gap:6px; margin-bottom:var(--sp-4); flex-wrap:wrap; }
+  .tab  { padding:7px 13px; border:1px solid var(--border); border-radius:var(--r-pill);
+          background:var(--surface); color:var(--text-2); font-size:var(--fs-sm);
+          cursor:pointer; font-family:inherit; }
+  .tab.on { background:var(--accent); color:var(--accent-ink); border-color:var(--accent); }
+
+  .glist { display:grid; gap:7px; }
+  .gitem { background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md);
+           padding:var(--sp-3); }
+  .gitem .gc { font-family:var(--font-hanzi); font-size:var(--fs-md); line-height:var(--lh-cn); }
+  .gitem .gl { font-size:var(--fs-xs); color:var(--text-3); margin-bottom:3px; }
+
+  .toast { position:fixed; left:50%; bottom:78px; transform:translateX(-50%);
+           background:var(--text); color:var(--bg); padding:10px 18px; border-radius:var(--r-pill);
+           font-size:var(--fs-sm); z-index:90; opacity:0; pointer-events:none;
+           transition:opacity var(--t-med); max-width:90vw; text-align:center; }
+  .toast.on { opacity:1; }
+
+  .timer { font-family:var(--font-mono); font-size:var(--fs-lg); font-weight:var(--w-bold); }
+  .timer.low { color:var(--danger); }
+
+  .muted { color:var(--text-3); font-size:var(--fs-sm); }
+  .mono  { font-family:var(--font-mono); }
+  @media (max-width:420px){ .mods { grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<!-- ══ POMODORO ══════════════════════════════════════════════ -->
+<div id="pomo">
+  <div id="pomo-time">25:00</div>
+  <div id="pomo-task">Эхлэхэд бэлэн</div>
+  <div id="pomo-count" title="Өнөөдөр дуусгасан pomodoro">0/12</div>
+  <button class="pbtn" id="pomo-btn" onclick="Pomo.toggle()">Эхлэх</button>
+  <button class="pbtn" onclick="Pomo.reset()" title="Дахин эхлүүлэх">↺</button>
+</div>
+
+<div class="page">
+
+  <!-- ══ ГОЛ ДЭЛГЭЦ ═══════════════════════════════════════════ -->
+  <div class="view on" id="v-home">
+    <div class="hdr">
+      <div>
+        <h1>HSK 5 — 汉语水平考试</h1>
+        <div class="sub" id="home-sub">Ачаалж байна…</div>
+      </div>
+      <div class="cd"><b id="cd-days">—</b><span>хоног үлдлээ</span></div>
+    </div>
+
+    <div id="diag-cta"></div>
+
+    <!-- Таамагласан оноо -->
+    <div class="score">
+      <div class="score-top">
+        <div>
+          <span class="score-num" id="sc-total">—</span>
+          <span class="score-of">/ 300 таамаг</span>
+        </div>
+        <span class="score-tag" id="sc-tag">онош хийгээгүй</span>
+      </div>
+      <div class="skills">
+        <div class="skill">
+          <span class="skill-n">听力</span>
+          <span class="bar"><i id="bar-listen" style="width:0%"></i><u id="mk-listen"></u></span>
+          <span class="skill-v" id="val-listen">—</span>
+        </div>
+        <div class="skill">
+          <span class="skill-n">阅读</span>
+          <span class="bar"><i id="bar-read" style="width:0%"></i><u id="mk-read"></u></span>
+          <span class="skill-v" id="val-read">—</span>
+        </div>
+        <div class="skill">
+          <span class="skill-n">写作</span>
+          <span class="bar"><i id="bar-write" style="width:0%"></i><u id="mk-write"></u></span>
+          <span class="skill-v" id="val-write">—</span>
+        </div>
+        <div class="skill">
+          <span class="skill-n">词汇</span>
+          <span class="bar"><i id="bar-vocab" style="width:0%"></i><u id="mk-vocab"></u></span>
+          <span class="skill-v" id="val-vocab">—</span>
+        </div>
+      </div>
+      <div class="exp" id="sc-advice" style="margin-top:var(--sp-4)">
+        Онош тестийг хийвэл JARVIS чиний бодит түвшнийг хэмжээд өдөр тутмын
+        төлөвлөгөөг зохионо.
+      </div>
+    </div>
+
+    <div class="sec"><h2>Өнөөдрийн төлөвлөгөө</h2><span id="plan-sum">—</span></div>
+    <div class="plan" id="plan-list"></div>
+
+    <div class="sec"><h2>Бүх дасгал</h2><span>хүссэн үедээ</span></div>
+    <div class="mods">
+      <button class="mod" onclick="go('vocab')"><b>词汇 Үгийн сан</b><s id="m-vocab">—</s></button>
+      <button class="mod" onclick="go('listen')"><b>听力 Сонсгол</b><s id="m-listen">дасгал + 听写</s></button>
+      <button class="mod" onclick="go('read')"><b>阅读 Унших</b><s id="m-read">3 төрлийн даалгавар</s></button>
+      <button class="mod" onclick="go('write')"><b>写作 Бичих</b><s id="m-write">看图 + 话题作文</s></button>
+      <button class="mod" onclick="go('speak')"><b>口语 Яриа (HSKK)</b><s id="m-speak">5 даалгавар</s></button>
+      <button class="mod" onclick="go('grammar')"><b>语法 Дүрэм</b><s id="m-grammar">—</s></button>
+      <button class="mod" onclick="go('mock')"><b>Mock шалгалт</b><s>72 асуулт · 110 мин</s></button>
+      <button class="mod" onclick="go('stats')"><b>Шинжилгээ</b><s>сул тал, явц</s></button>
+    </div>
+
+    <div class="sec"><h2>Шалгалтын бүтэц</h2><span>HSK 3.0</span></div>
+    <div class="note">
+      <b>听力</b> 35 асуулт · 25 мин · 100 оноо — бичлэг <b>ганц</b> удаа тавигдана, хариулт <b>3</b> сонголттой (A/B/C)<br>
+      <b>阅读</b> 35 асуулт · 35 мин · 100 оноо — 篇章填空 10 · 排列顺序 10 · 读后选择 15<br>
+      <b>写作</b> 2 даалгавар · 40 мин · 100 оноо — 看图写作 ≥100 ханз · 话题作文 ≥200 ханз<br>
+      <b>口语 HSKK</b> 5 даалгавар · ~23 мин · тусад нь 16:20-д<br>
+      Хэсэг бүр <b>тусдаа цаг</b>тай — цаг дуусмагц буцаж засах боломжгүй. Тэнцэх босго 180/300.
+    </div>
+
+    <div class="jv-nav-space"></div>
+  </div>
+
+  <!-- ══ ОНОШ ════════════════════════════════════════════════ -->
+  <div class="view" id="v-diag">
+    <div class="vhead"><button class="pbtn" onclick="go('home')">← Буцах</button><h2>Онош тест</h2>
+      <span class="muted mono" id="diag-prog"></span></div>
+    <div id="diag-body"></div>
+  </div>
+
+  <!-- ══ ҮГИЙН САН ═══════════════════════════════════════════ -->
+  <div class="view" id="v-vocab">
+    <div class="vhead"><button class="pbtn" onclick="go('home')">← Буцах</button><h2>词汇</h2>
+      <span class="muted mono" id="vocab-prog"></span></div>
+    <div id="vocab-body"></div>
+  </div>
+
+  <!-- ══ СОНСГОЛ ═════════════════════════════════════════════ -->
+  <div class="view" id="v-listen">
+    <div class="vhead"><button class="pbtn" onclick="go('home')">← Буцах</button><h2>听力</h2>
+      <span class="muted mono" id="listen-prog"></span></div>
+    <div id="listen-body"></div>
+  </div>
+
+  <!-- ══ УНШИХ ═══════════════════════════════════════════════ -->
+  <div class="view" id="v-read">
+    <div class="vhead"><button class="pbtn" onclick="go('home')">← Буцах</button><h2>阅读</h2>
+      <span class="muted mono" id="read-prog"></span></div>
+    <div id="read-body"></div>
+  </div>
+
+  <!-- ══ БИЧИХ ═══════════════════════════════════════════════ -->
+  <div class="view" id="v-write">
+    <div class="vhead"><button class="pbtn" onclick="go('home')">← Буцах</button><h2>写作</h2>
+      <span class="timer" id="write-timer"></span></div>
+    <div id="write-body"></div>
+  </div>
+
+  <!-- ══ ЯРИА ════════════════════════════════════════════════ -->
+  <div class="view" id="v-speak">
+    <div class="vhead"><button class="pbtn" onclick="go('home')">← Буцах</button><h2>口语 HSKK</h2>
+      <span class="timer" id="speak-timer"></span></div>
+    <div id="speak-body"></div>
+  </div>
+
+  <!-- ══ ДҮРЭМ ═══════════════════════════════════════════════ -->
+  <div class="view" id="v-grammar">
+    <div class="vhead"><button class="pbtn" onclick="go('home')">← Буцах</button><h2>语法</h2>
+      <span class="muted mono" id="grammar-prog"></span></div>
+    <div id="grammar-body"></div>
+  </div>
+
+  <!-- ══ MOCK ════════════════════════════════════════════════ -->
+  <div class="view" id="v-mock">
+    <div class="vhead"><button class="pbtn" onclick="Mock.quit()">← Гарах</button><h2 id="mock-title">Mock</h2>
+      <span class="timer" id="mock-timer"></span></div>
+    <div id="mock-body"></div>
+  </div>
+
+  <!-- ══ ШИНЖИЛГЭЭ ═══════════════════════════════════════════ -->
+  <div class="view" id="v-stats">
+    <div class="vhead"><button class="pbtn" onclick="go('home')">← Буцах</button><h2>Шинжилгээ</h2></div>
+    <div id="stats-body"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="hsk5.js"></script>
+</body>
+</html>
