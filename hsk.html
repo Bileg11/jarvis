@@ -496,6 +496,24 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     </a>
   </div>
 
+  <!-- Шалгалтын систем рүү чиглүүлэгч — энэ хуудас хоёрдогч болсон -->
+  <div id="hsk5-redirect" style="display:none;background:var(--accent-soft);
+    border:1px solid var(--accent-text);border-radius:var(--r-lg);
+    padding:12px 16px;margin-bottom:12px">
+    <div style="font-size:13px;font-weight:600;color:var(--text)">
+      Энэ бол хуучин үгийн сан (HSK 2.0 жагсаалт)
+    </div>
+    <div style="font-size:11px;color:var(--text-2);margin-top:3px;line-height:1.5">
+      Шалгалтын бэлтгэл одоо тусдаа системд — жинхэнэ HSK 3.0-ийн үгс,
+      сонсгол, унших, бичих, mock шалгалт.
+    </div>
+    <a id="hsk5-link" href="hsk5" style="display:inline-block;margin-top:9px;
+      padding:8px 14px;background:var(--accent);border-radius:8px;
+      color:var(--accent-ink);font-size:12px;font-weight:600;text-decoration:none">
+      HSK5 систем рүү очих →
+    </a>
+  </div>
+
   <!-- Өнөөдрийн зорилт — нэг л карт, давхардалгүй -->
   <div class="hk-goal">
     <div class="hk-goal-top">
@@ -967,9 +985,20 @@ function _applyHSKUI() {
     if (_hskProduct === 'hsk') {
       sub.textContent = (_hskPremium ? '⭐ Premium' : '🆓 Үнэгүй') + (name ? ' · ' + name : '');
     } else {
-      sub.textContent = 'HSK ' + _hskTarget + ' · шалгалт ' + window.JARVIS_EXAM_DATE_STR;
+      // Түвшинг jarvis-config.js-ээс авна — Firestore дахь hsk_target нь
+      // тусдаа HSK бүтээгдэхүүний хэрэглэгчдэд зориулсан, хуучирч үлддэг.
+      sub.textContent = (window.JARVIS_EXAM_LEVEL || ('HSK ' + _hskTarget)) +
+                        ' · шалгалт ' + window.JARVIS_EXAM_DATE_STR;
     }
   }
+  // Шалгалтын систем рүү чиглүүлэгч — зөвхөн JARVIS хэрэглэгчид
+  if (_hskProduct === 'three') {
+    const r = document.getElementById('hsk5-redirect');
+    const lk = document.getElementById('hsk5-link');
+    if (lk && window.jarvisHref) lk.href = window.jarvisHref('hsk5');
+    if (r) r.style.display = '';
+  }
+
   // Free users: show upgrade banner
   if (_hskProduct === 'hsk' && !_hskPremium) {
     const el = document.getElementById('hsk-free-banner');
