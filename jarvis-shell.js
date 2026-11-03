@@ -29,7 +29,7 @@
 
   var PAGES = [
     { id: 'home',    label: 'Өнөөдөр', file: 'home'    },
-    { id: 'hsk',     label: 'Хятад',   file: 'hsk'     },
+    { id: 'hsk',     label: 'Хятад',   file: 'hsk5'    },   // 12.13-ны шалгалт хүртэл HSK5 систем гол
     { id: 'life',    label: 'Амьдрал', file: 'life'    },
     { id: 'finance', label: 'Мөнгө',   file: 'finance' },
     { id: 'profile', label: 'Би',      file: 'profile' },
