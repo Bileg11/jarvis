@@ -41,16 +41,35 @@ const Store = {
       if (!this._uid) { this.cloudState = 'нэвтрээгүй'; return; }
       this.cloudState = 'холбогдсон';
       this._db = firebase.firestore();
+      const ref  = this._db.doc(`users/${this._uid}/hsk5/state`);
+      const snap = await ref.get();
+      const cloud   = snap.exists ? (snap.data() || {}) : null;
+      const cloudAt = cloud?.updatedAt || 0;
+      const localAt = this.get('updatedAt', 0);
+
       // Үүлэн дэх хувилбар шинэ бол татаж авна
-      const snap = await this._db.doc(`users/${this._uid}/hsk5/state`).get();
-      if (snap.exists) {
-        const d = snap.data() || {};
-        const localAt = this.get('updatedAt', 0);
-        if ((d.updatedAt || 0) > localAt) {
-          Object.keys(d).forEach(k => { if (k !== 'updatedAt') localStorage.setItem(LS + k, JSON.stringify(d[k])); });
-          localStorage.setItem(LS + 'updatedAt', JSON.stringify(d.updatedAt));
-          return true;   // дахин зурах шаардлагатай
-        }
+      if (cloud && cloudAt > localAt) {
+        Object.keys(cloud).forEach(k => {
+          if (k !== 'updatedAt') localStorage.setItem(LS + k, JSON.stringify(cloud[k]));
+        });
+        localStorage.setItem(LS + 'updatedAt', JSON.stringify(cloudAt));
+        return true;   // дахин зурах шаардлагатай
+      }
+
+      // Эсрэгээр: энэ хөтөч дээр хийсэн ажил үүлэнд ороогүй бол ӨГСГӨНӨ.
+      // (Нэвтрэхээс өмнө хийсэн онош, давталт ингэж алдагддаг байв.)
+      const local = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (!key || !key.startsWith(LS) || key === LS + 'updatedAt') continue;
+        try { local[key.slice(LS.length)] = JSON.parse(localStorage.getItem(key)); } catch {}
+      }
+      const hasLocal = Object.keys(local).length > 0;
+      if (hasLocal && localAt >= cloudAt) {
+        const at = Date.now();
+        await ref.set({ ...local, updatedAt: at }, { merge: true });
+        localStorage.setItem(LS + 'updatedAt', JSON.stringify(at));
+        console.log('[HSK5] Энэ хөтчийн явцыг үүлэн рүү хадгаллаа');
       }
     } catch (e) { this.cloudState = 'алдаа: ' + e.message; console.warn('[HSK5] үүл:', e.message); }
     return false;
@@ -275,12 +294,23 @@ const Scores = {
     if (!s.diagDone) return;
     const arr = [['听力', s.listen], ['阅读', s.read], ['写作', s.write]].sort((a, b) => a[1] - b[1]);
     const d = daysLeft(), need = TARGET - tot;
-    adv.innerHTML = need <= 0
-      ? `Зорилтод хүрсэн байна. Одоо тогтвортой байлгах — өдөр бүр нэг mock, алдсан зүйлээ засах.`
-      : `Хамгийн сул тал: <b>${arr[0][0]}</b> (${Math.round(arr[0][1])}/100). ` +
-        `Зорилтод ${need} оноо дутуу, ${d} хоног үлдлээ — өдөрт дунджаар ` +
-        `<b>${(need / Math.max(1, d)).toFixed(1)} оноо</b> нэмэх шаардлагатай. ` +
-        `Өнөөдөр ${arr[0][0]}-д хамгийн их цаг зарцуул.`;
+    // Эхлээд ТЭНЦЭХ (180), дараа нь зорилт (240). Босгоос доогуур байхад
+    // 240-ийн тоог нүүлгэх нь утгагүй — эхний даваа нь 180.
+    const toPass = PASS - tot;
+    if (toPass > 0) {
+      adv.innerHTML =
+        `<b>Эхний даваа: ${PASS} оноо (тэнцэх).</b> Одоо ${tot} — дутуу <b>${toPass}</b>, ` +
+        `${d} хоног үлдлээ, өдөрт дунджаар <b>${(toPass / Math.max(1, d)).toFixed(1)} оноо</b>.<br>` +
+        `Хамгийн сул тал: <b>${arr[0][0]}</b> (${Math.round(arr[0][1])}/100) — өнөөдөр энэ дээр хамгийн их цаг зарцуул.<br>` +
+        `<span class="muted">${TARGET} бол дараагийн даваа. Эхлээд босгыг дав.</span>`;
+    } else if (need > 0) {
+      adv.innerHTML =
+        `<b>Босго давсан (${tot}/300).</b> Одоо ${TARGET} руу — дутуу <b>${need}</b>, ` +
+        `өдөрт <b>${(need / Math.max(1, d)).toFixed(1)} оноо</b>. ` +
+        `Хамгийн сул тал: <b>${arr[0][0]}</b> (${Math.round(arr[0][1])}/100).`;
+    } else {
+      adv.innerHTML = `Зорилтод хүрсэн. Одоо тогтвортой байлгах — өдөр бүр нэг mock, алдсанаа засах.`;
+    }
   },
 };
 
