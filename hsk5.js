@@ -449,6 +449,7 @@ const Analytics = {
 
 /* ══ ЗАМ ШИЛЖИЛТ ═════════════════════════════════════════════ */
 function go(view) {
+  Audio_.stop();   // өмнөх хэсгийн бичлэг цаана үргэлжлэхээс сэргийлнэ
   document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
   $('v-' + view)?.classList.add('on');
   window.scrollTo(0, 0);
@@ -629,6 +630,7 @@ const Diag = {
     }
   },
   ans(i) {
+    Audio_.stop();
     const it = this.qItems[this.qIdx];
     const correct = it.qs ? it.qs[0].a : it.a;
     if (i === correct) this.qOk++;
@@ -734,6 +736,9 @@ const Audio_ = {
   },
 
   register(key, segs) { this._items[key] = segs; },
+
+  /** Яриаг тэр дор нь зогсооно — дараагийн асуулт руу орохоос өмнө */
+  stop() { try { speechSynthesis.cancel(); } catch {} this.playing = false; },
 
   async play(idx, scope) {
     const segs = this._items[scope + ':' + idx];
@@ -863,7 +868,7 @@ const Listen = {
     }
   },
   skipDict() { this.checkDict(); },
-  nextDict() { this.dictIdx++; this.renderDict(); },
+  nextDict() { Audio_.stop(); this.dictIdx++; this.renderDict(); },
 
   /* ── 听后选择 ─────────────────────────────────────────────── */
   startMcq(bank) {
@@ -917,7 +922,7 @@ const Listen = {
       ${it.exp ? `<div class="exp">${esc(it.exp)}</div>` : ''}
       <button class="big pri" style="width:100%;margin-top:8px" onclick="Listen.next()">Дараах →</button>`;
   },
-  next() { this.idx++; this.renderMcq(); },
+  next() { Audio_.stop(); this.idx++; this.renderMcq(); },
 };
 
 /* ══ 阅读 УНШИХ ══════════════════════════════════════════════
@@ -1278,7 +1283,7 @@ const Speak = {
       toast('Микрофон нээгдсэнгүй — зөвшөөрлөө шалга');
     }
   },
-  next() { this.stop(); this.idx++; this.render(); },
+  next() { Audio_.stop(); this.stop(); this.idx++; this.render(); },
   stop() {
     try { if (this.rec?.state === 'recording') this.rec.stop(); } catch {}
     clearInterval(this._iv); const el = $('speak-timer'); if (el) el.textContent = '';
@@ -1462,6 +1467,7 @@ const Mock = {
     this.move(1);
   },
   move(d) {
+    Audio_.stop();
     if (this.sec === 'write' && d > 0) this.ans['w' + this.idx] = $('mk-in')?.value ?? this.ans['w' + this.idx];
     const n = this.idx + d;
     if (n < 0) return;

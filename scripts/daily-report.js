@@ -21,6 +21,9 @@ const UID  = process.env.USER_UID;
 const DAY  = process.argv[2] || new Date().toLocaleDateString('sv', { timeZone: TZ });
 const EXAM = new Date('2026-12-13T14:00:00+08:00');
 const TARGET = 240, PASS = 180;
+// HSK5 систем ажиллаж эхэлсэн өдөр. Үүнээс ӨМНӨХ хоосон өдрүүд нь
+// хичээл хийгээгүйн шинж БИШ — тэр үед хэмжих систем байгаагүй.
+const SYSTEM_START = '2026-11-04';
 
 const daysLeft = () => Math.max(0, Math.ceil((EXAM - new Date(DAY + 'T12:00:00+08:00')) / 86400000));
 const shift = (d, n) => { const x = new Date(d + 'T12:00:00+08:00'); x.setDate(x.getDate() + n); return x.toLocaleDateString('sv', { timeZone: TZ }); };
@@ -59,6 +62,11 @@ async function list(p) { try { const s = await db.collection(p).get(); return s.
   w(`# JARVIS өдрийн тайлан — ${DAY}`);
   w('');
   w(`HSK5 шалгалт: **2026-12-13** · үлдсэн **${daysLeft()} хоног** · зорилт **${TARGET}/300** (босго ${PASS})`);
+  w('');
+  const tracked = Math.max(0, Math.round((new Date(DAY) - new Date(SYSTEM_START)) / 86400000)) + 1;
+  w(`**Хэмжилт эхэлсэн: ${SYSTEM_START}** — өнөөдрийг оруулаад нийт **${tracked} хоног** бүртгэгдсэн.`);
+  w(`${SYSTEM_START}-аас ӨМНӨХ өдрүүдэд систем байгаагүй тул тэр үеийн хоосон мөрийг`);
+  w('хичээл хийгээгүйн шинж гэж үзэж БОЛОХГҮЙ.');
   w('');
   w('> Энэ файлыг автоматаар үүсгэсэн. Зөвхөн баримт — дүгнэлт байхгүй.');
   w('');
@@ -137,7 +145,10 @@ async function list(p) { try { const s = await db.collection(p).get(); return s.
     Object.entries(byKind).forEach(([k, v]) =>
       w(`| ${NAME[k] || k} | ${v.n} | ${v.ok} | ${pct(v.ok, v.n)}% |`));
   } else {
-    w('**Өнөөдөр юу ч хийгээгүй бүртгэгдсэн байна.**');
+    w(tracked <= 1
+      ? '**Өнөөдөр бүртгэл алга.** Систем өнөөдөр л ажиллаж эхэлсэн тул энэ нь хэвийн —'
+        + ' эхний бодит өдөр маргааш эхэлнэ.'
+      : '**Өнөөдөр юу ч хийгээгүй бүртгэгдсэн байна.**');
   }
   w('');
 
@@ -154,6 +165,10 @@ async function list(p) { try { const s = await db.collection(p).get(); return s.
     const rt = routines[i] || {};
     const doneR = ['exercise', 'hanzi', 'read', 'journal'].filter(k => rt[k]).length;
     const lo = logs[i] || {};
+    if (dd < SYSTEM_START) {
+      w(`| ${dd} | — | — | — | — | — | — | — |  ⟵ систем ажиллаагүй`);
+      return;
+    }
     w(`| ${dd}${dd === DAY ? ' ←' : ''} | ${p} | ${q('vocab')} | ${acc('listen')} | ${acc('read')} | ${doneR}/4 | ${lo.water?.total_ml || 0}мл | ${lo.sleep?.hours ? lo.sleep.hours.toFixed(1) + 'ц' : '—'} |`);
   });
   w('');
