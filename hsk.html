@@ -819,7 +819,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 // ── Data ──────────────────────────────────────────────────────────
 const EXAM_DATE     = window.JARVIS_EXAM_DATE; // jarvis-config.js — нэг эх сурвалж
-const HSK_MAX_LEVEL = 5; // HSK4 зорилго + HSK5 нөөц → level 1-5 шүүнэ
+const HSK_MAX_LEVEL = 5; // HSK5 зорилго + HSK5 нөөц → level 1-5 шүүнэ
 const LS_WORDS   = 'jarvis_hsk_vault_cache';
 const LS_SESSION = 'jarvis_hsk_session_';
 const LS_STREAK  = 'jarvis_hsk_streak';
@@ -983,7 +983,7 @@ function _seedTargetWords() {
   if (typeof HSK_VOCAB_ALL === 'undefined') return [];
   const maxLevel = (_hskProduct === 'hsk')
     ? (_hskPremium ? _hskTarget : 1)
-    : HSK_MAX_LEVEL; // хувийн горим: HSK4 зорилго + HSK5 нөөц бүгд
+    : HSK_MAX_LEVEL; // хувийн горим: HSK5 зорилго + HSK5 нөөц бүгд
   return HSK_VOCAB_ALL.filter(w => w.hsk_level <= maxLevel);
 }
 
@@ -1057,7 +1057,7 @@ async function init() {
       if (_hskUid) { await _autoSeedVocab(); await _loadFromFirestore(); }
     }
   } else if (_hskUid) {
-    // Top-up: шинээр нэмэгдсэн түвшний (HSK4/5) дутуу үгсийг нөхөж seed хийнэ
+    // Top-up: шинээр нэмэгдсэн түвшний (HSK5/5) дутуу үгсийг нөхөж seed хийнэ
     const have = new Set(_words.map(w => w.h));
     const missing = _seedTargetWords().filter(w => !have.has(w.word));
     if (missing.length) {
@@ -1476,7 +1476,7 @@ function initDrill() {
     return;
   }
   // SRS шүүлт: due → new → бусад
-  // Шинэ үгсийг доод түвшнээс эхлүүлнэ (HSK4 → HSK5), түвшин дотроо санамсаргүй
+  // Шинэ үгсийг доод түвшнээс эхлүүлнэ (HSK5 → HSK5), түвшин дотроо санамсаргүй
   const due  = words.filter(w => !w.mastered && _isDue(w)).sort(() => Math.random()-.5);
   const newW = words.filter(w => !w.mastered && !_isDue(w) && !w.reviewed)
                     .sort(() => Math.random()-.5).sort((a,b) => (a.level||4) - (b.level||4));
@@ -1694,7 +1694,7 @@ async function gradeSentence() {
   const headers = { 'Content-Type':'application/json' };
   if (secret) headers['x-jarvis-secret'] = secret;
 
-  const prompt = `Хятад хэлний HSK4 шалгалт бэлтгэж буй оюутан дараах үгийг ашиглан өгүүлбэр бичив.
+  const prompt = `Хятад хэлний HSK5 шалгалт бэлтгэж буй оюутан дараах үгийг ашиглан өгүүлбэр бичив.
 Үг: ${_sentWord.h} (${_sentWord.p}) — ${_sentWord.m}
 Бичсэн өгүүлбэр: ${input}
 

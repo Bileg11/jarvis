@@ -412,7 +412,7 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
     <!-- WIDGET: HSK Drill -->
     <div class="glass hud-br" id="widget-hsk" style="display:none;flex:0 0 auto">
-      <div class="panel-hdr">HSK4 DRILL <span class="hdr-tag" id="drill-hdr-score">—</span></div>
+      <div class="panel-hdr">HSK5 DRILL <span class="hdr-tag" id="drill-hdr-score">—</span></div>
       <div style="padding:10px 12px;text-align:center">
         <div id="drill-hanzi" style="font-size:68px;line-height:1.1;letter-spacing:.06em;color:#eafcff;padding:10px 0;font-family:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;font-weight:500">—</div>
         <div id="drill-pinyin" style="font-size:11px;color:var(--text);font-family:var(--mono);margin-bottom:4px">терминалд хариулт бичнэ үү</div>
@@ -1657,7 +1657,7 @@ function _drillEval(answer) {
 // ── WIDGET SYSTEM ─────────────────────────────────────────────────
 const WIDGET_DEFS = {
   missions: { label:'ACTIVE MISSIONS', default:true  },
-  hsk:      { label:'HSK4 DRILL',      default:false },
+  hsk:      { label:'HSK5 DRILL',      default:false },
   fx:       { label:'FX MONITOR',      default:true  },
   intel:    { label:'GLOBAL INTEL',    default:true  },
 };
@@ -1715,7 +1715,7 @@ async function termSend() {
       ['/matrix',      'Stark Task Matrix (Kanban board)'],
       ['/matrix add',  'Шинэ карт нэмэх — /matrix add <task>'],
       ['/plans',       'Firestore-д хадгалсан хуваарийн жагсаалт'],
-      ['/drill',       'HSK4 цээж бичгийн drill эхлүүлэх'],
+      ['/drill',       'HSK5 цээж бичгийн drill эхлүүлэх'],
       ['/drill stop',  'Drill дуусгах'],
       ['/theme list',  'Бүх theme жагсаах'],
       ['/theme <name>','Theme сонгох (stark-cyan, amber, matrix, red-alert, void)'],
@@ -1821,7 +1821,7 @@ async function termSend() {
       `STREAKS        : workout ${exStr}  |  汉字 ${hzStr}`,
       `── MISSIONS ────────────────────────────────────`,
       `LFS            : ${lfs.val||0} / ${lfs.max||100} users   (${lfs.pct||0}%)`,
-      `HSK4 VOCAB     : ${hanM.val||0} / 300 words  (${hanM.pct||0}%)`,
+      `HSK5 VOCAB     : ${hanM.val||0} / 300 words  (${hanM.pct||0}%)`,
       `FITNESS        : ${fitM.val||0} / 30 sessions`,
       `── EXAM COUNTDOWN ──────────────────────────────`,
       `${window.JARVIS_EXAM_LEVEL} ${window.JARVIS_EXAM_DATE_STR}: ${days}d ${hrs}h remaining`,
@@ -1838,8 +1838,8 @@ async function termSend() {
         const prompt = `[WEEKLY AUDIT — дотоод систем хүсэлт]
 Өнөөдрийн score: ${score}/100 | Routine: ${done.length}/4
 Ус: ${r.water||0}/8 | Workout streak: ${exStr} | 汉字 streak: ${hzStr}
-LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.val||0}/30
-Хамгийн сул зүйл 7 хоногт: ${weakLabel} | HSK4 шалгалт: ${days} хоног үлдлээ
+LFS: ${lfs.val||0}/${lfs.max||100} | HSK5: ${hanM.val||0}/300 | Fitness: ${fitM.val||0}/30
+Хамгийн сул зүйл 7 хоногт: ${weakLabel} | HSK5 шалгалт: ${days} хоног үлдлээ
 
 3-4 өгүүлбэрт: энэ долоо хоногт юу сайн хийгдсэн, юу яаралтай анхаарах ёстой, өнөөдрийн нэг тодорхой үйлдэл санал болго. Stark гэж хандаж, шулуун хариул.`;
         const audit = await sendChatMessage(prompt);
@@ -1975,7 +1975,7 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
     return;
   }
 
-  // /drill — HSK4 drill mode
+  // /drill — HSK5 drill mode
   if (text === '/drill' || text === '/drill start') {
     addTermLine('user', '/drill');
     _drillMode = true;
@@ -1984,7 +1984,7 @@ LFS: ${lfs.val||0}/${lfs.max||100} | HSK4: ${hanM.val||0}/300 | Fitness: ${fitM.
     _drillIdx = 0;
     // Activate HSK widget
     if (!_activeWidgets.includes('hsk')) { _activeWidgets.push('hsk'); _applyWidgets(); }
-    termTypeJarvis('HSK4 Drill Mode идэвхжлээ, Stark. /drill stop гэж бичвэл зогсоно. Эхэлцгээе —');
+    termTypeJarvis('HSK5 Drill Mode идэвхжлээ, Stark. /drill stop гэж бичвэл зогсоно. Эхэлцгээе —');
     setTimeout(_drillShowWord, 1000);
     return;
   }
@@ -2336,7 +2336,7 @@ const BIZ_INTEL = [
   { tag:'LFS-OPS',   title:'LFS Shanghai — VIP Platform Status',         desc:'Монгол аялагчдад зориулсан VIP платформ идэвхтэй. Шинэ хэрэглэгч нэмэх боломжтой.' },
   { tag:'ECON',      title:'CNY/MNT — Exchange Volatility Alert',        desc:'Ханш өөрчлөгдөж байна. Гүйлгээний шинэчлэлт хийх шаардлагатай.' },
   { tag:'TECH',      title:'GitHub Copilot — AI Code Completion v2',     desc:'Шинэ AI туслах хэрэгсэл гарлаа. LFS кодны productivity нэмэгдэнэ.' },
-  { tag:'HSK-OPS',   title:'HSK4 Vocabulary Sprint — Active',            desc:'Үлдсэн хугацаанд 5+ үг/өдөр шаардлагатай. Drill идэвхжүүл.' },
+  { tag:'HSK-OPS',   title:'HSK5 Vocabulary Sprint — Active',            desc:'Үлдсэн хугацаанд 5+ үг/өдөр шаардлагатай. Drill идэвхжүүл.' },
   { tag:'BIZ',       title:'Shanghai FTZ — AI Governance Framework 2026',desc:'Хиймэл оюун ухааны шинэ зохицуулалт хэрэгжинэ. Нийцэлт шалгах.' },
   { tag:'INTEL',     title:'Compound Growth Protocol — Weekly Review',   desc:'1% өдөр бүрийн өсөлт жилд 37x болдог. Энэ долоо хоногийн дэвшлийг шалга.' },
 ];
@@ -2694,7 +2694,7 @@ function _buildMatrixCards() {
   // Routine tasks
   const routineMap = [
     {id:'exercise', label:'Morning Workout', tag:'ROUTINE', col: r.exercise?3:1},
-    {id:'hanzi',    label:'汉字 Study Session', tag:'HSK4',    col: r.hanzi?3:0},
+    {id:'hanzi',    label:'汉字 Study Session', tag:'HSK5',    col: r.hanzi?3:0},
     {id:'read',     label:'Daily Reading 30m', tag:'ROUTINE', col: r.read?3:0},
     {id:'journal',  label:'Journal Entry',    tag:'ROUTINE', col: r.journal?3:0},
     {id:'water',    label:`Water ${r.water||0}/8 шил`, tag:'HEALTH', col: (r.water||0)>=8?3:1},
@@ -2707,7 +2707,7 @@ function _buildMatrixCards() {
     cards.push({ id:'m_'+m.id, label:`${m.icon} ${m.label} — ${m.val}/${m.max}`, tag:'MISSION', col, type:'mission', pct:m.pct });
   });
 
-  // HSK4 exam countdown
+  // HSK5 exam countdown
   const days = jarvisExamDays();
   cards.push({ id:'hsk_exam', label:`${window.JARVIS_EXAM_LEVEL} Exam — ${days}d left`, tag:'DEADLINE', col: days<14?1:0, type:'deadline' });
 
@@ -3409,7 +3409,7 @@ const CUSTOMIZER_WIDGETS = [
   { id: 'missions', label: 'Active Missions', default: true },
   { id: 'gym',      label: 'Gym Schedule',    default: false },
   { id: 'route',    label: 'Daily Route',     default: false },
-  { id: 'hsk',      label: 'HSK4 Drill',      default: false },
+  { id: 'hsk',      label: 'HSK5 Drill',      default: false },
   { id: 'fx',       label: 'FX Monitor',      default: true  },
   { id: 'intel',    label: 'Intel Feed',      default: true  },
 ];
@@ -4150,7 +4150,7 @@ function _injectCustomizerUI() {
 const MODULE_REGISTRY = [
   // ── Built-in (existing DOM widgets) ──────────────────────────
   { id:'missions',    label:'Active Missions',  icon:'🎯', cat:'ops',        defaultOn:true,  widgetId:'widget-missions'   },
-  { id:'hsk',         label:'HSK4 Drill',       icon:'汉', cat:'study',      defaultOn:true,  widgetId:'widget-hsk'        },
+  { id:'hsk',         label:'HSK5 Drill',       icon:'汉', cat:'study',      defaultOn:true,  widgetId:'widget-hsk'        },
   { id:'fx',          label:'FX Monitor',       icon:'💱', cat:'finance',    defaultOn:true,  widgetId:'widget-fx'         },
   { id:'gym',         label:'Gym Schedule',     icon:'🏋', cat:'health',     defaultOn:false, widgetId:'widget-gym'        },
   { id:'route',       label:'Daily Route',      icon:'🗺', cat:'ops',        defaultOn:false, widgetId:'widget-route'      },

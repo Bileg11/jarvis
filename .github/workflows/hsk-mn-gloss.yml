@@ -1,0 +1,60 @@
+name: HSK3.0 Монгол тайлбар үүсгэх
+
+# 4316 үгийн монгол тайлбарыг Gemini-гээр үүсгэж, репод буцааж хадгална.
+# Нэг удаа ажиллаад дуусна; тасарвал дахин ажиллуулахад үлдсэнээс нь үргэлжилнэ.
+on:
+  workflow_dispatch:
+    inputs:
+      levels:
+        description: 'Аль түвшнүүд (жишээ: 5,4 эсвэл 5,4,3,2,1)'
+        default: '5,4,3,2,1'
+  push:
+    paths:
+      - 'scripts/gen/mn-gloss.js'
+      - '.github/workflows/hsk-mn-gloss.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hsk-mn-gloss
+  cancel-in-progress: false
+
+jobs:
+  gloss:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Монгол тайлбар үүсгэх
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LEVELS: ${{ github.event.inputs.levels || '5,4,3,2,1' }}
+        run: node scripts/gen/mn-gloss.js
+
+      - name: Үр дүнг хадгалах
+        run: |
+          git config user.name  "jarvis-bot"
+          git config user.email "jarvis-bot@users.noreply.github.com"
+          git add data/hsk3/mn-l*.json
+          if git diff --cached --quiet; then
+            echo "Шинэ тайлбар нэмэгдсэнгүй"
+          else
+            DONE=$(node -e "
+              let t=0,d=0;
+              for (const lv of [1,2,3,4,5]) {
+                try {
+                  const a=require('./data/hsk3/mn-l'+lv+'.json');
+                  t+=a.length; d+=a.filter(Boolean).length;
+                } catch {}
+              }
+              console.log(d+'/'+t);
+            ")
+            git commit -m "data: HSK3.0 монгол тайлбар ${DONE} [skip ci]"
+            git pull --rebase origin main || true
+            git push origin HEAD:main
+          fi

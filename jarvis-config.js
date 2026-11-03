@@ -18,9 +18,11 @@ window.FIREBASE_CONFIG = {
   appId:             "1:59304492638:web:9da4e7ceac790d1254becf"
 };
 
-window.JARVIS_EXAM_LEVEL    = 'HSK4';
-window.JARVIS_EXAM_DATE_STR = '2026-10-01';
-window.JARVIS_EXAM_DATE     = new Date('2026-10-01T09:00:00+08:00');
+window.JARVIS_EXAM_LEVEL    = 'HSK5';
+window.JARVIS_EXAM_DATE_STR = '2026-12-13';
+window.JARVIS_EXAM_DATE     = new Date('2026-12-13T14:00:00+08:00');   // HSK5 бичгийн шалгалт 14:00
+window.JARVIS_EXAM_HSKK     = new Date('2026-12-13T16:20:00+08:00');   // HSKK ярианы шалгалт 16:20
+window.JARVIS_EXAM_TARGET   = 240;                                     // 300-аас зорилтот оноо
 window.JARVIS_EXAM_LABEL    = window.JARVIS_EXAM_LEVEL + ' — ' + window.JARVIS_EXAM_DATE_STR;
 
 // ── ӨДРИЙН ЗААГ — ОРОН НУТГИЙН ЦАГААР ────────────────────────────

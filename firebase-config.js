@@ -182,7 +182,7 @@ const USER_PROFILES = {
     coach_level:    3,
     features:       ['hsk_blitz','terminal','missions','fx'],
     hsk_target:     4,
-    exam_date:      (window.JARVIS_EXAM_DATE_STR || '2026-10-01'),
+    exam_date:      (window.JARVIS_EXAM_DATE_STR || '2026-12-13'),
   },
   marlaa: {
     role:           'marlaa',

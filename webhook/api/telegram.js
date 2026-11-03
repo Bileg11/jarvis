@@ -32,8 +32,8 @@ const {
 } = require('./hsk3-coach');
 
 // Шалгалтын огноо/түвшин — энэ файлд ЗӨВХӨН ЭНД (client тал: jarvis-config.js)
-const EXAM_DATE_ISO = '2026-10-01T09:00:00+08:00';
-const EXAM_LEVEL    = 'HSK4';
+const EXAM_DATE_ISO = '2026-12-13T14:00:00+08:00';
+const EXAM_LEVEL    = 'HSK5';
 
 const TG_TOKEN   = process.env.TELEGRAM_BOT_TOKEN_JARVIS;
 const TG_CHAT    = process.env.TELEGRAM_ID;   // cron job-д ашиглана
