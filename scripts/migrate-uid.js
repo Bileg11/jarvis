@@ -64,9 +64,7 @@ async function copyCollection(path, depth = 0) {
   console.log(`${APPLY ? 'ХУУЛЖ БАЙНА' : 'ЗӨВХӨН ХАРУУЛЖ БАЙНА (--apply өгөөгүй)'}`);
   console.log(`${FROM.slice(0,6)}… → ${TO.slice(0,6)}…\n`);
 
-  const cols = await db.collection(`users/${FROM}`).listDocuments
-    ? await db.doc(`users/${FROM}`).listCollections()
-    : [];
+  const cols = await db.doc(`users/${FROM}`).listCollections();
   if (!cols.length) { console.log('Хуучин эрхэд цуглуулга алга.'); return; }
 
   let total = 0, kept = 0;
