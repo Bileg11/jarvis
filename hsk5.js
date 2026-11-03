@@ -478,6 +478,25 @@ async function refreshHome() {
   $('m-write').textContent  = `${(b.write || []).length} сэдэв`;
   $('m-speak').textContent  = `${(b.speak || []).length} даалгавар`;
 
+  // Claude-ийн өдрийн дүгнэлт — Firestore-оос
+  try {
+    if (Store._db && Store._uid) {
+      const snap = await Store._db.doc(`users/${Store._uid}/coach/latest`).get();
+      const c = snap.exists ? snap.data() : null;
+      const box = $('coach-box');
+      if (c && box) {
+        const fresh = c.date === today() || c.date === today_plus(-1);
+        box.innerHTML = `
+          <div class="note" style="border-left:3px solid var(--accent)">
+            <div class="muted" style="margin-bottom:6px">🧠 Claude-ийн дүгнэлт · ${esc(c.date)}${fresh ? '' : ' (хуучин)'}</div>
+            ${c.summary  ? `<div style="margin-bottom:8px">${esc(c.summary)}</div>` : ''}
+            ${c.warning  ? `<div style="color:var(--warn);margin-bottom:8px">⚠️ ${esc(c.warning)}</div>` : ''}
+            ${c.tomorrow ? `<div style="white-space:pre-line">${esc(c.tomorrow)}</div>` : ''}
+          </div>`;
+      }
+    }
+  } catch {}
+
   $('diag-cta').innerHTML = s.diagDone ? '' : `
     <div class="warn-box">
       <b>Эхлээд онош тест хий.</b> 15 минут. Үүнгүйгээр систем чиний бодит түвшнийг

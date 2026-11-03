@@ -1,0 +1,35 @@
+name: Зөвлөгөөг апп руу буцаах
+
+# Claude reports/YYYY-MM-DD-coach.md бичихэд энэ ажил автоматаар
+# түүнийг Firestore-д тавьж, Telegram-аар илгээнэ.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'reports/*-coach.md'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Огноо (YYYY-MM-DD), хоосон бол өнөөдөр'
+        required: false
+
+concurrency:
+  group: coach-apply
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --prefix scripts
+
+      - name: Зөвлөгөөг тавих
+        env:
+          FIREBASE_SERVICE_ACCOUNT:  ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          USER_UID:                  ${{ secrets.USER_UID }}
+          TELEGRAM_BOT_TOKEN_JARVIS: ${{ secrets.TELEGRAM_BOT_TOKEN_JARVIS }}
+          TELEGRAM_ID:               ${{ secrets.TELEGRAM_ID }}
+        run: node scripts/coach-apply.js ${{ github.event.inputs.date }}
