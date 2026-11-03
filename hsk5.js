@@ -666,28 +666,88 @@ const Diag = {
 
 /* ══ АУДИО — TTS-ээр бичлэг тоглуулна ════════════════════════ */
 const Audio_ = {
-  playing: false, _items: {},
+  playing: false, _items: {}, voice: null, ready: false,
+
+  /** Хятад хоолойг ОНЦГОЙЛОН сонгоно.
+   *  Зөвхөн u.lang='zh-CN' гэж өгөхөд Safari ихэвчлэн англи хоолой сонгоод
+   *  ханзыг огт уншдаггүй — энэ нь дуу гарахгүй байсан жинхэнэ шалтгаан. */
+  pick() {
+    if (!window.speechSynthesis) return null;
+    const all = speechSynthesis.getVoices() || [];
+    if (!all.length) return null;
+    this.voice =
+      all.find(v => /^zh[-_]CN/i.test(v.lang) && /Ting|Tingting|Yaoyao|Huihui|Xiaoxiao|Li-?mu|Yu-?shu/i.test(v.name)) ||
+      all.find(v => /^zh[-_](CN|Hans)/i.test(v.lang)) ||
+      all.find(v => /^zh/i.test(v.lang)) ||
+      all.find(v => /chinese|mandarin|普通话|中文/i.test(v.name)) ||
+      null;
+    this.ready = true;
+    return this.voice;
+  },
+
+  init() {
+    if (!window.speechSynthesis) return;
+    this.pick();
+    speechSynthesis.addEventListener('voiceschanged', () => this.pick());
+    // Safari заримдаа хоцорч ачаална
+    setTimeout(() => { if (!this.voice) this.pick(); }, 900);
+    setTimeout(() => { if (!this.voice) this.pick(); }, 2500);
+  },
+
+  /** Хятад хоолой байхгүй бол шалтгааныг хэрэглэгчид ойлгомжтой хэлнэ */
+  status() {
+    if (!window.speechSynthesis) return 'Энэ хөтөч дуу уншихыг дэмжихгүй байна.';
+    if (!this.voice) {
+      this.pick();
+      if (!this.voice) {
+        return 'Хятад хоолой олдсонгүй. macOS: Тохиргоо → Хүртээмж → Яриа → ' +
+               'Систем хоолой → Тохируулах → Chinese (Mandarin) татаж ав. ' +
+               'Эсвэл Chrome хөтчөөр ор.';
+      }
+    }
+    return '';
+  },
+
   register(key, segs) { this._items[key] = segs; },
+
   async play(idx, scope) {
-    const key = scope + ':' + idx;
-    const segs = this._items[key];
+    const segs = this._items[scope + ':' + idx];
     if (!segs || this.playing) return;
+    if (!window.speechSynthesis) { toast('Хөтөч дуу уншихыг дэмжихгүй'); return; }
+    if (!this.voice) this.pick();
+    if (!this.voice) { toast('Хятад хоолой олдсонгүй — доорх зааврыг хар', 4000); return; }
+
     this.playing = true;
     try {
       speechSynthesis.cancel();
       for (const seg of segs) {
-        const text = Array.isArray(seg) ? seg[1] : seg;
+        const text = String(Array.isArray(seg) ? seg[1] : seg).trim();
+        if (!text) continue;
         await new Promise(res => {
+          let done = false;
+          const fin = () => { if (!done) { done = true; res(); } };
           const u = new SpeechSynthesisUtterance(text);
-          u.lang = 'zh-CN'; u.rate = Number(localStorage.getItem(LS + 'rate') || 0.95);
-          u.onend = res; u.onerror = res;
+          u.voice = this.voice;                     // ← энэ мөр дутуу байсан
+          u.lang  = this.voice.lang || 'zh-CN';
+          u.rate  = Number(localStorage.getItem(LS + 'rate') || 0.95);
+          u.onend = fin; u.onerror = fin;
           speechSynthesis.speak(u);
-          setTimeout(res, 2000 + text.length * 420);   // хоолой уншихгүй бол гацахгүй
+          setTimeout(fin, 3000 + text.length * 450);   // гацахаас сэргийлнэ
         });
       }
     } finally { this.playing = false; }
   },
+
+  /** Товч дарж шалгах — дуу гарч байгаа эсэхийг шууд мэдэхийн тулд */
+  test() {
+    const msg = this.status();
+    if (msg) { toast(msg, 6000); return; }
+    this.register('test:0', ['你好，这是中文发音测试。']);
+    this.play(0, 'test');
+    toast('Хоолой: ' + (this.voice.name || this.voice.lang), 3000);
+  },
 };
+Audio_.init();
 window.Audio_ = Audio_;
 
 /* ══ 听力 СОНСГОЛ ════════════════════════════════════════════
@@ -705,7 +765,10 @@ const Listen = {
         <button class="tab ${this.mode === 'dict' ? 'on' : ''}" onclick="Listen.set('dict')">听写 Сонсоод бичих</button>
         <button class="tab ${this.mode === 'mcq' ? 'on' : ''}" onclick="Listen.set('mcq')">听后选择 (${n})</button>
         <button class="tab" onclick="Listen.speed()">Хурд: ${Number(localStorage.getItem(LS + 'rate') || 0.95).toFixed(2)}×</button>
-      </div><div id="listen-inner"></div>`;
+        <button class="tab" onclick="Audio_.test()">🔊 Дуу шалгах</button>
+      </div>
+      ${Audio_.status() ? `<div class="warn-box">${esc(Audio_.status())}</div>` : ''}
+      <div id="listen-inner"></div>`;
     this.mode === 'dict' ? this.startDict() : this.startMcq(bank);
   },
   set(m) { this.mode = m; this.open(); },
@@ -751,7 +814,8 @@ const Listen = {
         </div>
         <div id="dict-res"></div>
       </div>`;
-    setTimeout(() => { $('dict-in')?.focus(); Audio_.play(this.dictIdx, 'dict'); }, 200);
+    setTimeout(() => $('dict-in')?.focus(), 200);
+    // Автоматаар тоглуулахгүй — Safari хэрэглэгчийн дарлагагүй дуу гаргахыг хориглодог
   },
   checkDict() {
     const w = this.dictWords[this.dictIdx];

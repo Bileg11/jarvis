@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -m pip --version)",
+      "Bash(uv --version)",
+      "Bash(npm --version)",
+      "Bash(sw_vers)",
+      "WebFetch(domain:raw.githubusercontent.com)"
+    ]
+  }
+}
