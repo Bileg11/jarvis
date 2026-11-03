@@ -13,6 +13,9 @@ on:
       debug:
         description: 'Эрхийн оношлогоо ажиллуулах уу? (yes)'
         required: false
+      show_full:
+        description: 'Эрхийн бүтэн дугаарыг харуулах (товчлол бич)'
+        required: false
 
 permissions:
   contents: write
@@ -41,6 +44,7 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           USER_UID:                 ${{ secrets.USER_UID }}
+          SHOW_FULL:                ${{ github.event.inputs.show_full }}
         run: node scripts/debug-uid.js
 
       - name: Хадгалах

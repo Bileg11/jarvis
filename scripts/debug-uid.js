@@ -13,6 +13,14 @@ const db = getFirestore();
 const mask = u => u ? u.slice(0, 6) + '…' + u.slice(-4) : '(хоосон)';
 
 (async () => {
+  // SHOW_FULL=<товчлол> өгвөл тухайн эрхийн БҮТЭН дугаарыг хэвлэнэ —
+  // GitHub secret шинэчлэхэд хэрэгтэй.
+  if (process.env.SHOW_FULL) {
+    const docs = await db.collection('users').listDocuments();
+    const hit = docs.map(d => d.id).filter(id => id.startsWith(process.env.SHOW_FULL));
+    console.log('БҮТЭН UID:', hit.length === 1 ? hit[0] : `олдсонгүй эсвэл олон (${hit.length})`);
+    return;
+  }
   console.log('Тайлангийн уншдаг USER_UID:', mask(process.env.USER_UID));
   console.log('');
   const users = await db.collection('users').listDocuments();
