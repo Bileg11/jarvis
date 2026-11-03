@@ -88,10 +88,14 @@ async function tryGemini(body) {
   });
 
   // Модель бүрийг 2 удаа оролдоно; 503/429 (сервер завгүй) бол дараагийн модель рүү
+  // Vercel функц тасрахаас өмнө заавал хариу буцаахын тулд цагийн төсөвтэй
+  const DEADLINE = Date.now() + 45000;
   let last = 'тодорхойгүй';
   for (const model of models) {
     if (EXHAUSTED.has(model)) continue;
+    if (Date.now() > DEADLINE) { last = 'цаг дууслаа: ' + last; break; }
     for (let attempt = 0; attempt < 2; attempt++) {
+      if (Date.now() > DEADLINE) break;
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
         const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload });
