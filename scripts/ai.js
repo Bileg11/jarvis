@@ -14,13 +14,35 @@
  */
 'use strict';
 
-const PREFER = [
-  'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash',
-  'gemini-2.5-flash-lite', 'gemini-pro-latest', 'gemini-1.5-flash',
-];
+
+// ── Моделийн сонголт — нэрийг хатуу бичихгүй, боломжтойгоос нь эрэмбэлнэ ──
+// tier: 'pro'   — чухал ажил (бичвэр шалгах, даалгавар зохиох, орчуулга)
+//       'flash' — энгийн ажил (чат, зөвлөгөө, хураангуй)
+const SKIP_MODEL = /embedding|aqa|image|tts|transcribe|live|lyria|banana|veo|imagen|deep-research|customtools|omni/;
+
+function rankModel(name, tier) {
+  if (SKIP_MODEL.test(name)) return null;
+  const isPro = /\bpro\b|-pro/.test(name), isLite = /lite/.test(name), isFlash = /flash/.test(name);
+  if (!isPro && !isFlash) return null;
+  const m = name.match(/gemini-(\d+(?:\.\d+)?)/);
+  const ver = m ? parseFloat(m[1]) : (/latest/.test(name) ? 99 : 0);
+  const fit = tier === 'pro'
+    ? (isPro ? 3 : (isFlash && !isLite ? 2 : 1))
+    : ((isFlash && !isLite) ? 3 : (isLite ? 2 : 1));
+  const stable = /preview|exp/.test(name) ? 0 : 1;
+  return fit * 1000 + ver * 10 + stable;
+}
+
+function chooseModels(all, tier, n = 4) {
+  return all.map(name => ({ name, r: rankModel(name, tier) }))
+    .filter(x => x.r !== null).sort((a, b) => b.r - a.r)
+    .slice(0, n).map(x => x.name);
+}
+
+const FALLBACK = { pro: ['gemini-pro-latest', 'gemini-2.5-pro'], flash: ['gemini-flash-latest', 'gemini-2.5-flash'] };
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-let MODELS = null, warned = false;
+let ALL = null, warned = false;
 
 function noKey() {
   if (!warned) {
@@ -30,30 +52,33 @@ function noKey() {
   return null;
 }
 
-async function models(key) {
-  if (MODELS) return MODELS;
-  if (process.env.GEMINI_MODEL) return (MODELS = [process.env.GEMINI_MODEL]);
+async function allModels(key) {
+  if (ALL) return ALL;
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
     const d = await r.json();
-    if (!r.ok) { console.warn('[AI] моделийн жагсаалт:', d?.error?.message || r.status); return (MODELS = PREFER.slice(0, 3)); }
-    const usable = (d.models || [])
+    if (!r.ok) { console.warn('[AI] моделийн жагсаалт:', d?.error?.message || r.status); return (ALL = []); }
+    ALL = (d.models || [])
       .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
-      .map(m => String(m.name).replace(/^models\//, ''))
-      .filter(m => !/embedding|aqa|image|tts|live/.test(m));
-    const ordered = [
-      ...PREFER.filter(p => usable.includes(p)),
-      ...usable.filter(m => /flash/.test(m) && !PREFER.includes(m)),
-    ];
-    MODELS = ordered.length ? ordered.slice(0, 4) : PREFER.slice(0, 3);
-    console.log('[AI] модель:', MODELS[0]);
-    return MODELS;
-  } catch (e) { console.warn('[AI] жагсаалт:', e.message); return (MODELS = PREFER.slice(0, 3)); }
+      .map(m => String(m.name).replace(/^models\//, ''));
+    return ALL;
+  } catch (e) { console.warn('[AI] жагсаалт:', e.message); return (ALL = []); }
+}
+
+async function models(key, tier) {
+  if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
+  const all = await allModels(key);
+  const list = all.length ? chooseModels(all, tier) : [];
+  const out = list.length ? list : FALLBACK[tier] || FALLBACK.flash;
+  if (!models._logged) { models._logged = {}; }
+  if (!models._logged[tier]) { models._logged[tier] = 1; console.log(`[AI] ${tier}: ${out.join(' → ')}`); }
+  return out;
 }
 
 /**
  * @param {{system?:string, messages?:Array, prompt?:string,
- *          max_tokens?:number, temperature?:number, json?:boolean, tries?:number}} opt
+ *          max_tokens?:number, temperature?:number, json?:boolean, tries?:number,
+ *          tier?:'pro'|'flash'}} opt
  * @returns {Promise<string|null>} хариу текст, эсвэл null
  */
 async function ask(opt = {}) {
@@ -78,7 +103,7 @@ async function ask(opt = {}) {
     },
   });
 
-  const list  = await models(key);
+  const list  = await models(key, opt.tier === 'pro' ? 'pro' : 'flash');
   const tries = opt.tries ?? 3;
   let last = '';
   for (const model of list) {

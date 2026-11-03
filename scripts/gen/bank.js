@@ -129,7 +129,7 @@ JSON:
 
 Яриа нь нэг тодорхой санааг хөгжүүлнэ (үзэгдэл → шалтгаан → дүгнэлт).`;
 
-  const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 1100, temperature: 0.95 });
+  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 1100, temperature: 0.95 });
   const bad = validListen(d);
   if (bad) { REASONS.push('听:' + bad); return null; }
   return d;
@@ -160,7 +160,7 @@ HSK5 阅读 第一部分 (篇章填空) маягийн даалгавар зох
 JSON:
 {"type":"cloze","text":"...______...","q":"选出最合适的词",
  "opt":["A","B","C","D"],"a":2,"exp":"монголоор: яагаад энэ, бусад нь яагаад болохгүй"}`;
-  const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
+  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
   const bad =
     !d ? 'JSON биш' :
     (d.type !== 'cloze') ? 'төрөл буруу' :
@@ -191,7 +191,7 @@ JSON:
  "exp":"монголоор: ямар шинжээр энэ дараалал гарч байгаа"}
 
 parts нь ХОЛИЛДСОН байдлаар, a нь parts доторх индексүүд зөв дарааллаар.`;
-  const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
+  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 900, temperature: 0.95 });
   const bad =
     !d ? 'JSON биш' :
     (d.type !== 'order') ? 'төрөл буруу' :
@@ -221,7 +221,7 @@ JSON:
  "qs":[{"q":"...","opt":["A","B","C","D"],"a":1,"exp":"монголоор"},
        {"q":"...","opt":["A","B","C","D"],"a":3,"exp":"монголоор"},
        {"q":"...","opt":["A","B","C","D"],"a":0,"exp":"монголоор"}]}`;
-  const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 2600, temperature: 0.9 });
+  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 2600, temperature: 0.9 });
   let bad =
     !d ? 'JSON биш' :
     (d.type !== 'passage') ? 'төрөл буруу' :
@@ -254,7 +254,7 @@ JSON: {"type":"pic","min":100,"pics":["1. ...","2. ...","3. ...","4. ..."]}`
 Хятадаар бич. Чиглэл: ${topic}
 
 JSON: {"type":"topic","min":200,"prompt":"...（中文题目，含「请写一篇不少于200字的作文」）"}`;
-  const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 900, temperature: 1.0 });
+  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 900, temperature: 1.0 });
   if (!d) return null;
   if (d.type === 'pic')   return (Array.isArray(d.pics) && d.pics.length === 4) ? { ...d, min: 100 } : null;
   if (d.type === 'topic') return (hanzi(d.prompt).length >= 15) ? { ...d, min: 200 } : null;
@@ -274,7 +274,7 @@ JSON: {"type":"qa","q":"...（中文问题，2分钟）"}`
       : `HSKK 五级 看图说话 маягийн даалгавар: зургийг МОНГОЛООР нарийн дүрсэл
 (хүн, үйлдэл, орчин, цаг үе), дараа нь хятадаар нэг чиглүүлэх асуулт. Сэдэв: ${topic}
 JSON: {"type":"pic","desc":"Зураг: ...","q":"请描述这张图片，并..."}`;
-  const d = await askJSON({ system: SYSTEM, prompt, max_tokens: 700, temperature: 1.0 });
+  const d = await askJSON({ tier: 'pro', system: SYSTEM, prompt, max_tokens: 700, temperature: 1.0 });
   if (!d) return null;
   if (d.type === 'retell') return hanzi(d.text).length >= 60 ? d : null;
   if (d.type === 'qa')     return hanzi(d.q).length >= 8 ? d : null;

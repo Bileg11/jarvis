@@ -15,32 +15,47 @@
 
 // Боломжтой моделийг нэг удаа тодорхойлж кэшлэнэ.
 // (Загварын нэрс үе үе өөрчлөгддөг тул хатуу бичихгүй.)
-const PREFER = [
-  'gemini-flash-latest', 'gemini-2.5-flash', 'gemini-2.0-flash',
-  'gemini-2.5-flash-lite', 'gemini-pro-latest', 'gemini-1.5-flash',
-];
-let MODEL_CACHE = null;
+// ── Моделийн сонголт — нэрийг хатуу бичихгүй, боломжтойгоос нь эрэмбэлнэ ──
+// tier: 'pro'   — чухал ажил (HSK бичвэр шалгах, даалгавар зохиох)
+//       'flash' — энгийн чат, зөвлөгөө
+const SKIP_MODEL = /embedding|aqa|image|tts|transcribe|live|lyria|banana|veo|imagen|deep-research|customtools|omni/;
+const FALLBACK = { pro: ['gemini-pro-latest', 'gemini-2.5-pro'], flash: ['gemini-flash-latest', 'gemini-2.5-flash'] };
+let MODEL_CACHE = null;   // бүх боломжит моделийн түүхий жагсаалт
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// Боломжтой моделиудыг эрэмбэлсэн ЖАГСААЛТААР буцаана — 503 гарвал дараагийнх руу шилжинэ
-async function pickModels(key) {
+function rankModel(name, tier) {
+  if (SKIP_MODEL.test(name)) return null;
+  const isPro = /\bpro\b|-pro/.test(name), isLite = /lite/.test(name), isFlash = /flash/.test(name);
+  if (!isPro && !isFlash) return null;
+  const m = name.match(/gemini-(\d+(?:\.\d+)?)/);
+  const ver = m ? parseFloat(m[1]) : (/latest/.test(name) ? 99 : 0);
+  const fit = tier === 'pro'
+    ? (isPro ? 3 : (isFlash && !isLite ? 2 : 1))
+    : ((isFlash && !isLite) ? 3 : (isLite ? 2 : 1));
+  const stable = /preview|exp/.test(name) ? 0 : 1;
+  return fit * 1000 + ver * 10 + stable;
+}
+
+async function allModels(key) {
   if (MODEL_CACHE) return MODEL_CACHE;
-  if (process.env.GEMINI_MODEL) return (MODEL_CACHE = [process.env.GEMINI_MODEL]);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
     const d = await r.json();
     if (!r.ok) return { error: d?.error?.message || `models list ${r.status}` };
-    const usable = (d.models || [])
+    MODEL_CACHE = (d.models || [])
       .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
-      .map(m => String(m.name).replace(/^models\//, ''))
-      .filter(m => !/embedding|aqa|image|vision-only|tts|live/.test(m));
-    const ordered = [
-      ...PREFER.filter(p => usable.includes(p)),
-      ...usable.filter(m => /flash/.test(m) && !PREFER.includes(m)),
-    ];
-    if (!ordered.length) return { error: 'Боломжтой модель олдсонгүй' };
-    return (MODEL_CACHE = ordered.slice(0, 4));
+      .map(m => String(m.name).replace(/^models\//, ''));
+    return MODEL_CACHE;
   } catch (e) { return { error: e.message }; }
+}
+
+async function pickModels(key, tier) {
+  if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
+  const all = await allModels(key);
+  if (all.error) return all;
+  const list = all.map(name => ({ name, r: rankModel(name, tier) }))
+    .filter(x => x.r !== null).sort((a, b) => b.r - a.r).slice(0, 4).map(x => x.name);
+  return list.length ? list : (FALLBACK[tier] || FALLBACK.flash);
 }
 
 // Амжилттай бол OpenAI хэлбэрийн хариу, бүтэлгүйтвэл {error} буцаана.
@@ -48,7 +63,8 @@ async function tryGemini(body) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return { error: 'GEMINI_API_KEY байхгүй' };
 
-  const models = await pickModels(key);
+  const tier = body?.tier === 'pro' ? 'pro' : 'flash';
+  const models = await pickModels(key, tier);
   if (models.error) return { error: 'Модель сонгох: ' + models.error };
 
   const msgs = body?.messages || [];
@@ -113,7 +129,12 @@ module.exports = async (req, res) => {
           name: String(m.name).replace(/^models\//, ''),
           in: m.inputTokenLimit, out: m.outputTokenLimit,
         }));
-      return res.json({ count: list.length, chosen: MODEL_CACHE, models: list });
+      return res.json({
+        count: list.length,
+        pro:   await pickModels(key, 'pro'),
+        flash: await pickModels(key, 'flash'),
+        models: list,
+      });
     } catch (e) { return res.status(502).json({ error: e.message }); }
   }
 

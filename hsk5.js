@@ -97,7 +97,7 @@ const Data = {
 /* ── AI (chat-proxy) ─────────────────────────────────────────── */
 const AI = {
   ok: null,
-  async ask(system, user, maxTokens = 700) {
+  async ask(system, user, maxTokens = 700, tier = 'pro') {
     const headers = { 'Content-Type': 'application/json' };
     const secret = localStorage.getItem('jarvis_proxy_secret') || '';
     if (secret) headers['x-jarvis-secret'] = secret;
@@ -106,7 +106,7 @@ const AI = {
         fetch(PROXY + '/chat', {
           method: 'POST', headers,
           body: JSON.stringify({
-            model: 'gpt-4o',
+            tier,
             messages: [{ role: 'system', content: system }, { role: 'user', content: user }],
             max_tokens: maxTokens, temperature: 0.4,
           }),
