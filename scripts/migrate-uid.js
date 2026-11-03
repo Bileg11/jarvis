@@ -74,5 +74,19 @@ async function copyCollection(path, depth = 0) {
     console.log(`  ${c.id.padEnd(16)} хуулах ${r.copied}  ·  шинэ эрхэд аль хэдийн байгаа ${r.skipped}`);
   }
   console.log(`\nНийт: ${total} бичлэг хуулна, ${kept}-г хөндөхгүй.`);
-  if (!APPLY) console.log('Жинхэнэ хуулбарлахын тулд --apply нэм.');
+
+  // ── Telegram холбоос: chatId → uid ──────────────────────────────
+  // Үүнийг шилжүүлэхгүй бол ботод бичсэн зүйл хуучин эрх рүү орсоор байна.
+  try {
+    const look = await db.collection('telegram_lookup').get();
+    let moved = 0;
+    for (const d of look.docs) {
+      if (d.data()?.uid !== FROM) continue;
+      if (APPLY) await d.ref.set({ uid: TO, migratedAt: new Date().toISOString() }, { merge: true });
+      moved++;
+    }
+    console.log(`Telegram холбоос: ${moved} бичлэг шинэ эрх рүү${APPLY ? ' шилжлээ' : ' шилжих ёстой'}.`);
+  } catch (e) { console.warn('Telegram холбоос:', e.message); }
+
+  if (!APPLY) console.log('\nЖинхэнэ хуулбарлахын тулд --apply нэм.');
 })().catch(e => { console.error('Алдаа:', e.message); process.exit(1); });
