@@ -66,6 +66,8 @@ cat > _site/_headers <<'HEADERS'
   Cache-Control: public, max-age=31536000, immutable
 /*.png
   Cache-Control: public, max-age=31536000, immutable
+/data/*
+  Cache-Control: public, max-age=600, must-revalidate
 HEADERS
 
 # ── REDIRECTS ───────────────────────────────────────────────────
