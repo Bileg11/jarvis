@@ -470,6 +470,14 @@ async function refreshHome() {
   const g = await Data.grammar_();
   $('m-grammar').textContent = `${g.filter(x => x[0] >= 4).length} дүрэм (L4–5)`;
 
+  // Даалгаврын сангийн хэмжээ — өдөр бүр автоматаар нэмэгддэг
+  const b = await Data.bank_();
+  const nRead = (b.read || []).reduce((a, r) => a + (r.qs ? r.qs.length : 1), 0);
+  $('m-listen').textContent = `${(b.listen || []).length} даалгавар + 听写`;
+  $('m-read').textContent   = `${nRead} асуулт · 3 төрөл`;
+  $('m-write').textContent  = `${(b.write || []).length} сэдэв`;
+  $('m-speak').textContent  = `${(b.speak || []).length} даалгавар`;
+
   $('diag-cta').innerHTML = s.diagDone ? '' : `
     <div class="warn-box">
       <b>Эхлээд онош тест хий.</b> 15 минут. Үүнгүйгээр систем чиний бодит түвшнийг
