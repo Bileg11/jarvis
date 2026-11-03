@@ -511,7 +511,10 @@ async function refreshHome() {
   Plan.render();
   await refreshHome();
   const changed = await Store.initCloud();
-  if (changed) { Vocab.srs = null; Scores.render(); Plan.render(); refreshHome(); }
+  // Үүлэнд холбогдсоны ДАРАА заавал дахин зурна — Claude-ийн дүгнэлт
+  // Firestore-оос ирдэг тул эхний зурахад хараахан байхгүй байдаг.
+  if (changed) { Vocab.srs = null; Scores.render(); Plan.render(); }
+  await refreshHome();
 })();
 
 /* ══ ОНОШ ТЕСТ ═══════════════════════════════════════════════
