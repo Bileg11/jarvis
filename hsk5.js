@@ -607,8 +607,10 @@ const Diag = {
     if (!it) return this.finish();
     $('diag-prog').textContent = `${this.vocabItems.length + this.qIdx + 1}/${this.vocabItems.length + this.qItems.length}`;
     if (it.skill === 'listen') {
+      Audio_.register('diag:' + this.qIdx, it.audio || [it.text || '']);
       $('diag-body').innerHTML = `
-        <div class="note">Сонсоод хариул. Жинхэнэ шалгалт дээр бичлэг <b>ганц удаа</b> тавигддаг.</div>
+        <div class="note">Сонсоод хариул. Жинхэнэ шалгалт дээр бичлэг <b>ганц удаа</b> тавигддаг.
+          ${Audio_.status() ? '<br><b>' + esc(Audio_.status()) + '</b>' : ''}</div>
         <div class="q">
           <button class="big pri" style="width:100%" onclick="Audio_.play(${this.qIdx},'diag')">🔊 Бичлэг тавих</button>
           <div class="q-txt" style="margin-top:var(--sp-4)">${esc(it.q)}</div>
@@ -735,7 +737,9 @@ const Audio_ = {
 
   async play(idx, scope) {
     const segs = this._items[scope + ':' + idx];
-    if (!segs || this.playing) return;
+    if (this.playing) return;
+    // Бүртгэгдээгүй бичлэгийг чимээгүй алгасвал алдаа нь үл мэдэгдэнэ
+    if (!segs) { toast('Бичлэг олдсонгүй — хуудсаа шинэчилж үзнэ үү', 3500); return; }
     if (!window.speechSynthesis) { toast('Хөтөч дуу уншихыг дэмжихгүй'); return; }
     if (!this.voice) this.pick();
     if (!this.voice) { toast('Хятад хоолой олдсонгүй — доорх зааврыг хар', 4000); return; }
