@@ -30,9 +30,10 @@ jobs:
       - name: Deploy
         env:
           VERCEL_TOKEN:  ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          PRJ_CHAT:      ${{ secrets.VERCEL_PROJECT_ID_CHAT_PROXY }}
-          PRJ_HOOK:      ${{ secrets.VERCEL_PROJECT_ID_WEBHOOK }}
+          # Эдгээр нь нууц биш — зөвхөн танигч. Нууц нь зөвхөн VERCEL_TOKEN.
+          VERCEL_ORG_ID: team_s86fhrVVSRHkHsw6O9YCJ9Pi
+          PRJ_CHAT:      prj_pvmivuIHs6AQnEFY3W0k1hg9Eb8N
+          PRJ_HOOK:      prj_bL9nY62wRIZGs861DPbYPUrDRuwm
           TARGET:        ${{ github.event.inputs.target || 'both' }}
         run: |
           set -e
