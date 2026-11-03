@@ -6,6 +6,7 @@
 'use strict';
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
 
 initializeApp({ credential: cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)) });
 const db = getFirestore();
@@ -32,7 +33,14 @@ const mask = u => u ? u.slice(0, 6) + '…' + u.slice(-4) : '(хоосон)';
       const s = await db.collection(`users/${u.id}/${c}`).limit(1).get().catch(() => ({ empty: true }));
       if (!s.empty) other.push(c);
     }
-    const me = u.id === process.env.USER_UID ? '  ← USER_UID' : '';
-    console.log(`  ${mask(u.id)}  ${marks.join(' · ') || 'hsk5 алга'}  [${other.join(',') || '—'}]${me}`);
+    // Имэйлийг хэсэгчлэн далдална — лог руу бүтнээр бичихгүй
+    let who = '?';
+    try {
+      const rec = await getAuth().getUser(u.id);
+      const e = rec.email || '';
+      who = e ? e.replace(/^(.{2}).*(@.*)$/, '$1***$2') : (rec.providerData?.[0]?.providerId || 'нууц үггүй');
+    } catch { who = 'бүртгэл алга'; }
+    const me = u.id === process.env.USER_UID ? '  ← USER_UID (тайлан үүнийг уншдаг)' : '';
+    console.log(`  ${mask(u.id)}  ${who.padEnd(22)} ${marks.join(' · ') || 'hsk5 алга'}  [${other.join(',') || '—'}]${me}`);
   }
 })().catch(e => { console.error('Алдаа:', e.message); process.exit(1); });
