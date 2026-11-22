@@ -1071,8 +1071,12 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       <!-- CHAT PANEL -->
       <div class="chat-panel glass" id="chat-panel">
         <div class="panel-hdr-row">
-          <div class="panel-hdr">Jarvis-тай яриа</div>
+          <div class="panel-hdr" style="display:flex;align-items:center;gap:8px">
+            <span id="jv-avatar-slot" style="width:42px;flex:0 0 42px"></span>
+            <span>Jarvis-тай яриа</span>
+          </div>
           <div class="panel-btns">
+            <span id="jv-voice-slot" style="display:inline-flex"></span>
             <button class="os-btn intel" id="intel-btn2" onclick="scanIntel()">
               <span class="btn-dot"></span>INTEL
             </button>
@@ -1194,6 +1198,8 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 <link rel="stylesheet" href="jarvis-shell.css">
   <script src="theme.js"></script>
   <script src="speak.js"></script>
+  <script src="jarvis-voice.js"></script>
+  <script src="jarvis-avatar.js"></script>
   <script src="app.js"></script>
   <script src="gemini.js"></script>
   <script src="intel.js"></script>
@@ -1837,8 +1843,11 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     addMsg('user',text);
     const typing=addTyping();
     startSpectrum();
+    window.JarvisVoice && JarvisVoice.stop();
+    window.JarvisAvatar && JarvisAvatar.setState('thinking');
     let reply=await sendChatMessage(text);
     typing.remove();stopSpectrum();
+    window.JarvisAvatar && JarvisAvatar.setState('idle');
 
     // Chat → action: REMEMBER (текстийн хамт ирдэг тул салгаж авна)
     const rem = _extractRemember(reply);
@@ -1850,10 +1859,13 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
       const msgRow = addMsg('bot', '…');
       if (actionCard.action === 'ADD_HSK_WORD') await _applyAddHskWordChat(actionCard, msgRow);
       else await _applyLogExpenseChat(actionCard, msgRow);
+      // Үйлдлийн баталгааг чангаар уншина (JSON-ыг биш, гарсан мөрийг)
+      window.JarvisVoice && JarvisVoice.speak(msgRow.querySelector('.msg-bubble')?.textContent || '');
     } else {
       const msgRow=addMsg('bot',reply);
       // Sprint 30: Detect FINALIZE_PLAN and render schedule card
       _tryRenderScheduleCard(reply, msgRow);
+      window.JarvisVoice && JarvisVoice.speak(reply);
     }
     sendBtn.disabled=false;setAIState('idle');
     inputEl.focus();
@@ -2454,6 +2466,17 @@ String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
     if (window.jarvisHref) el.href = window.jarvisHref(el.getAttribute('href'));
     if (map[here]===id) { el.classList.add('on'); el.setAttribute('aria-current','page'); }
   });
+})();
+</script>
+<!-- ДУУ ХООЛОЙ + ДҮР -->
+<script>
+(function(){
+  function boot(){
+    if (window.JarvisAvatar) JarvisAvatar.mount(document.getElementById('jv-avatar-slot'), { maxWidth:'42px' });
+    if (window.JarvisVoice)  JarvisVoice.mountToggle(document.getElementById('jv-voice-slot'));
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();
 </script>
 <script src="jarvis-shell.js" data-page="chat"></script>

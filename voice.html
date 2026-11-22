@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="mn" data-world="night" data-accent="cyan">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JARVIS · Дуу хоолой</title>
+<link rel="stylesheet" href="design-system.css">
+<link rel="stylesheet" href="jarvis-shell.css">
+<style>
+  body{margin:0;background:var(--bg,#0b0f14);color:var(--text,#dfe6ee);
+       font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+       font-size:var(--fs-md,15px);line-height:var(--lh-body,1.6)}
+  .wrap{max-width:720px;margin:0 auto;padding:var(--sp-5,20px) var(--sp-4,16px) 90px}
+  h1{font-size:var(--fs-xl,21px);margin:0 0 4px}
+  .sub{color:var(--text-3,#7f8b99);font-size:var(--fs-sm,13px);margin:0 0 var(--sp-5,20px)}
+
+  .card{background:var(--surface,#151b22);border:1px solid var(--border,rgba(127,127,127,.22));
+        border-radius:18px;padding:var(--sp-5,20px);margin-bottom:var(--sp-4,16px)}
+
+  .stage{display:flex;flex-direction:column;align-items:center;gap:var(--sp-3,12px)}
+  .state{font-size:var(--fs-xs,11px);letter-spacing:2px;text-transform:uppercase;
+         color:var(--text-3,#7f8b99)}
+
+  .status{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm,13px);
+          padding:10px 14px;border-radius:12px;border:1px solid var(--border,rgba(127,127,127,.22))}
+  .dot{width:9px;height:9px;border-radius:50%;background:#7f8b99;flex:0 0 9px}
+  .dot.ok{background:#3ecf8e;box-shadow:0 0 8px rgba(62,207,142,.6)}
+  .dot.bad{background:#e0764a;box-shadow:0 0 8px rgba(224,118,74,.5)}
+
+  textarea{width:100%;box-sizing:border-box;min-height:104px;resize:vertical;
+           background:var(--surface-2,rgba(127,127,127,.09));color:var(--text,#dfe6ee);
+           border:1px solid var(--border,rgba(127,127,127,.25));border-radius:14px;
+           padding:12px 14px;font:inherit;font-size:var(--fs-md,15px)}
+  textarea:focus{outline:none;border-color:var(--accent,#39d)}
+
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:var(--sp-3,12px)}
+  label{font-size:var(--fs-xs,11px);letter-spacing:1.5px;text-transform:uppercase;
+        color:var(--text-3,#7f8b99);display:block;margin-bottom:5px}
+  .field{flex:1 1 150px;min-width:140px}
+  select,input[type=range]{width:100%;box-sizing:border-box}
+  select{background:var(--surface-2,rgba(127,127,127,.09));color:var(--text,#dfe6ee);
+         border:1px solid var(--border,rgba(127,127,127,.25));border-radius:11px;
+         padding:9px 11px;font:inherit;font-size:var(--fs-sm,13px)}
+  input[type=range]{accent-color:var(--accent,#39d)}
+
+  button.act{appearance:none;border:none;cursor:pointer;font:inherit;font-weight:600;
+             border-radius:13px;padding:12px 22px;min-height:46px;
+             background:var(--accent,#39d);color:var(--accent-ink,#071018)}
+  button.act.ghost{background:transparent;color:var(--text-2,#9aa7b4);
+                   border:1px solid var(--border,rgba(127,127,127,.3))}
+  button.act:disabled{opacity:.45;cursor:not-allowed}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:var(--sp-3,12px)}
+  .chip{cursor:pointer;font-size:var(--fs-sm,13px);padding:7px 13px;border-radius:999px;
+        background:var(--surface-2,rgba(127,127,127,.09));
+        border:1px solid var(--border,rgba(127,127,127,.25));color:var(--text-2,#9aa7b4)}
+  .chip:hover{border-color:var(--accent,#39d);color:var(--accent-text,var(--accent,#39d))}
+
+  .hint{font-size:var(--fs-sm,13px);color:var(--text-3,#7f8b99);margin-top:10px}
+  code{background:var(--surface-2,rgba(127,127,127,.12));padding:2px 6px;border-radius:6px;
+       font-size:.92em;word-break:break-all}
+  .err{color:#e0764a;font-size:var(--fs-sm,13px);margin-top:10px;min-height:1.2em}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <h1>Дуу хоолой</h1>
+  <p class="sub">Jarvis монголоор чангаар ярина. Энд тохируулж, сонсож шалгана.</p>
+
+  <div class="card stage">
+    <div id="avatar-slot" style="width:190px"></div>
+    <div class="state" id="state-lbl">Хүлээж байна</div>
+  </div>
+
+  <div class="card">
+    <div class="status" id="status">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-txt">Сервер шалгаж байна…</span>
+      <span style="flex:1"></span>
+      <span id="voice-slot" style="display:inline-flex"></span>
+    </div>
+    <div class="hint" id="status-hint"></div>
+  </div>
+
+  <div class="card">
+    <label for="txt">Уншуулах текст</label>
+    <textarea id="txt">Сайн байна уу Билэг. Өнөөдрийн дадлын гүйцэтгэл далан хувь, ханзны дасгал дууссан байна. Санхүүгийн хэсэгт шинэ гүйлгээ бүртгэгдлээ.</textarea>
+
+    <div class="chips">
+      <span class="chip" data-s="Өглөөний мэдээлэл бэлэн. Өнөөдөр гурван цонх төлөвлөгдсөн байна.">Өглөөний мэдээлэл</span>
+      <span class="chip" data-s="Анхаар. Энэ сарын зарлага төсвөөсөө арван хувиар хэтэрсэн байна.">Санхүүгийн анхааруулга</span>
+      <span class="chip" data-s="Ханзны дасгалын цаг боллоо. Өнөөдөр хорин шинэ үг хүлээж байна.">HSK сануулга</span>
+      <span class="chip" data-s="**Тод текст** ба эможи 🔥 ба [холбоос](https://x.com) цэвэрлэгдэх ёстой.">Цэвэрлэлтийн тест</span>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="provider">Провайдер</label>
+        <select id="provider">
+          <option value="">Серверийн анхдагч</option>
+          <option value="edge">edge-tts (үнэгүй)</option>
+          <option value="eleven">ElevenLabs (миний хоолой)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="voice">Хоолой</label>
+        <select id="voice"></select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="rate">Хурд · <span id="rate-v">+0%</span></label>
+        <input type="range" id="rate" min="-40" max="40" step="5" value="0">
+      </div>
+      <div class="field">
+        <label for="pitch">Өнгө · <span id="pitch-v">+0Hz</span></label>
+        <input type="range" id="pitch" min="-40" max="40" step="5" value="0">
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="act" id="play">▶︎ Сонсох</button>
+      <button class="act ghost" id="stop">■ Зогсоох</button>
+    </div>
+    <div class="err" id="err"></div>
+  </div>
+
+  <div class="card">
+    <label>Сервер асаах</label>
+    <div class="hint">
+      Терминал дээр: <code>cd ~/my-jarvis/voice &amp;&amp; ./start.sh</code><br>
+      Асаалттай байхад энэ хуудас болон чат хоёулаа ярина.
+    </div>
+  </div>
+</div>
+
+<script src="theme.js"></script>
+<script src="jarvis-voice.js"></script>
+<script src="jarvis-avatar.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  JarvisAvatar.mount($('avatar-slot'), { maxWidth: '190px' });
+  JarvisVoice.mountToggle($('voice-slot'));
+
+  // ── Серверийн төлөв ────────────────────────────────────────
+  function refreshStatus() {
+    JarvisVoice.probe(true).then(function (mode) {
+      var ok = mode === 'local';
+      $('status-dot').className = 'dot ' + (ok ? 'ok' : 'bad');
+      $('status-txt').textContent = ok ? 'Дуу хоолойн сервер холбогдлоо' : 'Сервер олдсонгүй';
+      $('status-hint').innerHTML = ok
+        ? 'Доорх текстийг бичээд Сонсох дар. Товч асаалттай үед чат ч бас ярина.'
+        : 'Терминал дээр <code>cd ~/my-jarvis/voice &amp;&amp; ./start.sh</code> ажиллуулаад энэ хуудсыг сэргээнэ үү.';
+      fillVoices();
+    });
+  }
+  refreshStatus();
+
+  // ── Төлөвийн шошго ─────────────────────────────────────────
+  addEventListener('jarvis-voice-start', function () { $('state-lbl').textContent = 'Ярьж байна'; });
+  addEventListener('jarvis-voice-end',   function () { $('state-lbl').textContent = 'Хүлээж байна'; });
+
+  // ── Гулсуур ────────────────────────────────────────────────
+  function rateStr() { var v = +$('rate').value; return (v >= 0 ? '+' : '') + v + '%'; }
+  function pitchStr() { var v = +$('pitch').value; return (v >= 0 ? '+' : '') + v + 'Hz'; }
+  $('rate').addEventListener('input', function () { $('rate-v').textContent = rateStr(); });
+  $('pitch').addEventListener('input', function () { $('pitch-v').textContent = pitchStr(); });
+
+  // ── Товчнууд ───────────────────────────────────────────────
+  $('play').addEventListener('click', function () {
+    $('err').textContent = '';
+    var text = $('txt').value.trim();
+    if (!text) { $('err').textContent = 'Текст хоосон байна.'; return; }
+    $('play').disabled = true;
+    JarvisVoice.speak(text, {
+      force: true,                       // товч унтраалттай ч энд сонсгоно
+      voice: $('voice').value,
+      provider: $('provider').value,
+      rate: rateStr(),
+      pitch: pitchStr(),
+    }).then(function (ok) {
+      $('play').disabled = false;
+      if (ok) return;
+      var st = JarvisVoice.status();
+      $('err').textContent =
+        st.mode !== 'local' ? 'Сервер холбогдоогүй — start.sh ажиллуулна уу.'
+        : st.error === 'autoplay' ? 'Браузер дуу тоглуулахыг хориглов — дахин дарна уу.'
+        : st.error ? ('Алдаа: ' + st.error)
+        : 'Уншихаар текст үлдсэнгүй.';
+      refreshStatus();
+    });
+  });
+
+  $('stop').addEventListener('click', function () { JarvisVoice.stop(); });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.chip'), function (c) {
+    c.addEventListener('click', function () { $('txt').value = c.dataset.s; });
+  });
+
+  // ── Хоолойн жагсаалт — провайдераас хамаарч солигдоно ──────
+  var EDGE_LABELS = { bataa: 'Батаа — эр', yesui: 'Есүй — эм' };
+
+  function activeProvider() {
+    var sel = $('provider').value;
+    if (sel) return sel;
+    var h = JarvisVoice.health();
+    return (h && h.provider) || 'edge';
+  }
+
+  function fillVoices() {
+    var h = JarvisVoice.health() || {};
+    var prov = activeProvider();
+    var names = prov === 'eleven' ? (h.eleven_voices || []) : (h.voices || ['bataa', 'yesui']);
+    var sel = $('voice');
+    var prev = sel.value;
+    sel.innerHTML = '';
+
+    if (!names.length) {
+      var o = document.createElement('option');
+      o.value = ''; o.textContent = 'тохируулаагүй (.env)';
+      sel.appendChild(o);
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    names.forEach(function (n) {
+      var o = document.createElement('option');
+      o.value = n;
+      o.textContent = EDGE_LABELS[n] || (n.charAt(0).toUpperCase() + n.slice(1));
+      sel.appendChild(o);
+    });
+    // Өмнөх сонголтыг боломжтой бол хадгална
+    var want = names.indexOf(prev) >= 0 ? prev : (prov === 'edge' ? JarvisVoice.voice() : names[0]);
+    sel.value = names.indexOf(want) >= 0 ? want : names[0];
+  }
+
+  $('provider').addEventListener('change', fillVoices);
+  $('voice').addEventListener('change', function () {
+    if (activeProvider() === 'edge') JarvisVoice.setVoice($('voice').value);
+  });
+})();
+</script>
+<script src="jarvis-shell.js" data-page="profile"></script>
+</body>
+</html>

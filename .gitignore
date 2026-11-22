@@ -31,3 +31,9 @@ fin_import.json
 !icon-192.png
 !icon-512.png
 !apple-touch-icon.png
+
+# Локал дуу хоолойн сервер (venv, кэш, API key)
+voice/.venv/
+voice/cache/
+voice/.env
+voice/*.mp3

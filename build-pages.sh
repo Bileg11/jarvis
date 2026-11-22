@@ -11,6 +11,9 @@ cp design-system.css theme.js speak.js index.html index.css jarvis-config.js app
 # Шинэ бүрхүүл ба нүүр хуудас (энэ мөр дутсанаас вэб хувилбар цэсгүй болдог байв)
 cp home.html jarvis-shell.css jarvis-shell.js jarvis-daily.js _site/ 2>/dev/null || true
 
+# Дуу хоолой ба дүр — Jarvis монголоор чангаар ярина
+cp jarvis-voice.js jarvis-avatar.js voice.html _site/ 2>/dev/null || true
+
 # HTML хуудаснууд
 cp chat.html profile.html tracker.html guide.html life.html dashboard.html hsk.html hsk5.html finance.html hsk-signup.html learn.html login.html _site/ 2>/dev/null || true
 
@@ -39,7 +42,7 @@ done
 
 # ── MINIFY JS ───────────────────────────────────────────────────
 echo "📦 Minifying JS..."
-for f in _site/jarvis-config.js _site/jarvis-shell.js _site/jarvis-daily.js _site/app.js _site/gemini.js _site/firebase-config.js _site/intel.js _site/themes.js _site/hsk4-bank.js; do
+for f in _site/jarvis-config.js _site/jarvis-shell.js _site/jarvis-daily.js _site/jarvis-voice.js _site/jarvis-avatar.js _site/app.js _site/gemini.js _site/firebase-config.js _site/intel.js _site/themes.js _site/hsk4-bank.js; do
   [ -f "$f" ] && npx terser "$f" --compress --mangle --output "$f" 2>/dev/null && echo "  ✓ $(basename $f)" || true
 done
 
