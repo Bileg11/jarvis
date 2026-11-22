@@ -3,3 +3,4 @@ cache/
 .env
 *.mp3
 __pycache__/
+voice/autostart.log

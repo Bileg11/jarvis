@@ -117,7 +117,9 @@ echo "  Чат дээр баруун дээд буланд байгаа 🔊 т�
 echo "  Зогсоох: Ctrl+C"
 echo ""
 
-if [ "$ok_web" = 1 ]; then
+# Браузерыг нээнэ — гэхдээ нэвтрэх үед автоматаар асах үед нээхгүй
+# (JARVIS_NO_OPEN=1 бол чимээгүй ажиллана)
+if [ "$ok_web" = 1 ] && [ "${JARVIS_NO_OPEN:-0}" != "1" ]; then
   open "http://localhost:$WEB_PORT/chat.html" 2>/dev/null
 fi
 
