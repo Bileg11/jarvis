@@ -123,4 +123,17 @@ if [ "$ok_web" = 1 ] && [ "${JARVIS_NO_OPEN:-0}" != "1" ]; then
   open "http://localhost:$WEB_PORT/chat.html" 2>/dev/null
 fi
 
-wait
+# ── Хараа хяналт ─────────────────────────────────────────────────
+# Хоёулангийнх нь амьд эсэхийг ажиглана. Аль нэг нь унавал нөгөөг нь
+# зогсоогоод гарна — ингэснээр launchd (KeepAlive) БҮГДИЙГ дахин асаана.
+# Үүнгүй бол нэг нь унахад нөгөө нь амьд үлдэж, хагас эвдэрсэн
+# байдалд (вэб ажиллана, дуу гарахгүй) гацдаг.
+while kill -0 "$VOICE_PID" 2>/dev/null && kill -0 "$WEB_PID" 2>/dev/null; do
+  sleep 2
+done
+
+echo ""
+echo "  ⚠ Сервер унтарлаа — бүгдийг зогсоож байна (launchd дахин асаана)."
+kill "$VOICE_PID" "$WEB_PID" 2>/dev/null
+wait 2>/dev/null
+exit 1
