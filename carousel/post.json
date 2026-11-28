@@ -1,0 +1,108 @@
+{
+  "meta": {
+    "slug": "ai-agent-ajild",
+    "brand": "@khan.ai",
+    "theme": "khan",
+    "caption": "AI agent гэдэг нь зүгээр чатбот биш — чиний өмнөөс ажил хийдэг систем.\n\nЭнэ постонд 3 алхмаар өөрийн анхны agent-ээ хэрхэн ажиллуулахыг үзүүлэв. 4 дэх слайд дээрх prompt-ийг хуулж аваад шууд туршаад үзээрэй.\n\nАсуулт байвал коммент дээр бичээрэй, бүгдэд хариулна.\n\nИлүү ихийг @khan.ai дээрээс.",
+    "hashtags": [
+      "#khanai",
+      "#mongolia",
+      "#ai",
+      "#chatgpt",
+      "#aiagent",
+      "#монгол",
+      "#технологи",
+      "#ажил",
+      "#бүтээмж",
+      "#prompt"
+    ]
+  },
+  "slides": [
+    {
+      "type": "cover",
+      "bg": "assets/img/cover-bg.svg",
+      "kicker": "AI хэрэгсэл",
+      "title": "AI agent чиний {{ажлыг}} хийж дуусгана",
+      "sub": "Чатбот асуувал хариулна — agent бол өөрөө ажиллана. Ялгааг 3 алхмаар тайлбарлая.",
+      "cta": "ЦААШ ГҮЙЛГЭЭРЭЙ"
+    },
+    {
+      "type": "steps",
+      "eyebrow": "3 алхам",
+      "title": "Анхны agent-ээ {{30 минутад}} ажиллуул",
+      "steps": [
+        {
+          "n": 1,
+          "title": "Ажлаа нэг өгүүлбэрээр бич",
+          "text": "Жишээ нь: имэйл уншиж, чухал зүйлсийг нь хураангуйлаад надад илгээ."
+        },
+        {
+          "n": 2,
+          "title": "Хэрэгслүүдийг нь холбо",
+          "text": "Gmail, Google Sheets, Calendar — agent-д хэрэгтэй хэрэгслийг нь л өг."
+        },
+        {
+          "n": 3,
+          "title": "Жижигээр турш, дараа нь автоматжуул",
+          "text": "Эхлээд 5 имэйл дээр турш. Зөв ажиллавал өдөр бүр ажиллуулна."
+        }
+      ]
+    },
+    {
+      "type": "media",
+      "eyebrow": "Мэдээ",
+      "text": "2026 онд компаниудын {{73%}} AI agent туршиж байна",
+      "sub": "Хамгийн их хэрэглэж байгаа 3 салбар: борлуулалт, харилцагчийн үйлчилгээ, тайлан бэлтгэл.",
+      "image": "assets/img/news.svg",
+      "caption": "Эх сурвалж:",
+      "source": "TechCrunch, 2026"
+    },
+    {
+      "type": "prompt",
+      "label": "PROMPT:",
+      "title": "Үүнийг хуулж аваад {{ChatGPT}} дээр тавь",
+      "placeholder": "Хуулж авах prompt",
+      "text": "Чи миний хувийн туслах agent. Доорх дарааллаар ажилла:\n\n1. Би оруулсан текстийг уншиж, гол 3 зүйлийг нь гарга.\n2. Тус бүрд нь хийх үйлдлийг нэг өгүүлбэрээр бич.\n3. Хамгийн чухлыг нь дээр тавь.\n\nХариултаа Монгол хэлээр, тоологдсон хэлбэрээр бич. Урт тайлбар бичих шаардлагагүй.",
+      "note": "Эхний мөрийг өөрийн ажилдаа тохируулж сольж болно."
+    },
+    {
+      "type": "x_card",
+      "eyebrow": "X дээр",
+      "author": {
+        "name": "Andrej Karpathy",
+        "handle": "karpathy",
+        "avatar": "assets/img/avatar.svg",
+        "verified": true
+      },
+      "text": "The hottest new programming language is English. Agents are just programs you write in prose, and the compiler is getting better every month.",
+      "image": "assets/img/tweet-media.svg",
+      "quote": {
+        "author": {
+          "name": "OpenAI",
+          "handle": "OpenAI",
+          "avatar": "assets/img/avatar.svg"
+        },
+        "text": "Introducing agent mode: describe the task, and it runs end to end."
+      },
+      "stats": {
+        "views": 2840000,
+        "likes": 41200,
+        "reposts": 6800
+      },
+      "translationLabel": "Монгол орчуулга",
+      "translation": "Хамгийн хүчтэй шинэ программчлалын хэл бол Англи хэл. Agent гэдэг нь зүгээр л өгүүлбэрээр бичсэн программ — хөрвүүлэгч нь сар сараар сайжирч байна."
+    },
+    {
+      "type": "outro",
+      "avatar": "assets/img/avatar.svg",
+      "handle": "@khan.ai",
+      "tagline": "Дэлхийн AI, технологийн мэдээг {{монголоор}}. Өдөрт 2 удаа.",
+      "bullets": [
+        "Дэлхийн AI мэдээ",
+        "Юу гэсэн үг болохыг нь",
+        "Монголоор, тодорхой"
+      ],
+      "cta": "ДАГААРАЙ"
+    }
+  ]
+}

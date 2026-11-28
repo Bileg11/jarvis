@@ -1,0 +1,11 @@
+node_modules/
+.env
+.DS_Store
+.render-tmp/
+
+# Рендерийн гаралт (manifest.json ч багтана)
+output/*
+!output/.gitkeep
+
+# Локал Claude тохиргоо
+.claude/settings.local.json

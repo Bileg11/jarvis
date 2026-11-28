@@ -1,0 +1,127 @@
+name: KHAN AI - carousel post
+
+# Хуваарь: өдөр бүр 02:00 UTC = Улаанбаатарын цагаар 10:00
+#
+# ТҮР УНТРААСАН. Гараар 1-2 удаа амжилттай туршсаны дараа доорх 2 мөрийн
+# тайлбарыг авч хаявал автомат горим эхэлнэ.
+on:
+  # schedule:
+  #   - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: 'Сэдэв (хоосон бол автоматаар сонгоно)'
+        required: false
+        type: string
+      theme:
+        description: 'Өнгөний загвар'
+        required: false
+        default: 'khan'
+        type: choice
+        options: ['khan', 'blue', 'green']
+      publish:
+        description: 'Жинхэнээсээ нийтлэх үү?'
+        required: false
+        default: true
+        type: boolean
+      only:
+        description: 'Аль платформд нийтлэх вэ'
+        required: false
+        default: 'both'
+        type: choice
+        options: ['both', 'ig', 'fb']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: khan-carousel
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: carousel
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Код татах
+        uses: actions/checkout@v4
+
+      - name: Node суулгах
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: carousel/package-lock.json
+
+      - name: Сангуудыг суулгах
+        run: npm ci --no-audit --no-fund
+
+      # Монгол кирилл үсгийг зөв зурахад шаардлагатай фонтууд
+      - name: Фонт суулгах
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends \
+            fonts-dejavu-core fonts-liberation fonts-noto-core
+          fc-cache -f
+
+      # ubuntu-latest дээр Chrome урьдчилан суусан байдаг
+      - name: Chrome бэлтгэх
+        run: |
+          if [ -x /usr/bin/google-chrome ]; then
+            echo "PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome" >> "$GITHUB_ENV"
+            echo "Системийн Chrome ашиглана"
+          else
+            npx --yes @puppeteer/browsers install chrome@stable --path "$HOME/.cache/puppeteer"
+          fi
+          echo "PUPPETEER_CACHE_DIR=$HOME/.cache/puppeteer" >> "$GITHUB_ENV"
+
+      - name: post.json үүсгэх (Gemini)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.0-flash' }}
+          TOPIC: ${{ inputs.topic }}
+          THEME: ${{ inputs.theme || 'khan' }}
+        run: node scripts/generate.js
+
+      - name: PNG рендерлэх
+        run: node src/render.js post.json
+
+      - name: slug тодорхойлох
+        id: meta
+        run: |
+          SLUG=$(node -p "require('./post.json').meta.slug")
+          echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+          echo "Пост: $SLUG"
+
+      - name: Зургуудыг artifact болгох
+        uses: actions/upload-artifact@v4
+        with:
+          name: khan-carousel-${{ steps.meta.outputs.slug }}
+          path: |
+            carousel/output/${{ steps.meta.outputs.slug }}/
+            carousel/post.json
+          retention-days: 14
+
+      # Гадны hosting ХЭРЭГГҮЙ. Facebook зургийн файлыг шууд хүлээж авдаг бөгөөд
+      # Instagram-д хэрэгтэй нээлттэй хаягийг нь Facebook CDN өгнө.
+      - name: Instagram + Facebook руу нийтлэх
+        if: ${{ github.event_name == 'schedule' || inputs.publish }}
+        env:
+          META_ACCESS_TOKEN: ${{ secrets.FB_PAGE_TOKEN_AI_OFFICE }}
+          FB_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          IG_USER_ID: ${{ secrets.INSTAGRAM_BUSINESS_ID }}
+          META_API_VERSION: ${{ vars.FB_API_VERSION || 'v21.0' }}
+        run: |
+          ARGS="--yes"
+          ONLY="${{ inputs.only }}"
+          if [ -n "$ONLY" ] && [ "$ONLY" != "both" ]; then ARGS="$ARGS --only $ONLY"; fi
+          node scripts/publish.js $ARGS
+
+      - name: Нийтлээгүй тохиолдолд урьдчилан харах
+        if: ${{ github.event_name == 'workflow_dispatch' && !inputs.publish }}
+        run: node scripts/publish.js

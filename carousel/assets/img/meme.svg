@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000">
+  <rect width="1000" height="1000" fill="#15191D"/>
+  <rect x="0" y="0" width="1000" height="500" fill="#1C2126"/>
+  <g font-family="Arial" font-weight="bold" font-size="46" fill="#FFFFFF">
+    <text x="60" y="110">ЧИ: 3 цаг</text><text x="60" y="180">гараараа бичнэ</text>
+  </g>
+  <circle cx="760" cy="250" r="140" fill="#2A3238"/><circle cx="760" cy="215" r="48" fill="#6E777F"/>
+  <path d="M672 360c0-52 40-86 88-86s88 34 88 86z" fill="#6E777F"/>
+  <g font-family="Arial" font-weight="bold" font-size="46" fill="#E8B44A">
+    <text x="60" y="610">AI: 30 секунд</text><text x="60" y="680">дуусгачихна</text>
+  </g>
+  <circle cx="760" cy="750" r="140" fill="#2A2110"/><circle cx="760" cy="715" r="48" fill="#E8B44A"/>
+  <path d="M672 860c0-52 40-86 88-86s88 34 88 86z" fill="#E8B44A"/>
+</svg>

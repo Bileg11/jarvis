@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350" viewBox="0 0 1080 1350">
+  <!-- Theme-ээс хамааралгүй: зөвхөн цагаан тунгалаг хэлбэрүүд.
+       Ногоон болон хар хөх хоёр theme дээр ч зохилдоно. -->
+  <defs>
+    <radialGradient id="g1" cx="25%" cy="18%" r="85%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".10"/>
+      <stop offset="45%" stop-color="#FFFFFF" stop-opacity=".03"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity=".16"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="54" height="54" patternUnits="userSpaceOnUse">
+      <path d="M54 0H0V54" fill="none" stroke="#FFFFFF" stroke-opacity=".07" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1080" height="1350" fill="#000000"/>
+  <rect width="1080" height="1350" fill="url(#grid)"/>
+  <rect width="1080" height="1350" fill="url(#g1)"/>
+  <circle cx="820" cy="300" r="300" fill="url(#g2)"/>
+  <circle cx="200" cy="980" r="240" fill="url(#g2)" opacity=".4"/>
+  <g stroke="#FFFFFF" stroke-opacity=".30" fill="none" stroke-width="3">
+    <circle cx="540" cy="520" r="150"/><circle cx="540" cy="520" r="240" stroke-opacity=".14"/>
+    <path d="M300 520h90M690 520h90M540 280v90M540 670v90"/>
+  </g>
+  <g fill="#FFFFFF" fill-opacity=".55">
+    <circle cx="540" cy="520" r="18"/><circle cx="390" cy="520" r="9"/>
+    <circle cx="690" cy="520" r="9"/><circle cx="540" cy="370" r="9"/><circle cx="540" cy="670" r="9"/>
+  </g>
+</svg>

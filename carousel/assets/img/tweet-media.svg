@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="640" viewBox="0 0 1200 640">
+  <rect width="1200" height="640" fill="#0C1013"/>
+  <g font-family="Arial" font-weight="bold">
+    <text x="60" y="130" font-size="58" fill="#FFFFFF">GPT-5.2</text>
+    <text x="60" y="210" font-size="30" fill="#6E777F">benchmark results</text>
+  </g>
+  <g>
+    <rect x="60" y="270" width="760" height="54" rx="10" fill="#E8B44A"/>
+    <rect x="60" y="346" width="560" height="54" rx="10" fill="#2A3238"/>
+    <rect x="60" y="422" width="420" height="54" rx="10" fill="#2A3238"/>
+    <rect x="60" y="498" width="300" height="54" rx="10" fill="#222A30"/>
+  </g>
+  <g font-family="Arial" font-size="26" fill="#0A0A0C" font-weight="bold"><text x="78" y="306">94.1%</text></g>
+  <g font-family="Arial" font-size="26" fill="#9BA1A6"><text x="78" y="382">71.2%</text><text x="78" y="458">58.0%</text><text x="78" y="534">41.3%</text></g>
+  <g font-family="Arial" font-size="24" fill="#6E777F"><text x="860" y="306">new</text><text x="640" y="382">prev</text><text x="500" y="458">open</text><text x="380" y="534">base</text></g>
+</svg>

@@ -1,0 +1,17 @@
+{
+  "name": "aioffice-carousel-factory",
+  "version": "1.0.0",
+  "private": true,
+  "description": "0 MNT cost auto carousel generator + publisher for @aioffice.mn (Instagram + Facebook)",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "render": "node src/render.js",
+    "generate": "node scripts/generate.js",
+    "publish": "node scripts/publish.js",
+    "all": "npm run generate && npm run render && npm run publish"
+  },
+  "dependencies": {
+    "puppeteer-core": "^23.11.1"
+  }
+}
