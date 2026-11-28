@@ -25,7 +25,7 @@ export default function prompt(slide, ctx) {
   ${title}
   <div class="chatbox">
     ${ph}
-    <div class="body" data-autofit="36" data-autofit-min="24">${body}</div>
+    <div class="body" data-autofit="36" data-autofit-min="28">${body}</div>
     <div class="send">&uarr;</div>
   </div>
   ${note}

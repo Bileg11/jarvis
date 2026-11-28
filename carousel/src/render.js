@@ -269,6 +269,10 @@ export async function renderPost(post, { outDir, keepHtml = false, theme: themeO
 
   const brand = data.meta?.brand ?? '@khan.ai';
   const theme = themeOverride ?? data.meta?.theme ?? 'khan';
+
+  // Брэндийн лого: outro дээр avatar бичээгүй үед хэрэглэнэ
+  const logoPath = path.join(ROOT, 'assets', 'img', 'avatar.svg');
+  const logo = fs.existsSync(logoPath) ? url.pathToFileURL(logoPath).href : '';
   if (!(theme in THEMES)) {
     throw new Error(`Танихгүй theme: "${theme}". Боломжит: ${Object.keys(THEMES).join(', ')}`);
   }
@@ -304,7 +308,7 @@ export async function renderPost(post, { outDir, keepHtml = false, theme: themeO
         );
       }
 
-      const ctx = { brand, index: i + 1, total: slides.length };
+      const ctx = { brand, logo, index: i + 1, total: slides.length };
       const html = buildHtml(tpl(slide, ctx), css, faces, theme);
 
       fs.writeFileSync(tmpHtml, html, 'utf8');

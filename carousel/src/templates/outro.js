@@ -13,8 +13,10 @@ export default function outro(slide, ctx) {
     slide.bullets ?? ['Дэлхийн AI мэдээ', 'Юу гэсэн үг болохыг нь', 'Монголоор, тодорхой'];
   const cta = slide.cta ?? 'ДАГААРАЙ';
 
-  const av = slide.avatar
-    ? `<div class="o-av"><img src="${esc(slide.avatar)}" alt=""></div>`
+  // avatar бичээгүй бол брэндийн лого руу унана (assets/img/avatar.svg)
+  const avSrc = slide.avatar || ctx.logo;
+  const av = avSrc
+    ? `<div class="o-av"><img src="${esc(avSrc)}" alt=""></div>`
     : `<div class="o-av">AI</div>`;
 
   const list = bullets

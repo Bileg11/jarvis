@@ -10,10 +10,12 @@ export default function media(slide, ctx) {
     : '';
   const sub = slide.sub ? `<div class="m-sub">${multiline(slide.sub)}</div>` : '';
 
+  // Зураг өгөөгүй бол хоосон хүрээ зурахгүй. Оронд нь текстийг том болгож
+  // голлуулна: carousel-ийн 2 дахь слайд ("яагаад энэ чухал вэ") ийм хэлбэртэй.
   const fit = slide.fit === 'contain' ? ' contain' : '';
   const frame = slide.image
     ? `<div class="m-frame${fit}"><img src="${esc(slide.image)}" alt=""></div>`
-    : `<div class="m-frame"></div>`;
+    : '';
 
   const cap =
     slide.caption || slide.source
@@ -24,10 +26,12 @@ export default function media(slide, ctx) {
         }</div>`
       : '';
 
+  const bare = slide.image ? '' : ' bare';
+
   return `
-<div class="slide media">
+<div class="slide media${bare}">
   ${eyebrow}
-  <div class="m-text" data-autofit="52" data-autofit-min="36">${hl(slide.text ?? '')}</div>
+  <div class="m-text" data-autofit="${slide.image ? 52 : 80}" data-autofit-min="${slide.image ? 36 : 46}">${hl(slide.text ?? '')}</div>
   ${sub}
   ${frame}
   ${cap}

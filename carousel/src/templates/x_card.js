@@ -79,7 +79,7 @@ export default function xCard(slide, ctx) {
   const trans = slide.translation
     ? `<div class="x-trans">
          <div class="lab">${esc(slide.translationLabel ?? 'Монгол орчуулга')}</div>
-         <div class="val" data-autofit="35" data-autofit-min="25">${multiline(slide.translation)}</div>
+         <div class="val" data-autofit="35" data-autofit-min="30">${multiline(slide.translation)}</div>
        </div>`
     : '';
 
@@ -88,7 +88,7 @@ export default function xCard(slide, ctx) {
   ${eyebrow}
   <div class="tweet">
     ${head}
-    <div class="t-text" data-autofit="36" data-autofit-min="25">${multiline(slide.text ?? '')}</div>
+    <div class="t-text" data-autofit="36" data-autofit-min="30">${multiline(slide.text ?? '')}</div>
     ${image}
     ${quote}
     ${stats}

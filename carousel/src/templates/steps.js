@@ -9,13 +9,13 @@ export default function steps(slide, ctx) {
     .map((st, i) => {
       const num = String(st.n ?? i + 1).padStart(2, '0');
       const text = st.text
-        ? `<div class="s-text" data-autofit="33" data-autofit-min="22" data-autofit-group="step-text"><span class="arrow">&rarr;</span><span>${multiline(st.text)}</span></div>`
+        ? `<div class="s-text" data-autofit="33" data-autofit-min="30" data-autofit-group="step-text"><span class="arrow">&rarr;</span><span>${multiline(st.text)}</span></div>`
         : '';
       return `
       <div class="s-item">
         <div class="s-num">${esc(num)}</div>
         <div class="s-body">
-          <div class="s-title" data-autofit="42" data-autofit-min="28" data-autofit-group="step-title">${hl(st.title ?? '')}</div>
+          <div class="s-title" data-autofit="42" data-autofit-min="34" data-autofit-group="step-title">${hl(st.title ?? '')}</div>
           ${text}
         </div>
       </div>`;

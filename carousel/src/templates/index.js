@@ -3,7 +3,8 @@ import steps from './steps.js';
 import media from './media.js';
 import prompt from './prompt.js';
 import x_card from './x_card.js';
+import recap from './recap.js';
 import outro from './outro.js';
 
-export const TEMPLATES = { cover, steps, media, prompt, x_card, outro };
+export const TEMPLATES = { cover, steps, media, prompt, x_card, recap, outro };
 export const TEMPLATE_NAMES = Object.keys(TEMPLATES);
